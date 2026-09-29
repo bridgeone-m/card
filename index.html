@@ -4107,14 +4107,30 @@ table.pdf-doc-table thead{ background:var(--bg); }
    minmax 첫 값(최소폭)은 좁은 화면에서 글자가 뭉개지지 않을 하한선이다. */
 .crm-list-col .co-table-head, .crm-list-col .co-row{
   grid-template-columns:
-    minmax(150px,1.64fr) minmax(108px,0.96fr) minmax(124px,1.08fr)
-    minmax(84px,0.90fr) minmax(76px,0.71fr) minmax(80px,0.71fr) !important;
-  gap:8px !important;
+    minmax(160px,1.60fr) minmax(120px,1.10fr) minmax(128px,1.08fr)
+    minmax(96px,0.86fr) minmax(88px,0.68fr) minmax(92px,0.68fr) !important;
+  /* 열 사이가 붙어 보이지 않게 — 8px는 6열이 한 덩어리처럼 뭉쳐 보였다(§요청 3/7). */
+  gap:18px !important;
 }
 /* 업체명 열이 좁아진 만큼, 긴 업체명은 열 폭 전체를 쓰고 넘치면 ellipsis 처리한다.
    .co-name-text의 기본 max-width:220px(§278)가 새 열 폭보다 작아 오른쪽에 쓸데없는
    여백을 남기므로 이 화면에서만 100%로 푼다 — 줄바꿈 없이 한 줄 유지(행 높이 불변). */
 .crm-list-col .co-name-text{ max-width:100% !important; }
+/* §업체 목록 여백 여유 라운드(신규) — "따닥따닥 붙어 보인다"는 요청에 맞춰 행 높이·
+   셀 패딩·열 간격만 키운다. 열 구성/순서/내용/정렬/클릭 핸들러와 글자 크기는 그대로고,
+   여기서 바뀌는 건 padding · min-height · gap 세 가지뿐이다. 모두 .crm-list-col 스코프라
+   같은 .co-row 클래스를 쓰는 다른 화면(업무관리 등)은 영향을 받지 않는다. */
+.crm-list-col .co-table-head{ padding:13px 18px !important; }
+.crm-list-col .co-row{ min-height:70px !important; padding:11px 18px !important; }
+/* 행 구분선을 아주 살짝 진하게 — 행이 한 줄씩 또렷하게 끊겨 보이게(색만, 두께 그대로). */
+.crm-list-col .co-row{ border-bottom-color:#E3EAF3 !important; }
+/* 업체명 ↔ 그 아래 B2B 코드 */
+.crm-list-col .col-name{ gap:4px !important; }
+/* 최근 실적: 파란 건수 배지 ↔ 오른쪽 설명, 그리고 설명 2줄 사이 */
+.crm-list-col .lastpour-cell{ gap:12px !important; }
+.crm-list-col .lastpour-detail{ gap:3px !important; }
+/* 총매출 숫자 ↔ 아래 연도별 매출 */
+.crm-list-col .col-revenue-combo{ gap:5px !important; }
 .crm-list-col .col-pour{ flex:none; word-break:keep-all; white-space:normal; }
 .co-code-sub{ font-size:10.5px; color:var(--text-muted); font-weight:500; margin-top:1px; }
 .col-trend, .col-contrib{ min-width:0; text-align:right; font-size:12px; word-break:keep-all; }
@@ -4123,21 +4139,26 @@ table.pdf-doc-table thead{ background:var(--bg); }
 @media(max-width:1180px){
   .crm-main-grid{ grid-template-columns: 1fr; }
   .crm-list-col{ overflow-x:auto; }
-  .crm-list-col .co-table-head, .crm-list-col .co-list{ min-width:780px; }
+  .crm-list-col .co-table-head, .crm-list-col .co-list{ min-width:840px; }
   .crm-list-col .co-table-head, .crm-list-col .co-row{
     grid-template-columns:
       minmax(150px,1.55fr) minmax(104px,0.95fr) minmax(116px,1.05fr)
-      minmax(80px,0.9fr) minmax(74px,0.72fr) minmax(78px,0.73fr) !important;
+      minmax(86px,0.9fr) minmax(80px,0.72fr) minmax(84px,0.73fr) !important;
+    gap:14px !important;
   }
+  .crm-list-col .co-table-head{ padding:12px 16px !important; }
+  .crm-list-col .co-row{ min-height:66px !important; padding:10px 16px !important; }
 }
 @media(max-width:760px){
-  .crm-list-col .co-table-head, .crm-list-col .co-list{ min-width:680px; }
+  .crm-list-col .co-table-head, .crm-list-col .co-list{ min-width:720px; }
   .crm-list-col .co-table-head, .crm-list-col .co-row{
     grid-template-columns:
       minmax(130px,1.5fr) minmax(96px,0.95fr) minmax(104px,1.05fr)
-      minmax(74px,0.88fr) minmax(70px,0.72fr) minmax(74px,0.74fr) !important;
-    gap:5px !important;
+      minmax(76px,0.88fr) minmax(72px,0.72fr) minmax(76px,0.74fr) !important;
+    gap:9px !important;
   }
+  .crm-list-col .co-table-head{ padding:10px 12px !important; }
+  .crm-list-col .co-row{ min-height:62px !important; padding:9px 12px !important; }
 }
 
 /* §요청 14-20 — 지도 분포를 팝업(.map-modal-overlay: position:fixed 전체 덮개)에서
