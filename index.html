@@ -567,6 +567,18 @@
   .l2l3v2-source-row{ max-width:640px; }
   .l2l3v2-source-note{ max-width:640px; }
   .l2l3v2-criteria-section{ margin-bottom:0 !important; }
+  /* 상세 분석 접기 — 카드가 아니라 한 줄짜리 토글이라 화면을 덜 차지한다. */
+  .l2l3v2-analysis-block{ margin-bottom:16px; }
+  .l2l3v2-analysis-toggle{
+    display:flex; align-items:center; gap:8px; width:100%; font-family:inherit; text-align:left;
+    background:#F7F9FD; border:1px solid #E3EAF4; border-radius:10px; padding:13px 16px; cursor:pointer;
+  }
+  .l2l3v2-analysis-toggle:hover{ background:#EFF4FC; }
+  .l2l3v2-analysis-caret{ font-size:11px; color:var(--navy); width:12px; flex:none; }
+  .l2l3v2-analysis-toggle-label{ font-size:13.5px; font-weight:750; color:var(--navy); white-space:nowrap; }
+  .l2l3v2-analysis-toggle-hint{ font-size:11.5px; color:var(--text-faint); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .l2l3v2-analysis-body{ margin-top:14px; }
+  @media(max-width:700px){ .l2l3v2-analysis-toggle-hint{ display:none; } }
   .l2l3v2-source-rows{ gap:11px !important; margin-top:12px !important; }
   .l2l3v2-source-row{ grid-template-columns:104px 38px 34px 1fr !important; }
   .l2l3v2-source-name{ font-size:12.5px !important; }
@@ -14480,6 +14492,11 @@ window.SHIN2_CRM_APP_INIT = function(){
   // §L2→L3 정보구조 정리 라운드 — "집계 기준" 설명 접기/펼치기 상태. 기본은 접힘이라
   // 화면을 처음 열었을 때 긴 설명이 깔리지 않는다(§요청 9).
   let l2l3CriteriaOpen = false;
+  // §L2→L3 상세 분석 접기 라운드(신규) — 운영 개선 전·후 비교 / 기간별 비교 /
+  // 데이터 소스별 3개 구획을 버튼 하나로 묶어 접는다. 기본은 접힘이라 화면을 열면
+  // KPI → 상태 필터 → 업체 목록만 보인다.
+  let l2l3AnalysisOpen = false;
+  let lastL2L3SourceHtml = ''; // "데이터 소스별" 카드 — 접기 그룹 안에 들어간다
   let lastL2L3CriteriaHtml = ''; // renderL2L3SourceSummaryAndDetailHtml이 채우고, renderL2L3ManageTab이 화면 맨 끝에 붙인다
   let l2l3DetailTableOpen = false; // 기본은 접힘 — 전환 업체가 많아지면 표가 길어지므로(§요청 8-컬럼 상세표는 필요할 때만 펼침)
   // 업체의 협약일이 개선 전(A, 2026-05-20~2026-07-21)/개선 후(B, 2026-07-22~)/그 밖(2026-05-20
@@ -14540,7 +14557,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     //  ② 길게 펼쳐져 있던 참고사항을 "ⓘ 집계 기준 보기" 버튼 뒤로 접었다(§요청 9).
     //     문장 내용은 그대로 옮기고, 흩어져 있던 두 곳(비교 섹션의 ? 팝오버 + 참고사항
     //     카드)을 여기 한 곳으로 합쳤다 — 같은 설명이 두 군데 있던 것도 중복이었다.
-    const bottomGridHtml = `
+    lastL2L3SourceHtml = `
       <div class="l2l3v2-bottom-grid">
         <div class="npcmp-section" id="l2l3SourceSummarySection" style="margin-bottom:0;">
           <div class="npcmp-title">데이터 소스별 전환 업체 수</div>
@@ -14571,9 +14588,9 @@ window.SHIN2_CRM_APP_INIT = function(){
             </ul>
           </div>` : ''}
       </div>`;
+    // 이 함수는 이제 "전환 업체별 상세표"만 반환한다 — 소스별 카드(lastL2L3SourceHtml)와
+    // 집계 기준(lastL2L3CriteriaHtml)은 renderL2L3ManageTab이 각각 다른 위치에 붙인다.
     return `
-      ${bottomGridHtml}
-      
       <div class="npcmp-section">
         <div class="npcmp-head">
           <div class="npcmp-title-wrap">
@@ -14689,13 +14706,31 @@ window.SHIN2_CRM_APP_INIT = function(){
     // 채워야 하므로 호출 순서를 유지한 채(재계산 없음, 이미 있던 호출 그대로), 맨 끝에만
     // A/B 제외/매칭확인 bar를 덧붙인다.
     const npCmpSectionHtml = renderNpCmpSectionHtml();
-    // renderL2L3SourceSummaryAndDetailHtml()이 lastL2L3CriteriaHtml을 채우므로 먼저 호출한다.
-    const sourceAndDetailHtml = renderL2L3SourceSummaryAndDetailHtml(analysis);
-    const heroHtml = kpiHtml + controlsHtml + npCmpSectionHtml + sourceAndDetailHtml;
+    // renderL2L3SourceSummaryAndDetailHtml()이 lastL2L3SourceHtml/lastL2L3CriteriaHtml을
+    // 채우므로 먼저 호출한다(반환값은 "전환 업체별 상세표"만).
+    const detailTableHtml = renderL2L3SourceSummaryAndDetailHtml(analysis);
+    // §L2→L3 상세 분석 접기 라운드 — 분석 3종(전·후 비교 / 기간별 비교 / 소스별)을
+    // 버튼 하나 뒤로 묶는다. 접혀 있어도 위 계산은 그대로 돌아서 드릴다운 모달이 쓰는
+    // lastNpCmpAnalysis와 경과일 칩(controlsHtml, 항상 보임)은 영향을 받지 않는다.
+    const analysisHtml = `
+      <div class="l2l3v2-analysis-block">
+        <button type="button" class="l2l3v2-analysis-toggle" id="l2l3AnalysisToggleBtn" aria-expanded="${l2l3AnalysisOpen ? 'true' : 'false'}">
+          <span class="l2l3v2-analysis-caret">${l2l3AnalysisOpen ? '▾' : '▸'}</span>
+          <span class="l2l3v2-analysis-toggle-label">상세 분석 ${l2l3AnalysisOpen ? '접기' : '보기'}</span>
+          <span class="l2l3v2-analysis-toggle-hint">운영 개선 전·후 비교 · 기간별 비교 · 데이터 소스별</span>
+        </button>
+        ${l2l3AnalysisOpen ? `<div class="l2l3v2-analysis-body">${npCmpSectionHtml}${lastL2L3SourceHtml}</div>` : ''}
+      </div>`;
+    const heroHtml = kpiHtml + controlsHtml + analysisHtml + detailTableHtml;
     // 목록 뒤에 붙는 꼬리 — 집계 기준(접힘) → A/B 제외 안내 bar 순서.
     const tailHtml = lastL2L3CriteriaHtml + lastNpCmpBottomBarHtml;
 
     function bindHeroAndSubfilters(){
+      const analysisBtn = document.getElementById('l2l3AnalysisToggleBtn');
+      if(analysisBtn) analysisBtn.addEventListener('click', ()=>{
+        l2l3AnalysisOpen = !l2l3AnalysisOpen;
+        renderL2L3ManageTab(enriched);
+      });
       listEl.querySelectorAll('[data-l2l3-subfilter]').forEach(btn=> btn.addEventListener('click', ()=>{
         l2l3SubFilter = btn.getAttribute('data-l2l3-subfilter');
         renderL2L3ManageTab(enriched);
