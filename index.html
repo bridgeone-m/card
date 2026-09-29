@@ -2938,6 +2938,148 @@ body.map-modal-lock{ overflow:hidden; }
   .map-modal-infocol{ flex:1 1 auto; overflow-y:visible; }
   .map-apt-summary{ gap:10px; }
 }
+/* ==========================================================================
+   §지도 분포 UI 통일 라운드(신규) — "시공사 지역 분포" 카드(시공사 / 시공 아파트 탭,
+   근처 검색, PDF 내보내기)가 기본 HTML 폼처럼 보여 CRM 나머지 화면과 톤이 어긋났다.
+   화이트 + 남색 + 연한 회색 톤으로 컨트롤 모양만 통일한다 — 지도 마커/클러스터 계산,
+   근처검색 거리 계산, 필터 판정, PDF 대상 데이터는 전혀 건드리지 않는다.
+   ========================================================================== */
+/* ---- 툴바 ---- */
+.map-embed-root .map-modal-filters{
+  padding:12px 16px !important; gap:8px !important;
+  border-bottom:1px solid #EDF1F7 !important; background:#fff;
+}
+/* ---- 검색창: 좌측 돋보기 아이콘 + 남색 포커스 ---- */
+.map-search-field{ position:relative; flex:1 1 220px; min-width:180px; display:flex; align-items:center; }
+.map-search-field .map-search-ico{
+  position:absolute; left:11px; width:15px; height:15px; color:#93A3B8; pointer-events:none;
+}
+.map-embed-root .map-modal-search{
+  flex:1 1 auto; width:100%; height:40px; padding:0 12px 0 33px; font-size:13px;
+  border:1px solid #DCE4EF; border-radius:8px; background:#fff; color:var(--text);
+  transition:border-color .12s, box-shadow .12s;
+}
+.map-embed-root .map-modal-search::placeholder{ color:#9AA7B8; }
+.map-embed-root .map-modal-search:focus{
+  outline:none; border-color:var(--navy); box-shadow:0 0 0 3px rgba(8,47,103,.10);
+}
+/* ---- select: 기본 화살표를 지우고 같은 톤의 caret을 직접 그린다 ---- */
+.map-embed-root .map-modal-select{
+  height:40px; padding:0 30px 0 12px; font-size:12.5px; font-weight:600;
+  border:1px solid #DCE4EF; border-radius:8px; background-color:#fff; color:var(--text);
+  appearance:none; -webkit-appearance:none; -moz-appearance:none;
+  background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235E6E83' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat; background-position:right 10px center;
+  cursor:pointer; transition:border-color .12s, box-shadow .12s;
+}
+.map-embed-root .map-modal-select:hover{ border-color:#C3D0E2; }
+.map-embed-root .map-modal-select:focus{
+  outline:none; border-color:var(--navy); box-shadow:0 0 0 3px rgba(8,47,103,.10);
+}
+/* ---- 버튼 ---- */
+.map-embed-root .map-modal-retry-btn{
+  height:40px; padding:0 14px; font-size:12.5px; font-weight:650; border-radius:8px;
+  color:var(--navy); background:#fff; border:1px solid #DCE4EF;
+  display:inline-flex; align-items:center; gap:6px; white-space:nowrap;
+}
+.map-embed-root .map-modal-retry-btn:hover{ background:#F4F7FC; border-color:#C3D0E2; }
+.map-embed-root .map-modal-retry-btn:focus-visible{ outline:2px solid var(--navy); outline-offset:2px; }
+/* 주 버튼(PDF 내보내기) — 남색 채움, 과하지 않은 크기 */
+.map-embed-root .map-modal-retry-btn.is-primary{
+  color:#fff; background:var(--navy); border-color:var(--navy);
+}
+.map-embed-root .map-modal-retry-btn.is-primary:hover{ background:#123F7C; border-color:#123F7C; }
+.map-btn-ico{ width:14px; height:14px; flex:none; }
+/* 근처 검색 버튼 — 켜져 있으면 상태가 색 말고 테두리·굵기로도 보이게 */
+.map-embed-root .map-modal-retry-btn.is-near-on{
+  background:#EEF4FF; border-color:var(--navy); box-shadow:inset 0 0 0 1px var(--navy);
+}
+.map-embed-root .map-modal-tabs-actions .map-modal-retry-btn{ height:34px; padding:0 12px; font-size:12px; }
+/* ---- 탭 ---- */
+/* 지도 카드는 폭이 좁아(오른쪽 컬럼 ~400px) 탭 2개 + 버튼 2개가 한 줄에 안 들어가면
+   탭 글자가 두 줄로 쪼개졌다. 줄바꿈은 허용하되 탭 라벨 자체는 자르지 않는다. */
+.map-embed-root .map-modal-tabs{ padding:0 16px !important; flex-wrap:wrap; row-gap:2px; }
+.map-embed-root .map-modal-tabs-list{ flex:0 0 auto; }
+.map-embed-root .map-modal-tabs-actions{ flex-wrap:wrap; padding:4px 0; }
+.map-embed-root .map-modal-tab-btn{ height:42px; font-size:13.5px; white-space:nowrap; }
+.map-embed-root .map-modal-tab-btn:focus-visible{ outline:2px solid var(--navy); outline-offset:-3px; border-radius:4px; }
+/* ==========================================================================
+   근처 검색 — 화면을 가리는 큰 줄 대신 툴바 버튼 + 작은 플로팅 패널.
+   입력 요소 id(aptNearSearchInput / aptNearSearchBtn / aptNearClearBtn)는 그대로라
+   기존 이벤트 바인딩·검색 실행 경로가 전혀 바뀌지 않는다.
+   ========================================================================== */
+.map-near-wrap{ position:relative; flex:none; }
+/* position:fixed인 이유 — 이 팝오버의 조상(#mapModalBody / .map-modal-panel)이
+   overflow:hidden이라 absolute로 두면 카드 밖으로 나가는 부분이 잘리고, 게다가
+   .map-embed-root가 z-index:10으로 별도 쌓임 맥락을 만들어 왼쪽 업체목록 카드 위로
+   올라오지 못했다(실측: 팝오버 자리에서 elementFromPoint가 .crm-panel을 집었다).
+   viewport 기준 fixed + 충분히 높은 z-index로 두 문제를 한 번에 없앤다 — 좌표는
+   열 때 버튼 위치에서 계산해 JS가 넣어 준다(조상에 transform이 없어 fixed가 정상 동작). */
+.map-near-pop{
+  position:fixed; z-index:600; width:328px; max-width:min(328px, 92vw);
+  background:#fff; border:1px solid #DCE4EF; border-radius:12px;
+  box-shadow:0 12px 34px rgba(15,32,60,.20); padding:14px 15px 15px;
+}
+.map-near-pop[hidden]{ display:none; }
+.map-near-pop-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:12px; }
+.map-near-pop-title{ font-size:13px; font-weight:750; color:var(--navy); }
+.map-near-pop-close{
+  width:24px; height:24px; border:0; background:none; color:var(--text-faint);
+  font-size:18px; line-height:1; cursor:pointer; border-radius:6px; font-family:inherit;
+}
+.map-near-pop-close:hover{ background:#F1F5FA; color:var(--text); }
+.map-near-label{ display:block; font-size:11.5px; font-weight:650; color:var(--text-muted); margin-bottom:7px; }
+.map-near-radius{ display:flex; gap:6px; margin-bottom:14px; }
+.map-near-radius-chip{
+  flex:1 1 0; height:34px; font-family:inherit; font-size:12px; font-weight:650;
+  color:var(--text-muted); background:#fff; border:1px solid #DCE4EF; border-radius:8px; cursor:pointer;
+}
+.map-near-radius-chip:hover{ border-color:#C3D0E2; background:#F7FAFE; }
+.map-near-radius-chip.is-active{ background:var(--navy); border-color:var(--navy); color:#fff; }
+.map-near-radius-chip:focus-visible{ outline:2px solid var(--navy); outline-offset:2px; }
+.map-near-pop .map-search-field{ flex:1 1 auto; width:100%; margin-bottom:10px; }
+.map-near-actions{ display:flex; gap:8px; }
+.map-near-actions .map-modal-retry-btn{ flex:1 1 auto; justify-content:center; height:38px; }
+.map-near-hint{ font-size:11px; color:var(--text-faint); line-height:1.5; margin-top:10px; }
+/* 근처 검색이 켜져 있을 때 요약 줄에 붙는 배지 */
+.map-near-active-badge{
+  display:inline-flex; align-items:center; gap:5px; font-size:11.5px; font-weight:650;
+  color:var(--navy); background:#EEF4FF; border:1px solid #D6E3F8; border-radius:999px; padding:3px 10px;
+}
+/* ---- 요약 줄 ---- */
+.map-embed-root .map-apt-summary{
+  padding:10px 16px !important; gap:8px 18px !important; font-size:12.5px;
+  border-bottom:1px solid #EDF1F7 !important; align-items:center;
+}
+/* ---- 지도 / 목록 ---- */
+.map-embed-root .map-modal-mapcol{ border-radius:10px; border:1px solid #E3EAF4; }
+.map-embed-root .map-modal-infocol{ padding:12px 14px; }
+/* 아파트 목록 행 — 이름 강조 / 주소는 보조 / 시공사는 작은 배지 */
+.map-embed-root .map-apt-row{
+  padding:11px 10px; border-radius:8px; border-bottom:1px solid #EFF3F8;
+  display:flex; flex-direction:column; gap:3px;
+}
+.map-embed-root .map-apt-row:hover{ background:#F5F9FF; }
+.map-embed-root .map-apt-row:focus-visible{ outline:2px solid var(--navy); outline-offset:-2px; }
+.map-embed-root .map-apt-row-name{ font-size:12.5px; font-weight:700; color:var(--navy-deep,#12314F); justify-content:space-between; }
+.map-embed-root .map-apt-row-hh{
+  font-size:11px; font-weight:700; color:var(--navy);
+  background:#EEF4FF; border-radius:999px; padding:2px 8px; white-space:nowrap;
+}
+.map-embed-root .map-apt-row-sub{ font-size:11.5px; color:var(--text-muted); line-height:1.5; }
+/* 지역 요약 — 숫자 열을 맞춘다(테두리 없이 행간으로만 구분) */
+.map-embed-root .map-info-stat-row{
+  display:grid; grid-template-columns:1fr auto auto; gap:10px;
+  padding:7px 0; font-size:12.5px; align-items:baseline;
+}
+.map-embed-root .map-info-stat-row b{ font-variant-numeric:tabular-nums; text-align:right; }
+.map-embed-root .map-region-row{ padding:8px 0; font-size:12.5px; }
+.map-embed-root .map-region-count{ font-variant-numeric:tabular-nums; }
+@media(max-width:900px){
+  .map-near-pop{ width:min(328px, 92vw); }
+  .map-embed-root .map-modal-filters{ padding:10px 12px !important; }
+  .map-embed-root .map-modal-select{ flex:1 1 130px; }
+}
 
 /* ==========================================================================
    §고객카드 팝업 전체 크기 축소 라운드(신규) — 사용자 요청: "팝업이 화면을 거의 다
@@ -10635,6 +10777,19 @@ window.SHIN2_CRM_APP_INIT = function(){
     el.classList.remove('is-show'); void el.offsetWidth; el.classList.add('is-show');
     if(miniSaveToastTimer) clearTimeout(miniSaveToastTimer);
     miniSaveToastTimer = setTimeout(()=>{ el.classList.remove('is-show'); }, 1500);
+  }
+  // §지도 분포 UI 통일 라운드(§접근성) — 모달을 ESC로 닫는다. 닫힐 때 리스너를 스스로
+  // 떼므로 여러 번 열고 닫아도 핸들러가 쌓이지 않는다. 닫기 동작 자체는 호출부가 넘긴
+  // closeFn 그대로라 기존 닫기 경로와 완전히 같다.
+  function bindEscClose(closeFn){
+    const onEsc = (e)=>{
+      if(e.key !== 'Escape') return;
+      e.preventDefault();
+      document.removeEventListener('keydown', onEsc);
+      closeFn();
+    };
+    document.addEventListener('keydown', onEsc);
+    return ()=> document.removeEventListener('keydown', onEsc);
   }
   function bindSafeBackdropClose(overlay, closeFn){
     if(!overlay) return;
@@ -32023,6 +32178,11 @@ window.SHIN2_CRM_APP_INIT = function(){
   // 아파트도 뜨는 기능". nearCenter가 세팅되면 검색창의 일반 이름 검색(substring)
   // 대신 좌표 반경 검색으로 바뀐다(둘 다 같은 칸을 쓰지만 의미가 다르다 — "이름 검색"과
   // "주소 근처 검색"을 동시에 만족시킬 수 없어 nearCenter 유무로 분기).
+  // §지도 분포 UI 통일 라운드 — 툴바/팝오버에서 쓰는 인라인 SVG 아이콘. 외부 아이콘
+  // 폰트나 이미지를 새로 끌어오지 않고(네트워크 요청 0) 선 굵기·색만 현재 톤에 맞췄다.
+  const MAP_SEARCH_ICO = '<svg class="map-search-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>';
+  const MAP_PIN_ICO = '<svg class="map-btn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>';
+  const MAP_DOC_ICO = '<svg class="map-btn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>';
   let aptFilterState = { search:'', year:'all', category:'all', region:'all', households:'all', nearCenter:null, nearRadiusKm:5, nearQuery:'' };
   // §시공 아파트 PDF 내보내기 라운드(신규) — renderAptInfoPanel이 마지막으로 화면에 그린
   // "현재 지도 내 아파트"/"근처 시공 아파트" 목록(listSource)을 그대로 보관해 둔다.
@@ -32160,13 +32320,16 @@ window.SHIN2_CRM_APP_INIT = function(){
     const categoryOptions = buildMapCategoryOptions(allEntries);
     wrap.innerHTML = `
       <div class="map-modal-filters">
-        <input type="text" class="map-modal-search" id="mapFilterSearch" placeholder="업체명 · 지역 검색" value="${esc(mapFilterState.search)}" />
+        <label class="map-search-field">
+          ${MAP_SEARCH_ICO}
+          <input type="text" class="map-modal-search" id="mapFilterSearch" placeholder="업체명 · 지역 검색" value="${esc(mapFilterState.search)}" aria-label="업체명 · 지역 검색" />
+        </label>
         ${MAP_FILTER_DEFS.map(([key,label])=> `<button type="button" class="list-filter-chip map-filter-chip${mapFilterState.filterKey===key?' is-active':''}" data-map-filter="${esc(key)}">${esc(label)}</button>`).join('')}
-        <select class="map-modal-select" id="mapFilterCategory">
+        <select class="map-modal-select" id="mapFilterCategory" aria-label="공종">
           <option value="all">공종 전체</option>
           ${categoryOptions.map(c=> `<option value="${esc(c)}"${mapFilterState.category===c?' selected':''}>${esc(c)}</option>`).join('')}
         </select>
-        <select class="map-modal-select" id="mapFilterPour">
+        <select class="map-modal-select" id="mapFilterPour" aria-label="실적 범위">
           <option value="all">실적 전체</option>
           <option value="has"${mapFilterState.pourRange==='has'?' selected':''}>실적 있음</option>
           <option value="none"${mapFilterState.pourRange==='none'?' selected':''}>실적 없음</option>
@@ -33296,20 +33459,23 @@ window.SHIN2_CRM_APP_INIT = function(){
     const opts = buildAptFilterOptions(allEntries);
     wrap.innerHTML = `
       <div class="map-modal-filters">
-        <input type="text" class="map-modal-search" id="aptFilterSearch" placeholder="아파트명 · 지역 · 시공사 검색" value="${esc(aptFilterState.search)}" />
-        <select class="map-modal-select" id="aptFilterYear">
+        <label class="map-search-field">
+          ${MAP_SEARCH_ICO}
+          <input type="text" class="map-modal-search" id="aptFilterSearch" placeholder="아파트명 · 주소 · 시공사 검색" value="${esc(aptFilterState.search)}" aria-label="아파트명 · 주소 · 시공사 검색" />
+        </label>
+        <select class="map-modal-select" id="aptFilterYear" aria-label="시공 연도">
           <option value="all">연도 전체</option>
           ${opts.years.map(y=> `<option value="${esc(y)}"${String(aptFilterState.year)===String(y)?' selected':''}>${esc(y)}년</option>`).join('')}
         </select>
-        <select class="map-modal-select" id="aptFilterCategory">
+        <select class="map-modal-select" id="aptFilterCategory" aria-label="공종">
           <option value="all">공종 전체</option>
           ${opts.categories.map(c=> `<option value="${esc(c)}"${aptFilterState.category===c?' selected':''}>${esc(c)}</option>`).join('')}
         </select>
-        <select class="map-modal-select" id="aptFilterRegion">
+        <select class="map-modal-select" id="aptFilterRegion" aria-label="지역">
           <option value="all">지역 전체</option>
           ${opts.regions.map(r=> `<option value="${esc(r)}"${aptFilterState.region===r?' selected':''}>${esc(r)}</option>`).join('')}
         </select>
-        <select class="map-modal-select" id="aptFilterHouseholds">
+        <select class="map-modal-select" id="aptFilterHouseholds" aria-label="세대수 구간">
           <option value="all"${aptFilterState.households==='all'?' selected':''}>세대수 전체</option>
           <option value="lt500"${aptFilterState.households==='lt500'?' selected':''}>500세대 미만</option>
           <option value="500to999"${aptFilterState.households==='500to999'?' selected':''}>500~999세대</option>
@@ -33317,18 +33483,36 @@ window.SHIN2_CRM_APP_INIT = function(){
           <option value="ge2000"${aptFilterState.households==='ge2000'?' selected':''}>2,000세대 이상</option>
           <option value="none"${aptFilterState.households==='none'?' selected':''}>세대수 미등록</option>
         </select>
-      </div>
-      <div class="map-modal-filters map-apt-near-row">
-        <span class="map-apt-near-label">📍 근처 검색</span>
-        <input type="text" class="map-modal-search" id="aptNearSearchInput" placeholder="주소 입력 후 Enter — 그 근처 시공 아파트를 찾습니다" value="${esc(aptFilterState.nearQuery || '')}" />
-        <select class="map-modal-select" id="aptNearRadius" title="근처 검색 반경">
-          <option value="1"${aptFilterState.nearRadiusKm===1?' selected':''}>1km 이내</option>
-          <option value="3"${aptFilterState.nearRadiusKm===3?' selected':''}>3km 이내</option>
-          <option value="5"${aptFilterState.nearRadiusKm===5?' selected':''}>5km 이내</option>
-          <option value="10"${aptFilterState.nearRadiusKm===10?' selected':''}>10km 이내</option>
-        </select>
-        <button type="button" class="map-modal-retry-btn" id="aptNearSearchBtn">주소로 찾기</button>
-        ${aptFilterState.nearCenter ? `<button type="button" class="map-modal-retry-btn" id="aptNearClearBtn">근처 검색 해제</button>` : ''}
+        <!-- §지도 분포 UI 통일 라운드 — 근처 검색을 항상 펼쳐진 한 줄에서 툴바 버튼 +
+             작은 플로팅 패널로 바꿨다. 입력/버튼 id는 그대로라(aptNearSearchInput /
+             aptNearSearchBtn / aptNearClearBtn) 지오코딩·거리 계산 경로는 손대지 않았다.
+             패널은 hidden 속성으로만 여닫으므로 닫혀 있어도 DOM에 있어 기존
+             document.getElementById 바인딩이 그대로 동작한다. -->
+        <div class="map-near-wrap">
+          <button type="button" class="map-modal-retry-btn${aptFilterState.nearCenter ? ' is-near-on' : ''}" id="aptNearToggleBtn" aria-expanded="false" aria-controls="aptNearPop">
+            ${MAP_PIN_ICO}<span>근처 검색${aptFilterState.nearCenter ? ' · 켜짐' : ''}</span>
+          </button>
+          <div class="map-near-pop" id="aptNearPop" role="dialog" aria-label="근처 시공 아파트 검색" hidden>
+            <div class="map-near-pop-head">
+              <span class="map-near-pop-title">근처 시공 아파트 검색</span>
+              <button type="button" class="map-near-pop-close" id="aptNearPopCloseBtn" aria-label="닫기">&times;</button>
+            </div>
+            <span class="map-near-label">검색 반경</span>
+            <div class="map-near-radius" role="group" aria-label="검색 반경">
+              ${[1,3,5,10].map(km=> `<button type="button" class="map-near-radius-chip${aptFilterState.nearRadiusKm===km?' is-active':''}" data-apt-near-radius="${km}" aria-pressed="${aptFilterState.nearRadiusKm===km?'true':'false'}">${km}km</button>`).join('')}
+            </div>
+            <span class="map-near-label">기준 위치</span>
+            <label class="map-search-field">
+              ${MAP_SEARCH_ICO}
+              <input type="text" class="map-modal-search" id="aptNearSearchInput" placeholder="주소 또는 장소명 입력" value="${esc(aptFilterState.nearQuery || '')}" aria-label="근처 검색 기준 주소" />
+            </label>
+            <div class="map-near-actions">
+              <button type="button" class="map-modal-retry-btn is-primary" id="aptNearSearchBtn">이 위치로 찾기</button>
+              <button type="button" class="map-modal-retry-btn" id="aptNearClearBtn"${aptFilterState.nearCenter ? '' : ' hidden'}>해제</button>
+            </div>
+            <div class="map-near-hint">입력한 위치를 기준으로 반경 안의 시공 아파트만 거리순으로 보여줍니다.</div>
+          </div>
+        </div>
       </div>
       <div class="map-apt-summary" id="aptSummaryRow"></div>
       <div class="map-modal-body-main">
@@ -33352,7 +33536,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     if(tabsActionsEl){
       tabsActionsEl.innerHTML = `
         <button type="button" class="map-modal-retry-btn" id="aptFilterResetBtn">필터 초기화</button>
-        <button type="button" class="map-modal-retry-btn" id="aptPdfExportBtn">PDF 내보내기</button>
+        <button type="button" class="map-modal-retry-btn is-primary" id="aptPdfExportBtn">${MAP_DOC_ICO}<span>PDF 내보내기</span></button>
       `;
     }
     // §근처 아파트 검색 라운드 → 재요청("따로 검색창 만들어줘"): 이름/지역/시공사를 즉시
@@ -33369,10 +33553,55 @@ window.SHIN2_CRM_APP_INIT = function(){
     });
     document.getElementById('aptNearSearchBtn').addEventListener('click', ()=> runAptNearSearch(kakao));
     syncAptNearClearBtnVisibility();
-    document.getElementById('aptNearRadius').addEventListener('change', (e)=>{
-      aptFilterState.nearRadiusKm = parseInt(e.target.value, 10) || 5;
-      if(aptFilterState.nearCenter) refreshAptInfoAndMarkers(); // 이미 근처 검색 중이면 반경만 바꿔서 즉시 재적용
-    });
+    // §지도 분포 UI 통일 라운드 — 반경 select를 칩 버튼으로 바꿨다. 하는 일은 예전
+    // change 핸들러와 완전히 같다: aptFilterState.nearRadiusKm에 같은 숫자를 넣고
+    // 근처 검색 중이면 refreshAptInfoAndMarkers()를 부른다(거리 계산·반경 판정은
+    // 그대로 aptFilteredEntries/ drawAptNearCircle 쪽에서 이 값을 읽어간다).
+    wrap.querySelectorAll('[data-apt-near-radius]').forEach(btn=> btn.addEventListener('click', ()=>{
+      const km = parseInt(btn.getAttribute('data-apt-near-radius'), 10) || 5;
+      aptFilterState.nearRadiusKm = km;
+      wrap.querySelectorAll('[data-apt-near-radius]').forEach(b=>{
+        const on = b === btn;
+        b.classList.toggle('is-active', on);
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+      if(aptFilterState.nearCenter) refreshAptInfoAndMarkers();
+    }));
+    // 팝오버 열기/닫기 — 바깥 클릭·ESC로 닫힌다(§접근성). 여는 순간 주소칸에 포커스.
+    const nearToggleBtn = document.getElementById('aptNearToggleBtn');
+    const nearPop = document.getElementById('aptNearPop');
+    if(nearToggleBtn && nearPop){
+      // fixed 팝오버라 좌표를 직접 잡는다 — 버튼 아래, 오른쪽 끝을 버튼에 맞추되
+      // 화면 밖으로 나가지 않게 양쪽을 clamp한다.
+      const placeNearPop = ()=>{
+        const r = nearToggleBtn.getBoundingClientRect();
+        const w = nearPop.offsetWidth || 328;
+        const left = Math.max(8, Math.min(window.innerWidth - w - 8, r.right - w));
+        const top = Math.min(window.innerHeight - 12, r.bottom + 8);
+        nearPop.style.left = left + 'px';
+        nearPop.style.top = top + 'px';
+      };
+      const setNearPopOpen = (open)=>{
+        nearPop.hidden = !open;
+        nearToggleBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        if(open){
+          placeNearPop();
+          const inp = document.getElementById('aptNearSearchInput'); if(inp) inp.focus();
+        }
+      };
+      // 스크롤·리사이즈로 버튼이 움직이면 좌표가 어긋나므로 그냥 닫는다(예측 가능한 동작).
+      const closeOnMove = ()=>{ if(!nearPop.hidden) setNearPopOpen(false); };
+      window.addEventListener('resize', closeOnMove);
+      window.addEventListener('scroll', closeOnMove, true);
+      nearToggleBtn.addEventListener('click', (e)=>{ e.stopPropagation(); setNearPopOpen(nearPop.hidden); });
+      const closeBtn = document.getElementById('aptNearPopCloseBtn');
+      if(closeBtn) closeBtn.addEventListener('click', ()=>{ setNearPopOpen(false); nearToggleBtn.focus(); });
+      nearPop.addEventListener('click', (e)=> e.stopPropagation());
+      document.addEventListener('click', ()=>{ if(!nearPop.hidden) setNearPopOpen(false); });
+      nearPop.addEventListener('keydown', (e)=>{
+        if(e.key === 'Escape'){ e.preventDefault(); e.stopPropagation(); setNearPopOpen(false); nearToggleBtn.focus(); }
+      });
+    }
     document.getElementById('aptFilterYear').addEventListener('change', (e)=>{ aptFilterState.year = e.target.value; refreshAptInfoAndMarkers(); });
     document.getElementById('aptFilterCategory').addEventListener('change', (e)=>{ aptFilterState.category = e.target.value; refreshAptInfoAndMarkers(); });
     document.getElementById('aptFilterRegion').addEventListener('change', (e)=>{ aptFilterState.region = e.target.value; refreshAptInfoAndMarkers(); });
@@ -33385,7 +33614,12 @@ window.SHIN2_CRM_APP_INIT = function(){
       document.getElementById('aptFilterCategory').value = 'all';
       document.getElementById('aptFilterRegion').value = 'all';
       document.getElementById('aptFilterHouseholds').value = 'all';
-      document.getElementById('aptNearRadius').value = '5';
+      // 반경 칩(구 aptNearRadius select) 선택 상태도 기본값 5km로 되돌린다.
+      document.querySelectorAll('[data-apt-near-radius]').forEach(b=>{
+        const on = b.getAttribute('data-apt-near-radius') === '5';
+        b.classList.toggle('is-active', on);
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
       setAptNearStatus('');
       syncAptNearClearBtnVisibility();
       refreshAptInfoAndMarkers();
@@ -33474,25 +33708,142 @@ window.SHIN2_CRM_APP_INIT = function(){
     }
     return { rows, searchLabel, filterLabel, optMeta };
   }
+  /* ==========================================================================
+     §시공 아파트 PDF 통합 라운드(신규) — 이 PDF도 MOU 목록 PDF와 "같은 A4 템플릿"을
+     쓴다. pdfExportDocCss / pdfExportFirstHeaderHtml / pdfExportContHeaderHtml /
+     pdfExportFooterHtml / pdfExportMeasure / pdfExportPaginate / pdfExportPageHtml을
+     그대로 재사용하고, 이 화면은 컬럼 정의(APT_PDF_COLUMNS 등)와 행 렌더러만 ctx에
+     실어 넘긴다 — 그래서 미리보기와 실제 인쇄가 같은 함수·같은 CSS를 쓰고, 디자인을
+     고치면 양쪽이 동시에 바뀐다.
+     출력 대상 판정(aptPdfExportBuild / APT_PDF_EXPORT_OPTIONS / aptEntryMatchesFilter /
+     lastAptVisibleEntries)은 한 줄도 건드리지 않았다 — 아래는 전부 표시 코드다.
+     ========================================================================== */
+  const APT_PDF_COLUMNS = ['no','region','name','category','year','households','company'];
+  const APT_PDF_COLUMN_LABELS = {
+    no:'번호', region:'지역', name:'아파트명', category:'공종',
+    year:'시공연도', households:'세대수', company:'시공업체'
+  };
+  // 주소(지역)와 아파트명·시공업체가 가장 넓고, 번호/연도/세대수는 좁게(§요청 10).
+  const APT_PDF_COLUMN_WEIGHT = {
+    no:0.38, region:1.35, name:2.15, category:1.05, year:0.85, households:0.80, company:1.92
+  };
+  const APT_PDF_COLUMN_CLASS = {
+    no:'pdf-c-no', region:'pdf-c-region', name:'pdf-c-name', category:'pdf-c-rep',
+    year:'pdf-c-tnum', households:'pdf-c-tnum', company:'pdf-c-addr'
+  };
+  // 한 행의 값 — doAptPdfExportSave가 쓰던 표현식을 그대로 옮겨 왔다(값 계산 동일).
+  function aptPdfResolveField(e, key, i){
+    switch(key){
+      case 'no': return String(i + 1);
+      case 'region': return [e.region, e.city].filter(Boolean).join(' ') || '지역 미확인';
+      case 'name': return e.name || '-';
+      case 'category': return (e.categories && e.categories.length) ? e.categories.join(', ') : '-';
+      case 'year': return (e.years && e.years.length) ? e.years.join(', ') + '년' : '연도 미상';
+      case 'households': return fmtAptHouseholds(e.households);
+      case 'company': return (e.companies && e.companies.length) ? e.companies.map(c=> c.name).join(', ') : '시공사 미연결';
+      default: return '-';
+    }
+  }
+  function aptPdfRowHtml(ctx, e, i){
+    return `<tr>${ctx.columns.map(c=>
+      `<td class="${APT_PDF_COLUMN_CLASS[c] || ''}">${esc(aptPdfResolveField(e, c, i))}</td>`).join('')}</tr>`;
+  }
+  // 현재 선택된 출력 범위. 모달을 열 때마다 "현재 검색 결과만"으로 시작한다.
+  let aptPdfOption = 'searchVisible';
+  function aptPdfBuildDocContext(){
+    const { rows, filterLabel, optMeta } = aptPdfExportBuild(aptPdfOption);
+    const now = new Date();
+    const p2 = (n)=> String(n).padStart(2,'0');
+    return {
+      rows, optMeta, filterLabel,
+      landscape: true, // 7컬럼이라 가로가 읽기 편하다(§요청 10)
+      geo: PDF_PAGE_GEO.landscape,
+      companies: rows,               // 공용 템플릿이 rows를 이 이름으로 읽는다
+      columns: APT_PDF_COLUMNS,
+      colLabels: APT_PDF_COLUMN_LABELS,
+      colWeight: APT_PDF_COLUMN_WEIGHT,
+      rowHtml: aptPdfRowHtml,
+      countLabel: '총 아파트 수',
+      countUnit: '개',
+      emptyText: '출력 대상 시공 아파트가 없습니다.',
+      title: 'POUR 시공 아파트 목록',
+      regionLabel: aptFilterState.region === 'all' ? '전체 지역' : aptFilterState.region,
+      genLabel: `${now.getFullYear()}-${p2(now.getMonth()+1)}-${p2(now.getDate())} ${p2(now.getHours())}:${p2(now.getMinutes())}`,
+      dateStamp: `${now.getFullYear()}${p2(now.getMonth()+1)}${p2(now.getDate())}`,
+      netformLogo: pdfExportNetformLogoSrc(),
+      pourLogo: PDF_EXPORT_POUR_LOGO_SRC
+    };
+  }
+  function aptPdfBuildDocHtml(){
+    const ctx = aptPdfBuildDocContext();
+    const pages = pdfExportPaginate(ctx);
+    return { ctx, pageCount: pages.length,
+      html: pages.map((rowsHtml, i)=> pdfExportPageHtml(ctx, rowsHtml, i, pages.length)).join('') };
+  }
+  // 왼쪽 출력 설정 / 오른쪽 A4 미리보기 — MOU 목록 PDF 모달과 같은 구조·같은 클래스를
+  // 쓴다(.pdf-export-*, .pdfv-*). 미리보기는 실제 인쇄와 같은 pdfExportDocCss를 그대로
+  // 주입하므로 "미리보기 = 최종 PDF"가 구조적으로 보장된다.
   function aptPdfExportModalHtml(){
     const optsHtml = APT_PDF_EXPORT_OPTIONS.map(o=> `
-      <button type="button" class="pdf-type-card" data-apt-pdf-opt="${esc(o.key)}" style="width:100%;">
+      <button type="button" class="pdf-type-card${aptPdfOption===o.key?' is-active':''}" data-apt-pdf-opt="${esc(o.key)}">
         <div class="pdf-type-name">${esc(o.title)}</div>
         <div class="pdf-type-desc">${esc(o.desc)}</div>
       </button>`).join('');
     return `
       <div class="pi-overlay" id="aptPdfExportOverlay">
-        <div class="pi-panel" style="max-width:460px;" role="dialog" aria-modal="true" aria-label="시공 아파트 PDF 내보내기">
+        <div class="pi-panel pdf-export-panel" role="dialog" aria-modal="true" aria-label="시공 아파트 PDF 내보내기">
           <div class="pi-head">
             <div class="pi-title">시공 아파트 PDF 내보내기</div>
             <button type="button" class="chart-close-btn" id="aptPdfExportCloseBtn" aria-label="닫기">&times;</button>
           </div>
-          <div class="pi-body">
-            <div class="mail-settings-help">아래 3가지 중 하나를 고르면 바로 인쇄 창이 열립니다(외부 전송·업로드 없음, 브라우저 인쇄로 PDF 저장).</div>
-            <div class="pdf-type-row" style="flex-direction:column; gap:8px; margin-top:10px;">${optsHtml}</div>
+          <div class="pi-body pdf-export-body">
+            <div class="pdf-export-left">
+              <div class="co-form-field">
+                <label>출력 범위</label>
+                <div class="pdf-type-row">${optsHtml}</div>
+              </div>
+              <div class="pdf-export-count">출력 대상 <b id="aptPdfCountVal">0</b>개 · <span id="aptPdfFilterVal"></span></div>
+              <div class="mail-settings-help">현재 지도 화면의 검색·필터 조건을 그대로 씁니다. 이 창은 조회만 하며 화면 상태(검색어·지도 위치)를 바꾸지 않습니다. 브라우저 인쇄로 PDF를 저장합니다(외부 전송·업로드 없음).</div>
+            </div>
+            <div class="pdf-export-right">
+              <div class="pdf-export-actions">
+                <div class="pdf-preview-heading">미리보기</div>
+                <button type="button" class="co-text-action primary" id="aptPdfSaveBtn">PDF 저장</button>
+              </div>
+              <div class="pdf-preview-wrap" id="aptPdfPreviewWrap"></div>
+            </div>
           </div>
         </div>
       </div>`;
+  }
+  function renderAptPdfPreview(){
+    const wrap = document.getElementById('aptPdfPreviewWrap');
+    if(!wrap) return;
+    const built = aptPdfBuildDocHtml();
+    const ctx = built.ctx;
+    const cnt = document.getElementById('aptPdfCountVal');
+    if(cnt) cnt.textContent = String(ctx.rows.length);
+    const flt = document.getElementById('aptPdfFilterVal');
+    if(flt) flt.textContent = ctx.filterLabel;
+    wrap.innerHTML = `
+      <div class="pdfv-note">아래가 실제 저장되는 PDF와 같은 문서입니다 — 같은 템플릿·같은 CSS로 그리고 페이지 나눔도 동일합니다. 총 ${built.pageCount}페이지 · A4 가로 · 포함 열: ${ctx.columns.map(c=> esc(APT_PDF_COLUMN_LABELS[c])).join(' · ')}</div>
+      <div class="pdfv-canvas" id="aptPdfPreviewCanvas">
+        <div class="pdfv-scaler" id="aptPdfPreviewScaler">
+          <style>${pdfExportDocCss(ctx)}</style>
+          <div class="pdf-doc-root pdfv-pages">${built.html}</div>
+        </div>
+      </div>`;
+    // MOU 쪽 pdfExportFitPreview와 같은 축소 로직 — id만 이 모달 것으로.
+    const canvas = document.getElementById('aptPdfPreviewCanvas');
+    const scaler = document.getElementById('aptPdfPreviewScaler');
+    if(!canvas || !scaler) return;
+    const pageW = ctx.geo.w * pdfExportPxPerMm();
+    const avail = canvas.clientWidth - 24;
+    if(!(pageW > 0) || !(avail > 0)) return;
+    const k = Math.min(1, avail / pageW);
+    scaler.style.transform = `scale(${k})`;
+    scaler.style.left = Math.max(12, (canvas.clientWidth - pageW * k) / 2) + 'px';
+    canvas.style.height = (scaler.scrollHeight * k + 32) + 'px';
   }
   function closeAptPdfExportModal(){
     const root = document.getElementById('aptPdfExportModalRoot');
@@ -33503,81 +33854,40 @@ window.SHIN2_CRM_APP_INIT = function(){
   function openAptPdfExportModal(){
     const root = document.getElementById('aptPdfExportModalRoot');
     if(!root) return;
+    aptPdfOption = 'searchVisible';
     root.innerHTML = aptPdfExportModalHtml();
     document.getElementById('aptPdfExportCloseBtn').addEventListener('click', closeAptPdfExportModal);
     bindSafeBackdropClose(document.getElementById('aptPdfExportOverlay'), closeAptPdfExportModal);
+    bindEscClose(closeAptPdfExportModal);
     root.querySelectorAll('[data-apt-pdf-opt]').forEach(btn=> btn.addEventListener('click', ()=>{
-      const key = btn.getAttribute('data-apt-pdf-opt');
-      doAptPdfExportSave(key);
-      closeAptPdfExportModal();
+      aptPdfOption = btn.getAttribute('data-apt-pdf-opt');
+      root.querySelectorAll('[data-apt-pdf-opt]').forEach(b=> b.classList.toggle('is-active', b === btn));
+      renderAptPdfPreview();
     }));
+    document.getElementById('aptPdfSaveBtn').addEventListener('click', ()=> doAptPdfExportSave(aptPdfOption));
+    renderAptPdfPreview();
   }
   // §4/§요청 "PDF 전용 복제 데이터 금지" — 상담메모/고객인사이트/담당자 개인 메모/매출/
   // 내부 등급/MOU 내부 상태/활동 기록/이메일/전화번호는 이 문서에 아예 없다(애초에
   // buildAptEntry가 만드는 아파트 엔트리 자체에 그런 필드가 없어 자연히 빠진다 —
   // 새로 값을 지우는 코드가 필요 없다). 시공 아파트/공종 분포 정보만 담는다.
   function doAptPdfExportSave(optionKey){
-    const { rows, searchLabel, filterLabel, optMeta } = aptPdfExportBuild(optionKey);
-    const now = new Date();
-    const dateStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
-    const fileDateStr = dateStr.replace(/-/g, '');
-    const docTitle = optionKey === 'all' ? '시공 아파트 전체 목록' : '시공 아파트 목록';
-    const filename = `NETFORM_시공아파트목록_${fileDateStr}`;
-    const theadHtml = `<tr><th>No.</th><th>아파트명</th><th>지역</th><th>공종</th><th>시공연도</th><th>세대수</th><th>시공사</th></tr>`;
-    const tbodyHtml = rows.map((e,i)=> `<tr>
-        <td>${i+1}</td>
-        <td>${esc(e.name || '-')}</td>
-        <td>${esc([e.region, e.city].filter(Boolean).join(' ') || '지역 미확인')}</td>
-        <td>${esc(e.categories && e.categories.length ? e.categories.join(', ') : '-')}</td>
-        <td>${esc(e.years && e.years.length ? e.years.join(', ') + '년' : '연도 미상')}</td>
-        <td>${esc(fmtAptHouseholds(e.households))}</td>
-        <td>${esc(e.companies && e.companies.length ? e.companies.map(c=> c.name).join(', ') : '시공사 미연결')}</td>
-      </tr>`).join('') || `<tr><td colspan="7" class="pdf-doc-empty">출력 대상 시공 아파트가 없습니다.</td></tr>`;
-    const html = `
-      <div class="pdf-doc">
-        <div class="pdf-doc-header">
-          <div class="pdf-doc-title">NETFORM</div>
-          <div class="pdf-doc-title" style="font-size:13px; margin-top:2px;">${esc(docTitle)}</div>
-          <div class="pdf-doc-meta">
-            <span>출력일: ${esc(dateStr)}</span>
-            <span>총 아파트 수: ${rows.length}개</span>
-          </div>
-          <div class="pdf-doc-meta" style="flex-direction:column; align-items:flex-start; gap:2px; margin-top:6px; border-top:1px solid #ddd; padding-top:6px;">
-            <span style="font-weight:700; color:#0B2545;">[${esc(optMeta.title)}]</span>
-            <span>검색어: ${esc(searchLabel)}</span>
-            <span>필터: ${esc(filterLabel)}</span>
-            <span>총 결과: ${rows.length}개</span>
-          </div>
-        </div>
-        <table class="pdf-doc-table">
-          <thead>${theadHtml}</thead>
-          <tbody>${tbodyHtml}</tbody>
-        </table>
-      </div>`;
+    // 미리보기와 완전히 같은 함수/같은 CSS를 쓴다 — 디자인을 바꾸면 둘이 동시에 바뀐다.
+    aptPdfOption = optionKey || aptPdfOption;
+    const { ctx, html } = aptPdfBuildDocHtml();
+    const filename = `NETFORM_시공아파트목록_${ctx.dateStamp}`;
     // §doPdfExportSave와 완전히 같은 패턴(noopener 금지 이유 포함) — 새 방식을 만들지 않음.
     const printWin = window.open('', '_blank');
     if(!printWin){ alert('팝업이 차단되어 PDF 저장 창을 열 수 없습니다 — 브라우저의 팝업 차단을 해제한 뒤 다시 시도해주세요.'); return; }
     try{ printWin.focus(); }catch(e){}
     printWin.document.open();
-    printWin.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(filename)}</title>
-      <style>
-        @page { size: A4 landscape; margin: 10mm 12mm; }
-        body{ font-family:'Malgun Gothic','맑은 고딕',sans-serif; color:#111; margin:0; background:#fff; }
-        .pdf-doc-header{ margin-bottom:10px; }
-        .pdf-doc-title{ font-size:16px; font-weight:700; color:#0B2545; margin-bottom:2px; }
-        .pdf-doc-meta{ display:flex; gap:14px; flex-wrap:wrap; font-size:10.5px; color:#555; }
-        table.pdf-doc-table{ width:100%; border-collapse:collapse; font-size:9.5px; table-layout:fixed; }
-        table.pdf-doc-table th, table.pdf-doc-table td{ border:1px solid #ccc; padding:4px 6px; text-align:left; word-break:break-all; vertical-align:top; }
-        table.pdf-doc-table th{ font-size:9.5px; font-weight:700; }
-        table.pdf-doc-table thead{ display:table-header-group; background:#eef1f6; }
-        table.pdf-doc-table tr{ break-inside:avoid; }
-        .pdf-doc-empty{ text-align:center; color:#888; }
-      </style>
-    </head><body>${html}</body></html>`);
+    printWin.document.write(`<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>${esc(filename)}</title>
+      <style>${pdfExportDocCss(ctx)}${pdfExportPrintCss(ctx)}</style>
+    </head><body><div class="pdf-doc-root">${html}</div></body></html>`);
     printWin.document.close();
     const triggerPrint = ()=>{ try{ printWin.focus(); printWin.print(); }catch(e){} };
     printWin.onload = triggerPrint;
-    setTimeout(triggerPrint, 300);
+    setTimeout(triggerPrint, 400);
   }
 
   // 검색창 아래 요약 줄 왼쪽에 근처 검색 상태 문구를 붙였다 뗐다 한다(별도 DOM 없이
@@ -33609,28 +33919,28 @@ window.SHIN2_CRM_APP_INIT = function(){
       } catch(err){ finishWithPlaces(); }
     });
   }
-  // 근처 검색 전용 입력칸("따로 검색창") 아래에 [근처 검색 해제] 버튼을 붙였다 뗐다
-  // 한다 — nearCenter가 있을 때만 나타난다. onclick으로 붙여서(addEventListener 누적
-  // 방지) 버튼이 이미 있어도 다시 부르면 그냥 최신 핸들러로 덮어써 중복이 안 쌓인다.
+  // §지도 분포 UI 통일 라운드 — [해제] 버튼은 이제 팝오버 안에 항상 렌더돼 있고,
+  // 이 함수는 hidden 속성만 켰다 껐다 한다(예전엔 .map-apt-near-row에 DOM을 붙였다
+  // 뗐다 했는데 그 줄 자체가 없어졌다). 해제가 하는 일(nearCenter/nearQuery 초기화 +
+  // refreshAptInfoAndMarkers)은 그대로다. onclick으로 붙여 핸들러 중복이 안 쌓인다.
+  // 툴바의 "근처 검색" 버튼에도 켜짐 상태를 같이 반영한다(색만이 아니라 글자로도).
   function syncAptNearClearBtnVisibility(){
-    const row = document.querySelector('.map-apt-near-row');
-    if(!row) return;
-    let btn = document.getElementById('aptNearClearBtn');
-    if(aptFilterState.nearCenter){
-      if(!btn){
-        btn = document.createElement('button');
-        btn.type = 'button'; btn.id = 'aptNearClearBtn'; btn.className = 'map-modal-retry-btn';
-        btn.textContent = '근처 검색 해제';
-        row.appendChild(btn);
-      }
+    const on = !!aptFilterState.nearCenter;
+    const btn = document.getElementById('aptNearClearBtn');
+    if(btn){
+      btn.hidden = !on;
       btn.onclick = ()=>{
         aptFilterState.nearCenter = null; aptFilterState.nearQuery = ''; setAptNearStatus('');
         const input = document.getElementById('aptNearSearchInput'); if(input) input.value = '';
         syncAptNearClearBtnVisibility();
         refreshAptInfoAndMarkers();
       };
-    } else if(btn){
-      btn.remove();
+    }
+    const toggleBtn = document.getElementById('aptNearToggleBtn');
+    if(toggleBtn){
+      toggleBtn.classList.toggle('is-near-on', on);
+      const label = toggleBtn.querySelector('span');
+      if(label) label.textContent = on ? '근처 검색 · 켜짐' : '근처 검색';
     }
   }
   async function runAptNearSearch(kakao){
@@ -34040,7 +34350,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       <div class="pdf-summary">
         ${item('region', '지역', esc(ctx.regionLabel))}
         ${item('date', '생성 일시', esc(ctx.genLabel))}
-        ${item('count', '총 업체 수', ctx.companies.length + '건')}
+        ${item('count', ctx.countLabel || '총 업체 수', ctx.companies.length + (ctx.countUnit || '건'))}
       </div>`;
   }
   function pdfExportContHeaderHtml(ctx){
@@ -34051,7 +34361,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     return `
       <div class="pdf-conthead">
         <div class="pdf-conthead-left">${netform}<span class="pdf-conthead-title">${esc(ctx.title)}</span></div>
-        <div class="pdf-conthead-right"><span class="pdf-conthead-meta">${esc(ctx.regionLabel)} · ${ctx.companies.length}건</span>${pour}</div>
+        <div class="pdf-conthead-right"><span class="pdf-conthead-meta">${esc(ctx.regionLabel)} · ${ctx.companies.length}${esc(ctx.countUnit || '건')}</span>${pour}</div>
       </div>`;
   }
   // 푸터 문구는 시안에 있는 브랜드 워드마크(NETFORM BUILDING SOLUTION PARTNER /
@@ -34067,17 +34377,24 @@ window.SHIN2_CRM_APP_INIT = function(){
         <div class="pdf-foot-page">페이지 ${pageNo} / ${pageTotal}</div>
       </div>`;
   }
+  // §시공 아파트 PDF 통합 라운드 — 컬럼 메타(가중치/라벨/클래스)와 행 렌더러를 ctx에서
+  // 받을 수 있게 일반화했다. MOU 목록 쪽은 ctx에 아무것도 넘기지 않으므로 아래 기본값
+  // (PDF_EXPORT_COLUMN_*/pdfExportResolveField)이 그대로 쓰여 동작이 한 글자도 안 바뀐다.
+  // 시공 아파트 PDF만 자기 컬럼 정의를 ctx에 실어 같은 A4 템플릿을 재사용한다.
   function pdfExportColgroupHtml(ctx){
-    const total = ctx.columns.reduce((a,c)=> a + (PDF_EXPORT_COLUMN_WEIGHT[c] || 1), 0) || 1;
+    const W = ctx.colWeight || PDF_EXPORT_COLUMN_WEIGHT;
+    const total = ctx.columns.reduce((a,c)=> a + (W[c] || 1), 0) || 1;
     return `<colgroup>${ctx.columns.map(c=>
-      `<col style="width:${((PDF_EXPORT_COLUMN_WEIGHT[c] || 1) / total * 100).toFixed(3)}%" />`).join('')}</colgroup>`;
+      `<col style="width:${((W[c] || 1) / total * 100).toFixed(3)}%" />`).join('')}</colgroup>`;
   }
   function pdfExportTheadHtml(ctx){
-    return `<tr>${ctx.columns.map(c=> `<th>${esc(PDF_EXPORT_COLUMN_LABELS[c])}</th>`).join('')}</tr>`;
+    const L = ctx.colLabels || PDF_EXPORT_COLUMN_LABELS;
+    return `<tr>${ctx.columns.map(c=> `<th>${esc(L[c])}</th>`).join('')}</tr>`;
   }
   // data-co-id는 시각적으로 아무것도 바꾸지 않는 속성 — 오른쪽 "업체 포함 여부 확인
   // 검색"이 미리보기 표에서 해당 행을 찾아가는 용도로만 쓴다(기존 동작 유지).
   function pdfExportRowHtml(ctx, co, i){
+    if(typeof ctx.rowHtml === 'function') return ctx.rowHtml(ctx, co, i);
     return `<tr data-co-id="${esc(co.id)}">${ctx.columns.map(c=>
       `<td class="${PDF_EXPORT_COLUMN_CLASS[c] || ''}">${esc(pdfExportResolveField(co, c, i))}</td>`).join('')}</tr>`;
   }
@@ -34163,7 +34480,7 @@ window.SHIN2_CRM_APP_INIT = function(){
   }
   function pdfExportPaginate(ctx){
     if(!ctx.companies.length){
-      return [`<tr><td class="pdf-empty" colspan="${ctx.columns.length}">출력 대상 업체가 없습니다.</td></tr>`];
+      return [`<tr><td class="pdf-empty" colspan="${ctx.columns.length}">${esc(ctx.emptyText || '출력 대상 업체가 없습니다.')}</td></tr>`];
     }
     const rowsHtml = ctx.companies.map((co, i)=> pdfExportRowHtml(ctx, co, i));
     const m = pdfExportMeasure(ctx, rowsHtml);
@@ -34469,6 +34786,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     root.innerHTML = pdfExportModalHtml();
     document.getElementById('pdfExportCloseBtn').addEventListener('click', closePdfExportModal);
     bindSafeBackdropClose(document.getElementById('pdfExportOverlay'), closePdfExportModal);
+    bindEscClose(closePdfExportModal);
     root.querySelectorAll('[data-pdf-type]').forEach(btn=> btn.addEventListener('click', ()=>{
       pdfExportState.type = btn.getAttribute('data-pdf-type');
       renderPdfExportModal();
