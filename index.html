@@ -4729,6 +4729,51 @@ table.sales-import-table td{ padding:5px 8px; border-bottom:1px solid #EEF2F7; v
   /* §20 하단 safe-area */
   #agreementModalRoot .agr-panel{ padding-bottom:env(safe-area-inset-bottom); }
 }
+
+/* ===== §컬럼 설명 팝오버 라운드(신규) — 고객관리 목록 헤더 도움말 =========================
+   의미가 바로 안 읽히는 헤더(총매출/최근 요청/최근 흐름/실적-매출)에 작은 info 버튼을
+   붙이고, 누르면 초미니 안내 팝오버를 띄운다. 데이터/정렬/검색/필터 로직은 전혀 건드리지
+   않는 순수 UI 추가다.
+   팝오버 본체는 body 직속 + position:fixed로 띄운다 — 헤더 안에 absolute로 두면
+   좁은 화면의 #listView{overflow-x:auto}와 .co-list{overflow:hidden}에 잘리고,
+   .co-table-head가 grid라 표 레이아웃에도 영향을 준다. body로 빼면 둘 다 없다.
+   레이어는 --z-popup(300) — 드롭다운/자동완성(200)과 지도(10)보다 위, 모달(400)보다 아래. */
+.col-help-btn{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:14px; height:14px; margin-left:4px; padding:0; flex:0 0 auto;
+  vertical-align:middle; box-sizing:border-box;
+  border:1px solid #C9D6E8; border-radius:50%;
+  background:#fff; color:#7A8AA3;
+  font-family:inherit; font-size:9.5px; font-weight:700; line-height:1;
+  cursor:pointer; transition:background .15s ease, color .15s ease, border-color .15s ease;
+}
+.col-help-btn:hover{ background:#F2F6FC; color:var(--navy); border-color:#A9BEDC; }
+.col-help-btn:focus-visible{ outline:2px solid var(--blue); outline-offset:1px; }
+.col-help-btn[aria-expanded="true"]{ background:var(--navy); color:#fff; border-color:var(--navy); }
+
+.col-help-pop{
+  position:fixed; top:0; left:0; z-index:var(--z-popup);
+  display:none; box-sizing:border-box;
+  width:max-content; max-width:min(272px, calc(100vw - 24px));
+  padding:9px 11px;
+  background:#FFFFFF; border:1px solid #DCE4EF; border-radius:8px;
+  box-shadow:0 4px 14px rgba(22,44,78,.10), 0 1px 3px rgba(22,44,78,.06);
+  font-family:inherit; text-align:left;
+}
+.col-help-pop.is-open{ display:block; }
+.col-help-pop-title{
+  margin:0 0 3px; font-size:11.5px; font-weight:700; color:var(--navy);
+  letter-spacing:-.01em;
+}
+.col-help-pop-body{
+  margin:0; font-size:11.5px; font-weight:400; line-height:1.55; color:#4B5A72;
+  white-space:pre-line; word-break:keep-all; overflow-wrap:anywhere;
+}
+@media(max-width:760px){
+  .col-help-btn{ width:16px; height:16px; font-size:10px; }
+  .col-help-pop{ max-width:min(268px, calc(100vw - 20px)); padding:10px 12px; }
+  .col-help-pop-body{ font-size:12px; }
+}
 </style>
 </head>
 <body>
@@ -4970,10 +5015,10 @@ table.sales-import-table td{ padding:5px 8px; border-bottom:1px solid #EEF2F7; v
         <div class="co-table-head" id="crmCoTableHead">
           <div class="col-name">업체명</div>
           <div class="col-pour">최근 실적</div>
-          <div class="col-revenue-combo col-total-revenue-head" id="totalRevenueSortHeader">총매출 <span class="total-revenue-sort-arrow" id="totalRevenueSortArrow"></span></div>
-          <div class="col-request">최근 요청</div>
-          <div class="col-trend" title="POUR 시공실적 건수의 전년 대비 증감(작년 vs 재작년, ±10% 기준)입니다. 클릭하면 근거를 볼 수 있습니다.">최근 흐름</div>
-          <div class="col-contrib" title="실적 1건당 평균 매출을 전체 업체와 비교한 상대 순위입니다(하위 30%=낮음·중간 40%=보통·상위 30%=높음). 클릭하면 근거를 볼 수 있습니다.">실적-매출</div>
+          <div class="col-revenue-combo col-total-revenue-head" id="totalRevenueSortHeader">총매출 <span class="total-revenue-sort-arrow" id="totalRevenueSortArrow"></span><button type="button" class="col-help-btn" data-col-help="totalRevenue" aria-label="총매출 설명 보기" aria-expanded="false" aria-controls="colHelpPop">i</button></div>
+          <div class="col-request">최근 요청<button type="button" class="col-help-btn" data-col-help="request" aria-label="최근 요청 설명 보기" aria-expanded="false" aria-controls="colHelpPop">i</button></div>
+          <div class="col-trend">최근 흐름<button type="button" class="col-help-btn" data-col-help="trend" aria-label="최근 흐름 설명 보기" aria-expanded="false" aria-controls="colHelpPop">i</button></div>
+          <div class="col-contrib">실적-매출<button type="button" class="col-help-btn" data-col-help="contrib" aria-label="실적-매출 설명 보기" aria-expanded="false" aria-controls="colHelpPop">i</button></div>
         </div>
         <div class="co-list" id="crmList"></div>
         <div class="list-pagination" id="crmPagination"></div>
@@ -34975,6 +35020,130 @@ window.SHIN2_CRM_APP_INIT = function(){
     });
   }
   updateTotalRevenueSortArrow();
+
+  // §컬럼 설명 팝오버 라운드(신규) — 고객관리 목록 헤더의 "의미가 바로 안 읽히는" 컬럼에
+  // 작은 info 버튼 + 초미니 안내 팝오버를 붙인다. 순수 UI 추가다: 정렬(sortMode)/검색/필터/
+  // 페이지네이션/데이터 계산 함수는 한 줄도 건드리지 않는다.
+  //
+  // 설명 문구는 전부 이 객체 하나로 관리한다 — 새 컬럼에 도움말을 붙이려면 여기 한 항목
+  // 추가 + 해당 헤더에 <button class="col-help-btn" data-col-help="키"> 한 줄만 넣으면 된다.
+  // 'pour'(최근 실적)는 문구까지 미리 넣어 두되, 이번 적용 대상이 아니라서 헤더에는 아직
+  // 버튼을 달지 않았다(사용자 요청: "구조만 열어 둘 것").
+  const COLUMN_HELP_TEXTS = {
+    totalRevenue: {
+      title: '총매출',
+      body: '해당 업체의 누적 실제 매출입니다.\n계약금액이 아니라 실제 발생한 매출 기준으로 집계됩니다.'
+    },
+    request: {
+      title: '최근 요청',
+      body: '해당 업체가 최근에 가장 많이 요청하거나 가장 최근에 요청한 업무 유형입니다.\n예: 기술자문의, 컨설팅요청_통합, 공법설명회이력'
+    },
+    trend: {
+      title: '최근 흐름',
+      body: '최근 활동 흐름을 보여주는 지표입니다.\n이전 기간과 비교해 상승세 / 유지 / 하락 여부를 표시합니다.'
+    },
+    contrib: {
+      title: '실적-매출',
+      body: '업체의 최근 실적과 매출 흐름을 함께 보고 높음 / 보통 / 낮음으로 표시한 참고 지표입니다.'
+    },
+    pour: {
+      title: '최근 실적',
+      body: '가장 최근에 확인된 시공실적입니다.\n연도·공종·현장명을 함께 보여줍니다.'
+    }
+  };
+
+  // 재사용 팝오버 — 화면에 단 하나만 만들어 두고 열 때마다 내용/위치만 갈아끼운다.
+  // body 직속 + position:fixed라서 표(grid)나 overflow 컨테이너에 영향을 주거나 잘리지 않는다.
+  const columnHelpPopover = (function(){
+    let popEl = null, titleEl = null, bodyEl = null, anchorBtn = null, rafId = 0;
+
+    function ensureEl(){
+      if(popEl) return popEl;
+      popEl = document.createElement('div');
+      popEl.className = 'col-help-pop';
+      popEl.id = 'colHelpPop';
+      popEl.setAttribute('role', 'dialog');
+      popEl.setAttribute('aria-live', 'polite');
+      titleEl = document.createElement('p');
+      titleEl.className = 'col-help-pop-title';
+      bodyEl = document.createElement('p');
+      bodyEl.className = 'col-help-pop-body';
+      popEl.appendChild(titleEl);
+      popEl.appendChild(bodyEl);
+      document.body.appendChild(popEl);
+      return popEl;
+    }
+
+    // 버튼 바로 아래에 붙이되, 아래 공간이 부족하면 위로 뒤집고, 좌우는 화면 안으로 당긴다.
+    function place(){
+      if(!popEl || !anchorBtn) return;
+      const GAP = 6, EDGE = 10;
+      const a = anchorBtn.getBoundingClientRect();
+      // 앵커가 화면 밖으로 스크롤돼 나갔으면 팝오버만 닫는다(허공에 떠 있는 것 방지).
+      if(a.bottom < 0 || a.top > window.innerHeight || a.right < 0 || a.left > window.innerWidth){ close(); return; }
+      const w = popEl.offsetWidth, h = popEl.offsetHeight;
+      let left = a.left + (a.width / 2) - (w / 2);
+      left = Math.max(EDGE, Math.min(left, window.innerWidth - w - EDGE));
+      let top = a.bottom + GAP;
+      if(top + h > window.innerHeight - EDGE && a.top - GAP - h > EDGE) top = a.top - GAP - h;
+      popEl.style.left = Math.round(left) + 'px';
+      popEl.style.top = Math.round(top) + 'px';
+    }
+
+    function schedulePlace(){
+      if(!popEl || !popEl.classList.contains('is-open')) return;
+      if(rafId) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(()=>{ rafId = 0; place(); });
+    }
+
+    function close(){
+      if(anchorBtn){ anchorBtn.setAttribute('aria-expanded', 'false'); anchorBtn = null; }
+      if(popEl) popEl.classList.remove('is-open');
+    }
+
+    function open(btn){
+      const key = btn.getAttribute('data-col-help');
+      const info = COLUMN_HELP_TEXTS[key];
+      if(!info) return;
+      close();                       // 한 번에 하나만 열린다
+      ensureEl();
+      titleEl.textContent = info.title;
+      bodyEl.textContent = info.body;
+      anchorBtn = btn;
+      btn.setAttribute('aria-expanded', 'true');
+      popEl.classList.add('is-open');
+      place();
+    }
+
+    function toggle(btn){
+      if(anchorBtn === btn) close(); else open(btn);
+    }
+
+    return { toggle: toggle, close: close, reposition: schedulePlace, isOpen: ()=> !!anchorBtn };
+  })();
+
+  // 헤더가 다시 렌더링돼도 살아남도록 document 위임으로 한 번만 바인딩한다.
+  document.addEventListener('click', (e)=>{
+    const btn = e.target.closest && e.target.closest('.col-help-btn');
+    if(btn){
+      // 총매출 헤더는 셀 클릭이 정렬 토글이다 — 도움말 버튼 클릭이 정렬로 새지 않게 막는다.
+      e.preventDefault(); e.stopPropagation();
+      columnHelpPopover.toggle(btn);
+      return;
+    }
+    if(!columnHelpPopover.isOpen()) return;
+    if(e.target.closest && e.target.closest('.col-help-pop')) return;  // 팝오버 안 클릭은 유지
+    columnHelpPopover.close();                                          // 다른 곳 클릭 → 닫기
+  }, true);
+  document.addEventListener('keydown', (e)=>{
+    if(e.key === 'Escape' && columnHelpPopover.isOpen()){
+      const btn = document.querySelector('.col-help-btn[aria-expanded="true"]');
+      columnHelpPopover.close();
+      if(btn) btn.focus();
+    }
+  });
+  window.addEventListener('scroll', ()=> columnHelpPopover.reposition(), true);
+  window.addEventListener('resize', ()=> columnHelpPopover.reposition());
 
   // 다른 탭(v2 또는 CRM의 다른 탭)에서 shin2-companies-staging을 바꾸면 native storage
   // 이벤트가 이 탭에 도착한다(자기 자신이 쓴 변경에는 절대 발생하지 않음 — 브라우저 표준
