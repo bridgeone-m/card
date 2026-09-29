@@ -9662,6 +9662,43 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
   function salesTxnCorrectionCandidateKey(r){
     return ['cc', normCompanyNameForRevenue(r.name) || normCompanyName(r.name), normSiteForFingerprint(r.site), String(r.date||'').trim(), r.sourceType].join('|');
   }
+  // §기존거래 충돌 확인 라운드(신규) — "신규"로 판정된 행이 기존 확정거래와 fingerprint
+  // 5개 항목 중 4개까지 같은 경우(업체·매출유형·금액이 같고 현장명 또는 매출일 하나만
+  // 다름)를 찾는다. 표기 차이나 날짜 정정이라면 같은 거래를 두 번 세는 것이므로 자동
+  // 확정하면 안 되고, 정말 별개 거래일 수도 있으므로 기존 거래를 고치지도 않는다 —
+  // 사람이 보고 판단하도록 "기존거래 충돌 확인 필요"로만 분리한다(§"애매하면 확인 필요
+  // 우선"). 아무것도 저장하지 않는 순수 조회다.
+  //
+  // 오탐 방지 조건(중요): 그 기존 거래가 이번 업로드의 다른 행과 이미 정확히 일치한다면
+  // (= 그 행이 '중복'으로 짝이 맞았다면) 충돌로 보지 않는다. 같은 업체가 같은 현장에
+  // 같은 금액을 회차만 달리해 청구하는 정상 거래를 잘못 붙잡지 않기 위한 조건이다.
+  function buildSalesExistingConflictIndex(rawRows){
+    const batchFingerprints = new Set((rawRows || []).map(r=> salesTxnFingerprintKey(r)));
+    const bySiteDiff = new Map(); // 업체+유형+금액+매출일 → 현장명만 다른 기존거래
+    const byDateDiff = new Map(); // 업체+유형+금액+현장   → 매출일만 다른 기존거래
+    const push = (m, k, r)=>{ if(!m.has(k)) m.set(k, []); m.get(k).push(r); };
+    buildMergedSalesRowsForYear(2026).forEach(r=>{
+      if(batchFingerprints.has(salesTxnFingerprintKey(r))) return; // 이미 정확히 짝이 맞은 기존거래
+      const nco = normCompanyNameForRevenue(r.name) || normCompanyName(r.name);
+      push(bySiteDiff, ['sd', nco, r.sourceType, r.amount, String(r.date||'').trim()].join('|'), r);
+      push(byDateDiff, ['dd', nco, r.sourceType, r.amount, normSiteForFingerprint(r.site)].join('|'), r);
+    });
+    return { bySiteDiff, byDateDiff };
+  }
+  // findSalesExistingConflict: 충돌하는 기존거래가 있으면 { kind:'site'|'date', existing, count }.
+  function findSalesExistingConflict(row, idx){
+    if(!row || !idx) return null;
+    const nco = normCompanyNameForRevenue(row.name) || normCompanyName(row.name);
+    const nsite = normSiteForFingerprint(row.site);
+    const date = String(row.date||'').trim();
+    const siteHits = (idx.bySiteDiff.get(['sd', nco, row.sourceType, row.amount, date].join('|')) || [])
+      .filter(r=> normSiteForFingerprint(r.site) !== nsite);
+    if(siteHits.length) return { kind:'site', existing: siteHits[0], count: siteHits.length };
+    const dateHits = (idx.byDateDiff.get(['dd', nco, row.sourceType, row.amount, nsite].join('|')) || [])
+      .filter(r=> String(r.date||'').trim() && String(r.date||'').trim() !== date);
+    if(dateHits.length) return { kind:'date', existing: dateHits[0], count: dateHits.length };
+    return null;
+  }
   // buildMergedSalesRowsForYear: 정적 스냅샷(window.SHIN2_REVENUE_{year}_SNAPSHOT, 원본
   // 필드 그대로, 절대 서로 합치지 않고 전부 보존) + 확정된 업로드 거래(loadSalesLedger)를
   // 합친다. 위 주석의 "정적 스냅샷 보호" 원칙 참고.
@@ -10086,6 +10123,7 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
     loadSalesPendingLedger, loadSalesCrossYearReview, loadSalesCompanyReview, mergeIntoReviewLedger, removeResolvedFromReviewLedger, salesReviewIdentityKey,
     saveSalesPendingRows, saveSalesCrossYearRows, saveSalesCompanyReviewRows, resolveSalesPendingByIdentity,
     buildCrossYearFingerprintIndex, findCrossYearMatch,
+    buildSalesExistingConflictIndex, findSalesExistingConflict,
     getCompanyReceivable, buildReceivableCompanies,
     getLatestPourRecordForCompany, getAllPourRecordsForCompany, buildPourLatestIndex, invalidatePourRecordIndexCache,
     buildRequestHistory, buildRequestHistoryIndex,
@@ -25534,6 +25572,13 @@ window.SHIN2_CRM_APP_INIT = function(){
   //   신규 / 중복 / 수정 후보 / 동일조건 복수거래 확인 필요 / 발행일 확인 필요 /
   //   타연도 중복 / 타연도 거래 확인 필요 / 업체 확인 필요 / CRM 미등록 업체
   const SALES_IMPORT_BUCKET_YEAR = 2026;
+  // §확정금액 일치 라운드(신규) — "확정 ledger에 저장되는 상태"를 한 곳에만 정의한다.
+  // previewSalesImport의 반영 후 예상금액과 applySalesImport의 실제 저장이 같은 기준을
+  // 보게 만들어, 예전처럼 한쪽에만 상태가 추가돼 금액이 어긋나는 일(실측: CRM 미등록
+  // 업체 행이 ledger에는 저장되는데 예상금액에는 빠져 131,948,000원 차이)을 막는다.
+  // review 계열(발행일/타연도/업체/동일조건 복수거래/기존거래 충돌)은 절대 포함하지 않는다.
+  const SALES_CONFIRMED_LEDGER_STATUSES = new Set(['신규', '수정 후보', 'CRM 미등록 업체']);
+  function isSalesConfirmedLedgerStatus(status){ return SALES_CONFIRMED_LEDGER_STATUSES.has(status); }
   function previewSalesImport(rawRows){
     const companies = D.loadActiveCompanies();
     const merged = D.buildMergedSalesRowsForYear(SALES_IMPORT_BUCKET_YEAR); // §중복판정은 항상 2026 버킷 전체(날짜 무관) 기준 — 변경 없음
@@ -25548,6 +25593,8 @@ window.SHIN2_CRM_APP_INIT = function(){
       if(r.uniqueKey) uniqueKeyMap.set(String(r.uniqueKey).trim(), r);
     });
     const seenFingerprintInBatch = new Set();
+    // §기존거래 충돌 확인 라운드 — 신규 판정 후 한 번 더 걸러낼 인덱스(순수 조회).
+    const existingConflictIdx = D.buildSalesExistingConflictIndex(rawRows);
     const items = rawRows.map(raw=>{
       // §2026 매출 날짜 파싱 수정 라운드 — salesExcelNormalizeDate가 정규화해 내는 'YYYY-MM-DD'에
       // 정확히 일치해야만 연도 귀속을 한다. 예전엔 앞 4자리만 보았기 때문에 '2026'처럼
@@ -25600,6 +25647,20 @@ window.SHIN2_CRM_APP_INIT = function(){
         reason = `예상 밖 연도(${rowYear}) 발행일 — 확인 필요`;
       }
 
+      // §기존거래 충돌 확인 라운드 — 2026 귀속 "신규"만 대상. 기존 확정거래와 업체·유형·
+      // 금액이 같고 현장명 또는 매출일 하나만 다르면 같은 거래를 두 번 세는 것일 수 있어
+      // 자동 확정하지 않는다. 기존 거래는 읽기만 하고 절대 수정/삭제하지 않는다.
+      if(status === '신규'){
+        const conflict = D.findSalesExistingConflict(raw, existingConflictIdx);
+        if(conflict){
+          existingRow = conflict.existing;
+          status = '기존거래 충돌 확인 필요';
+          reason = conflict.kind === 'site'
+            ? `기존 확정거래와 업체·매출일·유형·금액이 모두 같고 현장명만 다름(기존 "${conflict.existing.site || '—'}") — 표기 차이인지 별개 거래인지 확인 필요`
+            : `기존 확정거래와 업체·현장·유형·금액이 모두 같고 매출일만 다름(기존 ${conflict.existing.date || '—'}) — 날짜 정정인지 별개 거래인지 확인 필요`;
+        }
+      }
+
       // §업체 매칭 — matchCompanyForExcelRow(기존 협력사 엑셀과 완전히 같은 공통 유틸) 그대로 사용.
       // 2026 귀속이면서 신규/수정후보인 행만 매칭을 시도한다(중복/타연도/pending 행은 어차피
       // 2026 매출에 반영되지 않으므로 매칭이 필요 없다).
@@ -25632,6 +25693,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       crossYearDuplicate:0, crossYearDuplicateAmount:0,
       crossYearNeedsReview:0, crossYearNeedsReviewAmount:0,
       companyNeedsReview:0, companyNeedsReviewAmount:0,
+      existingConflict:0, existingConflictAmount:0,
       notInCrm:0, notInCrmAmount:0,
       negative:0, negativeAmount:0
     };
@@ -25645,6 +25707,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       else if(it.status === '타연도 중복'){ counts.crossYearDuplicate++; counts.crossYearDuplicateAmount += it.row.amount; }
       else if(it.status === '타연도 거래 확인 필요'){ counts.crossYearNeedsReview++; counts.crossYearNeedsReviewAmount += it.row.amount; }
       else if(it.status === '업체 확인 필요'){ counts.companyNeedsReview++; counts.companyNeedsReviewAmount += it.row.amount; }
+      else if(it.status === '기존거래 충돌 확인 필요'){ counts.existingConflict++; counts.existingConflictAmount += it.row.amount; }
       else if(it.status === 'CRM 미등록 업체'){ counts.notInCrm++; counts.notInCrmAmount += it.row.amount; }
     });
 
@@ -25654,9 +25717,24 @@ window.SHIN2_CRM_APP_INIT = function(){
     const currentConfirmedTotal = merged
       .filter(r=> String(r.date||'').slice(0,4) === String(SALES_IMPORT_BUCKET_YEAR))
       .reduce((a,r)=> a + r.amount, 0);
-    const projectedConfirmedTotal = currentConfirmedTotal + counts.newAmount + counts.modifiedAmount;
+    // §확정금액 일치 라운드 — applySalesImport가 확정 ledger에 저장하는 행과 똑같은
+    // 기준(isSalesConfirmedLedgerStatus)으로 증분을 계산한다. 상태별 금액을 손으로
+    // 더하지 않으므로 나중에 확정 대상 상태가 늘어도 두 값이 어긋나지 않는다.
+    //   · 연도 필터: currentConfirmedTotal과 같은 "매출일 연도 == 2026"만 반영한다.
+    //   · 수정 후보: 기존 ledger 행을 대체하므로 차액만 더한다. 단 대체되는 기존 행의
+    //     매출일이 2026이 아니었다면 애초에 현재 합계에 없었으므로 전액을 더한다.
+    //   · review 계열은 확정 ledger에 저장되지 않으므로 절대 더하지 않는다.
+    const inBucketYear = v => String(v || '').slice(0, 4) === String(SALES_IMPORT_BUCKET_YEAR);
+    let confirmedDeltaAmount = 0;
+    items.forEach(it=>{
+      if(!isSalesConfirmedLedgerStatus(it.status)) return;
+      if(!inBucketYear(it.row.date)) return;
+      const replacesInYear = it.status === '수정 후보' && it.existingRow && inBucketYear(it.existingRow.date);
+      confirmedDeltaAmount += replacesInYear ? (it.row.amount - it.existingRow.amount) : it.row.amount;
+    });
+    const projectedConfirmedTotal = currentConfirmedTotal + confirmedDeltaAmount;
 
-    return { items, counts, currentConfirmedTotal, projectedConfirmedTotal };
+    return { items, counts, currentConfirmedTotal, projectedConfirmedTotal, confirmedDeltaAmount };
   }
   // applySalesImport: 상태별로 저장 위치를 명확히 분리한다(§I).
   //   신규/수정 후보/CRM 미등록 업체 → 메인 2026 ledger(saveSalesLedgerConfirmed).
@@ -25686,12 +25764,21 @@ window.SHIN2_CRM_APP_INIT = function(){
         }));
       } else if(it.status === '타연도 거래 확인 필요'){
         toSaveCrossYear.push(Object.assign({}, base, { status: '타연도 거래 확인 필요', crossYear: it.crossYearInfo ? it.crossYearInfo.year : null }));
-      } else if(it.status === '업체 확인 필요' || it.status === '동일조건 복수거래 확인 필요'){
+      } else if(it.status === '업체 확인 필요' || it.status === '동일조건 복수거래 확인 필요' || it.status === '기존거래 충돌 확인 필요'){
+        // §기존거래 충돌 확인 라운드 — 확정 ledger가 아니라 review 저장소로만 보낸다.
+        // 기존 확정거래는 읽기만 했고 수정/삭제하지 않는다.
         toSaveCompanyReview.push(Object.assign({}, base, { status: it.status, reason: it.reason }));
       }
       // '중복' 상태는 저장하지 않는다.
     });
 
+    // §확정금액 일치 라운드 — 위 분기로 모은 확정 대상이 previewSalesImport가 예상금액을
+    // 계산할 때 쓴 기준(isSalesConfirmedLedgerStatus)과 정확히 같은지 저장 직전에 확인한다.
+    // 어긋나면 화면의 예상금액과 실제 저장액이 달라지므로 저장하지 않고 즉시 알린다.
+    const expectedConfirmedCount = preview.items.filter(it=> isSalesConfirmedLedgerStatus(it.status)).length;
+    if(toSaveConfirmed.length !== expectedConfirmedCount){
+      throw new Error(`확정 반영 대상 불일치(저장 대상 ${toSaveConfirmed.length}건 ≠ 예상금액 기준 ${expectedConfirmedCount}건) — 저장하지 않았습니다.`);
+    }
     const confirmedOk = toSaveConfirmed.length ? D.saveSalesLedgerConfirmed(toSaveConfirmed) : true;
     const pendingOk = toSavePending.length ? D.saveSalesPendingRows(toSavePending) : true;
     const crossYearOk = toSaveCrossYear.length ? D.saveSalesCrossYearRows(toSaveCrossYear) : true;
@@ -25751,11 +25838,11 @@ window.SHIN2_CRM_APP_INIT = function(){
     renderSalesImportModal();
   }
   // §2026 업로더 전면 개편 라운드(§D) — 8종 이상으로 세분화한 상태값의 표시 순서/스타일 매핑.
-  const SALES_IMPORT_STATUS_ORDER = ['신규','수정 후보','중복','동일조건 복수거래 확인 필요','타연도 중복','타연도 거래 확인 필요','발행일 확인 필요','업체 확인 필요','CRM 미등록 업체'];
+  const SALES_IMPORT_STATUS_ORDER = ['신규','수정 후보','중복','기존거래 충돌 확인 필요','동일조건 복수거래 확인 필요','타연도 중복','타연도 거래 확인 필요','발행일 확인 필요','업체 확인 필요','CRM 미등록 업체'];
   const SALES_IMPORT_STATUS_CLASS = {
     '신규':'new', '수정 후보':'mod', '중복':'dup', '동일조건 복수거래 확인 필요':'review',
     '타연도 중복':'dup', '타연도 거래 확인 필요':'review', '발행일 확인 필요':'review',
-    '업체 확인 필요':'review', 'CRM 미등록 업체':'notincrm'
+    '업체 확인 필요':'review', '기존거래 충돌 확인 필요':'review', 'CRM 미등록 업체':'notincrm'
   };
   function salesImportRowHtml(it){
     const r = it.row;
@@ -25805,6 +25892,7 @@ window.SHIN2_CRM_APP_INIT = function(){
         <span class="is-dup">타연도 중복 <b>${p.counts.crossYearDuplicate}</b>건 / ${p.counts.crossYearDuplicateAmount.toLocaleString('ko-KR')}원</span>
         <span class="is-review">타연도 확인 필요 <b>${p.counts.crossYearNeedsReview}</b>건 / ${p.counts.crossYearNeedsReviewAmount.toLocaleString('ko-KR')}원</span>
         <span class="is-review">업체 확인 필요 <b>${p.counts.companyNeedsReview}</b>건 / ${p.counts.companyNeedsReviewAmount.toLocaleString('ko-KR')}원</span>
+        <span class="is-review">기존거래 충돌 확인 필요 <b>${p.counts.existingConflict}</b>건 / ${p.counts.existingConflictAmount.toLocaleString('ko-KR')}원</span>
         <span class="is-notincrm">CRM 미등록 업체 <b>${p.counts.notInCrm}</b>개 / ${p.counts.notInCrmAmount.toLocaleString('ko-KR')}원</span>
         <span>음수/취소 거래 <b>${p.counts.negative}</b>건 / ${p.counts.negativeAmount.toLocaleString('ko-KR')}원</span>
         <span>반영 전 2026 확정 매출 <b>${p.currentConfirmedTotal.toLocaleString('ko-KR')}원</b></span>
@@ -25838,7 +25926,7 @@ window.SHIN2_CRM_APP_INIT = function(){
           <div class="pi-actions">
             ${hasFile ? `<button type="button" class="co-text-action" id="salesImportRecomputeBtn">Preview 계산</button>` : ''}
             <button type="button" class="co-text-action" id="salesImportCloseBtn2">닫기</button>
-            <button type="button" class="co-text-action primary" id="salesImportApplyBtn" ${(!p || (!p.counts.new && !p.counts.modified) || st.applying) ? 'disabled' : ''}>${st.applying ? '반영 중…' : '확정 반영'}</button>
+            <button type="button" class="co-text-action primary" id="salesImportApplyBtn" ${(!p || (!p.counts.new && !p.counts.modified && !p.counts.notInCrm) || st.applying) ? 'disabled' : ''}>${st.applying ? '반영 중…' : '확정 반영'}</button>
           </div>
         </div>
       </div>`;
