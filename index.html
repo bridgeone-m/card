@@ -12726,18 +12726,21 @@ window.SHIN2_CRM_APP_INIT = function(){
   //      — 이 값은 이미 stageCorrections(사용자 정정, 최우선) → newMou.mouDone →
   //        resolvePartnerAgreementDate(pd.mouDate / partnerList 협약체결일) 순서로
   //        합쳐진 결과다. 어느 값 하나만 보고 판단하지 않는다.
-  //   ③ 협력사 리스트 등재(co.partnerStatus === 'partner') — 레거시 경로.
-  //      이것만으로 체결이 되는 바람에 진행단계는 "질문서 대기"인데 KPI·외부 PDF에는
-  //      체결로 잡히던 업체가 생겼다(13건). 그 13건을 ①로 명시 확정한 뒤 이 줄을
-  //      제거할 예정이다 — 먼저 지우면 확정 기록이 없는 동안 13건이 통째로 빠진다.
+  //
+  // [제거한 것] 예전에는 co.partnerStatus === 'partner' 하나만으로도 체결로 봤다.
+  // partnerStatus는 partner-dashboard 협력사 "리스트 등재" 여부일 뿐 체결 근거가 아니라서,
+  // 진행단계는 "질문서 대기"인데 KPI·목록 칩·외부 PDF에는 체결로 잡히는 업체가 생겼다
+  // (13건, (주)썬시카방수·삼동건설(주) 등). 공식 협약업체 리스트에 없는 업체가 외부 발송용
+  // PDF에 실리던 원인이 바로 이 분기다. 이제 단독 근거로 쓰지 않는다.
+  // 다만 co.partnerStatus 필드 자체는 그대로 둔다 — 등재 여부를 나타내는 별개 값으로
+  // 계속 저장·표시되고, 이 라운드에서 데이터는 한 건도 바꾸지 않는다.
   //
   // 협약 종료·삭제 업체 제외는 이 함수가 아니라 호출부(matchesFilter의 mouDone 분기,
   // loadActiveCompanies)에서 기존 정책 그대로 처리한다 — 여기서 바꾸지 않는다.
   function isConfirmedPartner(co, progress){
     if(D.isMouManuallyConfirmed && D.isMouManuallyConfirmed(co)) return true;   // ①
     const mou = getMouStage(progress);
-    if(progress && progress.hasAny && mou && mou.state === 'done') return true; // ②
-    return !!(co && co.partnerStatus === 'partner');                            // ③ 레거시
+    return !!(progress && progress.hasAny && mou && mou.state === 'done');      // ②
   }
   // §자회사 탭 라운드(신규) — relationIndex는 옵션(마지막 인자, 기본값 없으면 undefined)
   // 이다: 'subsidiary' 키 외의 기존 호출부(지도분포 등)는 그대로 relationIndex 없이 불러도
