@@ -4244,6 +4244,21 @@ table.pdf-doc-table thead{ background:var(--bg); }
    flex:50과 균형). 시공사 탭은 infocol 뒤에 aptlistcol이 항상 있어 last-child가
    아니므로 이 규칙의 영향을 받지 않는다. */
 .map-embed-root .map-modal-infocol:last-child{ flex:50 1 0; }
+/* §지도 카드 "지역 요약" 구획 제거 라운드(신규) — 사용자 요청으로 지도 아래 "지역 요약"
+   박스(수도권/비수도권/위치 확인/위치 미확인)를 화면에서 뺀다. 카드 높이의 13%만
+   받도록 돼 있어 화면이 짧으면 숫자가 잘리고 내부 스크롤바가 생기던 자리다.
+
+   주의 — 이 구획(.map-modal-infocol)은 탭에 따라 내용이 완전히 다르다:
+     · 시공사 탭      : mapcol → infocol(지역 요약) → aptlistcol(시공 아파트 목록)
+     · 시공 아파트 탭 : mapcol → infocol(= 시공 아파트/근처 시공 아파트 목록 그 자체)
+   그래서 통째로 숨기면 "시공 아파트" 탭의 목록까지 사라진다. infocol 뒤에
+   aptlistcol이 오는 경우(=시공사 탭)에만 숨기도록 :not(:last-child)로 한정한다.
+
+   renderMapInfoPanel의 집계 계산(capital/nonCapital/located/unlocated)과 지도·마커·
+   지역 클릭 로직은 전혀 건드리지 않았다 — 표시만 끈 것이라(이 저장소의 "삭제가 아니라
+   숨김" 관례) 언제든 이 한 줄만 지우면 원래대로 돌아온다. display:none이라 flex 배분에서
+   빠지므로 그 몫은 지도(flex:50)와 시공 아파트 목록(flex:37)이 나눠 갖는다. */
+.map-embed-root .map-modal-infocol:not(:last-child){ display:none !important; }
 .map-embed-root .map-modal-infocol .map-info-stat-row{ font-size:11px; }
 .map-embed-root .map-modal-infocol .map-region-row{ font-size:11px; padding:4px 0; }
 /* 옛 플로팅 패널의 닫기 버튼 — 이제 패널이 상시 보이는 고정 구획이라 더 이상 쓰이지
