@@ -3850,12 +3850,21 @@ table.pdf-doc-table thead{ background:var(--bg); }
    버튼은 삭제 같은 파괴적 동작이 아니라 단순 이동(네비게이션)이라 빨간색 등 경고색은
    쓰지 않고 CRM 전체가 쓰는 무채색 네이비/회색 라인 톤(var(--text-muted)/var(--navy))만
    쓴다. */
+/* §쓰레기통 중복 정리 라운드(신규) — 원형 → 네모(둥근 모서리) 상자 안에 쓰레기통(§요청).
+   "+ 고객 등록" 줄에 함께 서므로 그 버튼과 같은 32px 높이·7px radius로 맞추고,
+   margin-left:auto로 그 줄 맨 오른쪽 끝에 붙인다. */
 .kpi-trash-summary-btn{
-  position:relative; width:34px; height:34px; flex:none; display:flex; align-items:center;
-  justify-content:center; border:1px solid var(--line); border-radius:50%; background:#fff;
-  color:var(--text-muted); cursor:pointer; padding:0;
+  position:relative; width:32px; height:32px; flex:none; display:flex; align-items:center;
+  justify-content:center; border:1px solid var(--line); border-radius:7px; background:#fff;
+  color:var(--text-muted); cursor:pointer; padding:0; margin-left:auto;
 }
 .kpi-trash-summary-btn:hover{ background:var(--bg); color:var(--navy); border-color:var(--navy); }
+.kpi-trash-summary-btn:focus-visible{ outline:2px solid var(--navy); outline-offset:2px; }
+/* 지금 쓰레기통 목록을 보고 있으면 탭처럼 눌린 상태로 보이게 한다 — 탭을 없앤 뒤에도
+   "지금 어디를 보고 있는지"가 드러나야 하기 때문(색만이 아니라 테두리로도 구분). */
+.kpi-trash-summary-btn.is-active{
+  background:#EDF1FA; color:var(--navy); border-color:var(--navy); box-shadow:inset 0 0 0 1px var(--navy);
+}
 .kpi-trash-summary-badge{
   position:absolute; top:-6px; right:-6px; min-width:16px; height:16px; padding:0 4px;
   border-radius:999px; background:var(--navy); color:#fff; font-size:10px; font-weight:700;
@@ -5191,25 +5200,6 @@ table.sales-import-table td{ padding:5px 8px; border-bottom:1px solid #EEF2F7; v
            동일하므로 KPI 계산/렌더 로직은 전혀 안 건드린다. -->
       <div class="kpi-strip-row crm-kpi-cell">
         <div class="kpi-strip" id="crmKpiStrip"></div>
-        <div class="kpi-strip-actions">
-          <!-- §쓰레기통 통합 라운드(신규) — "협약종료"+"쓰레기통업체"를 합친 "쓰레기통"
-               pill(MAIN_PILL_DEFS)과 완전히 같은 배지(filterCounts.trash)를 보여주고,
-               클릭하면 그 pill과 완전히 같은 동작(filterKey='trash' → renderList() →
-               renderTrashTab())으로 연다 — 배지 숫자와 클릭 시 열리는 목록 범위가
-               항상 일치한다. -->
-          <button type="button" class="kpi-trash-summary-btn" id="crmTrashSummaryBtn" title="쓰레기통(협약종료·삭제된 업체)" aria-label="쓰레기통(협약종료·삭제된 업체)">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10.2" stroke-width="1.4"></circle>
-              <path d="M9 10v5"></path>
-              <path d="M12 10v5"></path>
-              <path d="M15 10v5"></path>
-              <path d="M7.5 8.2h9"></path>
-              <path d="M9.3 8.2l.5-1.6a1 1 0 0 1 .95-.6h2.5a1 1 0 0 1 .95.6l.5 1.6"></path>
-              <path d="M8.3 8.2l.5 8.2a1 1 0 0 0 1 .9h4.4a1 1 0 0 0 1-.9l.5-8.2"></path>
-            </svg>
-            <span class="kpi-trash-summary-badge" id="crmTrashSummaryBadge" hidden>0</span>
-          </button>
-        </div>
       </div>
       <!-- 좌: 업체 목록 카드 — 검색/정렬/필터 pill/표는 전부 기존 DOM·id·렌더 함수
            (renderFilterChips/renderList/applySort 등) 그대로, 카드 틀만 새로 씌운다. -->
@@ -5231,6 +5221,21 @@ table.sales-import-table td{ padding:5px 8px; border-bottom:1px solid #EEF2F7; v
         <div class="list-filter-row-wrap" id="crmFilterRowWrap">
           <div class="list-filter-row" id="crmFilterRow"></div>
           <button type="button" id="crmAddBtn" class="list-add-btn list-add-btn-inline">+ 고객 등록</button>
+          <!-- §쓰레기통 중복 정리 라운드(신규) — KPI 스트립 오른쪽에 있던 쓰레기통 아이콘
+               버튼을 이 줄(= "+ 고객 등록" 줄) 맨 오른쪽으로 옮겼다. id/배지 id/클릭 동작
+               (filterKey='trash' → renderList() → renderTrashTab())은 그대로라
+               renderTrashSummaryBtn()의 바인딩·배지 갱신 코드는 한 줄도 안 바뀌었다 —
+               노드 위치와 모양(원형 → 네모 상자)만 달라졌다. -->
+          <button type="button" class="kpi-trash-summary-btn" id="crmTrashSummaryBtn" title="쓰레기통(협약종료·삭제된 업체)" aria-label="쓰레기통(협약종료·삭제된 업체)">
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M4.5 7h15"></path>
+              <path d="M9.5 7l.5-1.8a1 1 0 0 1 .96-.7h2.08a1 1 0 0 1 .96.7l.5 1.8"></path>
+              <path d="M6.3 7l.75 11.1a1.6 1.6 0 0 0 1.6 1.4h6.7a1.6 1.6 0 0 0 1.6-1.4L17.7 7"></path>
+              <path d="M10 10.5v6"></path>
+              <path d="M14 10.5v6"></path>
+            </svg>
+            <span class="kpi-trash-summary-badge" id="crmTrashSummaryBadge" hidden>0</span>
+          </button>
         </div>
         <div class="list-search-row">
           <!-- §검색창 클릭 영역 수정 라운드 — div였을 때는 아이콘·좌우 padding·input 세로 여백을
@@ -13064,7 +13069,11 @@ window.SHIN2_CRM_APP_INIT = function(){
   const MAIN_PILL_DEFS = [
     ['all','전체'],
     ['mouDone','MOU 체결'],
-    ['trash','쓰레기통'],
+    // §쓰레기통 중복 정리 라운드(신규) — "쓰레기통"은 아래 "+ 고객 등록" 줄 오른쪽 끝의
+    // 아이콘 버튼(#crmTrashSummaryBtn) 하나로만 연다(§요청). 같은 목록을 여는 입구가 탭과
+    // 아이콘 두 군데라 중복이었다. filterKey==='trash' 분기와 renderTrashTab()은 그대로라
+    // 아이콘 버튼·KPI 클릭 등 기존 진입 경로는 전부 그대로 동작한다.
+    // ['trash','쓰레기통'],
     // §요청 6 — 파일 안에 이미 있는 두 표기("실적있음·MOU미체결"/"실적 있음 · MOU 미체결")
     // 중 pill처럼 짧은 자리에 맞는 표기를 그대로 가져다 쓴다(새 라벨 창작 아님).
     ['revenueNoMou','실적있음·MOU미체결'],
@@ -13212,6 +13221,10 @@ window.SHIN2_CRM_APP_INIT = function(){
     const total = counts.trash || 0;
     badge.textContent = String(total);
     badge.hidden = total <= 0;
+    // §쓰레기통 중복 정리 라운드 — "쓰레기통" 탭(pill)을 없앴으므로, 지금 쓰레기통 목록을
+    // 보고 있다는 표시를 이 버튼이 대신 한다. filterKey를 읽기만 하고 바꾸지 않는다.
+    btn.classList.toggle('is-active', filterKey === 'trash');
+    btn.setAttribute('aria-pressed', filterKey === 'trash' ? 'true' : 'false');
     if(!btn.dataset.bound){
       btn.dataset.bound = '1';
       btn.addEventListener('click', ()=>{
