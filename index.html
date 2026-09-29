@@ -3159,10 +3159,19 @@ body.map-modal-lock{ overflow:hidden; }
 .trash-status-badge.is-deleted{ color:#8A93A3; background:#F1F3F6; }
 .trash-status-badge.is-agreementTerminated{ color:#8A5A1E; background:#FBF0DE; }
 .deleted-co-reason{ color:var(--text-muted); word-break:break-word; }
+/* §제외업체 정리 라운드(신규) — 쓰레기통 표에만 업체코드/출처/비고 칸을 더한다.
+   .deleted-co-table/.deleted-co-row 자체는 의지박약 탭·건바이건 목록 등이 같이 쓰는
+   공용 클래스라 기본 그리드는 절대 건드리지 않고, 이 modifier가 붙은 표에서만 컬럼을
+   늘린다(§"기존 UI 구조 재사용, 새 시스템 만들지 않기"). */
+.deleted-co-table.has-exclude-cols .deleted-co-head,
+.deleted-co-table.has-exclude-cols .deleted-co-row{ grid-template-columns:92px 1fr 84px 1.3fr 1fr 1fr 84px; }
+.deleted-co-code{ color:var(--text-muted); white-space:nowrap; font-variant-numeric:tabular-nums; }
+.deleted-co-source, .deleted-co-note{ color:var(--text-muted); word-break:break-word; font-size:11.5px; }
 .deleted-co-actions{ text-align:right; white-space:nowrap; }
 @media (max-width:600px){
   .deleted-co-head{ display:none; }
   .deleted-co-row{ grid-template-columns:1fr; gap:3px; padding:10px 4px; }
+  .deleted-co-table.has-exclude-cols .deleted-co-row{ grid-template-columns:1fr; }
   .deleted-co-actions{ text-align:left; }
 }
 /* §의지박약 자동관리 라운드(신규) — 위 .deleted-co-* 표 스타일을 그대로 재사용하고
@@ -14745,15 +14754,18 @@ window.SHIN2_CRM_APP_INIT = function(){
     const orphanedByCoId = new Map(computeOrphanedDeletedCompanies().map(o=> [o.company.id, o.count]));
     const STATUS_BADGE = { deleted:'삭제됨', agreementTerminated:'협약종료' };
     listEl.innerHTML = `
-      <div class="deleted-co-table">
+      <div class="deleted-co-table has-exclude-cols">
         <div class="deleted-co-head">
-          <span>일자</span><span>업체명</span><span>사유</span><span></span>
+          <span>삭제일</span><span>업체명</span><span>업체코드</span><span>사유</span><span>출처</span><span>비고</span><span></span>
         </div>
         ${items.map(({co,status,dateVal,reason})=> `
           <div class="deleted-co-row" data-deleted-co="${esc(co.id)}">
             <span class="deleted-co-date">${esc(fmtDate(dateVal))}</span>
             <span class="deleted-co-name"><span class="trash-status-badge is-${esc(status)}">${STATUS_BADGE[status]}</span>${esc(co.name || '(업체명 없음)')}${orphanedByCoId.has(co.id) ? `<div style="color:#B23B3B;font-size:11.5px;font-weight:600;margin-top:2px;">⚠ 삭제 후 들어온 요청 ${orphanedByCoId.get(co.id)}건</div>` : ''}</span>
+            <span class="deleted-co-code">${esc(co.code || co.masterCode || '—')}</span>
             <span class="deleted-co-reason">${esc(reason)}</span>
+            <span class="deleted-co-source">${esc(co.excludeSourceSheet || '—')}</span>
+            <span class="deleted-co-note">${esc(co.excludeNote || '—')}</span>
             <span class="deleted-co-actions">
               ${status === 'deleted' ? `<button type="button" class="co-text-action primary" data-restore-co="${esc(co.id)}">복구</button>
               <span class="cdash-cloud-save-status" id="restoreStatus_${esc(co.id)}"></span>` : ''}
