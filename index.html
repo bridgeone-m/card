@@ -17306,6 +17306,8 @@ window.SHIN2_CRM_APP_INIT = function(){
       dateDisplay: corr.dateText || '—',
       scheduledLabel: corr.status === 'scheduled' ? (corr.dateText || null) : null,
       owner: corr.owner || null,
+      // §미팅 시각 라운드 — 정정으로 저장한 시각(timeText)도 그대로 실어 나른다.
+      scheduledTime: corr.timeText || null,
       ts: null
     };
   }
@@ -17378,16 +17380,20 @@ window.SHIN2_CRM_APP_INIT = function(){
     // 아니면서 예정일이 있으면 state를 'scheduled'로, dateDisplay/ts도 예정일 기준으로
     // 바꾼다 — buildProgressStages 하나만 고치면 이걸 읽는 모든 화면(고객카드/목록 배지/
     // 다음 행동/업무관리)이 자동으로 같은 값을 쓴다(§4 "공통 함수로 source of truth 통일").
-    function withScheduleOverride(base, scheduledLabel, owner){
-      const result = Object.assign({}, base, { scheduledLabel: scheduledLabel || null, owner: owner || null });
+    function withScheduleOverride(base, scheduledLabel, owner, scheduledTime){
+      // §미팅 시각 라운드(신규) — 시각은 날짜 라벨 문자열에 섞지 않고 별도 필드로만 들고
+      // 다닌다. parsePartnerDateLabel이 라벨에서 날짜만 뽑아 display를 다시 만들기 때문에
+      // 라벨에 시각을 붙이면 표시에서 사라지고, 상태 판정(stageDateAutoStatus)도 라벨을
+      // 파싱하므로 형식을 흐리지 않는 편이 안전하다.
+      const result = Object.assign({}, base, { scheduledLabel: scheduledLabel || null, owner: owner || null, scheduledTime: scheduledTime || null });
       if(result.state !== 'done' && scheduledLabel){
         const p = parsePartnerDateLabel(scheduledLabel);
         if(p){ result.state = 'scheduled'; result.dateDisplay = p.display; result.ts = p.ts; }
       }
       return result;
     }
-    const m1 = withScheduleOverride(dateState(nm.m1Label), nm.m1ScheduledLabel, nm.m1Owner);
-    const m2 = withScheduleOverride(dateState(nm.m2Label), nm.m2ScheduledLabel, nm.m2Owner);
+    const m1 = withScheduleOverride(dateState(nm.m1Label), nm.m1ScheduledLabel, nm.m1Owner, nm.m1ScheduledTime);
+    const m2 = withScheduleOverride(dateState(nm.m2Label), nm.m2ScheduledLabel, nm.m2Owner, nm.m2ScheduledTime);
     if(co.partnerDashboard && co.partnerDashboard.progressSyncedAt){
       if(nm.qReplyDone || nm.qReplySkipped) q.state = 'done';
       if(nm.m1Done || nm.m1Skipped) m1.state = 'done';
@@ -17505,8 +17511,8 @@ window.SHIN2_CRM_APP_INIT = function(){
     // §협력사 동기화 라운드 §6: 이미 예정일이 잡혀 있는데 "미팅 제안"이라고 다시 표시하지
     // 않는다 — 실제 m1Scheduled/m2Scheduled(§ buildProgressStages에서 얹은 scheduledLabel)가
     // 있을 때만 "예정 · 날짜"로 바꾼다. 우선순위(mou→q→m1→m2) 자체는 전혀 안 바꿨다.
-    if(byKey.m1.state !== 'done') return byKey.m1.scheduledLabel ? `1차미팅 예정 · ${byKey.m1.scheduledLabel}` : '1차 미팅 제안'; // §8-A
-    if(byKey.m2.state !== 'done') return byKey.m2.scheduledLabel ? `2차미팅 예정 · ${byKey.m2.scheduledLabel}` : '2차 미팅 제안'; // §8-B
+    if(byKey.m1.state !== 'done') return byKey.m1.scheduledLabel ? `1차미팅 예정 · ${fmtScheduleWithTime(byKey.m1.scheduledLabel, byKey.m1.scheduledTime)}` : '1차 미팅 제안'; // §8-A
+    if(byKey.m2.state !== 'done') return byKey.m2.scheduledLabel ? `2차미팅 예정 · ${fmtScheduleWithTime(byKey.m2.scheduledLabel, byKey.m2.scheduledTime)}` : '2차 미팅 제안'; // §8-B
     return 'MOU 체결 진행'; // §8-C (mou.state는 이미 위에서 'done'이 아님을 확인함)
   }
   function buildNextActionCellHtml(progress){
@@ -18113,11 +18119,11 @@ window.SHIN2_CRM_APP_INIT = function(){
       // 안 보이는 실제 문제(㈜제일도장 사례)가 있어, "예정된 미팅"이라는 별도 type으로
       // 계속 보여준다 — 새 날짜/담당 데이터가 아니라 byKey.m1.scheduledLabel/owner(이미
       // buildProgressStages가 계산해 둔 값)만 그대로 넘긴다.
-      if(byKey.m1.scheduledLabel) return { type:'m1Scheduled', label:'일정 확인', anchor: byKey.m1, stageLabel:'1차미팅 예정', scheduledLabel: byKey.m1.scheduledLabel, owner: byKey.m1.owner };
+      if(byKey.m1.scheduledLabel) return { type:'m1Scheduled', label:'일정 확인', anchor: byKey.m1, stageLabel:'1차미팅 예정', scheduledLabel: byKey.m1.scheduledLabel, scheduledTime: byKey.m1.scheduledTime, owner: byKey.m1.owner };
       return { type:'m1', label:'1차미팅 잡기', anchor: byKey.q, stageLabel:'질문서 완료' };
     }
     if(byKey.m2.state !== 'done'){
-      if(byKey.m2.scheduledLabel) return { type:'m2Scheduled', label:'일정 확인', anchor: byKey.m2, stageLabel:'2차미팅 예정', scheduledLabel: byKey.m2.scheduledLabel, owner: byKey.m2.owner };
+      if(byKey.m2.scheduledLabel) return { type:'m2Scheduled', label:'일정 확인', anchor: byKey.m2, stageLabel:'2차미팅 예정', scheduledLabel: byKey.m2.scheduledLabel, scheduledTime: byKey.m2.scheduledTime, owner: byKey.m2.owner };
       return { type:'m2', label:'2차미팅 잡기', anchor: byKey.m1, stageLabel:'1차미팅 완료' };
     }
     return { type:'mou', label:'MOU 진행', anchor: byKey.m2, stageLabel:'2차미팅 완료' };
@@ -18191,7 +18197,7 @@ window.SHIN2_CRM_APP_INIT = function(){
         const ts = meeting.anchor && typeof meeting.anchor.ts === 'number' ? meeting.anchor.ts : null;
         const daysUntil = ts != null ? Math.floor((ts - Date.now()) / 86400000) : null;
         const ownerText = meeting.owner ? ` · 담당 ${meeting.owner}` : '';
-        const reasonText = `${meeting.scheduledLabel || ''} 예정${ownerText}`.trim();
+        const reasonText = `${fmtScheduleWithTime(meeting.scheduledLabel, meeting.scheduledTime)} 예정${ownerText}`.trim();
         return {
           co, type: meeting.type, category: 'meeting',
           currentStateLabel: meeting.stageLabel, reasonText,
@@ -18395,9 +18401,14 @@ window.SHIN2_CRM_APP_INIT = function(){
     const label = workqDateInputToLabel(dateStr);
     if(!label) return false;
     const isM1 = item.type === 'm1' || item.type === 'm1Scheduled';
+    // §미팅 시각 라운드(신규) — 예전에는 입력한 시각이 아래 활동이력 문장에만 들어가고
+    // 데이터로는 저장되지 않아, 화면을 다시 열면 시각이 사라졌다(진행기록/배지에도 안 보였다).
+    // 이제 m1ScheduledTime/m2ScheduledTime으로 함께 저장한다 — 기존 필드는 그대로 두고
+    // 새 필드만 더하므로 시각 없이 저장된 기존 일정도 그대로 호환된다.
+    const timeVal = /^\d{2}:\d{2}$/.test(String(timeStr || '').trim()) ? String(timeStr).trim() : '';
     const patch = isM1
-      ? { m1Scheduled: dateStr, m1ScheduledLabel: label, m1Owner: owner || null }
-      : { m2Scheduled: dateStr, m2ScheduledLabel: label, m2Owner: owner || null };
+      ? { m1Scheduled: dateStr, m1ScheduledLabel: label, m1ScheduledTime: timeVal, m1Owner: owner || null }
+      : { m2Scheduled: dateStr, m2ScheduledLabel: label, m2ScheduledTime: timeVal, m2Owner: owner || null };
     workqMergeNewMou(item.co, patch);
     const stageName = isM1 ? '1차미팅' : '2차미팅';
     const timeText = timeStr ? ` ${timeStr}` : '';
@@ -18494,7 +18505,7 @@ window.SHIN2_CRM_APP_INIT = function(){
           <div class="workq-expand-label">일정</div>
           <div class="workq-expand-value">
             <input type="date" class="workq-field-input is-date" id="workqDate_${esc(item.type)}_${esc(co.id)}" />
-            <input type="time" class="workq-field-input is-time" id="workqTime_${esc(item.type)}_${esc(co.id)}" />
+            <input type="time" class="workq-field-input is-time" id="workqTime_${esc(item.type)}_${esc(co.id)}" value="${esc((item.anchor && item.anchor.scheduledTime) || '')}" required />
           </div>
           <div class="workq-expand-label">담당</div>
           <div class="workq-expand-value"><input type="text" class="workq-field-input is-owner" id="workqOwner_${esc(item.type)}_${esc(co.id)}" placeholder="담당자명" /></div>
@@ -18547,7 +18558,7 @@ window.SHIN2_CRM_APP_INIT = function(){
             <div class="workq-expand-label">새 일정</div>
             <div class="workq-expand-value">
               <input type="date" class="workq-field-input is-date" id="workqDate_${esc(item.type)}_${esc(co.id)}" />
-              <input type="time" class="workq-field-input is-time" id="workqTime_${esc(item.type)}_${esc(co.id)}" />
+              <input type="time" class="workq-field-input is-time" id="workqTime_${esc(item.type)}_${esc(co.id)}" value="${esc((item.anchor && item.anchor.scheduledTime) || '')}" required />
             </div>
             <div class="workq-expand-label">담당</div>
             <div class="workq-expand-value"><input type="text" class="workq-field-input is-owner" id="workqOwner_${esc(item.type)}_${esc(co.id)}" placeholder="담당자명" /></div>
@@ -19109,6 +19120,9 @@ window.SHIN2_CRM_APP_INIT = function(){
         const timeEl = document.getElementById(`workqTime_${item.type}_${item.co.id}`);
         const ownerEl = document.getElementById(`workqOwner_${item.type}_${item.co.id}`);
         if(!dateEl || !dateEl.value){ dateEl && dateEl.focus(); return; }
+        // §미팅 시각 라운드 — 미팅 일정은 시각도 필수다(§요청). 기존에 시각 없이 저장된
+        // 일정을 다시 열어 고칠 때도 여기서 한 번 채우게 된다.
+        if(!timeEl || !String(timeEl.value || '').trim()){ timeEl && timeEl.focus(); return; }
         workqApplyOnce(()=> workqSaveMeetingSchedule(item, dateEl.value, timeEl ? timeEl.value : '', ownerEl ? ownerEl.value.trim() : '', memoVal));
       } else if(action === 'uncertain'){
         const stageName = item.type === 'm1' ? '1차미팅' : '2차미팅';
@@ -21182,13 +21196,15 @@ window.SHIN2_CRM_APP_INIT = function(){
         dateText: qReplyP ? qReplyP.display : '—', owner: null },
       { key:'m1Scheduled', label:'1차 미팅 예정', done: byKey.m1.state !== 'waiting',
         status: byKey.m1.state === 'waiting' ? 'none' : (byKey.m1.state === 'done' ? 'done' : 'scheduled'),
-        dateText: byKey.m1.scheduledLabel || (byKey.m1.state !== 'waiting' ? byKey.m1.dateDisplay : '—'), owner: byKey.m1.owner },
+        dateText: byKey.m1.scheduledLabel || (byKey.m1.state !== 'waiting' ? byKey.m1.dateDisplay : '—'), owner: byKey.m1.owner,
+        timeText: byKey.m1.scheduledTime || '' }, // §미팅 시각 라운드
       { key:'m1Done', label:'1차 미팅 완료', done: byKey.m1.state === 'done',
         status: byKey.m1.state === 'done' ? 'done' : 'none',
         dateText: byKey.m1.state === 'done' ? byKey.m1.dateDisplay : '—', owner: byKey.m1.owner },
       { key:'m2Scheduled', label:'2차 미팅 예정', done: byKey.m2.state !== 'waiting',
         status: byKey.m2.state === 'waiting' ? 'none' : (byKey.m2.state === 'done' ? 'done' : 'scheduled'),
-        dateText: byKey.m2.scheduledLabel || (byKey.m2.state !== 'waiting' ? byKey.m2.dateDisplay : '—'), owner: byKey.m2.owner },
+        dateText: byKey.m2.scheduledLabel || (byKey.m2.state !== 'waiting' ? byKey.m2.dateDisplay : '—'), owner: byKey.m2.owner,
+        timeText: byKey.m2.scheduledTime || '' }, // §미팅 시각 라운드
       { key:'m2Done', label:'2차 미팅 완료', done: byKey.m2.state === 'done',
         status: byKey.m2.state === 'done' ? 'done' : 'none',
         dateText: byKey.m2.state === 'done' ? byKey.m2.dateDisplay : '—', owner: byKey.m2.owner },
@@ -21204,6 +21220,8 @@ window.SHIN2_CRM_APP_INIT = function(){
     const stageCorrections = getStageCorrections(co);
     return baseRows.map(r=>{
       const c = stageCorrections[r.key];
+      // §미팅 시각 라운드 — 이 행에 저장된 정정이 시각을 갖고 있으면 그 값이 최우선이다.
+      if(c && Object.prototype.hasOwnProperty.call(c, 'timeText')) r = Object.assign({}, r, { timeText: c.timeText || '' });
       const correctable = AGREEMENT_CORRECTABLE_ROW_KEYS.indexOf(r.key) !== -1;
       if(!c) return Object.assign({}, r, { corrected:false, correctable });
       return Object.assign({}, r, {
@@ -21272,8 +21290,10 @@ window.SHIN2_CRM_APP_INIT = function(){
     const hasDate = !!(r.dateText && r.dateText !== '—');
     const labelHtml = showLabel ? `<span class="agr-date-chip-sublabel">${esc(sr.label)}</span>` : '';
     if(hasDate){
+      // §미팅 시각 라운드 — 1차/2차 미팅 예정 행만 시각을 함께 보여준다(저장값은 분리 보관).
+      const shown = fmtScheduleWithTime(r.dateText, r.timeText);
       return `<button type="button" class="agr-date-chip is-filled" data-agr-date-key="${esc(r.key)}" data-agr-date-label="${esc(sr.label)}">
-        ${labelHtml}<span class="agr-date-chip-value">${esc(r.dateText)}</span><span class="agr-date-chip-edit">수정</span>
+        ${labelHtml}<span class="agr-date-chip-value">${esc(shown)}</span><span class="agr-date-chip-edit">수정</span>
       </button>`;
     }
     return `<button type="button" class="agr-date-chip is-empty" data-agr-date-key="${esc(r.key)}" data-agr-date-label="${esc(sr.label)}">
@@ -21381,6 +21401,14 @@ window.SHIN2_CRM_APP_INIT = function(){
   }
   // §요청 — 상태 선택 UI는 없앴지만 "완료" 판정은 여전히 자동으로 계산해야 한다. 기존
   // dateState()(§16689)와 정확히 같은 규칙: 날짜가 오늘 이하면 완료, 미래면 예정.
+  // §미팅 시각 라운드(신규) — 날짜 라벨과 시각을 화면에 함께 보일 때만 합쳐서 문자열을
+  // 만든다. 저장값은 끝까지 분리해서 둔다(위 withScheduleOverride 주석 참고).
+  function fmtScheduleWithTime(label, time){
+    const d = String(label || '').trim();
+    const t = String(time || '').trim();
+    if(!d) return t || '';
+    return t ? (d + ' ' + t) : d;
+  }
   function stageDateAutoStatus(dateText){
     const p = parsePartnerDateLabel(dateText);
     if(!p) return 'none';
@@ -21415,6 +21443,10 @@ window.SHIN2_CRM_APP_INIT = function(){
     // 바꿔야 한다(parsePartnerDateLabel이 만드는 표시 포맷의 역변환, 다른 곳에 없어 여기서만).
     const m = /^(\d{4})\.(\d{2})\.(\d{2})/.exec(row.dateText || '');
     const currentDateVal = m ? `${m[1]}-${m[2]}-${m[3]}` : '';
+    // §미팅 시각 라운드(신규) — 1차/2차 미팅 "예정"만 시각을 받는다(필수). 질문서 발송/회신,
+    // 미팅 완료, MOU 체결 완료는 종일 기준이라 시각 칸을 만들지 않는다(§기존 화면 유지).
+    const wantsTime = (stageKey === 'm1Scheduled' || stageKey === 'm2Scheduled');
+    const currentTimeVal = /^\d{2}:\d{2}$/.test(String(row.timeText || '')) ? row.timeText : '';
     const wrap = document.createElement('div');
     wrap.innerHTML = `
       <div class="pi-overlay" id="stageDateModalOverlay" style="z-index:10005;">
@@ -21425,6 +21457,7 @@ window.SHIN2_CRM_APP_INIT = function(){
           </div>
           <div class="pi-body">
             <div class="co-form-field"><label>날짜</label><input type="date" id="stageDateInput" value="${esc(currentDateVal)}" /></div>
+            ${wantsTime ? `<div class="co-form-field"><label>시각</label><input type="time" id="stageTimeInput" value="${esc(currentTimeVal)}" required /></div>` : ''}
             <div id="stageDateMsg" class="mail-settings-help" style="color:#B3261E; display:none;"></div>
           </div>
           <div class="pi-actions" style="justify-content:space-between;">
@@ -21445,11 +21478,17 @@ window.SHIN2_CRM_APP_INIT = function(){
       const dateVal = document.getElementById('stageDateInput').value;
       const msgEl = document.getElementById('stageDateMsg');
       if(!dateVal){ msgEl.textContent = '날짜를 선택해주세요.'; msgEl.style.display = 'block'; return; }
+      // §미팅 시각 라운드 — 1차/2차 미팅 예정은 시각도 필수다.
+      const timeEl = document.getElementById('stageTimeInput');
+      const timeVal = timeEl ? String(timeEl.value || '').trim() : '';
+      if(wantsTime && !timeVal){ msgEl.textContent = '시각을 입력해주세요.'; msgEl.style.display = 'block'; timeEl.focus(); return; }
       const dateText = dateVal.replace(/-/g,'.');
       const status = STAGE_DATE_FORCED_STATUS[stageKey] || stageDateAutoStatus(dateText);
       // 담당자(owner)는 이 팝업에서 아예 다루지 않는다 — 기존 값을 그대로 보존한다(§요청
       // "필드 자체를 건드리지 마" 원칙).
-      commitStageDateSave(companyId, stageKey, { status, dateText, owner: row.owner || null }, { reason: '날짜 수정' });
+      // §미팅 시각 라운드 — 시각도 정정 레이어에 같이 저장한다(newMou 원본은 그대로 둔다 —
+      // partner-dashboard 동기화가 덮어쓸 수 있는 외부 원본이라는 기존 원칙 유지).
+      commitStageDateSave(companyId, stageKey, { status, dateText, timeText: wantsTime ? timeVal : '', owner: row.owner || null }, { reason: wantsTime ? '날짜·시각 수정' : '날짜 수정' });
     });
     const deleteBtn = document.getElementById('stageDateDeleteBtn');
     if(deleteBtn) deleteBtn.addEventListener('click', ()=>{
