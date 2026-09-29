@@ -3358,14 +3358,38 @@ body.map-modal-lock{ overflow:hidden; }
 .pdf-confirm-sub{ color:var(--text-muted); font-size:11.5px; }
 /* 미리보기 표 안에서 확인 검색으로 찾은 행을 강조 — data-co-id는 pdfExportBuildDocHtml이
    행마다 이미 심어둔 속성(시각적으로는 원래 아무 효과 없음)을 그대로 셀렉터로 쓴다. */
-tr[data-co-id].pdf-preview-row-hit{ background:#FFF3C4 !important; box-shadow:inset 0 0 0 1.5px #B28900; }
-tr[data-co-id].pdf-preview-row-hit td{ font-weight:600; }
+/* §MOU 목록 PDF 리디자인 라운드 — 새 문서 템플릿은 얼룩무늬(zebra) 배경을 tr이 아니라
+   td에 칠하므로, 강조도 td 기준으로 바꿔야 짝수 행에서 가려지지 않는다. 기능(확인 검색이
+   이 클래스를 붙였다 떼는 동작)은 그대로고 보이는 방식만 맞춘 것. */
+tr[data-co-id].pdf-preview-row-hit td{
+  background:#FFF3C4 !important; font-weight:600;
+  border-top:1.5px solid #B28900 !important; border-bottom:1.5px solid #B28900 !important;
+}
+/* ==========================================================================
+   §MOU 체결 업체 목록 PDF 전면 리디자인 라운드(신규) — 미리보기 = 실제 PDF.
+   문서 본체의 시각 규칙(로고/제목/요약 바/표/푸터)은 전부 JS의 pdfExportDocCss()가
+   만드는 "한 벌의 CSS 문자열"에 들어 있고, 미리보기와 인쇄창이 그 문자열을 그대로
+   공유한다 — 여기 남는 건 "미리보기를 종이처럼 보이게 하는 액자" 스타일뿐이다.
+   (아래 .pdf-doc-* 는 예전 단순표 미리보기용 규칙이었는데, 새 템플릿이 .pdf-page /
+   .pdf-tbl 등 새 클래스를 쓰므로 더 이상 어디서도 매칭되지 않는다. 다른 화면이
+   참조할 가능성을 배제할 수 없어 지우지 않고 그대로 둔다.) */
 .pdf-doc-title{ font-size:15px; font-weight:700; color:var(--navy); margin-bottom:4px; }
 .pdf-doc-meta{ display:flex; gap:12px; flex-wrap:wrap; font-size:11px; color:var(--text-muted); margin-bottom:8px; }
 table.pdf-doc-table{ width:100%; border-collapse:collapse; font-size:11px; }
 table.pdf-doc-table th, table.pdf-doc-table td{ border:1px solid var(--line); padding:4px 6px; text-align:left; word-break:break-all; vertical-align:top; }
 table.pdf-doc-table thead{ background:var(--bg); }
 .pdf-doc-empty{ text-align:center; color:var(--text-muted); }
+/* ---- A4 미리보기 액자(§요청 8) — 바깥은 연한 회색, 종이는 흰색 + 아주 약한 그림자 ---- */
+.pdf-preview-wrap{ background:#EDF0F5; padding:0; max-height:54vh; }
+.pdfv-note{
+  position:sticky; top:0; z-index:2; background:#EDF0F5;
+  font-size:11px; color:var(--text-muted); line-height:1.5;
+  padding:10px 12px 8px; border-bottom:1px solid #DFE4EB;
+}
+.pdfv-canvas{ position:relative; width:100%; padding:14px 0 18px; }
+.pdfv-scaler{ position:absolute; top:14px; left:0; transform-origin:top left; }
+.pdfv-pages{ display:flex; flex-direction:column; align-items:flex-start; gap:18px; }
+.pdfv-pages .pdf-page{ box-shadow:0 2px 12px rgba(15,23,42,.18); border:1px solid #DDE3EB; }
 .mail-tpl-preview-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin:6px 0; flex-wrap:wrap; }
 .mail-tpl-preview-row .co-text-action{ white-space:nowrap; }
 .mail-preview-box{ background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:10px 12px; margin-bottom:10px; }
@@ -33466,38 +33490,378 @@ window.SHIN2_CRM_APP_INIT = function(){
       return pdfMatchesSearch(co, pdfExportState.search);
     });
   }
-  function pdfExportBuildDocHtml(){
-    const type = PDF_EXPORT_TYPES.find(t=> t.key === pdfExportState.type);
-    const rows = pdfExportFilteredCompanies();
+  /* ==========================================================================
+     §MOU 체결 업체 목록 PDF 전면 리디자인 라운드(신규)
+
+     [범위] 이 라운드는 "PDF 문서를 어떻게 그리느냐"만 바꾼다. 출력 대상 선정
+     (pdfExportFilteredCompanies / pdfExportEligibleForType / D.isInDistributionList /
+     getMouSignedCompanies), 필드값 조회(pdfExportResolveField), 검색 매칭
+     (pdfMatchesSearch), 지역 해석(resolveCompanyRegionList)은 한 글자도 건드리지
+     않았다 — 전부 기존 함수를 그대로 호출한다. Firebase/localStorage 읽기·쓰기,
+     Excel/CSV, MOU 상태 판정, 업체코드 로직과도 접점이 없다(조회 전용).
+
+     [미리보기 = PDF] 문서 CSS는 pdfExportDocCss() 한 곳에서만 만들고, 미리보기
+     영역과 인쇄창(window.print)이 같은 문자열을 그대로 쓴다. 문서 HTML도
+     pdfExportPageHtml() 하나만 쓴다 — 템플릿이 두 벌이 될 수 없는 구조라 디자인을
+     고치면 양쪽이 동시에 바뀐다.
+
+     [페이지 나눔] 브라우저 자동 페이지 나눔에 맡기면 미리보기에서 페이지 경계를
+     그대로 보여줄 수 없어서, 화면 밖 측정용 노드에 실제 PDF와 같은 CSS로 표를 한 번
+     렌더해 행 높이를 재고(pdfExportMeasure) 페이지를 직접 나눈다. 그래서 미리보기의
+     페이지 구성과 인쇄 결과가 같은 행에서 끊어지고, 행이 중간에서 잘리지 않는다.
+     1페이지는 로고+제목+요약 바, 2페이지부터는 간소화 헤더가 반복되고 표 머리글은
+     모든 페이지에 다시 나온다.
+     ========================================================================== */
+  // A4 실측(mm). 인쇄는 @page margin:0 + .pdf-page 내부 padding으로 여백을 잡는다 —
+  // 미리보기의 종이 박스와 인쇄 페이지가 완전히 같은 기하를 쓰게 하기 위해서다.
+  const PDF_PAGE_GEO = {
+    portrait:  { w:210, h:297, mt:13, mr:12, mb:11, ml:12 },
+    landscape: { w:297, h:210, mt:11, mr:11, mb:9,  ml:11 }
+  };
+  // 어떤 출력 유형이든 절대 빠지지 않는 컬럼(§요청 5/6의 공통 축).
+  const PDF_EXPORT_REQUIRED_COLUMNS = ['no','region','name','repName','address','phone'];
+  // 컬럼 폭 가중치(§요청 12/13) — 주소가 가장 넓고 번호/지역은 좁게. 실제 폭은
+  // "표시되는 컬럼들의 가중치 합"으로 정규화해서 %로 넣으므로, 값이 전부 비어 아래
+  // pdfExportVisibleColumns가 빼버린 컬럼이 있어도 남은 컬럼이 지면을 꽉 채운다.
+  const PDF_EXPORT_COLUMN_WEIGHT = {
+    no:0.40, region:0.74, name:2.00, repName:1.00, bizRegNo:1.18, address:3.70,
+    phone:1.26, fax:1.18, email:1.85, mouDate:0.98, capital:1.00, note:1.45
+  };
+  const PDF_EXPORT_COLUMN_CLASS = {
+    no:'pdf-c-no', region:'pdf-c-region', name:'pdf-c-name', repName:'pdf-c-rep',
+    bizRegNo:'pdf-c-tnum', address:'pdf-c-addr', phone:'pdf-c-tnum', fax:'pdf-c-tnum',
+    email:'pdf-c-email', mouDate:'pdf-c-tnum', capital:'pdf-c-tnum', note:'pdf-c-note'
+  };
+  // NETFORM 로고: 상단 헤더(.gnav-brand .brand-logo)에 이미 들어 있는 실제 로고
+  // 이미지를 런타임에 그대로 읽어 쓴다(같은 data URI라 인쇄창에서도 그대로 뜬다).
+  // 글자로 재현하지 않는다(§요청 11). 화면 헤더 쪽은 흰색 반전 filter가 걸려 있지만
+  // 그건 그 요소의 CSS일 뿐이고 원본 이미지는 진한 남색이라 흰 종이에 그대로 쓴다.
+  function pdfExportNetformLogoSrc(){
+    const img = document.querySelector('.gnav-brand .brand-logo');
+    return (img && img.src) ? img.src : '';
+  }
+  // POUR(POUR METHOD OF CONSTRUCTION) 로고: 이 저장소에는 아직 로고 이미지 파일이
+  // 없다(전체 검색 결과 이미지 자산은 위 NETFORM 로고 하나뿐). 글자로 임의 재현하는
+  // 것은 §요청 11에서 명시적으로 금지했으므로, 실제 파일을 받기 전까지는 오른쪽 위
+  // 자리만 같은 높이로 비워 둔다(레이아웃은 이미 완성된 상태 — 아래 상수에 data URI
+  // 또는 파일 경로만 넣으면 미리보기와 PDF에 동시에 반영된다).
+  const PDF_EXPORT_POUR_LOGO_SRC = '';
+  // 실제 출력에 쓸 컬럼 — 필수 컬럼은 항상 남기고, 선택 컬럼은 이번 출력 대상
+  // 전체에서 값이 하나도 없을 때(전부 '-')만 뺀다(§요청 6 "'-'만 반복해서 표를
+  // 지저분하게 만들지 말 것"). 이건 이 문서 한 장의 표시 여부일 뿐이고 co 레코드의
+  // 필드는 읽기만 한다 — 어떤 데이터도 지우거나 바꾸지 않는다.
+  function pdfExportVisibleColumns(type, companies){
+    return type.columns.filter(c=>{
+      if(PDF_EXPORT_REQUIRED_COLUMNS.includes(c)) return true;
+      return companies.some((co,i)=> pdfExportResolveField(co, c, i) !== '-');
+    });
+  }
+  // 지역 라벨(§요청 3) — 선택 없으면 "전체 지역", 복수 선택이면 "서울 · 경기".
+  // 칩 클릭 순서가 아니라 COMPANY_REGIONS 순서로 정렬해 항상 같은 표기가 나오게 한다.
+  function pdfExportRegionLabel(){
+    if(!pdfExportState.regions.size) return '전체 지역';
+    return COMPANY_REGIONS.filter(r=> pdfExportState.regions.has(r)).join(' · ');
+  }
+  function pdfExportRegionFileLabel(){
+    if(!pdfExportState.regions.size) return '전체지역';
+    return COMPANY_REGIONS.filter(r=> pdfExportState.regions.has(r)).join('·');
+  }
+  function pdfExportBuildDocContext(){
+    const type = PDF_EXPORT_TYPES.find(t=> t.key === pdfExportState.type) || PDF_EXPORT_TYPES[0];
+    // 출력 대상은 기존 함수 그대로 — 지역/검색/출력유형이 이미 전부 반영돼 있다
+    // (§요청 4/16/17: 표에 들어가는 행과 "총 업체 수"가 같은 배열에서 나온다).
+    const companies = pdfExportFilteredCompanies();
     const now = new Date();
-    const genLabel = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-    const regionLabel = pdfExportState.regions.size ? Array.from(pdfExportState.regions).join(', ') : '전체 지역';
-    const theadHtml = `<tr>${type.columns.map(c=> `<th>${esc(PDF_EXPORT_COLUMN_LABELS[c])}</th>`).join('')}</tr>`;
-    // data-co-id는 시각적으로는 아무 것도 안 바꾸는 속성이다 — 오른쪽 "업체 포함 여부
-    // 확인 검색"이 미리보기 표에서 해당 행을 scrollIntoView로 찾아가기 위한 용도로만
-    // 쓴다. 이 html 문자열은 미리보기 화면과 실제 PDF 인쇄창(doPdfExportSave) 양쪽에
-    // 그대로 재사용되므로, 인쇄 결과에는 어차피 눈에 보이지 않는 속성 하나가 늘 뿐 실제
-    // 인쇄 내용(열/값)은 전혀 달라지지 않는다.
-    const tbodyHtml = rows.map((co,i)=> `<tr data-co-id="${esc(co.id)}">${type.columns.map(c=> `<td>${esc(pdfExportResolveField(co,c,i))}</td>`).join('')}</tr>`).join('')
-      || `<tr><td colspan="${type.columns.length}" class="pdf-doc-empty">출력 대상 업체가 없습니다.</td></tr>`;
+    const p2 = (n)=> String(n).padStart(2,'0');
     return {
-      type, rows,
-      html: `
-        <div class="pdf-doc">
-          <div class="pdf-doc-header">
-            <div class="pdf-doc-title">NETFORM 고객 목록</div>
-            <div class="pdf-doc-meta">
-              <span>출력 유형: ${esc(type.label)}</span>
-              <span>지역: ${esc(regionLabel)}</span>
-              <span>생성 일시: ${esc(genLabel)}</span>
-              <span>총 업체 수: ${rows.length}건</span>
-            </div>
+      type,
+      landscape: !!type.landscape,
+      geo: type.landscape ? PDF_PAGE_GEO.landscape : PDF_PAGE_GEO.portrait,
+      companies,
+      columns: pdfExportVisibleColumns(type, companies),
+      title: 'MOU 체결 업체 목록',
+      regionLabel: pdfExportRegionLabel(),
+      genLabel: `${now.getFullYear()}-${p2(now.getMonth()+1)}-${p2(now.getDate())} ${p2(now.getHours())}:${p2(now.getMinutes())}`,
+      dateStamp: `${now.getFullYear()}${p2(now.getMonth()+1)}${p2(now.getDate())}`,
+      netformLogo: pdfExportNetformLogoSrc(),
+      pourLogo: PDF_EXPORT_POUR_LOGO_SRC
+    };
+  }
+  /* ---- 문서 CSS (미리보기·인쇄창 공용 단일 소스) ---- */
+  function pdfExportDocCss(ctx){
+    const g = ctx.geo, ls = ctx.landscape;
+    const fsBody = ls ? 8.6 : 9.9;      // 표 본문
+    const fsHead = ls ? 9.0 : 10.2;     // 표 머리글
+    const padY = ls ? 1.45 : 1.95;      // 셀 상하 여백(mm)
+    const padX = ls ? 1.35 : 1.90;      // 셀 좌우 여백(mm)
+    return `
+      .pdf-doc-root{
+        --pdf-navy:#0B2E63; --pdf-navy-deep:#082446; --pdf-navy-soft:#E9EFF8;
+        --pdf-orange:#DC6803; --pdf-orange-soft:#FDF3E7;
+        --pdf-line:#CBD5E1; --pdf-line-soft:#E6EBF2; --pdf-zebra:#F7F9FC;
+        --pdf-text:#16233A; --pdf-muted:#5B6B83;
+        font-family:'Pretendard','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic','맑은 고딕',sans-serif;
+        color:var(--pdf-text); -webkit-font-smoothing:antialiased;
+      }
+      .pdf-doc-root *{ box-sizing:border-box; }
+      .pdf-page{
+        position:relative; width:${g.w}mm; height:${g.h}mm;
+        padding:${g.mt}mm ${g.mr}mm ${g.mb}mm ${g.ml}mm;
+        background:#fff; display:flex; flex-direction:column; overflow:hidden;
+      }
+      .pdf-page-body{ flex:1 1 auto; min-height:0; }
+      /* 1페이지 헤더 — 좌 NETFORM / 우 POUR 로고 */
+      .pdf-brandbar{ display:flex; align-items:center; justify-content:space-between; gap:8mm; min-height:9mm; }
+      .pdf-logo-netform{ height:8.4mm; width:auto; display:block; }
+      .pdf-logo-pour{ height:8.4mm; width:auto; display:block; }
+      .pdf-logo-slot{ min-height:8.4mm; display:flex; align-items:center; }
+      .pdf-title-block{ margin-top:5mm; }
+      .pdf-title{ font-size:${ls ? 18 : 19}px; font-weight:800; letter-spacing:-.015em; color:var(--pdf-navy); line-height:1.2; }
+      .pdf-title-rule{ position:relative; height:2.2px; background:var(--pdf-navy); margin-top:2.6mm; }
+      .pdf-title-rule::after{ content:''; position:absolute; left:0; top:0; width:24mm; height:2.2px; background:var(--pdf-orange); }
+      /* 요약 바 — 지역 / 생성 일시 / 총 업체 수 */
+      .pdf-summary{
+        margin-top:3.4mm; display:flex; flex-wrap:wrap; align-items:baseline; gap:1.4mm 7mm;
+        background:var(--pdf-navy-soft); border:1px solid #DAE3F1; border-left:2.4mm solid var(--pdf-orange);
+        border-radius:1.2mm; padding:2.3mm 3.4mm; font-size:${ls ? 9.2 : 10}px;
+      }
+      .pdf-summary-item{ display:flex; align-items:baseline; gap:1.8mm; }
+      .pdf-summary-k{ color:var(--pdf-muted); font-weight:600; }
+      .pdf-summary-v{ color:var(--pdf-navy-deep); font-weight:700; }
+      .pdf-summary-v.is-count{ color:var(--pdf-orange); font-weight:800; }
+      /* 2페이지 이후 간소화 헤더 */
+      .pdf-conthead{ display:flex; align-items:center; justify-content:space-between; gap:6mm; padding-bottom:2mm; border-bottom:1.8px solid var(--pdf-navy); }
+      .pdf-conthead-left{ display:flex; align-items:center; gap:3mm; min-width:0; }
+      .pdf-conthead-logo{ height:5.4mm; width:auto; display:block; }
+      .pdf-conthead-title{ font-size:${ls ? 10 : 11}px; font-weight:700; color:var(--pdf-navy); white-space:nowrap; }
+      .pdf-conthead-meta{ font-size:${ls ? 8.4 : 9}px; color:var(--pdf-muted); white-space:nowrap; }
+      /* 표 */
+      .pdf-tblwrap{ margin-top:3.6mm; }
+      table.pdf-tbl{ width:100%; border-collapse:collapse; table-layout:fixed; font-size:${fsBody}px; }
+      table.pdf-tbl thead th{
+        background:var(--pdf-navy); color:#fff; font-weight:700; font-size:${fsHead}px; letter-spacing:.01em;
+        padding:${padY + 0.35}mm ${padX}mm; text-align:left; white-space:nowrap;
+        border-right:1px solid rgba(255,255,255,.22);
+        -webkit-print-color-adjust:exact; print-color-adjust:exact;
+      }
+      table.pdf-tbl thead th:last-child{ border-right:none; }
+      table.pdf-tbl tbody td{
+        padding:${padY}mm ${padX}mm; border-bottom:1px solid var(--pdf-line-soft);
+        vertical-align:top; line-height:1.4; word-break:break-word; overflow-wrap:anywhere;
+      }
+      table.pdf-tbl tbody tr:nth-child(even) td{
+        background:var(--pdf-zebra);
+        -webkit-print-color-adjust:exact; print-color-adjust:exact;
+      }
+      table.pdf-tbl tbody tr:last-child td{ border-bottom:1.4px solid var(--pdf-line); }
+      .pdf-c-no{ text-align:center; color:var(--pdf-muted); white-space:nowrap; font-variant-numeric:tabular-nums; }
+      .pdf-c-region{ white-space:nowrap; color:var(--pdf-muted); }
+      .pdf-c-name{ font-weight:700; color:var(--pdf-navy-deep); }
+      .pdf-c-rep{ white-space:nowrap; }
+      .pdf-c-tnum{ white-space:nowrap; font-variant-numeric:tabular-nums; }
+      .pdf-c-email{ overflow-wrap:anywhere; }
+      .pdf-c-addr{ }
+      .pdf-c-note{ color:var(--pdf-muted); }
+      .pdf-empty{ text-align:center; color:var(--pdf-muted); padding:12mm 0 !important; font-size:${fsHead}px; }
+      /* 푸터 — 얇은 남색 라인 + NETFORM 워드마크 + 페이지 번호 */
+      .pdf-page-foot{
+        flex:0 0 auto; margin-top:3mm; padding-top:1.9mm; border-top:1.4px solid var(--pdf-navy);
+        display:flex; align-items:center; justify-content:space-between; gap:6mm;
+        font-size:${ls ? 8.2 : 8.8}px; color:var(--pdf-muted);
+      }
+      .pdf-foot-brand{ display:flex; align-items:center; gap:2.2mm; min-width:0; }
+      .pdf-foot-logo{ height:3.9mm; width:auto; display:block; opacity:.92; }
+      .pdf-foot-page{ font-weight:700; color:var(--pdf-navy); white-space:nowrap; }
+    `;
+  }
+  // 인쇄창에만 추가로 필요한 규칙 — 페이지 기하는 위 공용 CSS와 완전히 같고, 여기서는
+  // "한 .pdf-page = 한 종이"라는 것만 알려준다(@page margin:0 + 페이지 내부 padding).
+  function pdfExportPrintCss(ctx){
+    return `
+      @page{ size:A4 ${ctx.landscape ? 'landscape' : 'portrait'}; margin:0; }
+      html,body{ margin:0; padding:0; background:#fff; }
+      .pdf-page{ break-after:page; page-break-after:always; }
+      .pdf-page:last-child{ break-after:auto; page-break-after:auto; }
+    `;
+  }
+  /* ---- 문서 조각 ---- */
+  function pdfExportFirstHeaderHtml(ctx){
+    const netform = ctx.netformLogo
+      ? `<img class="pdf-logo-netform" src="${esc(ctx.netformLogo)}" alt="NETFORM" />` : '';
+    const pour = ctx.pourLogo
+      ? `<img class="pdf-logo-pour" src="${esc(ctx.pourLogo)}" alt="POUR METHOD OF CONSTRUCTION" />` : '';
+    return `
+      <div class="pdf-brandbar">
+        <div class="pdf-logo-slot">${netform}</div>
+        <div class="pdf-logo-slot">${pour}</div>
+      </div>
+      <div class="pdf-title-block">
+        <div class="pdf-title">${esc(ctx.title)}</div>
+        <div class="pdf-title-rule"></div>
+      </div>
+      <div class="pdf-summary">
+        <div class="pdf-summary-item"><span class="pdf-summary-k">지역</span><span class="pdf-summary-v">${esc(ctx.regionLabel)}</span></div>
+        <div class="pdf-summary-item"><span class="pdf-summary-k">생성 일시</span><span class="pdf-summary-v">${esc(ctx.genLabel)}</span></div>
+        <div class="pdf-summary-item"><span class="pdf-summary-k">총 업체 수</span><span class="pdf-summary-v is-count">${ctx.companies.length}건</span></div>
+      </div>`;
+  }
+  function pdfExportContHeaderHtml(ctx){
+    const netform = ctx.netformLogo
+      ? `<img class="pdf-conthead-logo" src="${esc(ctx.netformLogo)}" alt="NETFORM" />` : '';
+    return `
+      <div class="pdf-conthead">
+        <div class="pdf-conthead-left">${netform}<span class="pdf-conthead-title">${esc(ctx.title)}</span></div>
+        <div class="pdf-conthead-meta">${esc(ctx.regionLabel)} · ${ctx.companies.length}건</div>
+      </div>`;
+  }
+  function pdfExportFooterHtml(ctx, pageNo, pageTotal){
+    const netform = ctx.netformLogo
+      ? `<img class="pdf-foot-logo" src="${esc(ctx.netformLogo)}" alt="NETFORM" />` : '<span>NETFORM</span>';
+    return `
+      <div class="pdf-page-foot">
+        <div class="pdf-foot-brand">${netform}</div>
+        <div class="pdf-foot-page">페이지 ${pageNo} / ${pageTotal}</div>
+      </div>`;
+  }
+  function pdfExportColgroupHtml(ctx){
+    const total = ctx.columns.reduce((a,c)=> a + (PDF_EXPORT_COLUMN_WEIGHT[c] || 1), 0) || 1;
+    return `<colgroup>${ctx.columns.map(c=>
+      `<col style="width:${((PDF_EXPORT_COLUMN_WEIGHT[c] || 1) / total * 100).toFixed(3)}%" />`).join('')}</colgroup>`;
+  }
+  function pdfExportTheadHtml(ctx){
+    return `<tr>${ctx.columns.map(c=> `<th>${esc(PDF_EXPORT_COLUMN_LABELS[c])}</th>`).join('')}</tr>`;
+  }
+  // data-co-id는 시각적으로 아무것도 바꾸지 않는 속성 — 오른쪽 "업체 포함 여부 확인
+  // 검색"이 미리보기 표에서 해당 행을 찾아가는 용도로만 쓴다(기존 동작 유지).
+  function pdfExportRowHtml(ctx, co, i){
+    return `<tr data-co-id="${esc(co.id)}">${ctx.columns.map(c=>
+      `<td class="${PDF_EXPORT_COLUMN_CLASS[c] || ''}">${esc(pdfExportResolveField(co, c, i))}</td>`).join('')}</tr>`;
+  }
+  function pdfExportPageHtml(ctx, rowsHtml, idx, total){
+    return `
+      <section class="pdf-page">
+        <div class="pdf-page-body">
+          ${idx === 0 ? pdfExportFirstHeaderHtml(ctx) : pdfExportContHeaderHtml(ctx)}
+          <div class="pdf-tblwrap">
+            <table class="pdf-tbl">
+              ${pdfExportColgroupHtml(ctx)}
+              <thead>${pdfExportTheadHtml(ctx)}</thead>
+              <tbody>${rowsHtml}</tbody>
+            </table>
           </div>
-          <table class="pdf-doc-table">
-            <thead>${theadHtml}</thead>
-            <tbody>${tbodyHtml}</tbody>
-          </table>
-        </div>`
+        </div>
+        ${pdfExportFooterHtml(ctx, idx + 1, total)}
+      </section>`;
+  }
+  /* ---- 페이지 나눔(측정 기반) ---- */
+  function pdfExportPxPerMm(){
+    const probe = document.createElement('div');
+    probe.style.cssText = 'position:absolute;left:-20000px;top:0;visibility:hidden;width:1mm;height:100mm;';
+    document.body.appendChild(probe);
+    const px = probe.getBoundingClientRect().height / 100;
+    probe.remove();
+    return px > 0 ? px : 3.7795275591;
+  }
+  // 화면 밖에 실제 PDF와 같은 CSS로 한 번 렌더해서 행/헤더/푸터의 실제 높이를 잰다.
+  // 실패하면 null을 반환하고, 호출부가 보수적인 고정 행수로 폴백한다.
+  function pdfExportMeasure(ctx, rowsHtml){
+    let host = null;
+    try{
+      host = document.createElement('div');
+      host.setAttribute('aria-hidden', 'true');
+      host.style.cssText = 'position:fixed;left:-20000px;top:0;visibility:hidden;pointer-events:none;z-index:-1;';
+      host.innerHTML = `<style>${pdfExportDocCss(ctx)}</style>
+        <div class="pdf-doc-root">
+          <div class="pdf-page" style="height:auto;">
+            <div class="pdf-page-body">
+              <div data-m="h1">${pdfExportFirstHeaderHtml(ctx)}</div>
+              <div data-m="h2">${pdfExportContHeaderHtml(ctx)}</div>
+              <div class="pdf-tblwrap" data-m="tbl">
+                <table class="pdf-tbl">
+                  ${pdfExportColgroupHtml(ctx)}
+                  <thead data-m="thead">${pdfExportTheadHtml(ctx)}</thead>
+                  <tbody>${rowsHtml.join('')}</tbody>
+                </table>
+              </div>
+            </div>
+            <div data-m="foot">${pdfExportFooterHtml(ctx, 1, 1)}</div>
+          </div>
+        </div>`;
+      document.body.appendChild(host);
+      const mm = pdfExportPxPerMm();
+      const hOf = (sel)=>{
+        const el = host.querySelector(sel);
+        return el ? el.getBoundingClientRect().height : 0;
+      };
+      const tblEl = host.querySelector('[data-m="tbl"]');
+      const footEl = host.querySelector('[data-m="foot"] .pdf-page-foot');
+      const tblMt = tblEl ? (parseFloat(getComputedStyle(tblEl).marginTop) || 0) : 0;
+      const footMt = footEl ? (parseFloat(getComputedStyle(footEl).marginTop) || 0) : 0;
+      const innerH = (ctx.geo.h - ctx.geo.mt - ctx.geo.mb) * mm;
+      const footH = hOf('[data-m="foot"] .pdf-page-foot') + footMt;
+      const theadH = hOf('[data-m="thead"]');
+      const rowHeights = Array.from(host.querySelectorAll('tbody tr')).map(tr=> tr.getBoundingClientRect().height);
+      const fixed = tblMt + theadH + footH + (1.5 * mm); // 1.5mm 안전 여유
+      const result = {
+        availFirst: innerH - hOf('[data-m="h1"]') - fixed,
+        availCont:  innerH - hOf('[data-m="h2"]') - fixed,
+        rowHeights
+      };
+      if(!(result.availFirst > 0) || !(result.availCont > 0) || !rowHeights.length) return null;
+      return result;
+    }catch(err){
+      console.warn('[PDF] 페이지 높이 측정 실패 — 고정 행수로 대체합니다.', err);
+      return null;
+    }finally{
+      if(host && host.parentNode) host.parentNode.removeChild(host);
+    }
+  }
+  function pdfExportPaginate(ctx){
+    if(!ctx.companies.length){
+      return [`<tr><td class="pdf-empty" colspan="${ctx.columns.length}">출력 대상 업체가 없습니다.</td></tr>`];
+    }
+    const rowsHtml = ctx.companies.map((co, i)=> pdfExportRowHtml(ctx, co, i));
+    const m = pdfExportMeasure(ctx, rowsHtml);
+    const pages = [];
+    if(!m){
+      // 폴백: 측정이 안 되는 환경(모달이 아직 레이아웃 전이거나 예외)에서는 보수적인
+      // 고정 행수로 나눈다 — 행이 잘리지 않는 쪽으로 넉넉하게 잡는다.
+      const first = ctx.landscape ? 17 : 21;
+      const cont = ctx.landscape ? 21 : 25;
+      let i = 0;
+      while(i < rowsHtml.length){
+        const take = pages.length === 0 ? first : cont;
+        pages.push(rowsHtml.slice(i, i + take).join(''));
+        i += take;
+      }
+      return pages;
+    }
+    let cur = [];
+    let avail = m.availFirst;
+    rowsHtml.forEach((html, i)=>{
+      const h = m.rowHeights[i] || 0;
+      if(cur.length && h > avail){
+        pages.push(cur.join(''));
+        cur = [];
+        avail = m.availCont;
+      }
+      cur.push(html);
+      avail -= h;
+    });
+    if(cur.length) pages.push(cur.join(''));
+    return pages;
+  }
+  // 미리보기와 인쇄가 공유하는 유일한 진입점 — 여기 반환값 말고 다른 경로로 문서를
+  // 만드는 코드는 없다(§요청 7 "같은 렌더링 함수 재사용").
+  function pdfExportBuildDocHtml(){
+    const ctx = pdfExportBuildDocContext();
+    const pages = pdfExportPaginate(ctx);
+    return {
+      ctx,
+      type: ctx.type,
+      rows: ctx.companies,
+      pageCount: pages.length,
+      html: pages.map((rowsHtml, i)=> pdfExportPageHtml(ctx, rowsHtml, i, pages.length)).join('')
     };
   }
   function pdfExportModalHtml(){
@@ -33561,13 +33925,38 @@ window.SHIN2_CRM_APP_INIT = function(){
     const el = document.getElementById('pdfExportCountVal');
     if(el) el.textContent = String(pdfExportFilteredCompanies().length);
   }
+  // §요청 7/18 — 미리보기는 "단순 HTML 표"가 아니라 실제 PDF와 같은 템플릿/같은 CSS로
+  // 그린 A4 종이를 그대로 보여준다. pdfExportBuildDocHtml()이 만든 페이지들을 그대로
+  // 넣고, 모달 폭에 맞게 transform: scale로 축소만 한다(내용은 손대지 않음).
   function renderPdfExportPreview(){
     const wrap = document.getElementById('pdfExportPreviewWrap');
     if(!wrap) return;
-    const { type, rows, html } = pdfExportBuildDocHtml();
+    const built = pdfExportBuildDocHtml();
+    const ctx = built.ctx;
+    const colLabels = ctx.columns.map(c=> esc(PDF_EXPORT_COLUMN_LABELS[c])).join(' · ');
     wrap.innerHTML = `
-      <div class="pdf-preview-note">포함되는 열: ${type.columns.map(c=> esc(PDF_EXPORT_COLUMN_LABELS[c])).join(', ')} · 여러 페이지가 되면 표 머리글이 자동으로 반복되고 브라우저 인쇄 옵션에서 페이지 번호를 켤 수 있습니다. 아래는 실제 PDF와 같은 내용/열 구성입니다(파일 저장·발송·업로드 없음).</div>
-      <div class="pdf-preview-frame">${html}</div>`;
+      <div class="pdfv-note">아래가 실제 저장되는 PDF와 같은 문서입니다 — 같은 템플릿·같은 CSS로 그리고 페이지 나눔도 동일합니다. 총 ${built.pageCount}페이지 · A4 ${ctx.landscape ? '가로' : '세로'} · 포함 열: ${colLabels} (파일 저장·발송·업로드 없음)</div>
+      <div class="pdfv-canvas" id="pdfExportPreviewCanvas">
+        <div class="pdfv-scaler" id="pdfExportPreviewScaler">
+          <style>${pdfExportDocCss(ctx)}</style>
+          <div class="pdf-doc-root pdfv-pages">${built.html}</div>
+        </div>
+      </div>`;
+    pdfExportFitPreview(ctx);
+  }
+  // 미리보기 축소 배율 — A4 폭이 모달 안에 들어가도록 줄이고, 줄어든 만큼 액자 높이를
+  // 다시 잡아준다(transform은 레이아웃 크기를 바꾸지 않기 때문).
+  function pdfExportFitPreview(ctx){
+    const canvas = document.getElementById('pdfExportPreviewCanvas');
+    const scaler = document.getElementById('pdfExportPreviewScaler');
+    if(!canvas || !scaler) return;
+    const pageW = ctx.geo.w * pdfExportPxPerMm();
+    const avail = canvas.clientWidth - 24;
+    if(!(pageW > 0) || !(avail > 0)) return;
+    const k = Math.min(1, avail / pageW);
+    scaler.style.transform = `scale(${k})`;
+    scaler.style.left = Math.max(12, (canvas.clientWidth - pageW * k) / 2) + 'px';
+    canvas.style.height = (scaler.scrollHeight * k + 32) + 'px';
   }
   // §요청 6~9/16/22~24 "업체 포함 여부 확인 검색" — 왼쪽 출력 조건(pdfExportState)과는
   // 별개인 확인 전용 상태. 절대 pdfExportState를 쓰지 않는다(=출력 대상을 바꾸지 않음).
@@ -33680,11 +34069,18 @@ window.SHIN2_CRM_APP_INIT = function(){
       // §요청 10 "왼쪽 조건을 바꾸면 오른쪽 미리보기도 즉시 갱신" — 타이핑 중 포커스가
       // 끊기지 않도록 이 입력만은 전체 재렌더(renderPdfExportModal) 대신 카운트/미리보기/
       // 확인검색결과만 그 자리에서 갱신한다.
+      // §MOU 목록 PDF 리디자인 라운드 — 미리보기가 "실제 PDF 페이지 전부"를 그리게
+      // 되면서 한 번 렌더에 200~300ms가 든다(227건 기준 실측). 매 키 입력마다 통째로
+      // 다시 그리면 타이핑이 끊기므로 미리보기 갱신만 180ms 디바운스한다 — 건수 표시와
+      // 확인검색 결과는 예전처럼 즉시 갱신하고, 검색 조건 자체(pdfExportState.search)도
+      // 예전과 똑같이 입력 즉시 반영된다(필터 로직은 손대지 않았다).
+      let pdfPreviewDebounce = null;
       searchInput.addEventListener('input', ()=>{
         pdfExportState.search = searchInput.value;
         refreshPdfExportCount();
-        renderPdfExportPreview();
         renderPdfExportConfirmResult();
+        if(pdfPreviewDebounce) clearTimeout(pdfPreviewDebounce);
+        pdfPreviewDebounce = setTimeout(()=>{ pdfPreviewDebounce = null; renderPdfExportPreview(); }, 180);
       });
     }
     document.getElementById('pdfExportSaveBtn').addEventListener('click', doPdfExportSave);
@@ -33711,44 +34107,30 @@ window.SHIN2_CRM_APP_INIT = function(){
   // Firebase 업로드 없음, 이메일 발송 없음). 시공사/외부용도 명칭일 뿐 실제 발송 기능이
   // 아니다(§4 "버튼 문구는 PDF 저장/다운로드로, 발송 버튼을 만들지 마라").
   function doPdfExportSave(){
-    const { type, html } = pdfExportBuildDocHtml();
-    const now = new Date();
-    const dateStr = now.getFullYear() + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0');
-    const filename = `NETFORM_고객목록_${type.fileLabel}_${dateStr}`;
+    // 미리보기와 완전히 같은 함수/같은 CSS를 쓴다 — 디자인을 바꾸면 둘이 동시에 바뀐다.
+    const { ctx, html } = pdfExportBuildDocHtml();
+    // §요청 15 — 파일명에만 내부/외부를 붙이고(내부용일 때만), 문서 본문에는 절대
+    // "내부용/외부발송용" 문구를 넣지 않는다(§요청 1/2/5).
+    const suffix = ctx.type.key === 'internal' ? '_내부' : '';
+    const filename = `NETFORM_MOU체결업체목록_${pdfExportRegionFileLabel()}_${ctx.dateStamp}${suffix}`;
     // §window.open에 noopener를 주면 명세상 반환값이 항상 null이 되어(연결 관계 자체를
     // 끊는 옵션이라) printWin.print()를 절대 호출할 수 없게 되는 실수를 했었다 — 이 창은
     // 같은 출처(same-origin)의 순수 표/문구만 담아 열기 때문에 opener 참조를 남겨도
-    // 안전하다(외부 사이트로 열리는 링크가 아님). noopener를 빼서 실제로 print()가
-    // 호출되게 고쳤다.
+    // 안전하다(외부 사이트로 열리는 링크가 아님).
     const printWin = window.open('', '_blank');
     if(!printWin){ alert('팝업이 차단되어 PDF 저장 창을 열 수 없습니다 — 브라우저의 팝업 차단을 해제한 뒤 다시 시도해주세요.'); return; }
-    // §팝업 겹침 순서 수정 라운드(신규) §요청 4 — 이름 없는 '_blank'라 클릭할 때마다 항상
-    // 새 창이 열린다(기존 창 재사용 없음, 파일 끝 스크립트의 큰 주석 참고). 사용자가 그
-    // 사이 다른 창으로 포커스를 옮기지 않았다면 이 focus()가 앞으로 가져온다 — 다만
-    // 브라우저 정책상 항상 보장되진 않는다(강제할 수 없는 영역).
     try{ printWin.focus(); }catch(e){}
     printWin.document.open();
-    printWin.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(filename)}</title>
-      <style>
-        @page { size: A4 ${type.landscape ? 'landscape' : 'portrait'}; margin: 14mm 10mm; }
-        body{ font-family:'Malgun Gothic','맑은 고딕',sans-serif; color:#111; margin:0; }
-        .pdf-doc-header{ margin-bottom:10px; }
-        .pdf-doc-title{ font-size:16px; font-weight:700; color:#0B2545; margin-bottom:4px; }
-        .pdf-doc-meta{ display:flex; gap:14px; flex-wrap:wrap; font-size:10.5px; color:#555; }
-        table.pdf-doc-table{ width:100%; border-collapse:collapse; font-size:10px; table-layout:fixed; }
-        table.pdf-doc-table th, table.pdf-doc-table td{ border:1px solid #ccc; padding:4px 6px; text-align:left; word-break:break-all; vertical-align:top; }
-        table.pdf-doc-table thead{ display:table-header-group; background:#eef1f6; }
-        table.pdf-doc-table tr{ break-inside:avoid; }
-        .pdf-doc-empty{ text-align:center; color:#888; }
-      </style>
-    </head><body>${html}</body></html>`);
+    printWin.document.write(`<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>${esc(filename)}</title>
+      <style>${pdfExportDocCss(ctx)}${pdfExportPrintCss(ctx)}</style>
+    </head><body><div class="pdf-doc-root">${html}</div></body></html>`);
     printWin.document.close();
     // document.write 직후 load 이벤트가 일부 브라우저에서 늦게/안 오는 경우가 있어
     // onload와 짧은 지연 둘 다로 print()를 시도한다(중복 호출돼도 print()는 안전 — 두 번째
     // 호출은 이미 열린 인쇄창을 다시 포커스할 뿐 추가 다운로드/전송을 만들지 않는다).
     const triggerPrint = ()=>{ try{ printWin.focus(); printWin.print(); }catch(e){} };
     printWin.onload = triggerPrint;
-    setTimeout(triggerPrint, 300);
+    setTimeout(triggerPrint, 400);
   }
 
   /* ==========================================================================
