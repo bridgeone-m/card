@@ -12846,8 +12846,14 @@ window.SHIN2_CRM_APP_INIT = function(){
   // D.loadDeletedCompanies)은 전혀 안 바꾸고, 화면에 보여주는 탭 개수만 줄인다 —
   // 'trash'는 이 pill 전용 새 키이고, renderList()가 filterKey==='trash'일 때
   // renderTrashTab()으로 두 집합을 합쳐서 보여준다(아래 참고).
+  // §MOU 체결 pill 복원 라운드(신규) — 사용자 요청 "업체목록에 MOU 체결만 있는 곳도
+  // 보여줘". 'mouDone'은 FILTER_DEFS·matchesFilter·FILTER_ICON_SVG에 이미 다 있고
+  // filterCounts도 매 렌더마다 계산되던 키라(KPI 요약 바의 "MOU 체결" 카드가 쓰는
+  // counts.mouDone과 같은 소스), pill 목록에 한 줄 되살리는 것 말고는 판정/집계/렌더
+  // 경로를 전혀 건드리지 않았다 — 칩 숫자는 KPI 카드 숫자와 항상 같다.
   const MAIN_PILL_DEFS = [
     ['all','전체'],
+    ['mouDone','MOU 체결'],
     ['trash','쓰레기통'],
     // §요청 6 — 파일 안에 이미 있는 두 표기("실적있음·MOU미체결"/"실적 있음 · MOU 미체결")
     // 중 pill처럼 짧은 자리에 맞는 표기를 그대로 가져다 쓴다(새 라벨 창작 아님).
