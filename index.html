@@ -16070,12 +16070,21 @@ window.SHIN2_CRM_APP_INIT = function(){
     // "누락"/"미완료 경고"로 오해되지 않게 하기 위함(§ 요구사항).
     const curStage = hasAny ? stages[currentIdx] : null;
     const mouStageAll = stages.find(s=>s.key==='mou');
-    const isMouDone = mouStageAll && mouStageAll.state === 'done';
-    const stageText = hasAny ? (isMouDone ? '협약 완료' : `${curStage.label} ${PROGRESS_STATUS_LABEL[curStage.state]}`) : '미확인';
+    // §수동 MOU 확정 표시 불일치 라운드 — 사용자 요청: "확정했으면 진행단계 배지도 협약
+    // 완료로 바꿔줘." 진행단계 계산(buildProgressStages)과 체결 판정(isConfirmedPartner)은
+    // 그대로 두고, 이 화면에 찍는 "문자열"만 체결 판정과 같은 근거를 쓰게 한다. 즉 MOU 체결
+    // 탭·KPI·외부 PDF가 체결로 세는 업체는 고객카드에서도 "협약 완료"로 읽힌다.
+    // 판정 함수(D.isMouManuallyConfirmed)는 읽기만 한다 — 새 판정도, 데이터 변경도 없다.
+    const manualMou = !!(D.isMouManuallyConfirmed && D.isMouManuallyConfirmed(co));
+    const isMouDone = (mouStageAll && mouStageAll.state === 'done') || manualMou;
+    // hasAny가 false여도(질문서·미팅 기록이 아예 없어도) 수동 확정된 업체는 "미확인"이
+    // 아니라 "협약 완료"다 — 이 경우 curStage는 null이지만 isMouDone 분기로 빠져 쓰이지 않는다.
+    const stageText = (hasAny || manualMou) ? (isMouDone ? '협약 완료' : `${curStage.label} ${PROGRESS_STATUS_LABEL[curStage.state]}`) : '미확인';
     // §MOU 체결 업체의 단계 판정 예외 처리 라운드 §6: q/m1/m2는 이제 mouDone이면 항상
     // state==='done'이라, "완료" 여부가 아니라 "실제 날짜(ts)가 있었는지"로만 스킵 여부를
     // 판단한다 — ts는 예외처리로도 절대 바뀌지 않는 원본 파싱 결과 그대로다(§2).
-    const skippedMeetings = isMouDone && stages.find(s=>s.key==='m1').ts == null && stages.find(s=>s.key==='m2').ts == null;
+    const m1All = stages.find(s=>s.key==='m1'), m2All = stages.find(s=>s.key==='m2');
+    const skippedMeetings = isMouDone && m1All && m2All && m1All.ts == null && m2All.ts == null;
     const stageNote = skippedMeetings ? '1·2차 미팅 없이 MOU 체결' : '';
     const usage = buildPourUsageSummary(co);
     const topCats = usage ? usage.categoryTop.slice(0, 2) : [];
@@ -16358,12 +16367,11 @@ window.SHIN2_CRM_APP_INIT = function(){
     // MOU 체결 = YES가 가능해야 한다는 요구) 판정은 전혀 건드리지 않고, 카드에서 "체결
     // 전"이라고 단정하던 문구만 실제 확정 상태로 바꾼다 — 이미 있는 판정 함수
     // (D.isMouManuallyConfirmed)를 읽기만 하는 표시 전용 보정이다(§P2-3과 같은 방식).
-    const manualMou = !!(D.isMouManuallyConfirmed && D.isMouManuallyConfirmed(co));
+    // 수동 확정 업체도 이제 stageText가 '협약 완료'라 isDone === true로 잡힌다 —
+    // 아래 분기 하나로 요약 줄까지 같이 맞는다(체결일이 없으면 날짜를 붙이지 않는다).
     const dealSummary = isDone
       ? ('협약 완료' + (resolveDealStageFormValues(co).mou.date ? ' · ' + fmtDate(resolveDealStageFormValues(co).mou.date) : ''))
-      : (manualMou
-          ? buildDealStageSummaryText(co).replace(/(체결 전|진행 중)$/, '체결 확정')
-          : buildDealStageSummaryText(co));
+      : buildDealStageSummaryText(co);
     // §업체 관계 헤더 이관 라운드(신규) — "업체 관계" 카드(이전 상호/협약 종료 상태)를
     // 왼쪽 열에서 빼고, 남색 헤더에 아주 짧은 한 줄로만 보여준다(§요청 "그냥 간단하게
     // 입력. 없으면 없는걸로" — 없으면 아무것도 안 그림, 지어내지 않음). 실제 편집(이전
@@ -16392,7 +16400,6 @@ window.SHIN2_CRM_APP_INIT = function(){
             <div class="cdash2-deal-summary">${esc(dealSummary)}${relationsInline ? ' · ' + esc(relationsInline) : ''}</div>
           </div>
           <span class="cdash2-tag${isDone ? ' is-done' : ''}">${esc(stageText)}</span>
-          ${manualMou && !isDone ? `<span class="cdash2-tag is-done" title="진행단계와 별개로 'MOU 체결'로 확정된 업체입니다. 왼쪽 태그는 진행단계(질문서·미팅)를 그대로 보여줍니다.">MOU 체결</span>` : ''}
           ${isCore ? `<span class="cdash2-tag is-core">핵심 고객</span>` : ''}
           ${isHurdle ? `<span class="cdash2-tag is-hurdle" title="진행 중인 신규 협약(MOU) 건이 허들·보류 상태입니다">허들·보류</span>` : ''}
           <button type="button" class="cdash2-header-insight-btn" id="chartHeaderInsightBtn" title="고객 인사이트 보기">
