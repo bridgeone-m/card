@@ -4474,8 +4474,13 @@ table.pdf-doc-table thead{ background:var(--bg); }
   display:flex; flex-direction:column; overflow:hidden; position:relative;
   flex:1 1 auto; min-height:0; gap:10px;
 }
+/* §지도 정사각형 라운드(신규) — 지도를 카드 폭 기준 정사각형(1:1)으로 고정한다(§요청).
+   예전엔 flex:50으로 남는 세로 공간을 비율대로 나눠 가져서 카드 높이에 따라 지도가
+   납작해지거나 길쭉해졌다. flex를 끄고 aspect-ratio로 폭=높이를 잡고, 남는 세로
+   공간은 아래 "시공 아파트 목록" 구획이 가져간다. 지도 인스턴스/마커/클러스터 계산은
+   전혀 건드리지 않았다 — 캔버스 크기만 바뀐다. */
 .map-embed-root .map-modal-mapcol{
-  flex:50 1 0; min-height:80px; width:100%; aspect-ratio:auto; height:auto;
+  flex:0 0 auto; width:100%; aspect-ratio:1 / 1; height:auto; min-height:0;
   border-right:0; border-radius:8px; overflow:hidden;
 }
 .map-embed-root .map-modal-infocol{
@@ -4539,7 +4544,7 @@ table.pdf-doc-table thead{ background:var(--bg); }
 .map-embed-apt-row-name{ font-weight:700; color:var(--navy); }
 .map-embed-apt-row-sub{ margin-top:2px; color:var(--text-muted); font-size:11px; }
 @media(max-width:1180px){
-  .map-embed-root .map-modal-mapcol{ min-height:220px; }
+  .map-embed-root .map-modal-mapcol{ min-height:0; }
 }
 
 /* ==========================================================================
