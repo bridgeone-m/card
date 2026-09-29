@@ -514,6 +514,78 @@
   .l2l3v2-dedup-notes li, .l2l3v2-note-list li{ font-size:12px; color:var(--text-muted); line-height:1.5; padding-left:16px; position:relative; }
   .l2l3v2-dedup-notes li::before{ content:"✓"; position:absolute; left:0; color:var(--green); font-weight:700; }
   .l2l3v2-note-list li::before{ content:"•"; position:absolute; left:2px; color:var(--text-faint); }
+  /* §L2→L3 정보구조 정리 라운드(신규) — 같은 의미의 숫자가 여러 카드에 반복되고 설명이
+     처음부터 다 펼쳐져 있어 "어디부터 봐야 하는지" 알기 어려웠다. 계산은 전혀 건드리지
+     않고 배치·여백·글자 위계만 다시 잡는다. 화면 순서: 대표 KPI → 보조 KPI 3개 →
+     상태 필터 → 개선 전·후 비교 1장 → 간단 비교표 → 소스별 → 상세표 → 집계 기준(접힘). */
+  .l2l3v2-kpi-row{ gap:16px !important; margin-bottom:20px !important; align-items:stretch; }
+  .l2l3v2-kpi-main{ flex:1.7 1 320px !important; padding:22px 24px !important; gap:4px !important; }
+  .l2l3v2-kpi-main-label{ font-size:13.5px !important; color:var(--navy) !important; font-weight:750 !important; }
+  .l2l3v2-kpi-main-rate{ font-size:46px !important; letter-spacing:-.02em; margin-top:2px; }
+  .l2l3v2-kpi-main-frac{ font-size:12.5px !important; }
+  .l2l3v2-kpi-main-barrow{ margin-top:10px !important; }
+  .l2l3v2-kpi-main-bar{ height:8px !important; }
+  .l2l3v2-kpi-main-sub{ font-size:11.5px !important; margin-top:8px; }
+  /* 보조 KPI 3개 — 대표 지표보다 한 단계 작게(숫자 위계를 눈으로 구분되게). */
+  .l2l3v2-kpi-card{ flex:1 1 140px !important; padding:18px 18px !important; gap:2px !important; }
+  .l2l3v2-kpi-card-value{ font-size:27px !important; font-weight:800 !important; color:var(--navy) !important; }
+  .l2l3v2-kpi-card-label{ font-size:12.5px !important; color:var(--text-muted) !important; font-weight:600 !important; }
+  /* 상태/상승·하락 색은 최소한만 — 관리 필요만 경고색을 남기고 나머지는 남색 통일. */
+  .l2l3v2-kpi-card-warn .l2l3v2-kpi-card-value{ color:#B3261E !important; }
+  .l2l3v2-controls-row{ padding:0 2px 18px !important; }
+  /* 카드 공통 — 테두리를 옅게, 안쪽 여백을 넉넉히. */
+  .l2l3-active .npcmp-section{ padding:20px 22px 22px !important; margin-bottom:16px !important; border-color:#E6ECF4 !important; }
+  .l2l3-active .npcmp-title{ font-size:14px !important; }
+  /* 운영 개선 전·후 비교 — 카드 2장 → 1장. 전·후 값을 한 줄에서 비교하게 한다. */
+  .l2l3v2-cmp-cards{ grid-template-columns:1fr !important; margin-bottom:16px !important; }
+  .l2l3v2-cmp-card{ padding:20px 22px !important; border-color:#E6ECF4 !important; }
+  .l2l3v2-cmp-card-title{ font-size:14px !important; margin-bottom:2px !important; }
+  .l2l3v2-cmp-card-caption{ font-size:11.5px; color:var(--text-faint); margin-bottom:14px; }
+  .l2l3v2-cmp-compare{ display:flex; align-items:flex-end; flex-wrap:wrap; gap:10px 22px; }
+  .l2l3v2-cmp-side{ display:flex; flex-direction:column; gap:3px; min-width:108px; }
+  .l2l3v2-cmp-side-label{ font-size:11.5px; color:var(--text-muted); font-weight:600; }
+  .l2l3v2-cmp-side-rate{ font-size:30px; font-weight:800; color:var(--navy); line-height:1.05; }
+  .l2l3v2-cmp-side.is-before .l2l3v2-cmp-side-rate{ color:var(--text-muted); }
+  .l2l3v2-cmp-sep{ font-size:22px; color:var(--text-faint); font-weight:600; padding-bottom:4px; }
+  .l2l3v2-cmp-delta-box{ display:flex; flex-direction:column; gap:3px; padding-bottom:2px; margin-left:auto; text-align:right; }
+  .l2l3v2-cmp-delta-label{ font-size:11.5px; color:var(--text-muted); font-weight:600; }
+  .l2l3v2-cmp-delta-value{ font-size:19px; font-weight:800; }
+  .l2l3v2-cmp-delta-value.is-up{ color:var(--green); }
+  .l2l3v2-cmp-delta-value.is-down{ color:var(--orange); }
+  .l2l3v2-cmp-delta-value.is-flat{ color:var(--text-muted); }
+  .l2l3v2-cmp-bars{ margin-top:16px !important; gap:9px !important; }
+  .l2l3v2-cmp-bar-label{ width:92px !important; font-size:11.5px !important; }
+  /* 간단 비교표 — 컬럼 5개. 분모/분자 캡션은 헤더 밑 한 줄 안내로 대체한다. */
+  .l2l3-active .npcmp-table{ min-width:520px !important; font-size:13px !important; }
+  .l2l3-active .npcmp-table th, .l2l3-active .npcmp-table td{ padding:15px 12px !important; }
+  .l2l3-active .npcmp-table thead th{ font-size:11.5px !important; }
+  .l2l3v2-table-note{ font-size:11.5px; color:var(--text-faint); margin-top:10px; line-height:1.5; }
+  /* 하단 2분할 — "중복 제거 통합 전환 업체 수" 큰 숫자 카드는 없앴다(상단 "전환 완료"와
+     같은 값이라 숫자를 두 번 보여주지 않는다). 소스별 + 집계 기준 2장만 남는다. */
+  .l2l3v2-bottom-grid{ grid-template-columns:1fr !important; gap:16px !important; margin-top:0 !important; margin-bottom:16px !important; }
+  /* 소스 막대가 전체 폭으로 늘어나 휑해지지 않게 상한을 둔다. */
+  .l2l3v2-source-row{ max-width:640px; }
+  .l2l3v2-source-note{ max-width:640px; }
+  .l2l3v2-criteria-section{ margin-bottom:0 !important; }
+  .l2l3v2-source-rows{ gap:11px !important; margin-top:12px !important; }
+  .l2l3v2-source-row{ grid-template-columns:104px 38px 34px 1fr !important; }
+  .l2l3v2-source-name{ font-size:12.5px !important; }
+  .l2l3v2-source-count{ font-size:12.5px !important; }
+  .l2l3v2-source-note{ font-size:11.5px; color:var(--text-faint); margin-top:14px; line-height:1.5; }
+  /* 집계 기준 — 기본은 버튼 한 줄, 누르면 펼쳐진다(처음부터 긴 설명을 깔지 않는다). */
+  .l2l3v2-criteria-btn{
+    display:inline-flex; align-items:center; gap:6px; font-family:inherit;
+    font-size:12.5px; font-weight:650; color:var(--navy); background:#F4F7FC;
+    border:1px solid #E1E9F4; border-radius:8px; padding:9px 13px; cursor:pointer;
+  }
+  .l2l3v2-criteria-btn:hover{ background:#EAF0FA; }
+  .l2l3v2-criteria-body{ margin-top:14px; }
+  .l2l3v2-criteria-body .l2l3v2-note-list{ gap:9px; }
+  .l2l3v2-criteria-body .l2l3v2-note-list li{ font-size:12px; line-height:1.6; }
+  @media(max-width:1100px){
+    .l2l3v2-bottom-grid{ grid-template-columns:1fr !important; }
+    .l2l3v2-cmp-delta-box{ margin-left:0; text-align:left; width:100%; }
+  }
   /* §후속 라운드 — A/B 비교 제외 정보 + 업체 매칭 확인을 화면 맨 아래 얇은 bar 하나로
      이동(§요청 22). 기존 .npcmp-excluded-note와 같은 원칙(작은 회색 글씨)을 재사용. */
   .l2l3v2-bottombar{ display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; margin-top:16px; padding:10px 14px; background:#f4f7fb; border:1px solid var(--line); border-radius:10px; font-size:11.5px; color:var(--text-faint); line-height:1.5; }
@@ -13988,22 +14060,24 @@ window.SHIN2_CRM_APP_INIT = function(){
       return `<button type="button" class="npcmp-num-btn"${disabled ? ' disabled' : ''} data-npcmp-drill="${esc(group)}:${esc(metric)}">${esc(count)}</button>`;
     }
     function rowHtml(group, g){
-      // §전환율 분모 버그 수정 라운드 — 컬럼 구성을 "신규 협약 / 플랫폼 요청 업체 /
-      // 플랫폼 이용 전환율 / L3 전환 업체 / L3 전환율"로 정리(§요청 5). "N일 관찰
-      // 완료"는 전환율 계산 컬럼들과 분리해 맨 끝에 참고 전용으로만 둔다(npcmp-ref-col,
-      // 아래 CSS에서 시각적으로도 구분). 각 전환율 옆에는 분모/분자를 그대로 숫자로 보여
-      // 주는 캡션을 단다(§요청 "요청 업체 ÷ 신규 협약 업체"). §L3 정의 재확장 라운드 —
-      // "기술자문문의 업체" 라벨은 더 이상 정확하지 않아 "L3 전환 업체"로 고쳤다(값 자체는
-      // g.l3ConvertedCount 그대로, 계산 변경 없음).
+      // §L2→L3 정보구조 정리 라운드 — 컬럼을 5개로 줄인다(기간/신규 협약/L3 전환/
+      // 전환율/관리 필요). 빠진 "플랫폼 요청 업체"·"플랫폼 이용 전환율"은 아래 통합
+      // 설명대로 L3 전환/전환율과 같은 값이라 한 번만 보여준다("관찰 완료" 참고 열도
+      // 전환율 계산에 쓰이지 않아 집계 기준 설명으로 옮겼다). g.platformConvertedCount /
+      // g.platformRate 계산 자체는 그대로 살아 있고 여기서 읽지 않을 뿐이다.
+      //
+      // "관리 필요" = 선택한 경과일(N일)이 이미 지났는데 아직 전환되지 않은 업체.
+      // 새 판정을 만들지 않고, computeNpCmpAnalysis가 이미 각 업체에 붙여 둔
+      // status === 'complete_not_converted'(npCmpClassifyStatus, §11274)를 그대로
+      // 세기만 한다 — 계산 함수는 한 줄도 바꾸지 않았다.
+      const needCount = g.list.filter(it=> it.status === 'complete_not_converted').length;
       return `
         <tr>
           <td><span class="npcmp-group-name">${esc(NPCMP_GROUP_LABEL[group])}</span></td>
           <td>${numBtn(group,'total',g.total)}</td>
-          <td>${numBtn(group,'platform',g.platformConvertedCount)}</td>
-          <td><span class="l2l3v2-rate-strong">${esc(fmtNpCmpRate(g.platformRate))}</span><span class="npcmp-sample">요청 업체 ÷ 신규 협약 업체 (${esc(g.platformConvertedCount)}/${esc(g.total)})</span></td>
           <td>${numBtn(group,'l3',g.l3ConvertedCount)}</td>
-          <td><span class="l2l3v2-rate-strong">${esc(fmtNpCmpRate(g.l3Rate))}</span><span class="npcmp-sample">L3 전환 업체 ÷ 신규 협약 업체 (${esc(g.l3ConvertedCount)}/${esc(g.total)})</span></td>
-          <td class="npcmp-ref-col">${numBtn(group,'observed',g.observedCount)}${g.inProgressCount ? `<span class="npcmp-inprogress-note">진행 중 ${numBtn(group,'inProgress',g.inProgressCount)}곳</span>` : ''}</td>
+          <td><span class="l2l3v2-rate-strong">${esc(fmtNpCmpRate(g.l3Rate))}</span></td>
+          <td>${esc(needCount)}</td>
         </tr>`;
     }
     // §요청 10/11/12/13 — 진한 남색 박스 2개(플랫폼 이용 전환율/L3 전환율)를 흰색 분석
@@ -14011,18 +14085,39 @@ window.SHIN2_CRM_APP_INIT = function(){
     // 새 지표를 만들지 않았다. §요청 13 "감소를 초록색으로 표시하면 안 됨" — 기존
     // .npcmp-callout-delta는 증가/감소 구분 없이 항상 초록(#8FE3B0)이었던 걸, 부호에 따라
     // 초록(상승)/주황(하락)으로 나눈다 — 계산된 pctPoint 값 자체는 전혀 안 바꿨다.
+    // §L2→L3 정보구조 정리 라운드 — 카드 2장("플랫폼 이용 전환율"/"L3 전환율")을
+    // 1장으로 합친다. 두 지표는 분모가 같고(해당 기간 신규 협약 전체) 분자도 현재
+    // 수집 경로에서는 항상 같은 집합이라(아래 §통합 근거) 사용자에게는 서로 다른
+    // KPI처럼 보이면 안 된다. 표시에 쓰는 값은 L3 쪽(A.l3Rate/B.l3Rate)으로 통일해
+    // 상단 대표 KPI(computeL2L3ManageAnalysis, 같은 L3 정의)와 숫자가 어긋나지 않게 했다.
+    // platformRate 계산은 그대로 남아 있고 이 화면에서 읽지 않을 뿐이다.
     function deltaBlock(label, rateA, rateB){
       const pctPoint = (rateA != null && rateB != null) ? Math.round((rateB - rateA) * 10) / 10 : null;
-      const relative = (rateA != null && rateB != null && rateA > 0) ? Math.round(((rateB - rateA) / rateA) * 1000) / 10 : null;
       const isDown = pctPoint != null && pctPoint < 0;
+      const isFlat = pctPoint != null && pctPoint === 0;
       const barMax = Math.max(rateA || 0, rateB || 0, 1);
       const barPct = v=> Math.max(0, Math.min(100, Math.round(((v||0) / barMax) * 100)));
+      const deltaCls = pctPoint == null ? '' : (isFlat ? 'is-flat' : (isDown ? 'is-down' : 'is-up'));
+      const deltaText = pctPoint == null ? '표본 없음' : (pctPoint > 0 ? '+' : '') + pctPoint + '%p';
       return `
         <div class="l2l3v2-cmp-card">
           <div class="l2l3v2-cmp-card-title">${esc(label)}</div>
-          <div class="l2l3v2-cmp-card-rate">${esc(fmtNpCmpRate(rateA))}<span class="l2l3v2-arrow">→</span>${esc(fmtNpCmpRate(rateB))}</div>
-          <div class="l2l3v2-cmp-card-delta ${pctPoint == null ? '' : (isDown ? 'is-down' : 'is-up')}">${pctPoint == null ? '변화 계산 불가(표본 없음)' : (pctPoint >= 0 ? '+' : '') + pctPoint + '%p ' + (pctPoint >= 0 ? '상승' : '하락')}</div>
-          ${relative != null ? `<div class="l2l3v2-cmp-card-relative">참고(상대 변화): 약 ${Math.abs(relative)}% ${relative >= 0 ? '증가' : '감소'}</div>` : ''}
+          <div class="l2l3v2-cmp-card-caption">L2 → L3 전환율 · 플랫폼 초기 운영(2026-05-20~07-21) vs 7월 개선 이후(2026-07-22~)</div>
+          <div class="l2l3v2-cmp-compare">
+            <div class="l2l3v2-cmp-side is-before">
+              <span class="l2l3v2-cmp-side-label">초기 운영</span>
+              <span class="l2l3v2-cmp-side-rate">${esc(fmtNpCmpRate(rateA))}</span>
+            </div>
+            <span class="l2l3v2-cmp-sep">→</span>
+            <div class="l2l3v2-cmp-side">
+              <span class="l2l3v2-cmp-side-label">7월 개선 이후</span>
+              <span class="l2l3v2-cmp-side-rate">${esc(fmtNpCmpRate(rateB))}</span>
+            </div>
+            <div class="l2l3v2-cmp-delta-box">
+              <span class="l2l3v2-cmp-delta-label">변화</span>
+              <span class="l2l3v2-cmp-delta-value ${deltaCls}">${esc(deltaText)}</span>
+            </div>
+          </div>
           <div class="l2l3v2-cmp-bars">
             <div class="l2l3v2-cmp-bar-row">
               <span class="l2l3v2-cmp-bar-label">초기 운영</span>
@@ -14055,27 +14150,18 @@ window.SHIN2_CRM_APP_INIT = function(){
       </div>` : '';
     return `
       <div class="l2l3v2-cmp-cards">
-        ${deltaBlock('플랫폼 이용 전환율', A.platformRate, B.platformRate)}
-        ${deltaBlock('L3 전환율', A.l3Rate, B.l3Rate)}
+        ${deltaBlock('운영 개선 전·후 비교', A.l3Rate, B.l3Rate)}
       </div>
       <div class="npcmp-section" id="npCmpSection">
         <div class="npcmp-head">
           <div class="npcmp-title-wrap">
-            <span class="npcmp-title">운영 개선 효과<br><span style="font-weight:600;font-size:12px;color:var(--text-muted);">플랫폼 초기 운영 vs 7월 개선 이후</span></span>
-            <button type="button" class="npcmp-info-btn" id="npCmpInfoBtn" aria-label="설명 보기">?</button>
+            <span class="npcmp-title">기간별 비교</span>
           </div>
-          <!-- §요청 6/7 — 협약 후 경과일(30/60/90일) 선택기는 상태 탭과 같은 줄(위
-               controlsHtml)로 옮겼다. data-npcmp-period 이벤트는 listEl 전체를
-               querySelectorAll 하는 bindNpCmpSection이 그대로 처리하므로 위치만 바뀌었다. -->
         </div>
-        ${npCmpInfoOpen ? `<div class="npcmp-info-pop">
-          개선 전 그룹(A)은 2026-05-20부터 질문지 변경 기준일(2026-07-22) 직전인 2026-07-21까지 협약을 맺은 업체, 개선 후 그룹(B)은 2026-07-22 이후 협약을 맺은 업체입니다(참고: 구글시트에 실제 요청 기록이 처음 남은 날은 ${esc(earliestLabel)}). <b>전환율(플랫폼 이용 전환율/L3 전환율)의 분모는 해당 기간에 신규 협약한 전체 업체 수입니다</b> — 관찰 중/관리 필요 업체도 모두 분모에 포함됩니다. "${esc(npCmpPeriodDays)}일 관찰 완료"(맨 끝 참고 열)는 협약일로부터 선택한 일수가 지났는지만 따지는 상태 분류일 뿐, 전환율 계산에는 쓰이지 않습니다. 플랫폼 이용 전환율과 L3 전환율은 모두 기술자문문의·컨설팅요청_통합·샘플카달로그요청·공법설명회이력·기타문의답변현황 5개 항목 중 하나라도 발생하면 분자에 포함됩니다(§L3 정의 재확장 라운드 — 기존에는 L3 전환율만 기술자문문의 발생 여부로 좁게 집계했습니다). 두 지표는 계산 코드가 분리돼 있어 앞으로 정의가 달라질 수 있지만, 현재는 같은 5개 소스 기준을 공유합니다. 협약 전 문의도 대칭 N일 이내(조기전환)면 분자에 포함되고, 협약종료·삭제 업체와 협약일이 없는 업체는 분모·분자 모두에서 제외됩니다. 여기서 말하는 전환율은 관찰된 변화일 뿐이며, 특정 원인(예: 메일 개편) 때문이라고 단정하지 않습니다.
-        </div>` : ''}
         <div class="npcmp-table-wrap">
           <table class="npcmp-table">
             <thead><tr>
-              <th>구분</th><th>신규 협약</th><th>플랫폼 요청 업체</th><th>플랫폼 이용 전환율</th><th>L3 전환 업체</th><th>L3 전환율</th>
-              <th class="npcmp-ref-col">참고: ${esc(npCmpPeriodDays)}일 관찰 완료<span class="npcmp-ref-sub">(전환율 계산 미사용)</span></th>
+              <th>기간</th><th>신규 협약</th><th>L3 전환</th><th>전환율</th><th>관리 필요</th>
             </tr></thead>
             <tbody>
               ${rowHtml('A', A)}
@@ -14083,6 +14169,7 @@ window.SHIN2_CRM_APP_INIT = function(){
             </tbody>
           </table>
         </div>
+        <div class="l2l3v2-table-note">전환율 = L3 전환 ÷ 신규 협약 · 관리 필요 = 협약 후 ${esc(npCmpPeriodDays)}일이 지났는데 아직 전환되지 않은 업체 · 숫자를 누르면 해당 업체 목록이 열립니다.</div>
       </div>`;
   }
   // renderNpCmpSectionHtml()이 만든 DOM에 이벤트를 건다 — bindHeroAndSubfilters()가 매번
@@ -14384,6 +14471,10 @@ window.SHIN2_CRM_APP_INIT = function(){
      그대로 읽어서 HTML만 조립한다(§성능 원칙, npCmpAnalysisCache와 같은 이유로 재계산
      없음 — computeL2L3ManageAnalysis 자체가 이미 (base,N) 캐시됨).
      ========================================================================== */
+  // §L2→L3 정보구조 정리 라운드 — "집계 기준" 설명 접기/펼치기 상태. 기본은 접힘이라
+  // 화면을 처음 열었을 때 긴 설명이 깔리지 않는다(§요청 9).
+  let l2l3CriteriaOpen = false;
+  let lastL2L3CriteriaHtml = ''; // renderL2L3SourceSummaryAndDetailHtml이 채우고, renderL2L3ManageTab이 화면 맨 끝에 붙인다
   let l2l3DetailTableOpen = false; // 기본은 접힘 — 전환 업체가 많아지면 표가 길어지므로(§요청 8-컬럼 상세표는 필요할 때만 펼침)
   // 업체의 협약일이 개선 전(A, 2026-05-20~2026-07-21)/개선 후(B, 2026-07-22~)/그 밖(2026-05-20
   // 이전 등 비교 대상 기간 밖) 중 어디인지 — §전환 범위 확대 라운드의 새 A/B 경계
@@ -14396,6 +14487,12 @@ window.SHIN2_CRM_APP_INIT = function(){
     return '해당없음';
   }
   function renderL2L3SourceSummaryAndDetailHtml(analysis){
+    // §L2→L3 정보구조 정리 라운드 — 아래 "집계 기준" 설명에서 구글시트 최초 기록일을
+    // 쓴다. buildNpCmpAnalysisBase()는 localStorage 원본이 그대로면 캐시를 반환하므로
+    // (§11195) 재조회·재계산이 일어나지 않는다 — 이미 이 화면이 같은 렌더 사이클에서
+    // 호출해 둔 값을 그대로 다시 받는 것뿐이다.
+    const earliestLabel = (()=>{ const b = buildNpCmpAnalysisBase();
+      return b.earliestReqDateOnly != null ? fmtDate(b.earliestReqDateOnly) : '기록 없음'; })();
     // §요청 15 — "5곳/0곳/0곳/0곳/0곳"을 가로 progress bar로. 비율은 기존 sourceCounts를
     // 전환 완료 업체 수(analysis.converted.length)로 나눈 것뿐, 새 계산 없음(0이면 0%).
     const sourceMax = analysis.converted.length;
@@ -14430,32 +14527,47 @@ window.SHIN2_CRM_APP_INIT = function(){
     // 제거/참고사항) 카드로 나눈다. 값은 전부 기존 analysis.sourceCounts/converted.length
     // 그대로 — 새 계산 없음. 긴 설명은 그대로 보존해 참고사항 카드의 bullet로만 옮긴다
     // (문장 의미는 바꾸지 않음, §요청 17 "의미를 바꾸지 말고 짧은 bullet으로 재배치").
+    // §L2→L3 정보구조 정리 라운드 — 하단 3분할을 2분할로 줄인다.
+    //  ① "중복 제거 통합 전환 업체 수 N곳" 큰 숫자 카드를 없앴다. 그 값은 상단 "전환 완료"
+    //     KPI와 완전히 같은 analysis.converted.length라서, 같은 숫자를 화면에 두 번 크게
+    //     보여줄 이유가 없다(§요청 8). 중복 제거를 한다는 사실은 아래 설명 한 줄로 남긴다.
+    //  ② 길게 펼쳐져 있던 참고사항을 "ⓘ 집계 기준 보기" 버튼 뒤로 접었다(§요청 9).
+    //     문장 내용은 그대로 옮기고, 흩어져 있던 두 곳(비교 섹션의 ? 팝오버 + 참고사항
+    //     카드)을 여기 한 곳으로 합쳤다 — 같은 설명이 두 군데 있던 것도 중복이었다.
     const bottomGridHtml = `
       <div class="l2l3v2-bottom-grid">
         <div class="npcmp-section" id="l2l3SourceSummarySection" style="margin-bottom:0;">
           <div class="npcmp-title">데이터 소스별 전환 업체 수</div>
           <div class="l2l3v2-source-rows">${sourceRowsHtml}</div>
+          <div class="l2l3v2-source-note">여러 요청 경로를 이용한 업체는 각 경로에 모두 포함되므로, 위 숫자의 합은 전환 완료 업체 수보다 클 수 있습니다(전환 완료 ${esc(analysis.converted.length)}곳은 업체 기준 중복 제거 집계).</div>
         </div>
-        <div class="npcmp-section" style="margin-bottom:0;">
-          <div class="npcmp-title">중복 제거 통합 전환 업체 수</div>
-          <div class="l2l3v2-dedup-value">${esc(analysis.converted.length)}곳</div>
-          <ul class="l2l3v2-dedup-notes">
-            <li>소스별 중복 카운트 허용</li>
-            <li>한 업체가 2개 소스에서 모두 전환됐으면 두 소스 각각에 포함</li>
-          </ul>
-        </div>
-        <div class="npcmp-section" style="margin-bottom:0;">
-          <div class="npcmp-title">ⓘ 참고사항</div>
-          <ul class="l2l3v2-note-list" style="margin-top:8px;">
-            <li>전환율 분모는 해당 기간 신규 협약 전체 업체 수</li>
-            <li>"관찰 완료"는 참고용이며 전환율 계산에는 사용하지 않음</li>
-            <li>L3 전환은 5개 요청 유형(기술자문문의·컨설팅요청·샘플·카탈로그 요청·공법설명회·기타문의·답변) 중 하나 이상 발생한 업체를 기준으로 집계합니다</li>
-            <li>전체 L3 전환 업체 수는 업체 기준으로 중복 제거하며, 소스별 업체 수는 여러 소스를 이용한 업체가 각 소스에 중복 포함될 수 있습니다</li>
-          </ul>
-        </div>
+      </div>`;
+    // §요청 10의 순서대로 "집계 기준"은 화면 맨 마지막에 온다. 이 함수의 반환값은
+    // 목록(np2-list)보다 앞에 붙으므로, 기존 lastNpCmpBottomBarHtml과 똑같은 방식으로
+    // 모듈 변수에 담아 두고 renderL2L3ManageTab이 맨 끝에 덧붙인다.
+    lastL2L3CriteriaHtml = `
+      <div class="npcmp-section l2l3v2-criteria-section">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+            <span class="npcmp-title">집계 기준</span>
+            <button type="button" class="l2l3v2-criteria-btn" id="l2l3CriteriaToggleBtn" aria-expanded="${l2l3CriteriaOpen ? 'true' : 'false'}">ⓘ 집계 기준 ${l2l3CriteriaOpen ? '접기' : '보기'}</button>
+          </div>
+          ${l2l3CriteriaOpen ? `
+          <div class="l2l3v2-criteria-body">
+            <ul class="l2l3v2-note-list">
+              <li><b>L2 → L3 전환</b> — 기술자문문의 · 컨설팅요청 · 샘플/카탈로그 요청 · 공법설명회 · 기타문의 5개 요청 유형 중 하나라도 발생한 업체를 전환으로 집계합니다.</li>
+              <li><b>전환율 분모</b> — 해당 기간에 신규 협약한 전체 업체 수입니다. 관찰 중·관리 필요 업체도 모두 분모에 포함됩니다.</li>
+              <li><b>기간 구분</b> — 초기 운영은 2026-05-20 ~ 2026-07-21 협약, 7월 개선 이후는 2026-07-22 이후 협약입니다(구글시트에 요청 기록이 처음 남은 날: ${esc(earliestLabel)}).</li>
+              <li><b>경과일(${esc(npCmpPeriodDays)}일)</b> — 협약일로부터 이 일수가 지났는지로 관찰 중 / 관리 필요를 나눕니다. 전환율 계산 자체에는 쓰이지 않습니다.</li>
+              <li><b>조기 전환</b> — 협약 전 문의도 대칭 ${esc(npCmpPeriodDays)}일 이내면 전환으로 집계합니다.</li>
+              <li><b>제외 대상</b> — 협약 종료·삭제 업체와 협약일이 없는 업체는 분모·분자 모두에서 빠집니다.</li>
+              <li>여러 요청 경로를 이용한 업체는 <b>중복 제거하여</b> 전환 업체 수를 집계합니다(소스별 표는 경로마다 중복 포함).</li>
+              <li>여기서 말하는 전환율은 관찰된 변화일 뿐이며, 특정 원인(예: 메일 개편) 때문이라고 단정하지 않습니다.</li>
+            </ul>
+          </div>` : ''}
       </div>`;
     return `
       ${bottomGridHtml}
+      
       <div class="npcmp-section">
         <div class="npcmp-head">
           <div class="npcmp-title-wrap">
@@ -14479,6 +14591,11 @@ window.SHIN2_CRM_APP_INIT = function(){
       </div>`;
   }
   function bindL2L3SourceSummaryAndDetail(){
+    const criteriaBtn = document.getElementById('l2l3CriteriaToggleBtn');
+    if(criteriaBtn) criteriaBtn.addEventListener('click', ()=>{
+      l2l3CriteriaOpen = !l2l3CriteriaOpen;
+      renderL2L3ManageTab(lastL2L3Enriched);
+    });
     const toggleBtn = document.getElementById('l2l3DetailToggleBtn');
     if(toggleBtn) toggleBtn.addEventListener('click', ()=>{
       l2l3DetailTableOpen = !l2l3DetailTableOpen;
@@ -14537,13 +14654,12 @@ window.SHIN2_CRM_APP_INIT = function(){
           <div class="l2l3v2-kpi-main-rate">${esc(analysis.rate)}%</div>
           <div class="l2l3v2-kpi-main-barrow">
             <div class="l2l3v2-kpi-main-bar"><div class="l2l3v2-kpi-main-bar-fill" style="width:${Math.max(0,Math.min(100,rateNum))}%;"></div></div>
-            <span class="l2l3v2-kpi-main-frac">${esc(analysis.converted.length)} / ${esc(analysis.total)}</span>
+            <span class="l2l3v2-kpi-main-frac">${esc(analysis.converted.length)} / ${esc(analysis.total)} 업체 전환 완료</span>
           </div>
-          <div class="l2l3v2-kpi-main-sub">5월 20일 이후 신규 협약 ${esc(analysis.total)}곳 중 ${esc(analysis.converted.length)}곳 전환</div>
+          <div class="l2l3v2-kpi-main-sub">신규 협약 업체 중 실제 플랫폼 이용 단계(L3)까지 전환된 비율 · 2026-05-20 이후 협약, 경과 ${esc(npCmpPeriodDays)}일 기준</div>
         </div>
         <div class="l2l3v2-kpi-card l2l3v2-kpi-card-new"><span class="l2l3v2-kpi-card-value">${esc(analysis.total)}</span><span class="l2l3v2-kpi-card-label">신규 협약</span></div>
         <div class="l2l3v2-kpi-card l2l3v2-kpi-card-done"><span class="l2l3v2-kpi-card-value">${esc(analysis.converted.length)}</span><span class="l2l3v2-kpi-card-label">전환 완료</span></div>
-        <div class="l2l3v2-kpi-card l2l3v2-kpi-card-watch"><span class="l2l3v2-kpi-card-value">${esc(analysis.observing.length)}</span><span class="l2l3v2-kpi-card-label">관찰 중</span></div>
         <div class="l2l3v2-kpi-card l2l3v2-kpi-card-warn"><span class="l2l3v2-kpi-card-value">${esc(analysis.needsAttention.length)}</span><span class="l2l3v2-kpi-card-label">관리 필요</span></div>
       </div>`;
     // §요청 6/7 "상태 탭 오른쪽에 협약 후 경과일(30/60/90일) 배치": 기존 npCmp 섹션
@@ -14567,7 +14683,11 @@ window.SHIN2_CRM_APP_INIT = function(){
     // 채워야 하므로 호출 순서를 유지한 채(재계산 없음, 이미 있던 호출 그대로), 맨 끝에만
     // A/B 제외/매칭확인 bar를 덧붙인다.
     const npCmpSectionHtml = renderNpCmpSectionHtml();
-    const heroHtml = kpiHtml + controlsHtml + npCmpSectionHtml + renderL2L3SourceSummaryAndDetailHtml(analysis) + lastNpCmpBottomBarHtml;
+    // renderL2L3SourceSummaryAndDetailHtml()이 lastL2L3CriteriaHtml을 채우므로 먼저 호출한다.
+    const sourceAndDetailHtml = renderL2L3SourceSummaryAndDetailHtml(analysis);
+    const heroHtml = kpiHtml + controlsHtml + npCmpSectionHtml + sourceAndDetailHtml;
+    // 목록 뒤에 붙는 꼬리 — 집계 기준(접힘) → A/B 제외 안내 bar 순서.
+    const tailHtml = lastL2L3CriteriaHtml + lastNpCmpBottomBarHtml;
 
     function bindHeroAndSubfilters(){
       listEl.querySelectorAll('[data-l2l3-subfilter]').forEach(btn=> btn.addEventListener('click', ()=>{
@@ -14579,7 +14699,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     }
 
     if(!filtered.length){
-      listEl.innerHTML = heroHtml + `<div class="np2-empty">${esc(analysis.total ? '조건에 맞는 업체가 없습니다.' : '전환 관리 대상 업체가 없습니다.')}</div>`;
+      listEl.innerHTML = heroHtml + `<div class="np2-empty">${esc(analysis.total ? '조건에 맞는 업체가 없습니다.' : '전환 관리 대상 업체가 없습니다.')}</div>` + tailHtml;
       bindHeroAndSubfilters();
       return;
     }
@@ -14619,7 +14739,7 @@ window.SHIN2_CRM_APP_INIT = function(){
             <span><span class="np2-field-label">현재 상태</span><span class="np2-state-badge ${esc(L2L3_BUCKET_BADGE_CLASS[it.bucket])}">${esc(stateLabel)}</span></span>
           </div>`;
         }).join('')}
-      </div>`;
+      </div>` + tailHtml;
 
     bindHeroAndSubfilters();
     // §요청 "고객카드 열기 정상" — 기존 openCard(id) 메커니즘을 그대로 재사용한다(새
