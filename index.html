@@ -4116,6 +4116,148 @@ table.pdf-doc-table thead{ background:var(--bg); }
 .agr-fold-body{ padding:0 12px 11px; border-top:1px solid #EFF3F8; padding-top:10px; }
 .agr-fold-body .questionnaire-work-card{ margin:0; }
 .agr-fold-body .agr-recent-list{ margin-top:0; }
+/* ===== §메일 설정 에디터형 정리 라운드(신규) =================================
+   "설정 페이지 + 카드 + 사이드바"처럼 보이던 화면을 "메일 작성 에디터" 한 흐름으로
+   정리한다. 발송/저장/치환/첨부 로직은 전혀 건드리지 않았고 배치와 스타일만 바꿨다.
+   흰색 + 남색 + 연한 회색, 테두리·박스 최소화, 여백 확보. */
+
+/* 헤더 — 오른쪽에 작은 발송 계정 버튼 */
+.mailx-header-row{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+.mailx-account-btn{
+  flex:0 0 auto; display:inline-flex; align-items:center; gap:6px;
+  height:34px; padding:0 12px; margin-top:2px;
+  border:1px solid var(--line); border-radius:8px; background:#fff;
+  font-family:inherit; font-size:12px; font-weight:650; color:var(--text-muted); cursor:pointer;
+  transition:background .15s ease, color .15s ease, border-color .15s ease;
+}
+.mailx-account-btn:hover{ background:#F5F9FF; color:var(--navy); border-color:#BFD2EC; }
+.mailx-account-btn[aria-expanded="true"]{ background:var(--navy); color:#fff; border-color:var(--navy); }
+.mailx-account-btn .mail-account-chevron{ font-size:9px; transition:transform .15s ease; }
+.mailx-account-btn .mail-account-chevron.is-open{ transform:rotate(180deg); }
+
+/* 바깥 판 — 카드 테두리를 걷어내고 여백만 남긴다 */
+.mail-settings-panel{ border:0!important; box-shadow:none!important; background:transparent!important; padding:0!important; }
+
+/* 메일 종류 — 큰 카드 5개 → 가로 탭 한 줄 */
+.mail-tabs-bar{
+  display:flex!important; flex-wrap:wrap; gap:2px!important;
+  border-bottom:1px solid var(--line); margin:14px 0 0!important; padding:0!important;
+}
+.mail-tab-btn-wrap{ display:block; }
+.mail-tab-btn{
+  display:inline-flex!important; align-items:center; gap:5px;
+  min-height:38px!important; height:auto!important; padding:0 14px!important; margin:0!important;
+  border:0!important; border-bottom:2px solid transparent!important; border-radius:6px 6px 0 0!important;
+  background:transparent!important; box-shadow:none!important;
+  font-family:inherit; font-size:13px; font-weight:600; color:var(--text-muted)!important; cursor:pointer;
+  transition:color .15s ease, background .15s ease, border-color .15s ease;
+}
+.mail-tab-btn:hover{ background:#F5F9FF!important; color:var(--navy)!important; }
+.mail-tab-btn.is-active{
+  background:#EEF4FD!important; color:var(--navy)!important;
+  border-bottom-color:var(--navy)!important; font-weight:750;
+}
+.mail-tab-btn .mail-type-card-title{ display:inline-flex; align-items:center; gap:5px; font-size:inherit!important; font-weight:inherit!important; }
+.mail-tab-btn:focus-visible{ outline:2px solid var(--blue); outline-offset:-2px; }
+
+/* 패널 — 한 열로 */
+.mail-tab-panel{ padding:18px 0 0!important; border:0!important; background:transparent!important; }
+.mailx-titlebar{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.mailx-name{ font-size:16px; font-weight:750; color:var(--text); letter-spacing:-.01em; }
+.mailx-switch{
+  flex:0 0 auto; display:inline-flex; align-items:center; gap:6px; margin:0;
+  padding:5px 10px; border:1px solid var(--line); border-radius:999px; background:#fff;
+  font-size:12px; font-weight:650; color:var(--text-muted); cursor:pointer;
+}
+.mailx-switch input{ margin:0; width:14px; height:14px; cursor:pointer; }
+.mailx-switch:has(input:checked){ border-color:var(--navy); color:var(--navy); background:#F2F7FF; }
+.mailx-timing{ margin:4px 0 16px; font-size:12px; color:var(--text-muted); line-height:1.5; }
+
+.mailx-field{ margin-bottom:18px; }
+.mailx-label{ display:block; margin-bottom:6px; font-size:12px; font-weight:700; color:var(--text); }
+.mailx-field > input[type="text"]{
+  width:100%; box-sizing:border-box; height:40px; padding:0 12px;
+  border:1px solid var(--line); border-radius:8px; background:#fff;
+  font-family:inherit; font-size:13.5px; color:var(--text);
+}
+.mailx-field > input[type="text"]:focus{ outline:none; border-color:var(--blue); box-shadow:0 0 0 3px rgba(11,91,211,.10); }
+
+/* 변수 칩 — 긴 안내 문구 없이 칩만 */
+.mailx-vars{ display:flex; flex-wrap:wrap; gap:5px; margin-top:7px; }
+.mailx-vars .mail-placeholder-btn{
+  padding:3px 9px!important; margin:0!important;
+  border:1px solid #DCE4EF!important; border-radius:999px!important; background:#F8FAFD!important;
+  font-size:11.5px!important; font-weight:600!important; color:#4B5A72!important; cursor:pointer;
+}
+.mailx-vars .mail-placeholder-btn:hover{ background:#EEF4FD!important; border-color:#BFD2EC!important; color:var(--navy)!important; }
+
+/* 본문 — 툴바 한 줄 + 넓은 편집기 */
+.mailx-body-head{ display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:6px; }
+.mailx-body-head .mailx-label{ margin-bottom:0; }
+.mailx-toolbar{ display:flex; align-items:center; flex-wrap:wrap; gap:6px; }
+.mailx-toolbar .mailx-vars-inline{ margin-top:0; }
+.mailx-toolbar-sep{ width:1px; height:16px; background:var(--line); margin:0 2px; }
+.mailx-tool-btn{
+  display:inline-flex; align-items:center; gap:5px;
+  height:30px; padding:0 11px; border:1px solid var(--line); border-radius:7px; background:#fff;
+  font-family:inherit; font-size:12px; font-weight:650; color:var(--text); cursor:pointer;
+  transition:background .15s ease, border-color .15s ease;
+}
+.mailx-tool-btn:hover{ background:#F5F9FF; border-color:#BFD2EC; color:var(--navy); }
+.mailx-hint{
+  display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px;
+  border:1px solid #C9D6E8; border-radius:50%; background:#fff;
+  font-size:10px; font-weight:700; color:#7A8AA3; cursor:help;
+}
+.mail-body-editor{ min-height:260px!important; }
+
+.mailx-note{ margin-top:7px; font-size:11.5px; color:var(--text-muted); line-height:1.55; }
+
+/* 첨부 — 사이드 카드가 아니라 본문 아래 한 구획 */
+.mailx-attach .mail-asset-list{ margin:0 0 8px; }
+.mailx-attach .mail-asset-empty{ padding:10px 2px; font-size:12px; color:var(--text-muted); }
+.mailx-attach .mail-asset-dropzone{ padding:12px!important; }
+
+/* 하단 액션 바 */
+.mailx-actionbar{
+  position:sticky; bottom:0; z-index:var(--z-sticky);
+  display:flex; align-items:center; flex-wrap:wrap; gap:10px;
+  margin-top:18px; padding:12px 0; border-top:1px solid var(--line); background:var(--bg);
+}
+.mailx-actionbar-gap{ flex:1 1 auto; }
+.mailx-updated{ font-size:11.5px; color:var(--text-muted); }
+.mailx-save-btn{ min-height:38px!important; padding:0 22px!important; }
+.mailx-actionbar .mailx-tool-btn{ height:38px; padding:0 16px; }
+
+/* 미리보기 모달 */
+.mailx-preview-overlay{
+  position:fixed; inset:0; z-index:var(--z-modal);
+  background:rgba(20,24,34,.45); align-items:center; justify-content:center; padding:20px;
+}
+.mailx-preview-panel{
+  width:min(680px, 100%); max-height:84vh; display:flex; flex-direction:column;
+  background:#fff; border-radius:12px; box-shadow:0 18px 48px rgba(16,32,60,.28); overflow:hidden;
+}
+.mailx-preview-head{
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  padding:13px 16px; border-bottom:1px solid var(--line);
+  font-size:13.5px; font-weight:750; color:var(--text);
+}
+.mailx-preview-sub{ font-size:11.5px; font-weight:500; color:var(--text-muted); margin-left:6px; }
+.mailx-preview-panel .mail-preview-box{
+  display:block!important; margin:0!important; border:0!important; border-radius:0!important;
+  padding:16px!important; overflow:auto; background:#fff!important;
+}
+
+@media(max-width:760px){
+  .mailx-header-row{ flex-direction:column; }
+  .mail-tabs-bar{ flex-wrap:nowrap; overflow-x:auto; }
+  .mail-tab-btn{ white-space:nowrap; }
+  .mailx-body-head{ align-items:flex-start; }
+  .mail-body-editor{ min-height:220px!important; }
+  .mailx-preview-panel{ max-height:90vh; }
+}
+
 /* §서류 현황 고정 표시 라운드(신규) — 접히지 않는 구획. 같은 .agr-fold 테두리·간격을
    그대로 쓰되 머리글에서 클릭 유도(커서·화살표)만 뺀다. */
 .agr-fold-static > .agr-fold-head{ cursor:default; }
@@ -20431,44 +20573,65 @@ window.SHIN2_CRM_APP_INIT = function(){
     // 전혀 안 바꿨고 배치만 옮겼다(§요청, 넓은 화면 오른쪽 여백 활용).
     return `
       <div class="mail-tab-panel" data-mail-panel="${esc(key)}" style="display:${mailSettingsUI.activeTab===key?'block':'none'};">
-        <div class="mail-tpl-top-row">
-          <div class="mail-tpl-timing">${esc(MAIL_TEMPLATE_TIMING_TEXT[key])}</div>
-          <label class="mail-tpl-enable" style="float:none; display:inline-flex; margin-bottom:0;"><input type="checkbox" id="mailSetEnabled_${key}" ${tpl.enabled!==false?'checked':''} /> 이 메일 사용</label>
+        <div class="mailx-titlebar">
+          <div class="mailx-name">${esc(mailTabDisplayName(tpl, key))}</div>
+          <label class="mailx-switch" title="끄면 이 메일은 발송 대상에서 빠집니다">
+            <input type="checkbox" id="mailSetEnabled_${key}" ${tpl.enabled!==false?'checked':''} />
+            <span>사용</span>
+          </label>
         </div>
-        <div class="mail-template-layout">
-          <div class="mail-template-left">
-            <div class="co-form-field"><label>제목</label><input type="text" id="mailSetSubject_${key}" value="${esc(tpl.subjectTemplate)}" /></div>
-            ${placeholderRow('mailSetSubject_' + key, '제목')}
-            <div class="co-form-field">
-              <label>본문</label>
-              <div class="mail-body-toolbar">
-                <button type="button" class="co-text-action" data-mail-body-img-add="${key}">🖼 이미지 추가</button>
-                <input type="file" id="mailBodyImgInput_${key}" accept="${(D.MAIL_ASSET_ALLOWED_EXT.inlineImage||[]).map(e=>'.'+e).join(',')}" style="display:none;" />
-                <span class="mail-settings-help" style="margin:0;">이미지를 추가하면 자동 업로드되어 커서 위치에 삽입됩니다(최대 ${mailAssetSizeLabel(D.MAIL_ASSET_MAX_CLOUD_BYTES.inlineImage)}, ${(D.MAIL_ASSET_ALLOWED_EXT.inlineImage||[]).join('/')}).</span>
-              </div>
-              <div class="mail-body-editor" id="mailSetBody_${key}" contenteditable="true" data-mail-panel-key="${key}">${mailBodyToEditorHtml(tpl.bodyTemplate)}</div>
-              <span id="mailBodyImgStatus_${key}" class="mail-asset-status"></span>
+        <div class="mailx-timing">${esc(MAIL_TEMPLATE_TIMING_TEXT[key])}</div>
+
+        <div class="mailx-field">
+          <label class="mailx-label" for="mailSetSubject_${key}">제목</label>
+          <input type="text" id="mailSetSubject_${key}" value="${esc(tpl.subjectTemplate)}" />
+          <div class="mailx-vars">${MAIL_PLACEHOLDER_BUTTONS.map(([ph,label])=> `<button type="button" class="mail-placeholder-btn" data-ph-target="mailSetSubject_${key}" data-ph-value="${esc(ph)}">${esc(label)}</button>`).join('')}</div>
+        </div>
+
+        <div class="mailx-field">
+          <div class="mailx-body-head">
+            <label class="mailx-label">본문</label>
+            <div class="mailx-toolbar">
+              <button type="button" class="mailx-tool-btn" data-mail-body-img-add="${key}">이미지 추가</button>
+              <input type="file" id="mailBodyImgInput_${key}" accept="${(D.MAIL_ASSET_ALLOWED_EXT.inlineImage||[]).map(e=>'.'+e).join(',')}" style="display:none;" />
+              <span class="mailx-hint" tabindex="0" role="img" aria-label="이미지 제한 안내" title="이미지를 추가하면 자동 업로드되어 커서 위치에 삽입됩니다. 최대 ${mailAssetSizeLabel(D.MAIL_ASSET_MAX_CLOUD_BYTES.inlineImage)} · ${(D.MAIL_ASSET_ALLOWED_EXT.inlineImage||[]).join('/')}">?</span>
+              <span class="mailx-toolbar-sep" aria-hidden="true"></span>
+              <span class="mailx-vars mailx-vars-inline">${MAIL_PLACEHOLDER_BUTTONS.map(([ph,label])=> `<button type="button" class="mail-placeholder-btn" data-ph-target="mailSetBody_${key}" data-ph-value="${esc(ph)}">${esc(label)}</button>`).join('')}</span>
             </div>
-            ${placeholderRow('mailSetBody_' + key, '본문')}
-            ${key==='documentRequest' ? `<div class="mail-settings-help">본문의 {요청서류목록} 자리에 발송 시 선택한 미등록·재요청 서류명이 자동으로 들어갑니다.</div>` : ''}
           </div>
-          <div class="mail-template-right">
-            <div class="mail-settings-section-title">첨부자료 설정</div>
-            <div class="mail-settings-help" style="margin-top:-4px;">이 메일 종류에만 연결된 자료입니다. 등록된 파일만 실제 메일에 첨부됩니다.</div>
+          <div class="mail-body-editor" id="mailSetBody_${key}" contenteditable="true" data-mail-panel-key="${key}">${mailBodyToEditorHtml(tpl.bodyTemplate)}</div>
+          <span id="mailBodyImgStatus_${key}" class="mail-asset-status"></span>
+          ${key==='documentRequest' ? `<div class="mailx-note">본문의 {요청서류목록} 자리에 발송 시 선택한 미등록·재요청 서류명이 자동으로 들어갑니다.</div>` : ''}
+        </div>
+
+        <div class="mailx-field">
+          <label class="mailx-label">첨부파일</label>
+          <div class="mailx-attach">
             ${mailAssetListHtml(key, asset, meta)}
             ${attachSelectHtml}
             ${hiddenVideoInput}
-            <div class="mail-tpl-preview-row">
-              <span class="mail-settings-updated-at" style="margin-top:0;">${updatedText}</span>
-              <button type="button" class="co-text-action" id="mailPreviewBtn_${key}">미리보기</button>
+          </div>
+        </div>
+
+        <div class="mailx-actionbar">
+          <span class="mailx-updated">${updatedText}</span>
+          <span class="mail-dirty-note" id="mailDirtyNote_${key}" style="display:none;">저장하지 않은 변경사항이 있습니다</span>
+          <span id="mailTplSaveMsg_${key}" class="mail-settings-save-msg" style="display:none;">저장했습니다.</span>
+          <span class="mailx-actionbar-gap"></span>
+          <button type="button" class="mailx-tool-btn" id="mailPreviewBtn_${key}">미리보기</button>
+          <button type="button" class="btn-primary-action mailx-save-btn" id="mailTplSaveBtn_${key}">저장</button>
+        </div>
+
+        <!-- 미리보기: 항상 펼쳐두지 않고 버튼을 눌렀을 때만 뜨는 모달.
+             내용 컨테이너 id(mailPreviewBox_KEY)는 그대로라 기존 미리보기 생성 코드가
+             한 줄도 안 바뀐다 — 이 껍데기만 새로 씌웠다. -->
+        <div class="mailx-preview-overlay" id="mailPreviewOverlay_${key}" style="display:none;">
+          <div class="mailx-preview-panel" role="dialog" aria-modal="true" aria-label="메일 미리보기">
+            <div class="mailx-preview-head">
+              <span>미리보기 <span class="mailx-preview-sub">예시 업체정보로 채운 화면 · 실제로 발송되지 않습니다</span></span>
+              <button type="button" class="chart-close-btn" data-mailx-preview-close="${key}" aria-label="닫기">&times;</button>
             </div>
-            <div class="mail-settings-help" style="margin-top:-4px;">미리보기는 예시 업체정보로만 표시되며 실제로 발송되지 않습니다.</div>
-            <div class="mail-preview-box" id="mailPreviewBox_${key}" style="display:none;"></div>
-            <div class="mail-tpl-save-bar">
-              <button type="button" class="btn-primary-action" id="mailTplSaveBtn_${key}">변경사항 저장</button>
-              <span class="mail-dirty-note" id="mailDirtyNote_${key}" style="display:none;">저장하지 않은 변경사항이 있습니다</span>
-              <span id="mailTplSaveMsg_${key}" class="mail-settings-save-msg" style="display:none;">저장했습니다.</span>
-            </div>
+            <div class="mail-preview-box" id="mailPreviewBox_${key}"></div>
           </div>
         </div>
       </div>`;
@@ -20480,18 +20643,27 @@ window.SHIN2_CRM_APP_INIT = function(){
   // data-mail-tab 하나로 충분 — 기존 연필(✎) 이름수정 버튼은 그리지 않는다(§요청 [3]
   // "카드 자체가 선택/편집 대상이므로 불필요" — mailStartTabRename 자체는 지우지 않고
   // 남겨뒀지만 이제 호출할 진입점이 없다).
+  // §메일 설정 에디터형 정리 라운드(신규) — 큰 카드(아이콘+제목+부제 2줄)를 가로 탭 한 줄로
+  // 줄인다. 선택 상태는 남색 밑줄 + 연한 남색 배경. data-mail-tab / id / 미저장 점(dirty dot)은
+  // 그대로라 탭 전환·부분 렌더(renderMailTabButtonWrap) 코드가 전혀 안 바뀐다.
   function mailTypeCardButtonHtml(key, tpl){
     const active = mailSettingsUI.activeTab === key;
     const name = mailTabDisplayName(tpl, key);
     return `
-      <button type="button" class="mail-tab-btn${active?' is-active':''}" role="tab" aria-selected="${active?'true':'false'}" data-mail-tab="${key}" id="mailTabBtn_${key}">
-        <span class="mail-type-card-icon" aria-hidden="true">${MAIL_TYPE_CARD_ICON[key]||''}</span>
-        <span class="mail-type-card-body">
-          <span class="mail-type-card-title">${esc(name)}<span class="mail-tab-dirty-dot" data-mail-tab-dirty-dot="${key}" style="display:${mailSettingsUI.dirty[key]?'inline-block':'none'};" title="${mailSettingsUI.dirty[key]?'저장하지 않은 변경사항이 있습니다':''}"></span></span>
-          <span class="mail-type-card-sub">${esc(MAIL_TYPE_CARD_SUBTITLE[key]||'')}</span>
-        </span>
+      <button type="button" class="mail-tab-btn${active?' is-active':''}" role="tab" aria-selected="${active?'true':'false'}" data-mail-tab="${key}" id="mailTabBtn_${key}" title="${esc(MAIL_TYPE_CARD_SUBTITLE[key]||'')}">
+        <span class="mail-type-card-title">${esc(name)}<span class="mail-tab-dirty-dot" data-mail-tab-dirty-dot="${key}" style="display:${mailSettingsUI.dirty[key]?'inline-block':'none'};" title="${mailSettingsUI.dirty[key]?'저장하지 않은 변경사항이 있습니다':''}"></span></span>
       </button>`;
   }
+  // §메일 설정 에디터형 정리 라운드(신규) — 미리보기 모달 닫기(내용은 지우지 않는다).
+  function mailxClosePreview(key){
+    var ov = document.getElementById('mailPreviewOverlay_' + (key||''));
+    if(ov) ov.style.display = 'none';
+  }
+  document.addEventListener('keydown', function(e){
+    if(e.key !== 'Escape') return;
+    var open = document.querySelector('.mailx-preview-overlay[style*="flex"]');
+    if(open) open.style.display = 'none';
+  });
   function renderMailSettingsView(){
     const wrap = document.getElementById('mailSettingsView');
     if(!wrap) return;
@@ -20502,18 +20674,22 @@ window.SHIN2_CRM_APP_INIT = function(){
     const globalAsset = D.getGlobalMailAsset();
     wrap.innerHTML = `
       <div class="mail-settings-header-wrap">
-        <div class="workq-header-row">
+        <div class="workq-header-row mailx-header-row">
           <div class="workq-header">
             <div class="workq-title">메일 설정</div>
-            <div class="workq-subtitle">메일 종류별 탭을 눌러 그 메일의 설정만 확인·수정합니다. 제목·본문·첨부는 탭마다 독립적으로 저장됩니다.</div>
+            <div class="workq-subtitle">메일 종류를 고르고 제목·본문·첨부를 작성합니다. 종류마다 따로 저장됩니다.</div>
           </div>
+          <!-- §메일 설정 에디터형 정리 라운드(신규) — 큰 접기 영역이던 "발송 계정 설정"을
+               헤더 오른쪽 작은 버튼으로 옮겼다. id(mailAccountToggleBtn)와 .mail-account-chevron
+               span은 그대로 둬서 기존 토글 코드가 그대로 돈다. -->
+          <button type="button" class="mailx-account-btn" id="mailAccountToggleBtn" aria-expanded="${mailSettingsUI.accountOpen?'true':'false'}" aria-controls="mailAccountPanel">
+            <span aria-hidden="true">⚙</span> 발송 계정
+            <span class="mail-account-chevron${mailSettingsUI.accountOpen?' is-open':''}" aria-hidden="true">▾</span>
+          </button>
         </div>
       </div>
       <div class="mail-settings-panel">
         <div class="mail-account-section">
-          <button type="button" class="mail-account-toggle" id="mailAccountToggleBtn" aria-expanded="${mailSettingsUI.accountOpen?'true':'false'}">
-            <span class="mail-account-chevron${mailSettingsUI.accountOpen?' is-open':''}">▶</span> 발송 계정 설정(EmailJS 연결 · 보내는사람)
-          </button>
           <div class="mail-account-panel" id="mailAccountPanel" style="display:${mailSettingsUI.accountOpen?'block':'none'};">
             <div class="mail-settings-help">
               이 값은 로그인한 사용자 계정에 저장되어 같은 계정의 다른 브라우저와 동기화됩니다. 다섯 계정값은 한 묶음으로 저장되므로 서로 다른 EmailJS 계정의 값을 섞지 마세요.
@@ -21128,9 +21304,18 @@ window.SHIN2_CRM_APP_INIT = function(){
       }
       const saveBtn = e.target.closest('[id^="mailTplSaveBtn_"]');
       if(saveBtn){ saveMailTplTab(saveBtn.id.replace('mailTplSaveBtn_','')); return; }
+      // §메일 설정 에디터형 정리 라운드(신규) — 닫기 버튼/바깥 클릭으로 미리보기 모달을 닫는다.
+      const pvClose = e.target.closest('[data-mailx-preview-close]');
+      if(pvClose){ mailxClosePreview(pvClose.getAttribute('data-mailx-preview-close')); return; }
+      if(e.target.classList && e.target.classList.contains('mailx-preview-overlay')){
+        mailxClosePreview(e.target.id.replace('mailPreviewOverlay_','')); return;
+      }
       const previewBtn = e.target.closest('[id^="mailPreviewBtn_"]');
       if(previewBtn){
         const key = previewBtn.id.replace('mailPreviewBtn_','');
+        // 내용은 아래 기존 코드가 그대로 채운다 — 여기서는 모달 껍데기만 연다.
+        const ov = document.getElementById('mailPreviewOverlay_' + key);
+        if(ov) ov.style.display = 'flex';
         const box = document.getElementById('mailPreviewBox_' + key);
         const subjectVal = document.getElementById('mailSetSubject_' + key).value;
         const bodyVal = document.getElementById('mailSetBody_' + key).innerHTML;
