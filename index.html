@@ -4100,6 +4100,10 @@ table.pdf-doc-table thead{ background:var(--bg); }
 .agr-fold-body{ padding:0 12px 11px; border-top:1px solid #EFF3F8; padding-top:10px; }
 .agr-fold-body .questionnaire-work-card{ margin:0; }
 .agr-fold-body .agr-recent-list{ margin-top:0; }
+/* §서류 현황 고정 표시 라운드(신규) — 접히지 않는 구획. 같은 .agr-fold 테두리·간격을
+   그대로 쓰되 머리글에서 클릭 유도(커서·화살표)만 뺀다. */
+.agr-fold-static > .agr-fold-head{ cursor:default; }
+.agr-fold-static > .agr-fold-head::after{ content:none; }
 /* 접기 머리글이 이미 "서류 현황 N/6"을 보여주므로 안쪽 요약 줄은 감춘다.
    (요소는 남겨둔다 — 체크할 때 이 줄을 그 자리에서 갱신하는 기존 코드가 그대로 돌아간다.) */
 .agr-fold-body .agr-doc-summary{ display:none; }
@@ -23220,10 +23224,14 @@ window.SHIN2_CRM_APP_INIT = function(){
         <summary class="agr-fold-head">질문지 상담 <b>${qDocCount}건</b></summary>
         <div class="agr-fold-body">${questionnaireWorkHtml(companyId)}</div>
       </details>
-      <details class="agr-fold">
-        <summary class="agr-fold-head">서류 현황 <b id="agrDocFoldCount">${docCount.checked}/${docCount.total}</b></summary>
+      <!-- §서류 현황 고정 표시 라운드(신규) — 접기(details)에서 항상 보이는 고정 구획으로
+           바꿨다. 최근 활동·질문지 상담은 접기 그대로 두고 이 구획만 펼쳐 둔다.
+           .agr-fold / .agr-fold-head / .agr-fold-body 클래스와 id(agrDocFoldCount,
+           agreementDocSection)는 그대로 써서 기존 스타일·갱신 코드가 전부 그대로 돈다. -->
+      <section class="agr-fold agr-fold-static">
+        <div class="agr-fold-head">서류 현황 <b id="agrDocFoldCount">${docCount.checked}/${docCount.total}</b></div>
         <div class="agr-fold-body"><div id="agreementDocSection">${agreementDocChecklistHtml(co.id)}</div></div>
-      </details>
+      </section>
     `;
     document.getElementById('agrOpenCardBtn').addEventListener('click', ()=> openCardFromWorkQueue(co.id));
     // §협약 진행단계 행 병합 라운드(신규) — 최근 활동 한 줄이 길면 CSS로 말줄임(...)만
