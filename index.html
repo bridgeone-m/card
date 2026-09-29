@@ -53,6 +53,31 @@
     --fs-body-strong: 14px;    /* 강조 본문(업체명): weight 700 / line-height 1.6 */
     --fs-label: 12px;          /* 보조 라벨: weight 400 / line-height 1.5 */
     --fs-caption: 11px;        /* 배지·캡션: weight 600 / line-height 1.4 */
+
+    /* ======================================================================
+       §레이어(z-index) 토큰 라운드(신규) — 팝업이 카카오 지도 뒤로 들어가는 버그를
+       팝업마다 z-index를 올려 막던 방식(주석에 남은 400/420/430/440 땜질 이력)을
+       끝내기 위한 단일 레이어 체계. 위로 갈수록 항상 위에 뜬다:
+
+         --z-map      지도 카드. .map-embed-root가 isolation:isolate로 스택 컨텍스트를
+                      만들어 카카오 내부 요소(marker/cluster/CustomOverlay/InfoWindow/
+                      ZoomControl)의 z-index를 전부 이 안에 가둔다. 그래서 SDK가 내부에서
+                      몇을 쓰든 지도 밖으로 새어 나와 팝업을 덮을 수 없다.
+         --z-sticky   sticky 표 헤더, 검색줄 같은 화면 고정 요소
+         --z-dropdown 드롭다운·자동완성·필터 팝오버
+         --z-popup    툴팁·소형 팝오버·기본 오버레이(.pi-overlay)
+         --z-modal    모달 오버레이. 모달 위에 모달이 겹칠 때는
+                      calc(var(--z-modal) + n)으로 같은 밴드 안에서 쌓는다.
+         --z-toast    토스트·완료 안내(항상 최상단)
+
+       새 레이어를 만들 때 숫자를 직접 쓰지 말고 이 토큰이나 calc()를 쓴다.
+       ====================================================================== */
+    --z-map: 10;
+    --z-sticky: 100;
+    --z-dropdown: 200;
+    --z-popup: 300;
+    --z-modal: 400;
+    --z-toast: 500;
   }
   *{ box-sizing:border-box; }
   html,body{
@@ -158,7 +183,7 @@
   /* §데이터 가져오기 버튼 통합 라운드: [데이터 업데이트] 작은 드롭다운. */
   .update-menu-wrap{ position:relative; }
   .update-menu{
-    display:none; position:absolute; top:calc(100% + 6px); right:0; z-index:15; min-width:172px;
+    display:none; position:absolute; top:calc(100% + 6px); right:0; z-index:var(--z-dropdown); min-width:172px;
     background:var(--surface); border:1px solid var(--line); border-radius:8px; box-shadow:0 6px 18px rgba(15,23,42,.12); padding:4px;
   }
   .update-menu.is-open{ display:block; }
@@ -684,11 +709,11 @@
 
   /* 업무관리 검색 자동완성/화면 크기 — 이 화면 안에서만 폭과 결과 영역을 제한한다. */
   #workQueueView{ width:100%; max-width:1320px; margin:0 auto; padding-bottom:0; }
-  .workq-search-row{ position:relative; z-index:30; padding:8px!important; }
+  .workq-search-row{ position:relative; z-index:var(--z-sticky); padding:8px!important; }
   .workq-search-autocomplete{ position:relative; flex:1 1 auto; min-width:0; }
   .workq-search-autocomplete .search-box{ width:100%; }
   .workq-autocomplete-list{
-    position:absolute; top:calc(100% + 4px); left:0; right:0; z-index:80;
+    position:absolute; top:calc(100% + 4px); left:0; right:0; z-index:var(--z-dropdown);
     max-height:288px; overflow-y:auto; background:#fff; border:1px solid #DCE5EF;
     border-radius:8px; box-shadow:0 8px 22px rgba(15,23,42,.13); padding:4px;
   }
@@ -703,7 +728,7 @@
   .workq-autocomplete-meta{ display:block; margin-top:2px; color:var(--text-muted); font-size:10.5px; line-height:1.3; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .workq-autocomplete-empty{ padding:10px; color:var(--text-muted); font-size:12px; text-align:center; }
   .workq-results-scroll{ max-height:min(58vh, 620px); overflow:auto; border-radius:8px; }
-  .workq-results-scroll .workq-table th{ position:sticky; top:0; z-index:2; }
+  .workq-results-scroll .workq-table th{ position:sticky; top:0; z-index:var(--z-sticky); }
   body:has(#workQueueView[style*="display: block"]) .app{ padding-bottom:16px!important; }
   @media(max-width:1100px){
     #workQueueView{ max-width:100%; }
@@ -1434,7 +1459,7 @@
 
   .chart-memo-btn{ border:1px solid var(--line); background:#fff; color:var(--navy); border-radius:6px; font-size:12px; padding:5px 10px; cursor:pointer; }
   .chart-memo-btn:hover{ background:var(--hover-blue-soft, #EFF4FF); }
-  .chart-memo-overlay{ position:fixed; inset:0; background:rgba(20,24,34,0.45); display:flex; align-items:center; justify-content:center; z-index:300; padding:20px; }
+  .chart-memo-overlay{ position:fixed; inset:0; background:rgba(20,24,34,0.45); display:flex; align-items:center; justify-content:center; z-index:var(--z-popup); padding:20px; }
   .chart-memo-panel{ background:#fff; border-radius:12px; width:100%; max-width:720px; max-height:88vh; display:flex; flex-direction:column; overflow:hidden; }
   .chart-memo-head{ display:flex; align-items:center; justify-content:space-between; padding:14px 18px; border-bottom:1px solid var(--line); }
   .chart-memo-title{ font-size:14px; font-weight:700; color:var(--text); }
@@ -1450,7 +1475,7 @@
   .chart-memo-conflict-row{ display:flex; align-items:center; gap:10px; font-size:12px; margin-top:6px; flex-wrap:wrap; }
 
   /* ---- Partner Dashboard 이관(§ Partner Dashboard 이관 라운드) ---- */
-  .pi-overlay{ position:fixed; inset:0; background:rgba(20,24,34,0.45); display:flex; align-items:center; justify-content:center; z-index:300; padding:20px; }
+  .pi-overlay{ position:fixed; inset:0; background:rgba(20,24,34,0.45); display:flex; align-items:center; justify-content:center; z-index:var(--z-popup); padding:20px; }
   .pi-panel{ background:#fff; border-radius:12px; width:100%; max-width:920px; max-height:88vh; display:flex; flex-direction:column; overflow:hidden; }
   .pi-head{ display:flex; align-items:center; justify-content:space-between; padding:14px 18px; border-bottom:1px solid var(--line); }
   .pi-title{ font-size:14px; font-weight:700; color:var(--text); }
@@ -1484,7 +1509,7 @@
     position:fixed; left:50%; bottom:28px; transform:translateX(-50%) translateY(8px);
     background:var(--navy); color:#fff; font-size:12.5px; font-weight:600;
     padding:10px 16px; border-radius:8px; box-shadow:0 8px 24px rgba(23,48,92,.28);
-    z-index:500; opacity:0; transition:opacity .18s ease, transform .18s ease; pointer-events:none;
+    z-index:var(--z-toast); opacity:0; transition:opacity .18s ease, transform .18s ease; pointer-events:none;
   }
   .phone-req-toast.is-visible{ opacity:1; transform:translateX(-50%) translateY(0); }
   @media (prefers-reduced-motion: reduce){ .phone-req-toast{ transition:none; } }
@@ -2304,7 +2329,7 @@
   .cdash2-chart-outer{ width:75%; margin-left:auto; margin-right:auto; }
   @media(max-width:1200px){ .cdash2-chart-outer{ width:88%; } }
   @media(max-width:760px){ .cdash2-chart-outer{ width:100%; } }
-  .cdash2-chart-tooltip{ position:absolute; pointer-events:none; background:var(--navy); color:#fff; font-size:11px; font-weight:600; padding:4px 8px; border-radius:5px; transform:translate(-50%,-100%); white-space:nowrap; opacity:0; transition:opacity .1s; z-index:5; }
+  .cdash2-chart-tooltip{ position:absolute; pointer-events:none; background:var(--navy); color:#fff; font-size:11px; font-weight:600; padding:4px 8px; border-radius:5px; transform:translate(-50%,-100%); white-space:nowrap; opacity:0; transition:opacity .1s; z-index:var(--z-popup); }
   .cdash2-chart-empty{ height:150px; display:flex; align-items:center; justify-content:center; color:var(--text-faint); font-size:12px; }
 
   .cdash2-body-grid{ display:grid; grid-template-columns:minmax(220px,34%) 1fr; gap:10px; margin-bottom:10px; align-items:start; }
@@ -2657,7 +2682,7 @@ html,body{background:#F7F9FC;font-size:13px}
 .col-yr{font-size:12px!important;font-weight:750!important;color:#2E78D2!important}.col-total{font-size:12px!important;font-weight:700!important;color:#26364D!important}.col-revenue,.col-yr-revenue{font-size:11.5px!important;font-weight:700!important;color:#24324A!important;white-space:nowrap}.col-cat{font-size:10.5px!important;color:#46566E!important;white-space:normal!important;line-height:1.3}
 /* 실적↔매출 근거 popover(§9) — 클릭/포커스 시에만 보인다, 기본은 숨김. */
 .contrib-trigger{cursor:pointer;background:none;border:none;padding:0;font:inherit;text-align:left;width:100%}
-.contrib-popover{display:none;position:absolute;z-index:20;margin-top:4px;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 6px 18px rgba(15,23,42,.12);padding:9px 11px;font-size:11px;line-height:1.5;color:var(--text);min-width:180px;white-space:normal}
+.contrib-popover{display:none;position:absolute;z-index:var(--z-popup);margin-top:4px;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 6px 18px rgba(15,23,42,.12);padding:9px 11px;font-size:11px;line-height:1.5;color:var(--text);min-width:180px;white-space:normal}
 .contrib-popover.is-open{display:block}
 .col-contrib{position:relative}
 .grade-badge{height:18px;min-width:24px;padding:0 6px;border-radius:4px;font-size:9.5px;background:#EEF3F8;color:#3E506A;border:1px solid #E3E9F0}
@@ -2729,6 +2754,15 @@ html,body{background:radial-gradient(circle at 75% -10%,rgba(11,91,211,.055),tra
    낮게 잡아 다른 모달과 겹쳐도 순서가 꼬이지 않게 했다. 색상은 기존 --navy/--line/
    --text 토큰만 재사용 — 새 팔레트 없음, 그라데이션 없음.
    ========================================================================== */
+/* §레이어 토큰 라운드 — 주의: 이 기본 규칙(전체화면 팝업 형태)은 현재 살아있는 경로가
+   아니다. 지도는 mountMapDistributionInline으로 항상 인라인 카드로만 뜨고, 그 경로는
+   아래 .map-embed-root .map-modal-overlay.map-embedded가 z-index를 덮어쓴 뒤
+   .map-embed-root가 --z-map으로 격리한다. openMapDistributionModal(전체화면)은 버튼
+   바인딩이 제거된 미사용 함수라 값을 건드리지 않고 그대로 남긴다.
+   이 전체화면 경로를 다시 살릴 경우 이 350을 그대로 쓰지 말 것 — 350은 --z-popup(300)과
+   --z-modal(400) 사이에 끼어 있어서, 바로 이 버그(팝업이 지도 뒤로 들어감)를 만든 값이다.
+   모달로 부활시킨다면 --z-modal 밴드(calc(var(--z-modal) + n))로 올리고, 그 위에서 열리는
+   팝업들은 그보다 큰 오프셋을 쓴다. */
 .map-modal-overlay{ position:fixed; inset:0; z-index:350; background:rgba(20,24,34,.45); display:flex; align-items:center; justify-content:center; padding:20px; }
 .map-modal-panel{ background:#fff; border-radius:12px; width:88%; max-width:1400px; height:86vh; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 20px 50px rgba(17,24,39,.22); }
 .map-modal-head{ flex:none; padding:16px 22px; border-bottom:1px solid var(--line); display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
@@ -3012,7 +3046,7 @@ body.map-modal-lock{ overflow:hidden; }
    보이도록"). #aptHistoryModalRoot .pi-overlay(z-index:400)보다도 위에 둔다 —
    지도 위에서 연 카드가 그 두 팝업보다 항상 위에 있어야 하기 때문.
    ========================================================================== */
-.chart-overlay{ z-index:420; }
+.chart-overlay{ z-index:calc(var(--z-modal) + 20); } /* 업체 상세 — 모달 밴드. 그 안에서 열리는 팝업들은 +30/+40 */
 /* "← 지도 분포로 돌아가기" 버튼 — 카드 헤더의 다른 태그(.cdash2-tag)와 어울리는
    작은 알약 모양. 헤더 배경이 짙은 남색이라 밝은 톤 텍스트/테두리를 쓴다. */
 .cdash2-map-back-btn{
@@ -3448,7 +3482,7 @@ table.pdf-doc-table thead{ background:var(--bg); }
 .gnav-hamburger:hover{ background:rgba(255,255,255,.08); }
 .gnav-hamburger:focus-visible, .gnav-menu .top-tab:focus-visible{ outline:2px solid #fff; outline-offset:-2px; }
 /* 모바일 내비게이션 drawer — Esc/바깥클릭/닫기버튼으로 닫힘, focus trap 적용(JS). */
-.gnav-drawer-overlay{ position:fixed; inset:0; background:rgba(11,32,55,.5); z-index:500; display:flex; justify-content:flex-end; }
+.gnav-drawer-overlay{ position:fixed; inset:0; background:rgba(11,32,55,.5); z-index:var(--z-toast); display:flex; justify-content:flex-end; }
 /* [hidden] 속성의 기본 UA 규칙(display:none)이 위 클래스의 display:flex(같은 요소,
    더 높은 명시도)에 밀려 무시되는 버그를 막는다 — 열려있지 않을 땐 반드시 안 보이게. */
 .gnav-drawer-overlay[hidden]{ display:none; }
@@ -3902,7 +3936,7 @@ table.pdf-doc-table thead{ background:var(--bg); }
   position:absolute!important; top:calc(100% + 6px)!important; right:0!important; left:auto!important;
   min-width:230px!important; max-width:280px!important; background:#fff!important;
   border:1px solid var(--line)!important; border-radius:10px!important;
-  box-shadow:0 4px 16px rgba(8,47,103,.12)!important; padding:8px 6px!important; z-index:60!important;
+  box-shadow:0 4px 16px rgba(8,47,103,.12)!important; padding:8px 6px!important; z-index:var(--z-dropdown)!important;
 }
 #crmFilterRow .list-filter-popover.align-right-edge{ right:auto!important; left:0!important; }
 #crmFilterRow .list-filter-popover-label{
@@ -4059,7 +4093,20 @@ table.pdf-doc-table thead{ background:var(--bg); }
    .crm-map-col이 이미 height:100%(그리드가 정해준 실제 행 높이)이므로, 그 안의
    .map-embed-root/.map-modal-overlay.map-embedded/.map-modal-panel/#mapModalBody가
    전부 flex 세로 컨테이너로 그 높이를 그대로 이어받게 한다. */
-.map-embed-root{ flex:1 1 auto; min-height:0; display:flex; flex-direction:column; }
+/* §레이어 토큰 라운드 — 이 버그의 실제 원인과 수정.
+   지도를 인라인으로 바꿀 때 .map-modal-overlay.map-embedded를 position:static/z-index:auto로
+   되돌렸는데, 그러면 이 카드가 스택 컨텍스트를 만들지 않는다. 카카오맵 SDK가 내부에
+   만드는 position:absolute 요소들(marker/cluster/CustomOverlay/InfoWindow/ZoomControl)은
+   각자 inline z-index를 갖는데, 가둘 컨텍스트가 없으니 그 값들이 루트 스택 컨텍스트까지
+   올라와 팝업(.pi-overlay 300 등)과 직접 경쟁했다 — 그래서 팝업이 지도 뒤로 들어갔다.
+   isolation:isolate로 여기서 스택 컨텍스트를 끊으면 내부 z-index가 몇이든 이 카드
+   바깥으로 새어 나오지 못하고, 카드 자체는 --z-map(가장 낮은 밴드)에 머문다.
+   position:relative는 오프셋을 주지 않으므로 레이아웃은 그대로다(스택 컨텍스트 생성용).
+   지도 클릭/확대축소/마커/클러스터 동작은 z-index와 무관하므로 영향 없다. */
+.map-embed-root{
+  flex:1 1 auto; min-height:0; display:flex; flex-direction:column;
+  position:relative; z-index:var(--z-map); isolation:isolate;
+}
 .map-embed-root .map-modal-overlay.map-embedded{
   position:static; inset:auto; background:none; z-index:auto; padding:0; display:flex;
   flex-direction:column; flex:1 1 auto; min-height:0;
@@ -4181,7 +4228,7 @@ table.pdf-doc-table thead{ background:var(--bg); }
 .gnav-tool-btn:focus-visible{ outline:2px solid #fff; outline-offset:1px; }
 /* "관리 도구" 드롭다운 자체(흰 배경 팝업)는 기존 .update-menu 스타일 그대로 — 여는
    위치(top:calc(100% + 6px))만 이제 남색 헤더 아래로 자연스럽게 열린다. */
-.gnav-right .update-menu{ z-index:520; }
+.gnav-right .update-menu{ z-index:calc(var(--z-toast) + 20); } /* 헤더 드롭다운은 모바일 drawer(--z-toast)보다 위에 떠야 한다 */
 /* "고객 N" 타이틀 영역이 없어졌으니 KPI 스트립이 헤더 바로 아래로 자연스럽게 붙는다 —
    억지로 빈 칸을 만들지 않도록 .app 상단 패딩만 살짝 줄인다. */
 .app{ padding-top:20px!important; }
@@ -4444,7 +4491,7 @@ table.pdf-doc-table thead{ background:var(--bg); }
 .gift-grade-toolbar{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
 .gift-grade-table-wrap{ flex:1 1 auto; min-height:0; overflow:auto; border:1px solid var(--line); border-radius:8px; }
 table.gift-grade-table{ width:100%; min-width:820px; border-collapse:collapse; font-size:12px; }
-table.gift-grade-table thead{ position:sticky; top:0; background:#F4F7FB; z-index:1; }
+table.gift-grade-table thead{ position:sticky; top:0; background:#F4F7FB; z-index:var(--z-sticky); }
 table.gift-grade-table th{ padding:8px 9px; text-align:left; font-weight:700; color:var(--navy); border-bottom:1px solid var(--line); white-space:nowrap; }
 table.gift-grade-table td{ padding:6px 9px; border-bottom:1px solid #EEF2F7; vertical-align:middle; }
 table.gift-grade-table .gift-grade-num{ text-align:right; white-space:nowrap; }
@@ -4470,7 +4517,7 @@ table.gift-grade-table .gift-grade-num{ text-align:right; white-space:nowrap; }
 .sales-import-skip-note{ font-size:12px; color:#B26A00; margin-bottom:8px; }
 .sales-import-table-wrap{ max-height:46vh; overflow:auto; border:1px solid var(--line); border-radius:8px; }
 table.sales-import-table{ width:100%; min-width:920px; border-collapse:collapse; font-size:12px; }
-table.sales-import-table thead{ position:sticky; top:0; background:#F4F7FB; z-index:1; }
+table.sales-import-table thead{ position:sticky; top:0; background:#F4F7FB; z-index:var(--z-sticky); }
 table.sales-import-table th{ padding:7px 8px; text-align:left; font-weight:700; color:var(--navy); border-bottom:1px solid var(--line); white-space:nowrap; }
 table.sales-import-table td{ padding:5px 8px; border-bottom:1px solid #EEF2F7; vertical-align:middle; white-space:nowrap; }
 .sales-import-amount{ text-align:right; font-variant-numeric:tabular-nums; }
