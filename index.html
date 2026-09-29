@@ -917,7 +917,14 @@
   .workq-copy-btn:hover{ background:var(--bg); }
   .workq-field-input{ height:26px; padding:0 8px; font-size:12px; border:1px solid var(--line); border-radius:5px; font-family:inherit; }
   .workq-field-input.is-date{ width:130px; }
-  .workq-field-input.is-time{ width:90px; }
+  /* §미팅 시각 30분 단위 라운드 — input[type=time] → select. caret 자리만큼 폭을 주고
+     기본 화살표 대신 다른 화면과 같은 톤의 caret을 직접 그린다. */
+  .workq-field-input.is-time{
+    width:118px; background-color:#fff; cursor:pointer;
+    appearance:none; -webkit-appearance:none; -moz-appearance:none;
+    background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235E6E83' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:right 7px center; padding-right:24px;
+  }
   .workq-field-input.is-owner{ width:140px; }
   .workq-memo-input{ width:100%; max-width:520px; min-height:44px; padding:6px 8px; font-size:12px; border:1px solid var(--line); border-radius:5px; font-family:inherit; resize:vertical; box-sizing:border-box; }
   .workq-btn-row{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
@@ -1303,6 +1310,18 @@
     border:1px solid var(--line); border-radius:6px; outline:none;
   }
   .co-form-field input:focus, .co-form-field textarea:focus{ border-color:#C7CEDB; }
+  /* §미팅 시각 30분 단위 라운드 — 단계 날짜 모달의 시각 select(#stageTimeInput)는
+     클래스가 없어 같은 칸의 날짜 input과 모양이 달라 보였다. 같은 크기·테두리로 맞추고
+     기본 화살표 대신 다른 화면과 같은 톤의 caret을 쓴다. */
+  .co-form-field select#stageTimeInput{
+    width:100%; padding:8px 28px 8px 10px; font-size:13.5px; color:var(--text);
+    background-color:var(--surface); border:1px solid var(--line); border-radius:6px;
+    outline:none; font-family:inherit; cursor:pointer;
+    appearance:none; -webkit-appearance:none; -moz-appearance:none;
+    background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235E6E83' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:right 10px center;
+  }
+  .co-form-field select#stageTimeInput:focus{ border-color:#C7CEDB; }
   .co-form-field textarea{ min-height:56px; resize:vertical; }
   /* §디자인 진단 P2-3: placeholder에 있던 긴 예시문이 입력 시작하면 사라지던 문제 —
      항상 보이는 캡션으로 옮겼다. */
@@ -18972,7 +18991,7 @@ window.SHIN2_CRM_APP_INIT = function(){
           <div class="workq-expand-label">일정</div>
           <div class="workq-expand-value">
             <input type="date" class="workq-field-input is-date" id="workqDate_${esc(item.type)}_${esc(co.id)}" />
-            <input type="time" class="workq-field-input is-time" id="workqTime_${esc(item.type)}_${esc(co.id)}" value="${esc((item.anchor && item.anchor.scheduledTime) || '')}" required />
+            <select class="workq-field-input is-time" id="workqTime_${esc(item.type)}_${esc(co.id)}" required aria-label="시각(30분 단위)">${timeSelectOptionsHtml((item.anchor && item.anchor.scheduledTime) || '')}</select>
           </div>
           <div class="workq-expand-label">담당</div>
           <div class="workq-expand-value"><input type="text" class="workq-field-input is-owner" id="workqOwner_${esc(item.type)}_${esc(co.id)}" placeholder="담당자명" /></div>
@@ -19025,7 +19044,7 @@ window.SHIN2_CRM_APP_INIT = function(){
             <div class="workq-expand-label">새 일정</div>
             <div class="workq-expand-value">
               <input type="date" class="workq-field-input is-date" id="workqDate_${esc(item.type)}_${esc(co.id)}" />
-              <input type="time" class="workq-field-input is-time" id="workqTime_${esc(item.type)}_${esc(co.id)}" value="${esc((item.anchor && item.anchor.scheduledTime) || '')}" required />
+              <select class="workq-field-input is-time" id="workqTime_${esc(item.type)}_${esc(co.id)}" required aria-label="시각(30분 단위)">${timeSelectOptionsHtml((item.anchor && item.anchor.scheduledTime) || '')}</select>
             </div>
             <div class="workq-expand-label">담당</div>
             <div class="workq-expand-value"><input type="text" class="workq-field-input is-owner" id="workqOwner_${esc(item.type)}_${esc(co.id)}" placeholder="담당자명" /></div>
@@ -21870,6 +21889,26 @@ window.SHIN2_CRM_APP_INIT = function(){
   // dateState()(§16689)와 정확히 같은 규칙: 날짜가 오늘 이하면 완료, 미래면 예정.
   // §미팅 시각 라운드(신규) — 날짜 라벨과 시각을 화면에 함께 보일 때만 합쳐서 문자열을
   // 만든다. 저장값은 끝까지 분리해서 둔다(위 withScheduleOverride 주석 참고).
+  /* §미팅 시각 30분 단위 라운드(신규) — 브라우저 기본 <input type="time">은 시/분을
+     따로 굴려야 해서 "오후 2시 30분" 하나 고르는 데 조작이 많았다. 30분 단위 select로
+     바꾼다. 저장되는 값(select.value)은 예전과 똑같은 "HH:MM" 문자열이라 저장·검증·
+     표시 경로(workqSaveMeetingSchedule / commitStageDateSave / fmtScheduleWithTime)는
+     한 줄도 바뀌지 않는다 — 고르는 방법만 쉬워진 것이다. */
+  function timeSelectOptionsHtml(current){
+    const cur = String(current || '').trim();
+    let am = '', pm = '', found = false;
+    for(let mins = 0; mins < 24 * 60; mins += 30){
+      const h = Math.floor(mins / 60), mi = mins % 60;
+      const v = String(h).padStart(2, '0') + ':' + String(mi).padStart(2, '0');
+      if(v === cur) found = true;
+      const opt = `<option value="${v}"${v === cur ? ' selected' : ''}>${v}</option>`;
+      if(h < 12) am += opt; else pm += opt;
+    }
+    // 예전에 30분 단위가 아닌 시각(예: 14:15)으로 저장해 둔 일정을 다시 열어도 그 값이
+    // 조용히 사라지지 않도록, 목록에 없으면 그 값 그대로 한 칸을 만들어 선택해 둔다.
+    const extra = (cur && !found) ? `<option value="${esc(cur)}" selected>${esc(cur)}</option>` : '';
+    return `<option value="">시각 선택</option>${extra}<optgroup label="오전">${am}</optgroup><optgroup label="오후">${pm}</optgroup>`;
+  }
   function fmtScheduleWithTime(label, time){
     const d = String(label || '').trim();
     const t = String(time || '').trim();
@@ -21924,7 +21963,7 @@ window.SHIN2_CRM_APP_INIT = function(){
           </div>
           <div class="pi-body">
             <div class="co-form-field"><label>날짜</label><input type="date" id="stageDateInput" value="${esc(currentDateVal)}" /></div>
-            ${wantsTime ? `<div class="co-form-field"><label>시각</label><input type="time" id="stageTimeInput" value="${esc(currentTimeVal)}" required /></div>` : ''}
+            ${wantsTime ? `<div class="co-form-field"><label>시각</label><select id="stageTimeInput" required aria-label="시각(30분 단위)">${timeSelectOptionsHtml(currentTimeVal)}</select></div>` : ''}
             <div id="stageDateMsg" class="mail-settings-help" style="color:#B3261E; display:none;"></div>
           </div>
           <div class="pi-actions" style="justify-content:space-between;">
