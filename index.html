@@ -4599,6 +4599,11 @@ table.pdf-doc-table thead{ background:var(--bg); }
 .map-embed-root .map-modal-close{ display:none; } /* §요청 30: 인라인 카드는 닫을 수 없는 상시 영역 — 버튼은 그대로 두되 숨김만 */
 .map-embed-root .map-modal-head{ padding:0 0 8px; flex:none; }
 .map-embed-root .map-modal-tabs{ padding:0 0 8px; flex:none; }
+/* §지도 툴바 정리 라운드(신규) — "시공사 지역 분포"가 두 번 보이던 문제. 카드 바깥
+   제목(.crm-panel-title, 고정 문구)과 지도 안쪽 제목(#mapModalTitle)이 같은 말을 하고
+   있었다. 안쪽 제목은 탭에 따라 "POUR 시공 아파트 분포"로 바뀌고 부제까지 달고 있으므로
+   그쪽을 남기고 바깥 제목만 숨긴다(요소는 그대로 둬 되돌리기 쉽게). */
+.crm-map-col > .crm-panel-title{ display:none; }
 .map-embed-root .map-modal-filters{ padding:8px 0; flex-wrap:wrap; flex:none; }
 .map-embed-root .map-modal-search{ flex:1 1 160px; min-width:120px; }
 /* ==========================================================================
@@ -32505,6 +32510,21 @@ window.SHIN2_CRM_APP_INIT = function(){
     ['all','전체'], ['partner','협력업체'], ['inProgress','진행중'],
     ['managementNeeded','관리필요'], ['receivable','미수 업체']
   ];
+  // §지도 툴바 정리 라운드(신규) — 사용자 요청: "여기서는 협력업체 · 진행중 · 관리필요 ·
+  // 미수 업체 탭은 없애줘." 이 화면에 "그릴" 칩만 여기서 고른다.
+  //
+  // MAP_FILTER_DEFS와 mapEntryMatchesFilter(판정)는 그대로 둔다 — 키 정의와 판정을 지우면
+  // 나중에 되돌릴 때 다시 써야 하고, mapEntryMatchesFilter는 목록 쪽 matchesFilter를
+  // 재사용하고 있어 건드릴 이유가 없다. 남는 게 '전체' 하나뿐이면 칩 줄 자체를 그리지
+  // 않는다(고를 게 없는 칩 하나만 덩그러니 남는 게 더 이상하다).
+  // mapFilterState.filterKey는 이 칩 핸들러에서만 바뀌므로, 칩이 없으면 초기값 'all'
+  // (=전체)에 그대로 머문다 — 즉 지금까지의 "전체" 보기와 완전히 같다.
+  const MAP_FILTER_VISIBLE_KEYS = [];
+  function mapFilterChipsHtml(){
+    const shown = MAP_FILTER_DEFS.filter(([key])=> MAP_FILTER_VISIBLE_KEYS.indexOf(key) >= 0);
+    if(shown.length <= 1) return '';
+    return shown.map(([key,label])=> `<button type="button" class="list-filter-chip map-filter-chip${mapFilterState.filterKey===key?' is-active':''}" data-map-filter="${esc(key)}">${esc(label)}</button>`).join('');
+  }
   function mapEntryMatchesFilter(entry, key){
     if(key === 'all') return true;
     if(key === 'managementNeeded') return entry.isManagementNeeded;
@@ -32820,7 +32840,7 @@ window.SHIN2_CRM_APP_INIT = function(){
           ${MAP_SEARCH_ICO}
           <input type="text" class="map-modal-search" id="mapFilterSearch" placeholder="업체명 · 지역 검색" value="${esc(mapFilterState.search)}" aria-label="업체명 · 지역 검색" />
         </label>
-        ${MAP_FILTER_DEFS.map(([key,label])=> `<button type="button" class="list-filter-chip map-filter-chip${mapFilterState.filterKey===key?' is-active':''}" data-map-filter="${esc(key)}">${esc(label)}</button>`).join('')}
+        ${mapFilterChipsHtml()}
         <select class="map-modal-select" id="mapFilterCategory" aria-label="공종">
           <option value="all">공종 전체</option>
           ${categoryOptions.map(c=> `<option value="${esc(c)}"${mapFilterState.category===c?' selected':''}>${esc(c)}</option>`).join('')}
