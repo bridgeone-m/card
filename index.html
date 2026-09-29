@@ -3014,6 +3014,22 @@ body.map-modal-lock{ overflow:hidden; }
   background:#EEF4FF; border-color:var(--navy); box-shadow:inset 0 0 0 1px var(--navy);
 }
 .map-embed-root .map-modal-tabs-actions .map-modal-retry-btn{ height:34px; padding:0 12px; font-size:12px; }
+/* §근처검색 별도 탭 라운드(신규) — 근처 검색 탭. 같은 줄의 "필터 초기화"(회색 테두리)·
+   "PDF 내보내기"(남색 채움)와 한눈에 구분되도록 초록 계열로 칠한다. 켜져 있으면
+   채움으로 뒤집어 "지금 근처검색이 걸려 있다"는 걸 색으로도 알 수 있게 한다. */
+.map-embed-root .map-modal-retry-btn.is-near-tab{
+  color:#0F7A42; background:#F1FAF4; border-color:#B7DFC6;
+}
+.map-embed-root .map-modal-retry-btn.is-near-tab:hover{ background:#E4F5EA; border-color:#8CCDA6; }
+.map-embed-root .map-modal-retry-btn.is-near-tab:focus-visible{ outline:2px solid #0F7A42; outline-offset:2px; }
+.map-embed-root .map-modal-retry-btn.is-near-tab .map-btn-ico{ color:#0F7A42; }
+/* 켜짐 상태는 is-near-on 기존 규칙보다 뒤에 와야 이긴다(아래 순서 그대로 유지). */
+.map-embed-root .map-modal-retry-btn.is-near-tab.is-near-on{
+  color:#fff; background:#0F7A42; border-color:#0F7A42; box-shadow:none;
+}
+.map-embed-root .map-modal-retry-btn.is-near-tab.is-near-on:hover{ background:#0C6435; border-color:#0C6435; }
+/* 탭 줄에서 근처 검색만 왼쪽에 붙이고, 초기화/PDF는 오른쪽 끝으로 민다. */
+.map-embed-root .map-modal-tabs-actions .map-near-wrap{ margin-right:auto; }
 /* ---- 탭 ---- */
 /* 지도 카드는 폭이 좁아(오른쪽 컬럼 ~400px) 탭 2개 + 버튼 2개가 한 줄에 안 들어가면
    탭 글자가 두 줄로 쪼개졌다. 줄바꿈은 허용하되 탭 라벨 자체는 자르지 않는다. */
@@ -33999,13 +34015,41 @@ window.SHIN2_CRM_APP_INIT = function(){
           <option value="ge2000"${aptFilterState.households==='ge2000'?' selected':''}>2,000세대 이상</option>
           <option value="none"${aptFilterState.households==='none'?' selected':''}>세대수 미등록</option>
         </select>
+      </div>
+      <div class="map-apt-summary" id="aptSummaryRow"></div>
+      <div class="map-modal-body-main">
+        <!-- §근처검색 중복 목록 수정 — 이 탭은 mapModalInfoCol(renderAptInfoPanel)
+             자체가 이미 "시공 아파트 목록"/"근처 시공 아파트" 중 하나만 보여주는
+             단일 목록이다(아래 listTitle 분기 참고). 시공사 탭에서 쓰던 고정
+             mapModalAptListCol(항상 전체 목록만 보여주고 근처검색 상태를 모름)을
+             여기 그대로 갖다 붙였더니 두 목록이 동시에 보이는 중복이 생겼다 —
+             이 탭에서는 그 구획 자체를 만들지 않는다(infocol이 last-child가 되면
+             CSS에서 남는 세로 공간을 대신 채우도록 이미 처리해 둠, §아래 CSS). -->
+        <div class="map-modal-mapcol" id="mapModalMapCol"><div class="map-modal-canvas" id="mapModalCanvas"></div></div>
+        <div class="map-modal-infocol" id="mapModalInfoCol"></div>
+      </div>
+    `;
+    // §요청 — "필터 초기화"/"PDF 내보내기"를 탭(시공사/시공 아파트) 옆으로 이동.
+    // #mapModalTabsActions는 openMapDistributionModal/mountMapDistributionInline이
+    // 이미 그려 둔 탭 줄 안의 빈 자리(§위 마크업 참고) — 여기서 채우기만 한다.
+    // 버튼 id(aptFilterResetBtn/aptPdfExportBtn)와 그 아래 이벤트 바인딩은 그대로라
+    // 새 로직을 만들지 않았다.
+    const tabsActionsEl = document.getElementById('mapModalTabsActions');
+    if(tabsActionsEl){
+      // §근처검색 별도 탭 라운드(신규) — 사용자 요청: "근처검색은 별도로 탭 하나
+      // 만들어줘, 다른 색으로." 필터 줄(공종/지역/세대수와 같은 줄)에 섞여 있던 근처
+      // 검색을 탭 줄로 올리고, 필터 초기화·PDF 내보내기와 구분되는 초록 계열로 칠한다
+      // (.is-near-tab). 버튼/입력 id(aptNearToggleBtn / aptNearPop / aptNearSearchInput /
+      // aptNearSearchBtn / aptNearClearBtn)와 팝오버 마크업은 한 글자도 안 바꿨다 —
+      // 자리만 옮겼다. 거리 계산·지오코딩 경로도 그대로다.
+      tabsActionsEl.innerHTML = `
         <!-- §지도 분포 UI 통일 라운드 — 근처 검색을 항상 펼쳐진 한 줄에서 툴바 버튼 +
              작은 플로팅 패널로 바꿨다. 입력/버튼 id는 그대로라(aptNearSearchInput /
              aptNearSearchBtn / aptNearClearBtn) 지오코딩·거리 계산 경로는 손대지 않았다.
              패널은 hidden 속성으로만 여닫으므로 닫혀 있어도 DOM에 있어 기존
              document.getElementById 바인딩이 그대로 동작한다. -->
         <div class="map-near-wrap">
-          <button type="button" class="map-modal-retry-btn${aptFilterState.nearCenter ? ' is-near-on' : ''}" id="aptNearToggleBtn" aria-expanded="false" aria-controls="aptNearPop">
+          <button type="button" class="map-modal-retry-btn is-near-tab${aptFilterState.nearCenter ? ' is-near-on' : ''}" id="aptNearToggleBtn" aria-expanded="false" aria-controls="aptNearPop">
             ${MAP_PIN_ICO}<span>근처 검색${aptFilterState.nearCenter ? ' · 켜짐' : ''}</span>
           </button>
           <div class="map-near-pop" id="aptNearPop" role="dialog" aria-label="근처 시공 아파트 검색" hidden>
@@ -34029,28 +34073,6 @@ window.SHIN2_CRM_APP_INIT = function(){
             <div class="map-near-hint">입력한 위치를 기준으로 반경 안의 시공 아파트만 거리순으로 보여줍니다.</div>
           </div>
         </div>
-      </div>
-      <div class="map-apt-summary" id="aptSummaryRow"></div>
-      <div class="map-modal-body-main">
-        <!-- §근처검색 중복 목록 수정 — 이 탭은 mapModalInfoCol(renderAptInfoPanel)
-             자체가 이미 "시공 아파트 목록"/"근처 시공 아파트" 중 하나만 보여주는
-             단일 목록이다(아래 listTitle 분기 참고). 시공사 탭에서 쓰던 고정
-             mapModalAptListCol(항상 전체 목록만 보여주고 근처검색 상태를 모름)을
-             여기 그대로 갖다 붙였더니 두 목록이 동시에 보이는 중복이 생겼다 —
-             이 탭에서는 그 구획 자체를 만들지 않는다(infocol이 last-child가 되면
-             CSS에서 남는 세로 공간을 대신 채우도록 이미 처리해 둠, §아래 CSS). -->
-        <div class="map-modal-mapcol" id="mapModalMapCol"><div class="map-modal-canvas" id="mapModalCanvas"></div></div>
-        <div class="map-modal-infocol" id="mapModalInfoCol"></div>
-      </div>
-    `;
-    // §요청 — "필터 초기화"/"PDF 내보내기"를 탭(시공사/시공 아파트) 옆으로 이동.
-    // #mapModalTabsActions는 openMapDistributionModal/mountMapDistributionInline이
-    // 이미 그려 둔 탭 줄 안의 빈 자리(§위 마크업 참고) — 여기서 채우기만 한다.
-    // 버튼 id(aptFilterResetBtn/aptPdfExportBtn)와 그 아래 이벤트 바인딩은 그대로라
-    // 새 로직을 만들지 않았다.
-    const tabsActionsEl = document.getElementById('mapModalTabsActions');
-    if(tabsActionsEl){
-      tabsActionsEl.innerHTML = `
         <button type="button" class="map-modal-retry-btn" id="aptFilterResetBtn">필터 초기화</button>
         <button type="button" class="map-modal-retry-btn is-primary" id="aptPdfExportBtn">${MAP_DOC_ICO}<span>PDF 내보내기</span></button>
       `;
@@ -34073,10 +34095,13 @@ window.SHIN2_CRM_APP_INIT = function(){
     // change 핸들러와 완전히 같다: aptFilterState.nearRadiusKm에 같은 숫자를 넣고
     // 근처 검색 중이면 refreshAptInfoAndMarkers()를 부른다(거리 계산·반경 판정은
     // 그대로 aptFilteredEntries/ drawAptNearCircle 쪽에서 이 값을 읽어간다).
-    wrap.querySelectorAll('[data-apt-near-radius]').forEach(btn=> btn.addEventListener('click', ()=>{
+    // §근처검색 별도 탭 라운드 — 반경 칩이 든 팝오버가 #mapModalBody(=wrap) 밖의 탭 줄로
+    // 옮겨졌으므로 wrap 스코프로는 더 이상 찾지 못한다. 같은 함수의 "필터 초기화" 쪽이
+    // 이미 쓰고 있는 document 스코프로 맞춘다(이 속성을 쓰는 요소는 이 팝오버뿐이다).
+    document.querySelectorAll('[data-apt-near-radius]').forEach(btn=> btn.addEventListener('click', ()=>{
       const km = parseInt(btn.getAttribute('data-apt-near-radius'), 10) || 5;
       aptFilterState.nearRadiusKm = km;
-      wrap.querySelectorAll('[data-apt-near-radius]').forEach(b=>{
+      document.querySelectorAll('[data-apt-near-radius]').forEach(b=>{
         const on = b === btn;
         b.classList.toggle('is-active', on);
         b.setAttribute('aria-pressed', on ? 'true' : 'false');
@@ -34092,7 +34117,10 @@ window.SHIN2_CRM_APP_INIT = function(){
       const placeNearPop = ()=>{
         const r = nearToggleBtn.getBoundingClientRect();
         const w = nearPop.offsetWidth || 328;
-        const left = Math.max(8, Math.min(window.innerWidth - w - 8, r.right - w));
+        // §근처검색 별도 탭 라운드 — 버튼이 필터 줄 오른쪽에서 탭 줄 왼쪽으로 옮겨졌다.
+        // 예전처럼 버튼 오른쪽 끝에 맞추면(r.right - w) 팝오버가 카드 왼쪽 밖으로 삐져
+        // 나간다. 버튼 왼쪽에 맞추되, 오른쪽이 화면을 넘으면 그때만 안으로 당긴다.
+        const left = Math.max(8, Math.min(window.innerWidth - w - 8, r.left));
         const top = Math.min(window.innerHeight - 12, r.bottom + 8);
         nearPop.style.left = left + 'px';
         nearPop.style.top = top + 'px';
