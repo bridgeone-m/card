@@ -4045,6 +4045,32 @@ table.pdf-doc-table thead{ background:var(--bg); }
 /* §고객관리 사진·서류 통합 라운드(신규) — 카드+썸네일 체크리스트 */
 .doc-card-summary{ font-size:12px; color:var(--text-muted); margin-bottom:8px; }
 .doc-card-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:10px; }
+/* §서류 현황 체크 전환 라운드(신규) — 카드+썸네일 목록을 한 줄짜리 체크 목록으로.
+   테두리 없이 얇은 구분선만 두고, 6줄이 한눈에 들어오게 한다. */
+.doc-check-list{ display:flex; flex-direction:column; }
+.doc-check-row{
+  display:flex; align-items:center; gap:9px; padding:9px 2px;
+  border-bottom:1px solid #EFF3F8; cursor:pointer; user-select:none;
+}
+.doc-check-row:last-child{ border-bottom:none; }
+.doc-check-row:hover{ background:#F7FAFE; }
+.doc-check-box{ width:16px; height:16px; flex:none; accent-color:var(--navy); cursor:pointer; margin:0; }
+.doc-check-box:focus-visible{ outline:2px solid var(--navy); outline-offset:2px; }
+.doc-check-name{ font-size:13px; color:var(--text); }
+.doc-check-box:checked + .doc-check-name{ font-weight:700; color:var(--navy); }
+/* §서류 현황 체크 전환 라운드(신규) — 카드+썸네일 목록을 한 줄짜리 체크 목록으로.
+   테두리 없이 얇은 구분선만 두고, 6줄이 한눈에 들어오게 한다. */
+.doc-check-list{ display:flex; flex-direction:column; }
+.doc-check-row{
+  display:flex; align-items:center; gap:9px; padding:9px 2px;
+  border-bottom:1px solid #EFF3F8; cursor:pointer; user-select:none;
+}
+.doc-check-row:last-child{ border-bottom:none; }
+.doc-check-row:hover{ background:#F7FAFE; }
+.doc-check-box{ width:16px; height:16px; flex:none; accent-color:var(--navy); cursor:pointer; margin:0; }
+.doc-check-box:focus-visible{ outline:2px solid var(--navy); outline-offset:2px; }
+.doc-check-name{ font-size:13px; color:var(--text); }
+.doc-check-box:checked + .doc-check-name{ font-weight:700; color:var(--navy); }
 .doc-card{ display:flex; gap:10px; padding:8px; }
 .doc-card-thumb{ flex:none; width:56px; height:56px; border-radius:6px; overflow:hidden; background:var(--bg); display:flex; align-items:center; justify-content:center; }
 .doc-card-thumb img{ width:100%; height:100%; object-fit:cover; }
@@ -22251,43 +22277,38 @@ window.SHIN2_CRM_APP_INIT = function(){
     else text = `미등록 ${counts.unregistered}`;
     return { list, counts, total, registeredCount, text };
   }
+  // §서류 현황 체크 전환 라운드(신규) — 사용자 요청: 6종 서류(명함/사업자등록증/회사
+  // 로고/통장사본/물품공급계약서/MOU 체결서)를 파일 첨부가 아니라 "체크하는 형태로만",
+  // 각 항목 한 줄로 표시한다.
+  //
+  // 체크 상태는 co.docChecks[type](불리언)에 담는다. 기존 레코드에는 이 필드가 없으므로
+  // "명시적으로 저장된 값이 있으면 그 값, 없으면 파일 유무"로 읽는다(읽기 호환 — 일괄
+  // 마이그레이션을 하지 않는다). 이 파일이 이미 쓰는 원칙과 같다(§"기존 서류 데이터에
+  // verificationStatus가 없는 경우 파일 있으면 registered").
+  //
+  // 이미 업로드된 파일(documents)은 지우지 않는다 — 이 화면에서 읽지도 쓰지도 않을 뿐,
+  // D.documentsForCompany에 그대로 남아 있어 되돌리면 그대로 다시 보인다.
+  function docCheckState(co, type, doc){
+    const m = co && co.docChecks;
+    if(m && Object.prototype.hasOwnProperty.call(m, type)) return !!m[type];
+    return !!doc;
+  }
   function agreementDocChecklistHtml(companyId){
+    const co = D.findCompany(companyId);
     const summary = buildAgreementDocSummary(companyId);
+    let checkedCount = 0;
     const rows = summary.list.map(it=>{
-      const doc = it.doc;
-      const metaBits = [];
-      if(doc){
-        metaBits.push(esc(doc.fileName || doc.originalFileName || '(이름 없음)'));
-        if(doc.mimeType) metaBits.push(esc((doc.mimeType.split('/').pop()||'').toUpperCase()));
-        if(doc.size || doc.fileSize) metaBits.push(esc(fmtFileSize(doc.size||doc.fileSize)));
-        if(doc.createdAt) metaBits.push(esc(fmtDate(doc.createdAt)) + ' 등록' + (doc.uploadedBy ? ' · ' + esc(doc.uploadedBy) : ''));
-        if(doc.verifiedAt) metaBits.push('확인 ' + esc(fmtDate(doc.verifiedAt)) + (doc.verifiedBy ? ' · ' + esc(doc.verifiedBy) : ''));
-        if(doc.verificationMemo) metaBits.push('메모: ' + esc(doc.verificationMemo));
-      }
-      const hasBlob = doc ? (doc.localOnly ? (!!D.getBlob(doc.id) || !!doc.localIndexedDb) : true) : false;
+      const on = docCheckState(co, it.type, it.doc);
+      if(on) checkedCount++;
       return `
-        <div class="agr-doc-row" data-agr-doc-type="${esc(it.type)}">
-          <div class="agr-doc-row-head">
-            <span class="agr-doc-name">${esc(it.label)}</span>
-            <span class="status-badge ${AGREEMENT_DOC_STATUS_CLASS[it.status]}">${esc(AGREEMENT_DOC_STATUS_LABEL[it.status])}</span>
-          </div>
-          ${doc ? `<div class="agr-doc-meta">${metaBits.join(' · ')}</div>` : `<div class="agr-doc-meta is-empty">등록된 파일이 없습니다</div>`}
-          <div class="agr-doc-actions">
-            <input type="file" id="agrDocInput_${esc(it.type)}" style="display:none;" accept="image/*,application/pdf" />
-            ${!doc ? `<button type="button" class="co-text-action" data-agr-doc-do="upload" data-agr-doc-type="${esc(it.type)}">파일 등록</button>` : ''}
-            ${doc && hasBlob ? `<button type="button" class="co-text-action" data-agr-doc-do="open" data-agr-doc-id="${esc(doc.id)}">열기</button>` : ''}
-            ${doc && hasBlob ? `<button type="button" class="co-text-action" data-agr-doc-do="download" data-agr-doc-id="${esc(doc.id)}">다운로드</button>` : ''}
-            ${doc ? `<button type="button" class="co-text-action" data-agr-doc-do="replace" data-agr-doc-type="${esc(it.type)}">교체</button>` : ''}
-            ${doc && it.status !== 'verified' ? `<button type="button" class="co-text-action" data-agr-doc-do="verify" data-agr-doc-id="${esc(doc.id)}">확인 완료</button>` : ''}
-            ${doc && it.status !== 'reRequest' ? `<button type="button" class="co-text-action" data-agr-doc-do="rerequest" data-agr-doc-id="${esc(doc.id)}">재요청</button>` : ''}
-            ${doc ? `<button type="button" class="co-text-action" data-agr-doc-do="memo" data-agr-doc-id="${esc(doc.id)}">메모</button>` : ''}
-            ${doc ? `<button type="button" class="co-text-action danger" data-agr-doc-do="delete" data-agr-doc-id="${esc(doc.id)}">삭제</button>` : ''}
-          </div>
-        </div>`;
+        <label class="doc-check-row">
+          <input type="checkbox" class="doc-check-box" data-doc-check="${esc(it.type)}"${on ? ' checked' : ''} />
+          <span class="doc-check-name">${esc(it.label)}</span>
+        </label>`;
     }).join('');
     return `
-      <div class="agr-doc-summary">서류 ${summary.registeredCount} / ${summary.total} 등록 · 확인 완료 ${summary.counts.verified}건 · 미등록 ${summary.counts.unregistered}건${summary.counts.reRequest ? ' · 재요청 ' + summary.counts.reRequest + '건' : ''}</div>
-      <div class="agr-doc-list">${rows}</div>
+      <div class="agr-doc-summary">서류 ${checkedCount} / ${summary.total} 확인</div>
+      <div class="doc-check-list">${rows}</div>
     `;
   }
   // §고객관리 사진·서류 통합 라운드(신규) — opts로 컨테이너 id와 렌더 함수를 바꿀 수
@@ -22303,6 +22324,28 @@ window.SHIN2_CRM_APP_INIT = function(){
     if(!wrap) return;
     const co = D.findCompany(companyId);
     if(!co) return;
+    // §서류 현황 체크 전환 라운드 — 체크박스 하나가 바뀔 때마다 co.docChecks만 갱신한다.
+    // 서류 파일(documents) 쪽은 읽지도 쓰지도 않는다.
+    wrap.querySelectorAll('[data-doc-check]').forEach(box=> box.addEventListener('change', async ()=>{
+      const type = box.getAttribute('data-doc-check');
+      const cur = D.findCompany(companyId);
+      if(!cur) return;
+      const next = Object.assign({}, cur.docChecks || {});
+      next[type] = !!box.checked;
+      D.updateCompany(companyId, { docChecks: next });
+      // 요약 줄만 그 자리에서 갱신한다 — 전체 재렌더를 하면 체크 직후 포커스가 날아가
+      // 연속으로 체크하기 불편하다.
+      const summaryEl = wrap.querySelector('.agr-doc-summary');
+      if(summaryEl){
+        summaryEl.textContent = `서류 ${wrap.querySelectorAll('[data-doc-check]:checked').length} / ${wrap.querySelectorAll('[data-doc-check]').length} 확인`;
+      }
+      renderAgreementDocFilterCount();
+      // 클라우드 저장 실패 시에도 로컬 값과 화면은 되돌리지 않는다 — 이 파일의 다른 서류
+      // 액션(업로드/확인/메모: confirmDocsCloudSave 실패 시 alert만 띄우고 로컬은 유지)과
+      // 같은 방식이다. 되돌려 버리면 네트워크가 잠깐 끊긴 동안 체크 자체를 못 하게 된다.
+      const r = await confirmCloudSave('companies');
+      if(!r.ok) alert('서류 체크는 이 기기에 저장됐지만 서버 반영 확인에 실패했습니다 — ' + cloudSaveErrorMessage(r.err));
+    }));
     function refresh(){
       wrap.innerHTML = renderHtml(companyId);
       bindAgreementDocChecklistHandlers(companyId, opts);
