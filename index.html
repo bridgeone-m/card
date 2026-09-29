@@ -16346,9 +16346,24 @@ window.SHIN2_CRM_APP_INIT = function(){
     // 위 배지("협약 완료")와 모순되는 문구를 보여줬다 — 새 판정 로직을 만들지 않고
     // 이미 있는 isDone/resolveDealStageFormValues(mou.date)만 재사용해, 완료된
     // 경우에는 스테퍼 대신 "협약 완료 · [날짜]"로 대체 표시한다.
+    // §수동 MOU 확정 표시 불일치 라운드(신규) — 사용자 보고: "체결 완료라 MOU 체결 탭에
+    // 들어가 있는데 고객카드에는 질문서 대기 / 체결 전이라고 나온다."
+    //
+    // 원인은 두 값이 원래 서로 다른 것을 가리키기 때문이다.
+    //   · MOU 체결 탭 / KPI / 외부 PDF = isConfirmedPartner — ①co.mouManualConfirm(사용자
+    //     직접 확정) 또는 ②진행단계 mou.state==='done'
+    //   · 이 카드의 배지·요약 = buildGlanceStats / resolveDealStageFormValues — ②만 본다
+    // 그래서 ①로 확정한 업체는 "체결 탭에는 있는데 카드에는 체결 전"으로 보인다.
+    // 진행단계와 체결 여부를 분리한 것 자체는 의도된 설계라(진행단계 = 온보딩,
+    // MOU 체결 = YES가 가능해야 한다는 요구) 판정은 전혀 건드리지 않고, 카드에서 "체결
+    // 전"이라고 단정하던 문구만 실제 확정 상태로 바꾼다 — 이미 있는 판정 함수
+    // (D.isMouManuallyConfirmed)를 읽기만 하는 표시 전용 보정이다(§P2-3과 같은 방식).
+    const manualMou = !!(D.isMouManuallyConfirmed && D.isMouManuallyConfirmed(co));
     const dealSummary = isDone
       ? ('협약 완료' + (resolveDealStageFormValues(co).mou.date ? ' · ' + fmtDate(resolveDealStageFormValues(co).mou.date) : ''))
-      : buildDealStageSummaryText(co);
+      : (manualMou
+          ? buildDealStageSummaryText(co).replace(/(체결 전|진행 중)$/, '체결 확정')
+          : buildDealStageSummaryText(co));
     // §업체 관계 헤더 이관 라운드(신규) — "업체 관계" 카드(이전 상호/협약 종료 상태)를
     // 왼쪽 열에서 빼고, 남색 헤더에 아주 짧은 한 줄로만 보여준다(§요청 "그냥 간단하게
     // 입력. 없으면 없는걸로" — 없으면 아무것도 안 그림, 지어내지 않음). 실제 편집(이전
@@ -16377,6 +16392,7 @@ window.SHIN2_CRM_APP_INIT = function(){
             <div class="cdash2-deal-summary">${esc(dealSummary)}${relationsInline ? ' · ' + esc(relationsInline) : ''}</div>
           </div>
           <span class="cdash2-tag${isDone ? ' is-done' : ''}">${esc(stageText)}</span>
+          ${manualMou && !isDone ? `<span class="cdash2-tag is-done" title="진행단계와 별개로 'MOU 체결'로 확정된 업체입니다. 왼쪽 태그는 진행단계(질문서·미팅)를 그대로 보여줍니다.">MOU 체결</span>` : ''}
           ${isCore ? `<span class="cdash2-tag is-core">핵심 고객</span>` : ''}
           ${isHurdle ? `<span class="cdash2-tag is-hurdle" title="진행 중인 신규 협약(MOU) 건이 허들·보류 상태입니다">허들·보류</span>` : ''}
           <button type="button" class="cdash2-header-insight-btn" id="chartHeaderInsightBtn" title="고객 인사이트 보기">
