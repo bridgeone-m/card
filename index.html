@@ -4097,10 +4097,24 @@ table.pdf-doc-table thead{ background:var(--bg); }
 /* §요청 7 — 6컬럼(업체명/최근실적/총매출/최근요청/최근흐름/실적-매출). .crm-list-col
    범위로 좁혀 특정도를 높여서, 위쪽의 옛 5/9/10컬럼 grid-template-columns 규칙들을
    덮어쓴다(그 규칙들은 그대로 남겨둠 — 삭제하지 않고 이 스코프에서만 override). */
+/* §업체 목록 컬럼 폭 재배분 라운드(신규) — 업체명 열만 fr를 갖고 나머지 5열이 전부
+   고정 px였던 탓에, 남는 가로 폭을 업체명이 혼자 다 흡수했다(1800px 화면 실측:
+   업체명 533px = 표 폭의 47.8%, 업체명 텍스트 끝과 "최근 실적" 사이 빈칸 449px).
+   그래서 가운데가 텅 비고 오른쪽 정보 묶음이 화면 끝으로 밀려 보였다.
+   6열 전부에 fr를 주어 남는 폭을 비율대로 나눈다 — 열 순서·개수·내용·클릭 핸들러는
+   그대로이고 grid-template-columns 한 줄만 바뀐다. fr 합 6.0 기준 목표 비율:
+   업체명 26% / 최근 실적 15% / 총매출 17% / 최근 요청 15% / 최근 흐름 11% / 실적-매출 11%.
+   minmax 첫 값(최소폭)은 좁은 화면에서 글자가 뭉개지지 않을 하한선이다. */
 .crm-list-col .co-table-head, .crm-list-col .co-row{
-  grid-template-columns: minmax(150px,1.4fr) 118px 130px 84px 84px 96px !important;
+  grid-template-columns:
+    minmax(150px,1.64fr) minmax(108px,0.96fr) minmax(124px,1.08fr)
+    minmax(84px,0.90fr) minmax(76px,0.71fr) minmax(80px,0.71fr) !important;
   gap:8px !important;
 }
+/* 업체명 열이 좁아진 만큼, 긴 업체명은 열 폭 전체를 쓰고 넘치면 ellipsis 처리한다.
+   .co-name-text의 기본 max-width:220px(§278)가 새 열 폭보다 작아 오른쪽에 쓸데없는
+   여백을 남기므로 이 화면에서만 100%로 푼다 — 줄바꿈 없이 한 줄 유지(행 높이 불변). */
+.crm-list-col .co-name-text{ max-width:100% !important; }
 .crm-list-col .col-pour{ flex:none; word-break:keep-all; white-space:normal; }
 .co-code-sub{ font-size:10.5px; color:var(--text-muted); font-weight:500; margin-top:1px; }
 .col-trend, .col-contrib{ min-width:0; text-align:right; font-size:12px; word-break:keep-all; }
@@ -4111,13 +4125,17 @@ table.pdf-doc-table thead{ background:var(--bg); }
   .crm-list-col{ overflow-x:auto; }
   .crm-list-col .co-table-head, .crm-list-col .co-list{ min-width:780px; }
   .crm-list-col .co-table-head, .crm-list-col .co-row{
-    grid-template-columns: minmax(150px,1.3fr) 110px 120px 80px 80px 90px !important;
+    grid-template-columns:
+      minmax(150px,1.55fr) minmax(104px,0.95fr) minmax(116px,1.05fr)
+      minmax(80px,0.9fr) minmax(74px,0.72fr) minmax(78px,0.73fr) !important;
   }
 }
 @media(max-width:760px){
   .crm-list-col .co-table-head, .crm-list-col .co-list{ min-width:680px; }
   .crm-list-col .co-table-head, .crm-list-col .co-row{
-    grid-template-columns: minmax(130px,1.2fr) 100px 104px 74px 70px 78px !important;
+    grid-template-columns:
+      minmax(130px,1.5fr) minmax(96px,0.95fr) minmax(104px,1.05fr)
+      minmax(74px,0.88fr) minmax(70px,0.72fr) minmax(74px,0.74fr) !important;
     gap:5px !important;
   }
 }
