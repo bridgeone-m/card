@@ -4814,6 +4814,30 @@ table.sales-import-table td{ padding:5px 8px; border-bottom:1px solid #EEF2F7; v
   #agreementModalRoot .agr-panel{ padding-bottom:env(safe-area-inset-bottom); }
 }
 
+
+/* §PDF 대상 선정 재구성 라운드(신규) — 내부용 PDF 업체 선택 목록 */
+.pdf-pick-block{ margin-top:2px; }
+.pdf-pick-actions{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px; }
+.pdf-pick-actions .co-text-action{ font-size:11.5px; padding:5px 9px; min-height:30px; }
+.pdf-pick-list{
+  max-height:min(34vh, 260px); overflow-y:auto;
+  border:1px solid var(--line); border-radius:8px; background:#fff; padding:4px 2px;
+}
+.pdf-pick-row{
+  display:grid; grid-template-columns:18px minmax(0,1fr) auto; align-items:center; gap:8px;
+  padding:5px 9px; border-radius:6px; cursor:pointer; font-size:12px; color:var(--text);
+}
+.pdf-pick-row:hover{ background:#F5F9FF; }
+.pdf-pick-row input{ margin:0; width:14px; height:14px; cursor:pointer; }
+.pdf-pick-name{ font-weight:650; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.pdf-pick-sub{ font-size:11px; color:var(--text-muted); white-space:nowrap; }
+.pdf-pick-empty{ padding:14px 10px; font-size:12px; color:var(--text-muted); text-align:center; }
+.pdf-pick-meta{ margin-top:5px; font-size:11.5px; color:var(--text-muted); }
+@media(max-width:760px){
+  .pdf-pick-list{ max-height:min(30vh, 200px); }
+  .pdf-pick-sub{ display:none; }
+  .pdf-pick-row{ grid-template-columns:18px minmax(0,1fr); }
+}
 /* ===== §컬럼 설명 팝오버 라운드(신규) — 고객관리 목록 헤더 도움말 =========================
    의미가 바로 안 읽히는 헤더(총매출/최근 요청/최근 흐름/실적-매출)에 작은 info 버튼을
    붙이고, 누르면 초미니 안내 팝오버를 띄운다. 데이터/정렬/검색/필터 로직은 전혀 건드리지
@@ -29653,46 +29677,20 @@ window.SHIN2_CRM_APP_INIT = function(){
     });
   }
 
-  // §고객관리 목록 출력(PDF) 라운드(신규) — 등록폼/수정폼 양쪽에서 공유하는 "목록 공개
-  // 범위" 블록. 저장 필드는 새로 만들지 않고 기존 co.distributionLists 배열(§협력업체
-  // 리스트 추가폼 이관 라운드에서 이미 만든 필드)을 그대로 읽고 쓴다.
-  function renderDistributionListsBlockHtml(idPrefix, co){
-    const tags = (co && Array.isArray(co.distributionLists)) ? co.distributionLists : [];
-    const checked = {
-      internal: !tags.includes('excludeInternal'),
-      contractor: tags.includes('contractor'),
-      external: tags.includes('external')
-    };
-    return `
-      <div class="co-form-field dist-list-block">
-        <label>목록 공개 범위</label>
-        <div class="dist-list-row">
-          <label class="dist-list-check"><input type="checkbox" id="${idPrefix}_dist_internal" ${checked.internal ? 'checked' : ''} /> 내부용 목록에 포함</label>
-          <label class="dist-list-check"><input type="checkbox" id="${idPrefix}_dist_contractor" ${checked.contractor ? 'checked' : ''} /> 시공사 발송용 목록에 포함</label>
-          <label class="dist-list-check"><input type="checkbox" id="${idPrefix}_dist_external" ${checked.external ? 'checked' : ''} /> 외부 발송용 목록에 포함</label>
-        </div>
-        <div class="dist-list-warn" id="${idPrefix}_distExternalWarn" style="display:none;">외부 발송용에 포함하면 사업자번호·이메일·협약일·자본금·비고 등 민감정보 없이 지역/업체명/업체코드/대표자/주소/연락처만 노출됩니다.</div>
-      </div>`;
-  }
-  function bindDistributionListsBlock(idPrefix){
-    const externalEl = document.getElementById(idPrefix + '_dist_external');
-    const warnEl = document.getElementById(idPrefix + '_distExternalWarn');
-    if(externalEl && warnEl){
-      const sync = ()=>{ warnEl.style.display = externalEl.checked ? 'block' : 'none'; };
-      externalEl.addEventListener('change', sync);
-      sync();
-    }
-  }
-  function readDistributionListsFromForm(idPrefix){
-    const tags = [];
-    const internalEl = document.getElementById(idPrefix + '_dist_internal');
-    const contractorEl = document.getElementById(idPrefix + '_dist_contractor');
-    const externalEl = document.getElementById(idPrefix + '_dist_external');
-    if(internalEl && !internalEl.checked) tags.push('excludeInternal');
-    if(contractorEl && contractorEl.checked) tags.push('contractor');
-    if(externalEl && externalEl.checked) tags.push('external');
-    return tags;
-  }
+  // §PDF 대상 선정 재구성 라운드(신규) — 등록폼/수정폼의 "목록 공개 범위" 블록
+  // (renderDistributionListsBlockHtml / bindDistributionListsBlock /
+  // readDistributionListsFromForm)을 제거했다. 사용자 요청: "신규 고객 등록 시 PDF 목록
+  // 포함 여부를 사람이 미리 체크하지 않게 한다."
+  //
+  // 대신 PDF 대상은 출력 시점에 정해진다.
+  //   외부 발송용 : MOU 체결 업체 자동(getMouSignedCompanies — KPI "MOU 체결"과 같은 판정)
+  //   내부용      : PDF 내보내기 화면에서 사용자가 직접 체크한 업체
+  //
+  // 데이터 레이어의 co.distributionLists / D.isInDistributionList /
+  // DISTRIBUTION_LIST_TYPES는 일부러 그대로 남겨 뒀다 — 기존 고객 레코드에 이미 들어
+  // 있는 값을 마이그레이션하거나 지우지 않는다는 요청(§9) 때문이다. 이제 UI도 PDF
+  // 판정도 이 필드를 읽지 않으므로, 남아 있어도 화면·출력에 아무 영향이 없다.
+
   function renderBasicInfoForm(co){
     const wrap = document.getElementById('crmBasicInfo');
     wrap.innerHTML = CO_FIELD_LABELS.concat([['memo','기본메모']]).map(([k,l])=> `
@@ -29704,14 +29702,12 @@ window.SHIN2_CRM_APP_INIT = function(){
       // 넣는다(idPrefix만 'editco'로 달라 id 충돌 없음) — 값은 이 업체의 실제 저장값으로
       // 미리 채운다(resolveDealStageFormValues, 새 판정 없음).
       + renderDealStageBlockHtml('editco', resolveDealStageFormValues(co))
-      + renderDistributionListsBlockHtml('editco', co)
       + `<div style="display:flex;gap:10px;margin-top:6px;align-items:center;">
         <button type="button" class="co-text-action" id="crmFormCancel">취소</button>
         <button type="button" class="co-text-action primary" id="crmFormSave">저장</button>
         <span class="cdash-cloud-save-status" id="crmFormSaveStatus"></span>
       </div>`;
     bindDealStageBlock('editco');
-    bindDistributionListsBlock('editco');
     document.getElementById('crmFormCancel').addEventListener('click', ()=>{ cardState.chartEditing = false; refreshChart(); });
     document.getElementById('crmFormSave').addEventListener('click', async (e)=>{
       const patch = {};
@@ -29720,7 +29716,10 @@ window.SHIN2_CRM_APP_INIT = function(){
         if(el) patch[k] = el.value.trim();
       });
       if(!patch.name){ return; }
-      patch.distributionLists = readDistributionListsFromForm('editco');
+      // §PDF 대상 선정 재구성 라운드(신규) — patch에서 distributionLists를 뺐다. 폼에서
+      // 블록을 없앤 뒤에도 이 줄이 남아 있으면 저장할 때마다 빈 배열로 덮어써서 기존
+      // 고객의 값을 지우게 된다(§요청 9 "기존 고객 데이터 수정 금지"). 이제 이 필드는
+      // 읽지도 쓰지도 않고 레코드에 있던 값 그대로 남는다.
       const dealCheck = validateDealStageBlock('editco');
       const warnEl = document.getElementById('editco_dealStageWarn');
       if(dealCheck.blocking.length){
@@ -31078,7 +31077,6 @@ window.SHIN2_CRM_APP_INIT = function(){
           <div class="ca-ocr-status" id="crmNewFOcrStatus"></div>
         </div>
       </div>
-      ${renderDistributionListsBlockHtml('addco', null)}
       <div id="crmNewFErr" style="display:none;color:#B91C1C;font-size:12px;margin-bottom:8px;">업체명을 입력하세요.</div>
       <!-- §로그인 단일화 라운드(신규) — §요청 5 "Firestore 저장 성공 후에만 '저장되었습니다'
            표시 / 실패 시 성공으로 표시하지 않음 / 입력 내용 유지 / 쉬운 오류 메시지와
@@ -31097,7 +31095,6 @@ window.SHIN2_CRM_APP_INIT = function(){
     document.getElementById('crmNewF_code').value = genCompanyCode();
     if(prefillName) document.getElementById('crmNewF_name').value = prefillName;
     bindDealStageBlock('addco');
-    bindDistributionListsBlock('addco');
     wrap.querySelectorAll('[data-region]').forEach(btn=> btn.addEventListener('click', ()=>{
       const r = btn.getAttribute('data-region');
       if(regionSelected.has(r)){ regionSelected.delete(r); btn.classList.remove('is-active'); }
@@ -31317,7 +31314,9 @@ window.SHIN2_CRM_APP_INIT = function(){
       patch.code = document.getElementById('crmNewF_code').value.trim();
       patch.note = document.getElementById('crmNewF_note').value.trim();
       patch.region = Array.from(regionSelected);
-      patch.distributionLists = readDistributionListsFromForm('addco');
+      // §PDF 대상 선정 재구성 라운드(신규) — 등록 시 patch.distributionLists를 더 이상
+      // 쓰지 않는다. 신규 레코드에는 이 필드 자체가 생기지 않고, PDF 대상은 출력 화면에서
+      // 정해진다(외부용=MOU 체결 자동, 내부용=사용자 체크).
       if(!patch.name){ document.getElementById('crmNewFErr').style.display = 'block'; return; }
       // §업체코드 중복발급 방지 라운드(신규) — §요청 3 "저장 버튼 클릭 시점에 반드시
       // 최신 업체 데이터를 다시 조회". 폼을 열 때 미리 채워둔 값(genCompanyCode 최초
@@ -33735,22 +33734,41 @@ window.SHIN2_CRM_APP_INIT = function(){
     return hay.includes(s);
   }
   let pdfExportState = { type:'internal', regions: new Set(), search:'' };
+  // §PDF 대상 선정 재구성 라운드(신규) — 내부용 PDF에 넣을 업체를 사용자가 이 화면에서
+  // 직접 고른다. 업체 id만 담는 화면 전용 상태로, 모달을 열 때마다 비운다(저장하지
+  // 않는다 — 고객 레코드에는 어떤 흔적도 남기지 않는다).
+  let pdfExportInternalSelected = new Set();
+  // 삭제업체는 어떤 출력 유형에서도 기본 제외(§요청 8). 예전엔 D.loadCompanies()(삭제
+  // 포함)를 훑어서, 외부용은 mouSignedIdSet 덕분에 우연히 걸러졌지만 내부용에는 삭제업체가
+  // 섞여 나올 수 있었다. 모집단 자체를 활성 업체로 바꿔 두 유형 모두 확실히 제외한다.
+  function pdfExportBasePool(){ return D.loadActiveCompanies(); }
+  function pdfExportRegionOk(co){
+    const regions = pdfExportState.regions;
+    if(!regions.size) return true;
+    return resolveCompanyRegionList(co).some(r=> regions.has(r));
+  }
+  // 내부용 체크박스 목록에 보여줄 후보 — 지역·검색 조건을 그대로 적용한 활성 업체.
+  // 여기 보이는 것 중 체크된 것만 실제 출력 대상이 된다(보이는 대로 나간다).
+  function pdfExportInternalCandidates(){
+    return pdfExportBasePool().filter(co=> pdfExportRegionOk(co) && pdfMatchesSearch(co, pdfExportState.search));
+  }
   function pdfExportEligibleForType(co, mouSignedIdSet){
     // §external은 co.distributionLists 태그가 아니라 "MOU 체결" 판정(mouSignedIdSet,
     // getMouSignedCompanies 기반)만 본다 — 사용자 확인: "외부발송용은 mou체결업체야".
+    // getMouSignedCompanies는 D.loadActiveCompanies() + matchesFilter(...,'mouDone')이라
+    // KPI "MOU 체결" 카드와 같은 판정이고, 삭제·협약종료 업체는 거기서 이미 빠진다.
+    // 상태가 바뀌면 다음 렌더에서 자동으로 반영/제외된다(저장된 플래그를 보지 않는다).
     if(pdfExportState.type === 'external') return mouSignedIdSet.has(co.id);
-    return D.isInDistributionList(co, pdfExportState.type);
+    // §internal은 이제 co.distributionLists 태그가 아니라 사용자가 이 화면에서 체크한
+    // 업체만 본다(§요청 4).
+    return pdfExportInternalSelected.has(co.id);
   }
   function pdfExportFilteredCompanies(){
-    const regions = pdfExportState.regions;
     const mouSignedIdSet = pdfExportState.type === 'external'
       ? new Set(getMouSignedCompanies().map(c=> c.id)) : null;
-    return D.loadCompanies().filter(co=>{
+    return pdfExportBasePool().filter(co=>{
       if(!pdfExportEligibleForType(co, mouSignedIdSet)) return false;
-      if(regions.size){
-        const coRegions = resolveCompanyRegionList(co);
-        if(!coRegions.some(r=> regions.has(r))) return false;
-      }
+      if(!pdfExportRegionOk(co)) return false;
       return pdfMatchesSearch(co, pdfExportState.search);
     });
   }
@@ -34191,8 +34209,32 @@ window.SHIN2_CRM_APP_INIT = function(){
       html: pages.map((rowsHtml, i)=> pdfExportPageHtml(ctx, rowsHtml, i, pages.length)).join('')
     };
   }
+  // §PDF 대상 선정 재구성 라운드(신규) — 내부용 업체 선택 목록. 후보(지역·검색 적용된
+  // 활성 업체)를 체크박스로 보여주고, 체크된 것만 출력 대상이 된다.
+  function pdfExportInternalPickerHtml(){
+    const cands = pdfExportInternalCandidates();
+    const selectedInView = cands.filter(co=> pdfExportInternalSelected.has(co.id)).length;
+    const rows = cands.map(co=> `
+      <label class="pdf-pick-row">
+        <input type="checkbox" data-pdf-pick="${esc(co.id)}" ${pdfExportInternalSelected.has(co.id) ? 'checked' : ''} />
+        <span class="pdf-pick-name">${esc(co.name || '(이름 없음)')}</span>
+        <span class="pdf-pick-sub">${esc(resolveCompanyRegionList(co).join(', ') || '지역 미지정')}</span>
+      </label>`).join('');
+    return `
+      <div class="co-form-field pdf-pick-block">
+        <label>내부용에 포함할 업체 선택 (체크한 업체만 출력됩니다)</label>
+        <div class="pdf-pick-actions">
+          <button type="button" class="co-text-action" data-pdf-pick-all="pool">전체 선택</button>
+          <button type="button" class="co-text-action" data-pdf-pick-all="none">전체 해제</button>
+          <button type="button" class="co-text-action" data-pdf-pick-all="search">현재 검색 결과 전체 선택</button>
+          <button type="button" class="co-text-action" data-pdf-pick-all="region">현재 지역 필터 결과 전체 선택</button>
+        </div>
+        <div class="pdf-pick-list">${rows || '<div class="pdf-pick-empty">조건에 맞는 업체가 없습니다.</div>'}</div>
+        <div class="pdf-pick-meta">이 목록 ${cands.length}곳 중 ${selectedInView}곳 선택 · 전체 선택 ${pdfExportInternalSelected.size}곳 (삭제업체 제외)</div>
+      </div>`;
+  }
   function pdfExportModalHtml(){
-    const all = D.loadCompanies();
+    const all = pdfExportBasePool();
     const filtered = pdfExportFilteredCompanies();
     const typeCardsHtml = PDF_EXPORT_TYPES.map(t=> `
       <button type="button" class="pdf-type-card${pdfExportState.type===t.key?' is-active':''}" data-pdf-type="${t.key}">
@@ -34217,7 +34259,8 @@ window.SHIN2_CRM_APP_INIT = function(){
                 <input type="text" id="pdfExportSearchInput" value="${esc(pdfExportState.search)}" placeholder="검색어 입력" />
                 <div class="mail-settings-help">이 검색·지역 조건은 이 출력 화면에서만 적용됩니다 — 뒤의 고객 목록 화면 검색·정렬과는 별개이며, 이 창을 닫아도 화면 목록에는 아무 영향이 없습니다.</div>
               </div>
-              <div class="pdf-export-count">출력 대상 업체 수: <b id="pdfExportCountVal">${filtered.length}</b>건 · 전체 고객 수: ${all.length}건</div>
+              <div class="pdf-export-count">출력 대상 업체 수: <b id="pdfExportCountVal">${filtered.length}</b>건 · 전체 업체 수(삭제 제외): ${all.length}건</div>
+              ${pdfExportState.type === 'internal' ? pdfExportInternalPickerHtml() : ''}
               ${pdfExportState.type === 'internal' ? `<div class="dist-list-warn">내부용 문서에는 사업자번호·이메일 등 개인정보가 포함될 수 있습니다. 외부 공유에 사용하지 마세요.</div>` : ''}
               ${pdfExportState.type === 'external' ? `<div class="mail-settings-help">외부 발송용은 MOU 체결 업체만 대상이며(위 KPI "MOU 체결" 숫자와 같은 기준), FAX·이메일·사업자번호·협약일·자본금·비고·내부 메모 등 민감정보가 자동으로 제외됩니다.</div>` : ''}
             </div>
@@ -34251,6 +34294,49 @@ window.SHIN2_CRM_APP_INIT = function(){
   function refreshPdfExportCount(){
     const el = document.getElementById('pdfExportCountVal');
     if(el) el.textContent = String(pdfExportFilteredCompanies().length);
+  }
+  // 내부용 선택 블록의 모든 조작(개별 체크 + 4개 일괄 버튼)을 한 곳에서 묶는다.
+  // 블록을 그 자리에서 다시 그릴 때도 같은 함수로 다시 바인딩한다.
+  function bindPdfExportPickControls(scope){
+    if(!scope) return;
+    scope.querySelectorAll('[data-pdf-pick]').forEach(box=> box.addEventListener('change', ()=>{
+      const id = box.getAttribute('data-pdf-pick');
+      if(box.checked) pdfExportInternalSelected.add(id); else pdfExportInternalSelected.delete(id);
+      // 체크 하나로 목록 전체를 다시 그리면 스크롤이 튀므로 건수·요약·미리보기만 갱신한다.
+      refreshPdfExportCount();
+      refreshPdfExportPickMeta();
+      renderPdfExportConfirmResult();
+      renderPdfExportPreview();
+    }));
+    scope.querySelectorAll('[data-pdf-pick-all]').forEach(btn=> btn.addEventListener('click', ()=>{
+      const mode = btn.getAttribute('data-pdf-pick-all');
+      const pool = pdfExportBasePool();   // 항상 활성 업체만(삭제업체 제외)
+      if(mode === 'none') pdfExportInternalSelected = new Set();
+      else if(mode === 'pool') pool.forEach(co=> pdfExportInternalSelected.add(co.id));
+      else if(mode === 'search') pool.filter(co=> pdfMatchesSearch(co, pdfExportState.search)).forEach(co=> pdfExportInternalSelected.add(co.id));
+      else if(mode === 'region') pool.filter(co=> pdfExportRegionOk(co)).forEach(co=> pdfExportInternalSelected.add(co.id));
+      renderPdfExportModal();
+    }));
+  }
+  // 검색어를 고치면 후보 목록도 같이 바뀌어야 한다. 검색 입력은 포커스를 잃으면 안 되므로
+  // 모달 전체가 아니라 이 블록만 그 자리에서 다시 그린다(체크 상태는 Set에 있어 보존된다).
+  function refreshPdfExportPicker(){
+    if(pdfExportState.type !== 'internal') return;
+    const block = document.querySelector('.pdf-pick-block');
+    if(!block) return;
+    const tmp = document.createElement('div');
+    tmp.innerHTML = pdfExportInternalPickerHtml();
+    const fresh = tmp.firstElementChild;
+    block.replaceWith(fresh);
+    bindPdfExportPickControls(fresh);
+  }
+  // 체크 하나로 목록을 다시 그리지 않으므로 요약 줄만 그 자리에서 갱신한다.
+  function refreshPdfExportPickMeta(){
+    const el = document.querySelector('.pdf-pick-meta');
+    if(!el) return;
+    const cands = pdfExportInternalCandidates();
+    const selectedInView = cands.filter(co=> pdfExportInternalSelected.has(co.id)).length;
+    el.textContent = `이 목록 ${cands.length}곳 중 ${selectedInView}곳 선택 · 전체 선택 ${pdfExportInternalSelected.size}곳 (삭제업체 제외)`;
   }
   // §요청 7/18 — 미리보기는 "단순 HTML 표"가 아니라 실제 PDF와 같은 템플릿/같은 CSS로
   // 그린 A4 종이를 그대로 보여준다. pdfExportBuildDocHtml()이 만든 페이지들을 그대로
@@ -34303,6 +34389,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       ? new Set(getMouSignedCompanies().map(c=> c.id)) : null;
     if(!pdfExportEligibleForType(co, mouSignedIdSet)){
       if(pdfExportState.type === 'external') return 'MOU 체결 업체가 아님(외부 발송용은 MOU 체결 업체만 대상)';
+      if(pdfExportState.type === 'internal') return '내부용 업체 선택 목록에서 체크되지 않음';
       const t = PDF_EXPORT_TYPES.find(x=> x.key === pdfExportState.type);
       return `현재 출력 유형(${t ? t.label : pdfExportState.type}) 대상 목록에 포함되지 않음`;
     }
@@ -34391,6 +34478,9 @@ window.SHIN2_CRM_APP_INIT = function(){
       if(pdfExportState.regions.has(r)) pdfExportState.regions.delete(r); else pdfExportState.regions.add(r);
       renderPdfExportModal();
     }));
+    // §PDF 대상 선정 재구성 라운드(신규) — 내부용 업체 체크. 체크 하나로 목록 전체를
+    // 다시 그리면 스크롤 위치가 튀므로, 개별 체크는 상태만 바꾸고 건수·미리보기만 갱신한다.
+    bindPdfExportPickControls(root);
     const searchInput = document.getElementById('pdfExportSearchInput');
     if(searchInput){
       // §요청 10 "왼쪽 조건을 바꾸면 오른쪽 미리보기도 즉시 갱신" — 타이핑 중 포커스가
@@ -34405,6 +34495,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       searchInput.addEventListener('input', ()=>{
         pdfExportState.search = searchInput.value;
         refreshPdfExportCount();
+        refreshPdfExportPicker();   // 내부용일 때 후보 목록도 같이 좁혀진다
         renderPdfExportConfirmResult();
         if(pdfPreviewDebounce) clearTimeout(pdfPreviewDebounce);
         pdfPreviewDebounce = setTimeout(()=>{ pdfPreviewDebounce = null; renderPdfExportPreview(); }, 180);
@@ -34426,6 +34517,8 @@ window.SHIN2_CRM_APP_INIT = function(){
   }
   function openPdfExportModal(){
     pdfExportState = { type:'internal', regions:new Set(), search:'' };
+    // 내부용 선택은 이 창에서만 쓰는 상태라 열 때마다 비운다(저장하지 않음).
+    pdfExportInternalSelected = new Set();
     pdfExportConfirmQuery = '';
     renderPdfExportModal();
   }
