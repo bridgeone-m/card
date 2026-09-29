@@ -3843,6 +3843,58 @@ table.pdf-doc-table thead{ background:var(--bg); }
 .kpi-item-label{ font-size:12px; color:var(--text-muted); font-weight:600; }
 /* §P1-4 KPI 카드 기준·비교 추가 라운드(신규) — 보조문구 한 줄(11px, 회색). */
 .kpi-item-sub{ display:block; margin-top:3px; font-size:11px; color:var(--text-faint); font-weight:500; }
+/* §TOP5 KPI 카드 이동 라운드(신규) — 카드가 4개에서 5개로 늘었다. .kpi-item은 원래
+   flex:1이라 5개도 한 줄에 균등하게 들어가지만, 좌우 여백이 그대로면 5번째 카드의
+   긴 보조문구가 세 줄로 접힌다. 여백만 살짝 줄이고 최소 폭을 준다(높이·테두리·간격은
+   기존 카드와 같은 규칙을 그대로 쓴다). */
+.kpi-strip{ flex-wrap:nowrap; }
+.kpi-item{ min-width:0; }
+.kpi-item-label, .kpi-item-sub{ overflow-wrap:anywhere; }
+/* 5번째 카드 — 누르면 팝오버가 열리는 카드라는 걸 caret으로 표시한다. */
+.kpi-item.is-rising{ position:relative; }
+.kpi-item.is-rising .kpi-item-value{ font-size:22px!important; letter-spacing:.2px; }
+.kpi-item.is-rising::after{
+  content:'▾'; position:absolute; top:12px; right:12px;
+  font-size:11px; color:var(--text-faint); transition:transform .15s;
+}
+.kpi-item.is-rising.is-open::after{ transform:rotate(180deg); }
+.kpi-item.is-rising.is-open{ border-color:var(--navy)!important; box-shadow:0 0 0 1px var(--navy)!important; }
+@media (max-width:1180px){
+  .kpi-item{ padding:14px 13px!important; }
+  .kpi-item-value{ font-size:22px!important; }
+}
+@media (max-width:820px){ .kpi-strip{ flex-wrap:wrap; } .kpi-item{ flex:1 1 45%; } }
+/* TOP5 팝오버 — 카드 바로 아래 뜨는 작은 패널(모달 아님). body에 붙여 좌표로 배치하므로
+   position:fixed 다(부모의 overflow:hidden에 잘리지 않게). */
+.rise-pop{
+  position:fixed; z-index:600; width:320px; max-width:calc(100vw - 16px);
+  background:#fff; border:1px solid #DCE4EF; border-radius:10px;
+  box-shadow:0 10px 28px rgba(15,32,60,.16); overflow:hidden;
+}
+.rise-pop-head{
+  display:flex; flex-direction:column; gap:2px; padding:10px 13px;
+  border-bottom:1px solid #EFF3F8; font-size:12.5px; font-weight:700; color:var(--text);
+}
+.rise-pop-head-sub{ font-size:11px; font-weight:500; color:var(--text-muted); }
+.rise-pop-list{ display:flex; flex-direction:column; padding:4px 0; }
+.rise-pop-row{
+  display:flex; align-items:center; gap:10px; width:100%;
+  padding:8px 13px; background:transparent; border:none; border-radius:0;
+  font-family:inherit; text-align:left; cursor:pointer;
+}
+.rise-pop-row:hover{ background:#F7FAFE; }
+.rise-pop-row:focus-visible{ outline:2px solid var(--blue); outline-offset:-2px; }
+.rise-pop-rank{
+  flex:none; width:19px; height:19px; border-radius:5px; background:var(--bg);
+  color:var(--text-muted); font-size:11px; font-weight:700;
+  display:flex; align-items:center; justify-content:center;
+}
+.rise-pop-main{ flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:1px; }
+.rise-pop-name{ font-size:12.5px; font-weight:700; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.rise-pop-delta{ font-size:11px; color:var(--text-muted); font-variant-numeric:tabular-nums; }
+.rise-pop-pct{ flex:none; font-size:12px; font-weight:800; color:#0F7A42; font-variant-numeric:tabular-nums; }
+.rise-pop-pct.is-new{ font-size:11px; font-weight:700; color:var(--blue); }
+.rise-pop-empty{ padding:14px 13px; font-size:12px; color:var(--text-muted); }
 /* §PDF 내보내기(MOU 체결 협력사) 라운드(신규) — KPI 요약 바 레이아웃/카드 5개(전체
    고객/MOU 체결/상승 업체/L2→L3 전환율)는 전혀 안 건드리고, 그 옆에 버튼 하나만 얹기
    위해 얇은 flex 줄로만 감싼다(§요청 "기존 카드 레이아웃/디자인 방해 없이"). 버튼
@@ -5412,12 +5464,12 @@ table.sales-import-table td{ padding:5px 8px; border-bottom:1px solid #EEF2F7; v
         <div id="mapDistributionModalRoot" class="map-embed-root"></div>
       </div>
     </div>
-    <!-- §요청 21/22 — "실적 상승 업체"를 페이지 맨 아래, 전체 폭 1줄로 옮긴다. 계산
-         함수(computeRisingCompanies/buildRisingCompaniesTop5)와 렌더 함수(renderRisingSection)
-         는 전혀 바꾸지 않았다 — #crmRisingSection의 위치만 옮겼다. -->
-    <div class="analysis-panel analysis-panel-rising crm-rising-bottom">
-      <div class="rising-section" id="crmRisingSection"></div>
-    </div>
+    <!-- §TOP5 KPI 카드 이동 라운드(신규) — 페이지 맨 아래에 있던 "실적상승 업체 TOP 5"
+         섹션(#crmRisingSection)을 없앴다. 같은 내용을 상단 KPI 5번째 카드의 팝오버에서
+         보여준다(renderKpiStrip의 risingTop5 항목 + openRisingTop5Popover 참고).
+         계산 함수(computeRisingCompanies/buildRisingCompaniesTop5)는 그대로 쓰고,
+         렌더 함수 renderRisingSection도 지우지 않았다 — 컨테이너가 없으면 맨 앞에서
+         그냥 빠져나오므로(if(!root) return) 아무 일도 하지 않는다. -->
   </div>
 
   <div id="cardView" style="display:none;"></div>
@@ -13357,20 +13409,31 @@ window.SHIN2_CRM_APP_INIT = function(){
       { key:'all', label:'전체 업체', value: counts.all || 0, cls:'', sub:'' },
       { key:'mouDone', label:'MOU 체결', value: counts.mouDone || 0, cls:'', sub: counts.all ? `전체 ${counts.all}곳 중` : '' },
       { key:'trendUp', label:'상승 업체', value: counts.trendUp || 0, cls:'is-up', sub: counts.all ? `전체 ${counts.all}곳 중` : '' },
-      { key:'l2l3Manage', label:'L2→L3 전환율', value: `${l2l3.rate}%`, cls: l2l3.rate < 50 ? 'is-warn' : '', sub: `${l2l3.total}곳 중 ${l2l3.converted.length}곳 · 5/20 이후 협약 기준` }
+      { key:'l2l3Manage', label:'L2→L3 전환율', value: `${l2l3.rate}%`, cls: l2l3.rate < 50 ? 'is-warn' : '', sub: `${l2l3.total}곳 중 ${l2l3.converted.length}곳 · 5/20 이후 협약 기준` },
+      // §TOP5 KPI 카드 이동 라운드(신규) — 5번째 카드. 앞 4개와 달리 목록 필터를 바꾸지
+      // 않고 팝오버만 여는 카드다(아래 클릭 핸들러의 risingTop5 분기 참고).
+      { key:'risingTop5', label:'실적 상승 TOP 5', value:'TOP 5', cls:'is-rising', sub:'2025년 vs 2024년 POUR 실적 기준' }
       // §상단 헤더 재정리 라운드 2(신규) — 사용자 확인: "리마인드 필요" 카드 완전 삭제.
       // willpowerCache/의지박약 판정 로직 자체는 전혀 안 건드렸다 — "의지박약" 필터
       // pill(#crmFilterRow)과 관리 도구 쪽에서 여전히 그대로 조회 가능, 이 KPI 카드
       // 항목 하나만 items 배열에서 뺐다.
     ];
     wrap.innerHTML = items.map(it=> `
-      <button type="button" class="kpi-item ${it.cls}" data-kpi="${esc(it.key)}">
+      <button type="button" class="kpi-item ${it.cls}" data-kpi="${esc(it.key)}"${it.key === 'risingTop5' ? ' aria-haspopup="dialog" aria-expanded="false"' : ''}>
         <span class="kpi-item-value">${esc(it.value)}</span>
         <span class="kpi-item-label">${esc(it.label)}</span>
         ${it.sub ? `<span class="kpi-item-sub">${esc(it.sub)}</span>` : ''}
       </button>`).join('');
     wrap.querySelectorAll('[data-kpi]').forEach(btn=> btn.addEventListener('click', ()=>{
       const key = btn.getAttribute('data-kpi');
+      // 5번째 카드만 필터가 아니라 팝오버다 — filterKey를 건드리지 않는다(같은 값을 가진
+      // 목록 필터가 없어서, 예전처럼 filterKey에 넣으면 목록이 0건이 된다).
+      if(key === 'risingTop5'){
+        if(btn.classList.contains('is-open')) closeRisingTop5Popover();
+        else openRisingTop5Popover(btn);
+        return;
+      }
+      closeRisingTop5Popover();
       filterKey = key;
       currentPage = 1;
       renderList();
@@ -13625,7 +13688,10 @@ window.SHIN2_CRM_APP_INIT = function(){
     // §고객관리 CRM 첫화면 대시보드 개편 라운드: 예전의 "★ 상위 20%" 표시는 별표를 절대
     // 쓰지 않는다는 새 원칙(§4)에 따라 제거했다 — 대신 실제 Partner Dashboard 등급
     // (co.partnerDashboard.grade)이 있는 업체만 등급 배지로 표시한다(getCompanyGrade).
-    renderRisingSection(companies);
+    // §TOP5 KPI 카드 이동 라운드(신규) — 하단 섹션이 없어졌으므로 그리지 않고, 상단 KPI
+    // 5번째 카드의 팝오버가 쓸 수 있도록 계산 결과만 보관한다. 계산 함수와 그 입력
+    // (companies)은 예전 호출과 완전히 같다 — 값이 달라질 여지가 없다.
+    lastRisingTop5 = buildRisingCompaniesTop5(companies);
 
     const filterCounts = {};
     FILTER_DEFS.forEach(([key])=>{ filterCounts[key] = enriched.filter(r=> matchesFilter(r.co, r.progress, key, relationIndex)).length; });
@@ -24299,6 +24365,80 @@ window.SHIN2_CRM_APP_INIT = function(){
     const newOnes = rising.filter(r=> r.isNew).sort((a,b)=> b.y2025 - a.y2025);
     const combined = numeric.concat(newOnes);
     return { available: combined.length > 0, items: combined.slice(0, 5), totalComparable: rising.length, newCount: newOnes.length };
+  }
+  // §TOP5 KPI 카드 이동 라운드(신규) — 사용자 요청: "맨 아래 실적 상승 업체 TOP 5
+  // 섹션을 없애고 상단 KPI 5번째 카드로 넣어라. 카드를 누르면 작은 팝오버로 기존
+  // TOP5 내용을 그대로 보여줘라."
+  //
+  // 계산은 전혀 새로 하지 않는다 — renderList가 예전 renderRisingSection에 넘기던 것과
+  // 똑같은 companies로 buildRisingCompaniesTop5를 한 번 부른 결과를 여기 담아 두고,
+  // 팝오버는 그 값을 읽어 줄만 그린다. 업체 클릭 시 동작(openCard)도 예전 카드와 같다.
+  let lastRisingTop5 = null;
+  let risingTop5PopCleanup = null;
+  function closeRisingTop5Popover(){
+    const el = document.getElementById('risingTop5Pop');
+    if(el) el.remove();
+    document.querySelectorAll('[data-kpi="risingTop5"]').forEach(b=>{
+      b.classList.remove('is-open'); b.setAttribute('aria-expanded','false');
+    });
+    if(risingTop5PopCleanup){ risingTop5PopCleanup(); risingTop5PopCleanup = null; }
+  }
+  function openRisingTop5Popover(btn){
+    closeRisingTop5Popover();
+    const data = lastRisingTop5 || { available:false, items:[] };
+    const rowsHtml = data.available
+      ? data.items.map((it, i)=> `
+          <button type="button" class="rise-pop-row" data-rise-co="${esc(it.co.id)}" title="클릭하면 고객카드가 열립니다">
+            <span class="rise-pop-rank">${i + 1}</span>
+            <span class="rise-pop-main">
+              <span class="rise-pop-name">${esc(it.co.name)}</span>
+              <span class="rise-pop-delta">${it.y2024}건 → ${it.y2025}건</span>
+            </span>
+            <span class="rise-pop-pct${it.isNew ? ' is-new' : ''}">${it.isNew ? '신규 증가' : '▲' + it.pct + '%'}</span>
+          </button>`).join('')
+      : '<div class="rise-pop-empty">비교 가능한 실적 데이터가 없습니다.</div>';
+    const pop = document.createElement('div');
+    pop.id = 'risingTop5Pop';
+    pop.className = 'rise-pop';
+    pop.setAttribute('role', 'dialog');
+    pop.setAttribute('aria-label', '실적 상승 TOP 5');
+    pop.innerHTML = `
+      <div class="rise-pop-head">실적 상승 TOP 5<span class="rise-pop-head-sub">2025년 vs 2024년 POUR 실적 기준</span></div>
+      <div class="rise-pop-list">${rowsHtml}</div>`;
+    // 카드 조상 중에 overflow:hidden이 있어도 잘리지 않도록 body에 붙이고 좌표로 배치한다.
+    document.body.appendChild(pop);
+    btn.classList.add('is-open');
+    btn.setAttribute('aria-expanded', 'true');
+    const place = ()=>{
+      const r = btn.getBoundingClientRect();
+      const w = pop.offsetWidth || 300;
+      const h = pop.offsetHeight || 260;
+      const left = Math.max(8, Math.min(window.innerWidth - w - 8, r.left));
+      const top = (r.bottom + 8 + h > window.innerHeight - 8 && r.top - 8 - h > 8)
+        ? r.top - 8 - h            // 아래 공간이 모자라면 카드 위로 띄운다
+        : r.bottom + 8;
+      pop.style.left = left + 'px';
+      pop.style.top = Math.max(8, top) + 'px';
+    };
+    place();
+    const onDocDown = e=>{ if(!pop.contains(e.target) && !btn.contains(e.target)) closeRisingTop5Popover(); };
+    const onKey = e=>{ if(e.key === 'Escape') closeRisingTop5Popover(); };
+    const onMove = ()=> closeRisingTop5Popover();
+    document.addEventListener('mousedown', onDocDown, true);
+    document.addEventListener('keydown', onKey, true);
+    window.addEventListener('scroll', onMove, true);
+    window.addEventListener('resize', onMove);
+    risingTop5PopCleanup = ()=>{
+      document.removeEventListener('mousedown', onDocDown, true);
+      document.removeEventListener('keydown', onKey, true);
+      window.removeEventListener('scroll', onMove, true);
+      window.removeEventListener('resize', onMove);
+    };
+    pop.querySelectorAll('[data-rise-co]').forEach(row=> row.addEventListener('click', ()=>{
+      const id = row.getAttribute('data-rise-co');
+      closeRisingTop5Popover();
+      openCard(id);
+    }));
   }
   function renderRisingSection(companies){
     const root = document.getElementById('crmRisingSection');
