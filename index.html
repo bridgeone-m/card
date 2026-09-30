@@ -4492,6 +4492,82 @@ table.pdf-doc-table thead{ background:var(--bg); }
   background:var(--bg); border-radius:7px; padding:7px 9px; white-space:pre-wrap; word-break:break-word;
 }
 .qrating-memo-label{ display:block; font-size:10.5px; font-weight:700; color:var(--text-muted); margin-bottom:2px; }
+/* §질문지 섹션별 평가 라운드(신규) — 섹션 제목 오른쪽의 compact 선택기.
+   별도 카드를 만들지 않고 제목 줄 안에서 끝낸다(질문지가 길어 세로 공간이 아깝다). */
+.questionnaire-qa-section{ display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+.questionnaire-qa-section-name{ min-width:0; }
+.qsec-rate{ display:inline-flex; gap:3px; flex:none; }
+.qsec-rate-btn{
+  min-width:28px; height:22px; padding:0 8px; border-radius:6px; cursor:pointer; font-family:inherit;
+  font-size:11.5px; font-weight:700; line-height:1;
+  background:#fff; border:1px solid var(--line); color:var(--text-muted);
+  transition:background .12s, border-color .12s, color .12s;
+}
+.qsec-rate-btn:hover{ border-color:#C3D0E2; background:#FAFCFF; }
+.qsec-rate-btn:focus-visible{ outline:2px solid var(--navy); outline-offset:1px; }
+.qsec-rate-btn.is-high.is-on{ background:#E9F6EF; border-color:#0F7A42; color:#0F7A42; }
+.qsec-rate-btn.is-mid.is-on{ background:#FFF4E5; border-color:#C2790E; color:#A2620A; }
+.qsec-rate-btn.is-low.is-on{ background:#FDECEC; border-color:#B3261E; color:#B3261E; }
+/* 고객카드·협약 진행관리의 "섹션명 [상]" 요약 줄 */
+.qsec-summary{ display:flex; flex-direction:column; gap:3px; margin-top:7px; }
+.qsec-summary-row{ display:flex; align-items:center; gap:8px; font-size:11.5px; }
+.qsec-summary-name{ color:var(--text-muted); font-weight:600; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.qsec-summary-row .qrating-badge{ margin-left:auto; }
+
+/* §미팅 후 요청자료 라운드(신규) — 상담 메모와 목적이 달라 확실히 구분되는 업무 Action
+   영역으로 둔다. 경고창처럼 빨갛게 하지 않고 연한 회청색 계열. */
+.reqmat-block{
+  margin-top:14px; padding:12px 13px 13px; border-radius:10px;
+  background:#F4F8FD; border:1px solid #D6E3F3;
+}
+.reqmat-head{ display:flex; align-items:center; gap:8px; margin-bottom:3px; }
+.reqmat-title{ font-size:13px; font-weight:800; color:var(--navy); }
+.reqmat-desc{ font-size:11px; color:var(--text-muted); line-height:1.45; margin-bottom:9px; }
+.reqmat-chips{ display:flex; flex-wrap:wrap; gap:5px; margin-bottom:8px; }
+.reqmat-chip{
+  height:25px; padding:0 9px; border-radius:999px; cursor:pointer; font-family:inherit;
+  font-size:11px; font-weight:650; background:#fff; border:1px solid #CFDDEF; color:var(--navy);
+}
+.reqmat-chip:hover{ background:#E8F0FB; border-color:#A9C3E4; }
+.reqmat-input{
+  width:100%; min-height:62px; resize:vertical; padding:9px 10px; font-family:inherit;
+  font-size:12.5px; line-height:1.5; border:1px solid #CFDDEF; border-radius:8px; background:#fff; outline:none;
+}
+.reqmat-input:focus{ border-color:var(--navy); }
+.reqmat-foot{ display:flex; align-items:center; gap:10px; margin-top:8px; }
+.reqmat-meta{ font-size:11px; color:var(--text-muted); min-width:0; }
+.reqmat-send-btn{
+  margin-left:auto; flex:none; height:30px; padding:0 14px; border-radius:7px; cursor:pointer;
+  font-family:inherit; font-size:12px; font-weight:700;
+  background:var(--navy); border:1px solid var(--navy); color:#fff;
+}
+.reqmat-send-btn:hover{ opacity:.9; }
+/* 상태 배지 */
+.reqmat-badge{
+  display:inline-flex; align-items:center; flex:none; padding:2px 9px; border-radius:999px;
+  font-size:11px; font-weight:750; white-space:nowrap;
+}
+.reqmat-badge.is-pending{ background:#FFF4E5; color:#A2620A; border:1px solid #F5DDB6; }
+.reqmat-badge.is-sent{ background:#E9F6EF; color:#0F7A42; border:1px solid #BFE6CF; }
+.reqmat-badge.is-empty{ background:var(--bg); color:var(--text-muted); border:1px solid var(--line); }
+/* 고객카드·협약 팝업의 요청자료 구획 — 메모에 묻히지 않게 따로 띄운다 */
+.reqmat-callout{
+  margin-top:8px; padding:8px 10px; border-radius:8px;
+  background:#F4F8FD; border:1px solid #D6E3F3;
+}
+.reqmat-callout-head{ display:flex; align-items:center; gap:7px; font-size:11.5px; font-weight:800; color:var(--navy); margin-bottom:3px; }
+.reqmat-callout-text{ font-size:12px; color:var(--text); line-height:1.5; white-space:pre-wrap; word-break:break-word; }
+/* 발송대기 목록 모달 */
+.reqmat-title-count{ font-size:12px; font-weight:600; color:var(--text-muted); margin-left:6px; }
+.reqmat-list{ display:flex; flex-direction:column; }
+.reqmat-row{ display:flex; align-items:flex-start; gap:12px; padding:11px 2px; border-bottom:1px solid #EFF3F8; }
+.reqmat-row:last-child{ border-bottom:none; }
+.reqmat-row-main{ flex:1 1 auto; min-width:0; }
+.reqmat-row-name{ font-size:13px; font-weight:750; color:var(--text); }
+.reqmat-row-text{ font-size:12px; color:var(--text); margin-top:2px; line-height:1.5; word-break:break-word; }
+.reqmat-row-meta{ font-size:11px; color:var(--text-muted); margin-top:3px; }
+.reqmat-row-actions{ flex:none; display:flex; align-items:center; gap:7px; flex-wrap:wrap; justify-content:flex-end; }
+.reqmat-row-actions .reqmat-send-btn{ margin-left:0; height:27px; padding:0 11px; font-size:11.5px; }
 /* 팝업 안 선택기 */
 .qrating-block{ margin-bottom:12px; padding-bottom:12px; border-bottom:1px solid #EFF3F8; }
 .qrating-head{ display:flex; align-items:baseline; gap:8px; margin-bottom:7px; }
@@ -5745,6 +5821,11 @@ table.sales-import-table td{ padding:5px 8px; border-bottom:1px solid #EEF2F7; v
       <div class="update-menu-wrap gnav-tool-wrap" id="crmUpdateMenuWrap">
         <button type="button" id="crmDataUpdateBtn" class="gnav-tool-btn">관리 도구 <span id="crmDataUpdateReviewBadge" class="unreg-badge" style="display:none;"></span> ▾</button>
         <div class="update-menu" id="crmUpdateMenu">
+          <!-- §미팅 후 요청자료 라운드(신규) — 새 알림 시스템을 따로 만들지 않고, 이미 있는
+               관리 도구 드롭다운 + 외곽 배지(#crmDataUpdateReviewBadge) 구조를 그대로 쓴다. -->
+          <div class="update-menu-group-label">업무</div>
+          <button type="button" id="crmReqMatBtn">미팅 후 요청자료 <span id="crmReqMatCount" class="update-menu-count"></span></button>
+          <div class="update-menu-divider"></div>
           <div class="update-menu-group-label">데이터 정리</div>
           <button type="button" id="crmMergeDupBtn">중복 업체 병합 <span id="crmMergeDupCount" class="update-menu-count"></span></button>
           <button type="button" id="crmAffiliateReviewBtn">계열사 관계 후보 검토</button>
@@ -8689,22 +8770,73 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
   }
   // rating은 선택 인자다 — 넘기지 않으면(undefined) 기존 값을 그대로 둔다. 예전 호출부가
   // 3개 인자만 넘겨도 평가가 지워지지 않는다.
-  function setDocumentConsultation(id, memo, qaAnswers, rating){
+  // §질문지 섹션별 평가 + 미팅 후 요청자료 라운드(신규)
+  //
+  // extra로 두 가지를 더 받는다 — 둘 다 선택이라 넘기지 않으면 기존 값을 그대로 둔다.
+  //   extra.sectionRatings : { A:'high', B:'mid', ... }  섹션 id별 상/중/하
+  //   extra.requestMaterials : 미팅 후 보내야 할 자료 텍스트
+  // 전체 단일 평가(consultRating)는 더 이상 UI에서 쓰지 않지만 값은 건드리지 않는다
+  // (§요청 6 "기존 consultRating 값 강제 삭제 금지").
+  function normalizeSectionRatings(src){
+    const out = {};
+    Object.keys(src || {}).forEach(k=>{
+      const v = normalizeQuestionnaireRating(src[k]);
+      if(v) out[k] = v;          // 빈 값(미평가)은 키 자체를 남기지 않는다
+    });
+    return out;
+  }
+  function sameSectionRatings(a, b){
+    const keys = new Set(Object.keys(a || {}).concat(Object.keys(b || {})));
+    return Array.from(keys).every(k=> (a && a[k] || '') === (b && b[k] || ''));
+  }
+  function setDocumentConsultation(id, memo, qaAnswers, rating, extra){
     const list = loadDocuments();
     const rec = list.find(d=> d.id===id);
     if(!rec) return { ok:false, changed:false, reason:'NOT_FOUND' };
+    const ex = extra || {};
     const nextMemo = memo || '';
     const nextQa = Object.assign({}, rec.qaAnswers || {}, qaAnswers || {});
     const prevRating = normalizeQuestionnaireRating(rec.consultRating);
     const nextRating = rating === undefined ? prevRating : normalizeQuestionnaireRating(rating);
+    const prevSections = normalizeSectionRatings(rec.consultRatings);
+    const nextSections = ex.sectionRatings === undefined ? prevSections : normalizeSectionRatings(ex.sectionRatings);
+    const prevMat = String(rec.requestMaterials || '').trim();
+    const nextMat = ex.requestMaterials === undefined ? prevMat : String(ex.requestMaterials || '').trim();
     const sameMemo = (rec.memo || '') === nextMemo;
     const prevQa = rec.qaAnswers || {};
     const qaKeys = new Set(Object.keys(prevQa).concat(Object.keys(nextQa)));
     const sameQa = Array.from(qaKeys).every(key=> (prevQa[key] || '') === (nextQa[key] || ''));
-    if(sameMemo && sameQa && prevRating === nextRating) return { ok:true, changed:false, rec, list };
+    if(sameMemo && sameQa && prevRating === nextRating
+       && sameSectionRatings(prevSections, nextSections) && prevMat === nextMat){
+      return { ok:true, changed:false, rec, list };
+    }
+    if(prevMat !== nextMat){
+      // 요청자료 내용이 바뀌면 상태를 다시 "발송대기"로 되돌린다(§요청 16).
+      // 이미 발송완료였다면 그 발송 기록을 이력에 먼저 남기고 나서 바꾼다 — 덮어쓰지 않는다.
+      if(rec.requestMaterialStatus === 'sent'){
+        const log = Array.isArray(rec.requestMaterialLog) ? rec.requestMaterialLog.slice() : [];
+        log.push({
+          materials: prevMat, sentAt: rec.requestMaterialSentAt || null, sentBy: rec.requestMaterialSentBy || null,
+          requestedAt: rec.requestMaterialRequestedAt || null, requestedBy: rec.requestMaterialRequestedBy || null
+        });
+        rec.requestMaterialLog = log.slice(-20);
+      }
+      rec.requestMaterials = nextMat;
+      if(nextMat){
+        rec.requestMaterialStatus = 'pending';
+        rec.requestMaterialRequestedAt = nowIso();
+        if(ex.actorLabel) rec.requestMaterialRequestedBy = ex.actorLabel;
+        rec.requestMaterialSentAt = null;
+        rec.requestMaterialSentBy = null;
+      } else {
+        // 내용을 비우면 발송대기에서도 빠진다(이력은 위에서 이미 보존됨).
+        rec.requestMaterialStatus = '';
+      }
+    }
     rec.memo = nextMemo;
     rec.qaAnswers = nextQa;
     rec.consultRating = nextRating;
+    rec.consultRatings = nextSections;
     rec.updatedAt = nowIso();
     const ok = saveDocuments(list, { skipCloudPush:true, knownExistingLength:list.length });
     return { ok, changed:ok, rec, list, reason:ok ? null : 'LOCAL_SAVE_FAILED' };
@@ -8716,6 +8848,27 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
   // registered"는 여기서 값을 쓰지 않고, 읽는 쪽(resolveDocVerificationStatus)이
   // 필드가 비어있을 때 실제 파일 존재 여부로부터 파생시킨다(§ "기존 데이터를 일괄
   // 수정하거나 덮어쓰지 말고 읽기 호환 방식으로 처리").
+  // 발송완료 — 요청 내용(requestMaterials)은 지우지 않고 상태·시각·담당자만 기록한다.
+  function markDocumentMaterialsSent(id, actorLabel){
+    const list = loadDocuments();
+    const rec = list.find(d=> d.id===id);
+    if(!rec) return { ok:false, reason:'NOT_FOUND' };
+    if(!String(rec.requestMaterials || '').trim()) return { ok:false, reason:'NO_MATERIALS' };
+    rec.requestMaterialStatus = 'sent';
+    rec.requestMaterialSentAt = nowIso();
+    rec.requestMaterialSentBy = actorLabel || null;
+    rec.updatedAt = nowIso();
+    const ok = saveDocuments(list, { skipCloudPush:true, knownExistingLength:list.length });
+    return { ok, rec, list, reason: ok ? null : 'LOCAL_SAVE_FAILED' };
+  }
+  // 발송대기 목록 — 요청 내용이 있고 아직 sent가 아닌 질문지 문서만(§요청 12).
+  function pendingRequestMaterialDocs(){
+    return loadDocuments().filter(d=>
+      d.documentType === 'questionnaire'
+      && String(d.requestMaterials || '').trim()
+      && d.requestMaterialStatus !== 'sent'
+    );
+  }
   function setDocumentVerification(id, patch){
     const list = loadDocuments(); const rec = list.find(d=> d.id===id); if(!rec) return null;
     if(patch.verificationStatus) rec.verificationStatus = patch.verificationStatus;
@@ -11360,7 +11513,7 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
     loadActivities, addActivity, updateActivityText, deleteActivity, activitiesForCompany, classifyActivity, buildActivitiesIndex,
     loadSheetRequests, buildSheetRequestsIndex, latestSheetRequestForCompany,
     loadCaseByCaseCompanies, loadExclusionAudit, caseByCaseIdForNormName, exclusionIdForNormName, findCaseByCaseByNormName, findCaseByCaseById, isUserExcludedNormName,
-    loadDocuments, documentsForCompany, buildDocumentsIndex, addDocument, updateDocumentExtracted, getBlob, getLocalDocFile, renameDocument, setDocumentMemo, setDocumentQaAnswers, setDocumentConsultation, normalizeQuestionnaireRating, QUESTIONNAIRE_RATINGS, setDocumentVerification, deleteDocument, findDocument, migrateDocumentToCloud,
+    loadDocuments, documentsForCompany, buildDocumentsIndex, addDocument, updateDocumentExtracted, getBlob, getLocalDocFile, renameDocument, setDocumentMemo, setDocumentQaAnswers, setDocumentConsultation, normalizeQuestionnaireRating, QUESTIONNAIRE_RATINGS, markDocumentMaterialsSent, pendingRequestMaterialDocs, setDocumentVerification, deleteDocument, findDocument, migrateDocumentToCloud,
     loadMemos, memosFor, addMemo, updateMemo, deleteMemo, buildMemosIndex,
     pendingActivitiesForCompany, tasksForCompany, calendarEventsForCompany, upcomingCalendarEventsForCompany,
     DEAL_STAGES, setDealStage, setAssigneeUserId, addNeed, removeNeed, dismissNeedSuggestion, addSpecialNote, removeSpecialNote, setImportant, suggestNeedFor,
@@ -18106,15 +18259,20 @@ window.SHIN2_CRM_APP_INIT = function(){
     // 여부(answered.length)만 반영한다. 새 상태를 만들지 않고 이미 계산된 answered 배열을
     // 그대로 읽어 "답변 미등록"/"답변 등록됨"만 표시한다(§ 가짜 상태 금지).
     const qaBadgeHtml = `<span class="cdash2-tag${answered.length ? ' is-done' : ''} cdash2-qa-badge">${answered.length ? '답변 등록됨' : '답변 미등록'}</span>`;
-    // §질문서 상담 평가 라운드 — 상/중/하 배지를 먼저, 그 아래 상담 메모를 보여준다.
-    const ratingBadgeHtml = doc ? qratingBadgeHtml(doc) : '';
+    // §질문지 섹션별 평가 + 요청자료 라운드 — 단일 배지 대신 섹션별 평가 줄과
+    // 요청자료 상태를 보여준다. 요청자료는 메모 안에 묻히지 않게 별도 구획이다.
+    const secSummaryHtml = doc ? qsectionSummaryHtml(doc) : '';
+    const reqBadge = doc ? reqMatBadgeHtml(doc) : '';
+    const reqText = String((doc && doc.requestMaterials) || '').trim();
     const memoText = String((doc && doc.memo) || '').trim();
     wrap.innerHTML = `
       <div class="cdash2-card">
         <div class="cdash2-card-title" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
           <span><span aria-hidden="true">📄</span> 질문지 상담 요약</span>
-          <div style="display:flex;align-items:center;gap:6px;">${ratingBadgeHtml}${qaBadgeHtml}${openBtnHtml}</div>
+          <div style="display:flex;align-items:center;gap:6px;">${reqBadge}${qaBadgeHtml}${openBtnHtml}</div>
         </div>
+        ${reqText ? `<div class="reqmat-callout"><div class="reqmat-callout-head">요청자료 ${reqBadge}</div><div class="reqmat-callout-text">${esc(reqText)}</div></div>` : ''}
+        ${secSummaryHtml}
         ${memoText ? `<div class="qrating-memo"><span class="qrating-memo-label">메모</span>${esc(memoText)}</div>` : ''}
         ${answered.length ? `
           <div class="cdash-qa-summary-list">
@@ -24006,7 +24164,13 @@ window.SHIN2_CRM_APP_INIT = function(){
     let lastSection = null;
     QUESTIONNAIRE_SESSION_QUESTIONS.forEach(q=>{
       if(q.section !== lastSection){
-        html += `<div class="questionnaire-qa-section">${esc(q.section)}. ${esc(q.sectionLabel)}</div>`;
+        // §질문지 섹션별 평가 라운드(신규) — 섹션 제목 오른쪽에 [상][중][하]를 붙인다.
+        // 섹션 키는 표시 문자열이 아니라 QUESTIONNAIRE_SESSION_QUESTIONS에 이미 있는
+        // 안정적인 id(q.section = A~E)를 쓴다.
+        html += `<div class="questionnaire-qa-section">
+          <span class="questionnaire-qa-section-name">${esc(q.section)}. ${esc(q.sectionLabel)}</span>
+          ${qsectionRatingHtml(doc, q.section)}
+        </div>`;
         lastSection = q.section;
       }
       const val = qa[q.key] || '';
@@ -24032,48 +24196,102 @@ window.SHIN2_CRM_APP_INIT = function(){
   // 기존 메모를 분석해 상/중/하로 자동 분류하지 않는다.
   // ==========================================================================
   const QRATING_DEFS = [
-    ['high','상','관심 높음 / 진행 가능성 높음'],
+    ['high','상','관심/이해/가능성 높음'],
     ['mid', '중','보통 / 추가 확인 필요'],
-    ['low', '하','관심 낮음 / 진행 가능성 낮음']
+    ['low', '하','낮음 / 추가 관리 필요']
   ];
-  function qratingOf(doc){
-    return (D.normalizeQuestionnaireRating && D.normalizeQuestionnaireRating(doc && doc.consultRating)) || '';
+  // 섹션 목록은 질문 정의에서 그대로 뽑는다 — A/B를 코드에 박지 않는다.
+  function questionnaireSections(){
+    const out = [];
+    QUESTIONNAIRE_SESSION_QUESTIONS.forEach(q=>{
+      if(!out.some(x=> x.id === q.section)) out.push({ id:q.section, label:q.sectionLabel });
+    });
+    return out;
+  }
+  function qsectionRatingsOf(doc){
+    const src = (doc && doc.consultRatings) || {};
+    const out = {};
+    Object.keys(src).forEach(k=>{
+      const v = (D.normalizeQuestionnaireRating && D.normalizeQuestionnaireRating(src[k])) || '';
+      if(v) out[k] = v;
+    });
+    return out;
   }
   function qratingLabel(v){
     const hit = QRATING_DEFS.find(d=> d[0] === v);
     return hit ? hit[1] : '미평가';
   }
-  // 목록·요약에 붙는 작은 배지(상 초록 / 중 주황 / 하 빨강 / 미평가 회색).
-  function qratingBadgeHtml(doc, opts){
-    const v = qratingOf(doc);
-    const o = opts || {};
-    if(!v && o.hideWhenEmpty) return '';
-    const hit = QRATING_DEFS.find(d=> d[0] === v);
-    return `<span class="qrating-badge is-${esc(v || 'none')}"${hit ? ` title="${esc(hit[2])}"` : ''}>${esc(qratingLabel(v))}</span>`;
+  // 섹션 제목 오른쪽에 붙는 compact 선택기. 켜진 걸 다시 누르면 미평가로 돌아간다.
+  function qsectionRatingHtml(doc, sectionId){
+    const cur = qsectionRatingsOf(doc)[sectionId] || '';
+    return `<span class="qsec-rate" role="radiogroup" aria-label="${esc(sectionId)} 섹션 평가">
+      ${QRATING_DEFS.map(([val,label,desc])=> `<button type="button" class="qsec-rate-btn is-${esc(val)}${cur===val?' is-on':''}"
+        data-qsec="${esc(sectionId)}" data-qsec-val="${esc(val)}" role="radio" aria-checked="${cur===val?'true':'false'}"
+        title="${esc(label)} — ${esc(desc)} (다시 누르면 미평가)">${esc(label)}</button>`).join('')}
+    </span>`;
   }
-  // 팝업 안의 선택기 — 라디오처럼 하나만 켜진다(같은 걸 다시 누르면 해제되지 않는다,
-  // 해제는 "미평가" 칩으로 명시적으로 한다).
-  function qratingPickerHtml(doc){
-    const cur = qratingOf(doc);
+  // 목록·요약에 쓰는 작은 배지(값이 있을 때만).
+  function qsecBadgeHtml(v){
+    return `<span class="qrating-badge is-${esc(v || 'none')}">${esc(qratingLabel(v))}</span>`;
+  }
+  // 고객카드·협약 진행관리에 쓰는 "섹션명 [상]" 줄 목록. 평가가 하나도 없으면 빈 문자열.
+  function qsectionSummaryHtml(doc){
+    const map = qsectionRatingsOf(doc);
+    const rows = questionnaireSections().filter(sec=> map[sec.id]);
+    if(!rows.length) return '';
+    return `<div class="qsec-summary">${rows.map(sec=>
+      `<div class="qsec-summary-row"><span class="qsec-summary-name">${esc(sec.label)}</span>${qsecBadgeHtml(map[sec.id])}</div>`).join('')}</div>`;
+  }
+
+  // ==========================================================================
+  // §미팅 후 요청자료 라운드(신규) — 팀장이 미팅을 끝내고 "이 업체에 무슨 자료를 보내야
+  // 하는지" 적는 곳. 상담 메모와 목적이 달라 같은 칸에 섞지 않고 별도 구획으로 둔다.
+  // 저장 위치는 질문지 문서 레코드(requestMaterials / requestMaterialStatus / ...)이고,
+  // 새 Firebase 컬렉션은 만들지 않는다.
+  // ==========================================================================
+  const REQUEST_MATERIAL_CHIPS = ['시방서','협약사 리스트','공법자료','자재공급승인원','시공실적','견적자료','기타'];
+  function reqMatStatusOf(doc){
+    const txt = String((doc && doc.requestMaterials) || '').trim();
+    if(!txt) return '';
+    return doc.requestMaterialStatus === 'sent' ? 'sent' : 'pending';
+  }
+  function reqMatBadgeHtml(doc, opts){
+    const st = reqMatStatusOf(doc);
+    if(!st) return (opts && opts.showEmpty) ? '<span class="reqmat-badge is-empty">요청자료 없음</span>' : '';
+    return st === 'sent'
+      ? '<span class="reqmat-badge is-sent">발송완료</span>'
+      : '<span class="reqmat-badge is-pending">발송대기</span>';
+  }
+  function requestMaterialsBlockHtml(doc){
+    const txt = String((doc && doc.requestMaterials) || '').trim();
+    const st = reqMatStatusOf(doc);
     return `
-      <div class="qrating-block">
-        <div class="qrating-head">
-          <span class="qrating-title">상담 평가</span>
-          <span class="qrating-hint">선택하면 바로 저장됩니다</span>
+      <div class="reqmat-block" id="reqMatBlock">
+        <div class="reqmat-head">
+          <span class="reqmat-title">미팅 후 요청자료</span>
+          ${reqMatBadgeHtml(doc)}
         </div>
-        <div class="qrating-options" role="radiogroup" aria-label="상담 평가">
-          ${QRATING_DEFS.map(([val,label,desc])=> `
-            <button type="button" class="qrating-opt is-${esc(val)}${cur===val?' is-on':''}"
-              data-qrating="${esc(val)}" role="radio" aria-checked="${cur===val?'true':'false'}" title="${esc(desc)}">
-              <span class="qrating-opt-label">${esc(label)}</span>
-              <span class="qrating-opt-desc">${esc(desc)}</span>
-            </button>`).join('')}
-          <button type="button" class="qrating-opt is-none${cur===''?' is-on':''}"
-            data-qrating="" role="radio" aria-checked="${cur===''?'true':'false'}" title="아직 평가하지 않음">
-            <span class="qrating-opt-label">미평가</span>
-          </button>
+        <div class="reqmat-desc">미팅 후 발송해야 할 자료를 기록하세요. 사무실 담당자가 이 내용을 보고 발송합니다.</div>
+        <div class="reqmat-chips">
+          ${REQUEST_MATERIAL_CHIPS.map(c=> `<button type="button" class="reqmat-chip" data-reqmat-chip="${esc(c)}">${esc(c)}</button>`).join('')}
+        </div>
+        <textarea id="reqMatInput" class="reqmat-input" placeholder="예: 시방서, 협약사 리스트, 최근 실적자료 발송 요청">${esc(txt)}</textarea>
+        <div class="reqmat-foot">
+          <span class="reqmat-meta" id="reqMatMeta">${esc(reqMatMetaText(doc))}</span>
+          ${st === 'pending' ? `<button type="button" class="reqmat-send-btn" id="reqMatSentBtn">발송완료</button>` : ''}
         </div>
       </div>`;
+  }
+  function reqMatMetaText(doc){
+    if(!doc) return '';
+    const st = reqMatStatusOf(doc);
+    if(st === 'sent'){
+      return `발송완료 · ${fmtDate(doc.requestMaterialSentAt)}${doc.requestMaterialSentBy ? ' · ' + doc.requestMaterialSentBy : ''}`;
+    }
+    if(st === 'pending'){
+      return `요청 ${fmtDate(doc.requestMaterialRequestedAt)}${doc.requestMaterialRequestedBy ? ' · ' + doc.requestMaterialRequestedBy : ''}`;
+    }
+    return '내용을 적으면 자동으로 발송대기가 됩니다';
   }
   function openQuestionnaireSession(companyId, docId){
     const co = D.findCompany(companyId);
@@ -24093,12 +24311,12 @@ window.SHIN2_CRM_APP_INIT = function(){
             <section class="questionnaire-viewer" id="questionnaireViewer"><div class="doc-preview-loading">질문서를 불러오는 중…</div></section>
             <section class="questionnaire-note-pane">
               <div class="questionnaire-note-scroll" id="questionnaireNoteScroll">
-                ${qratingPickerHtml(doc)}
                 ${questionnaireQaFieldsHtml(doc)}
                 <div class="questionnaire-qa-item questionnaire-qa-etc">
                   <label for="questionnaireConsultationMemo">상담 메모</label>
                   <textarea id="questionnaireConsultationMemo" placeholder="상담 내용이나 특이사항을 입력하세요.">${esc(doc.memo || '')}</textarea>
                 </div>
+                ${requestMaterialsBlockHtml(doc)}
               </div>
               <div class="questionnaire-note-footer"><span class="questionnaire-save-status" id="questionnaireSaveStatus">이 질문지에 함께 저장됩니다</span><button type="button" class="btn-primary-action" id="questionnaireMemoSave" style="height:34px;padding:0 16px;">저장</button></div>
             </section>
@@ -24155,16 +24373,29 @@ window.SHIN2_CRM_APP_INIT = function(){
       return {
         memo: document.getElementById('questionnaireConsultationMemo').value.trim(),
         qaAnswers: normalizeQaAnswers(qaAnswers),
-        // §질문서 상담 평가 라운드 — 평가는 입력칸이 아니라 눌린 칩에서 읽는다.
-        rating: (()=>{ const on = noteScroll.querySelector('[data-qrating].is-on'); return on ? on.getAttribute('data-qrating') : ''; })()
+        // §섹션별 평가 — 눌린 칩에서 섹션 id별로 읽는다.
+        sectionRatings: (()=>{
+          const out = {};
+          noteScroll.querySelectorAll('[data-qsec].is-on').forEach(b=>{ out[b.getAttribute('data-qsec')] = b.getAttribute('data-qsec-val'); });
+          return out;
+        })(),
+        // §미팅 후 요청자료
+        requestMaterials: (()=>{ const el = document.getElementById('reqMatInput'); return el ? el.value.trim() : ''; })()
       };
     };
+    const sectionSig = map=> questionnaireSections().map(sec=> sec.id + ':' + (map[sec.id] || '')).join('|');
     const draftSignature = draft=> JSON.stringify([
       draft.memo,
       QUESTIONNAIRE_SESSION_QUESTIONS.map(q=> draft.qaAnswers[q.key] || ''),
-      draft.rating || ''
+      sectionSig(draft.sectionRatings || {}),
+      draft.requestMaterials || ''
     ]);
-    const initialDraft = { memo:(doc.memo || '').trim(), qaAnswers:normalizeQaAnswers(doc.qaAnswers || {}), rating: qratingOf(doc) };
+    const initialDraft = {
+      memo:(doc.memo || '').trim(),
+      qaAnswers:normalizeQaAnswers(doc.qaAnswers || {}),
+      sectionRatings: qsectionRatingsOf(doc),
+      requestMaterials: String(doc.requestMaterials || '').trim()
+    };
     let lastSavedSignature = draftSignature(initialDraft);
     let pendingDraft = initialDraft;
     let pendingSignature = lastSavedSignature;
@@ -24202,11 +24433,19 @@ window.SHIN2_CRM_APP_INIT = function(){
       console.info('[MEMO-SAVE] request start');
       inFlight = (async ()=>{
         const localStarted = performance.now();
-        const localResult = D.setDocumentConsultation(doc.id, draft.memo, draft.qaAnswers, draft.rating);
+        const localResult = D.setDocumentConsultation(doc.id, draft.memo, draft.qaAnswers, undefined, {
+          sectionRatings: draft.sectionRatings,
+          requestMaterials: draft.requestMaterials,
+          actorLabel: crmCurrentUserLabel()
+        });
         if(!localResult || !localResult.ok) throw new Error((localResult && localResult.reason) || 'LOCAL_SAVE_FAILED');
         console.info(`[MEMO-SAVE] local complete: ${Math.round(performance.now() - localStarted)}ms`);
         const renderStarted = performance.now();
         refreshSummaryCard(localResult.rec);
+        // 발송대기 건수는 로컬 저장 시점에 이미 확정된다 — 클라우드 확인을 기다리지 않는다
+        // (네트워크가 잠깐 끊겨도 담당자 화면의 알림 건수는 맞아야 한다).
+        renderRequestMaterialBadge();
+        syncRequestMaterialChrome(localResult.rec);
         console.info(`[MEMO-SAVE] render: ${Math.round(performance.now() - renderStarted)}ms`);
         const cloudResult = await confirmDocsCloudSave(localResult.list);
         if(!cloudResult.ok) throw cloudResult.err || new Error('CLOUD_SAVE_FAILED');
@@ -24255,7 +24494,8 @@ window.SHIN2_CRM_APP_INIT = function(){
     };
     flushPendingSave = ()=> queueSave(true);
     const handleDraftChange = e=>{
-      if(e.target.matches('.questionnaire-qa-answer, #questionnaireConsultationMemo')) queueSave(false);
+      // §미팅 후 요청자료 — 이 입력칸도 같은 저장 큐를 탄다(빠뜨리면 직접 입력이 저장되지 않는다).
+      if(e.target.matches('.questionnaire-qa-answer, #questionnaireConsultationMemo, #reqMatInput')) queueSave(false);
     };
     noteScroll.addEventListener('input', handleDraftChange);
     noteScroll.addEventListener('change', handleDraftChange);
@@ -24263,17 +24503,80 @@ window.SHIN2_CRM_APP_INIT = function(){
     // 잡지 못한다. 클릭에서 선택 상태만 바꾸고, 저장은 기존 큐(queueSave)에 그대로 태운다
     // — 새 저장 경로를 만들지 않아 메모 저장과 충돌하지 않는다(같은 스냅샷 한 번에 나간다).
     noteScroll.addEventListener('click', e=>{
-      const btn = e.target.closest('[data-qrating]');
-      if(!btn || !noteScroll.contains(btn)) return;
-      const val = btn.getAttribute('data-qrating');
-      noteScroll.querySelectorAll('[data-qrating]').forEach(b=>{
-        const on = b === btn;
-        b.classList.toggle('is-on', on);
-        b.setAttribute('aria-checked', on ? 'true' : 'false');
-      });
-      queueSave(true);   // 평가는 타이핑이 아니므로 바로 저장한다
-      void val;
+      // §섹션별 평가 — 같은 섹션 안에서만 하나가 켜진다. 켜진 걸 다시 누르면 미평가.
+      const secBtn = e.target.closest('[data-qsec]');
+      if(secBtn && noteScroll.contains(secBtn)){
+        const sec = secBtn.getAttribute('data-qsec');
+        const turnOff = secBtn.classList.contains('is-on');
+        noteScroll.querySelectorAll(`[data-qsec="${sec}"]`).forEach(b=>{
+          const on = !turnOff && b === secBtn;
+          b.classList.toggle('is-on', on);
+          b.setAttribute('aria-checked', on ? 'true' : 'false');
+        });
+        queueSave(true);   // 평가는 타이핑이 아니므로 바로 저장
+        return;
+      }
+      // §요청자료 빠른 선택 칩 — 입력칸 끝에 덧붙인다(직접 입력도 그대로 가능).
+      const chip = e.target.closest('[data-reqmat-chip]');
+      if(chip && noteScroll.contains(chip)){
+        const input = document.getElementById('reqMatInput');
+        if(input){
+          const val = chip.getAttribute('data-reqmat-chip');
+          const cur = input.value.trim();
+          const parts = cur ? cur.split(/\s*,\s*/).filter(Boolean) : [];
+          if(parts.indexOf(val) < 0) parts.push(val);
+          input.value = parts.join(', ');
+          input.focus();
+          queueSave(false);
+        }
+        return;
+      }
     });
+    // §요청자료 발송완료 — 요청 내용은 지우지 않고 상태만 바꾼다. 이 버튼은 블록을
+    // 다시 그릴 때마다 사라졌다 나타나므로 위임으로 잡는다.
+    noteScroll.addEventListener('click', async e=>{
+      const btn = e.target.closest('#reqMatSentBtn');
+      if(!btn || !noteScroll.contains(btn)) return;
+      // 먼저 입력칸의 최신 내용을 저장해 두고(발송완료가 이전 내용에 찍히지 않게) 처리한다.
+      flushPendingSave();
+      const r = D.markDocumentMaterialsSent(doc.id, crmCurrentUserLabel());
+      if(!r || !r.ok){ setSaveStatus('발송완료 처리 실패', true); return; }
+      rerenderRequestMaterials(r.rec);
+      refreshSummaryCard(r.rec);
+      renderRequestMaterialBadge();
+      const cloud = await confirmDocsCloudSave(r.list);
+      if(!cloud.ok) setSaveStatus('발송완료 저장 확인 실패 - 다시 시도', true);
+      else showMiniSaveToast('발송완료로 저장됨');
+    });
+    // 요청자료 블록만 제자리에서 다시 그린다(입력 중인 답변·메모를 건드리지 않게).
+    function rerenderRequestMaterials(freshDoc){
+      const block = document.getElementById('reqMatBlock');
+      if(!block) return;
+      const tmp = document.createElement('div');
+      tmp.innerHTML = requestMaterialsBlockHtml(freshDoc || doc);
+      const fresh = tmp.firstElementChild;
+      if(fresh) block.replaceWith(fresh);
+    }
+    // 저장 직후 상태 표시만 맞춘다 — 입력칸(textarea)은 절대 건드리지 않는다.
+    // 블록을 통째로 다시 그리면 타이핑 중인 커서가 날아가므로 배지·안내줄·[발송완료]만 바꾼다.
+    function syncRequestMaterialChrome(freshDoc){
+      const block = document.getElementById('reqMatBlock');
+      if(!block || !freshDoc) return;
+      const head = block.querySelector('.reqmat-head');
+      if(head){
+        const old = head.querySelector('.reqmat-badge');
+        const html = reqMatBadgeHtml(freshDoc);
+        if(old) old.remove();
+        if(html) head.insertAdjacentHTML('beforeend', html);
+      }
+      const meta = block.querySelector('#reqMatMeta');
+      if(meta) meta.textContent = reqMatMetaText(freshDoc);
+      const foot = block.querySelector('.reqmat-foot');
+      const btn = block.querySelector('#reqMatSentBtn');
+      const wantBtn = reqMatStatusOf(freshDoc) === 'pending';
+      if(wantBtn && !btn && foot) foot.insertAdjacentHTML('beforeend', '<button type="button" class="reqmat-send-btn" id="reqMatSentBtn">발송완료</button>');
+      if(!wantBtn && btn) btn.remove();
+    }
     saveBtn.addEventListener('click', ()=> queueSave(true));
     noteScroll.addEventListener('keydown', e=>{
       if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's'){ e.preventDefault(); queueSave(true); }
@@ -24320,7 +24623,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     const accepted = '.pdf,.jpg,.jpeg,.png,.gif,.webp';
     const inputHtml = `<input type="file" id="agreementQuestionnaireInput" class="questionnaire-file-input" accept="${accepted}" />`;
     if(!doc) return `<div class="questionnaire-work-card"><div class="questionnaire-work-head"><span class="questionnaire-work-title">질문지 상담</span></div><div class="questionnaire-work-meta">질문서를 등록하면, 문서를 보면서 상담 메모를 바로 저장할 수 있습니다.</div><div class="questionnaire-work-actions">${inputHtml}<label for="agreementQuestionnaireInput" class="co-text-action primary questionnaire-file-label">질문지 등록</label></div></div>`;
-    return `<div class="questionnaire-work-card"><div class="questionnaire-work-head"><span class="questionnaire-work-title">질문지 상담</span><span class="questionnaire-work-head-right">${qratingBadgeHtml(doc)}<span class="status-badge is-progress">등록됨</span></span></div><div class="questionnaire-work-meta">${esc(doc.fileName || doc.originalFileName || '질문서')} · ${esc(fmtDate(doc.createdAt))} 등록${doc.localOnly ? ' · 이 브라우저에만 저장됨' : ''}</div>${String(doc.memo || '').trim() ? `<div class="qrating-memo"><span class="qrating-memo-label">메모</span>${esc(String(doc.memo).trim())}</div>` : ''}<div class="questionnaire-work-actions">${inputHtml}<button type="button" class="co-text-action primary" data-questionnaire-session="${esc(doc.id)}">질문지 열고 상담 메모</button><label for="agreementQuestionnaireInput" class="co-text-action questionnaire-file-label">질문지 교체</label></div></div>`;
+    return `<div class="questionnaire-work-card"><div class="questionnaire-work-head"><span class="questionnaire-work-title">질문지 상담</span><span class="questionnaire-work-head-right">${reqMatBadgeHtml(doc)}<span class="status-badge is-progress">등록됨</span></span></div><div class="questionnaire-work-meta">${esc(doc.fileName || doc.originalFileName || '질문서')} · ${esc(fmtDate(doc.createdAt))} 등록${doc.localOnly ? ' · 이 브라우저에만 저장됨' : ''}</div>${String(doc.requestMaterials || '').trim() ? `<div class="reqmat-callout"><div class="reqmat-callout-head">요청자료 ${reqMatBadgeHtml(doc)}</div><div class="reqmat-callout-text">${esc(String(doc.requestMaterials).trim())}</div></div>` : ''}${qsectionSummaryHtml(doc)}${String(doc.memo || '').trim() ? `<div class="qrating-memo"><span class="qrating-memo-label">메모</span>${esc(String(doc.memo).trim())}</div>` : ''}<div class="questionnaire-work-actions">${inputHtml}<button type="button" class="co-text-action primary" data-questionnaire-session="${esc(doc.id)}">질문지 열고 상담 메모</button><label for="agreementQuestionnaireInput" class="co-text-action questionnaire-file-label">질문지 교체</label></div></div>`;
   }
   function bindQuestionnaireWork(companyId){
     const input = document.getElementById('agreementQuestionnaireInput');
@@ -26857,12 +27160,74 @@ window.SHIN2_CRM_APP_INIT = function(){
     const n = gsheetImportState.reviewItems.length; // 실제 계산된 값(하드코딩 아님, §요청)
     const el = document.getElementById('crmGsheetReviewCount');
     if(el) el.textContent = n ? ('(' + n + ')') : '';
-    // §확인 필요 복원/3단계 분류 라운드(신규) — 관리 도구 버튼 자체의 배지(위 주석 참고).
+    renderRequestMaterialBadge();   // 외곽 배지는 두 건수를 합산하므로 한 곳에서 그린다
+  }
+  // §미팅 후 요청자료 라운드(신규) — 발송대기 건수를 드롭다운 항목과 관리 도구 외곽
+  // 배지에 반영한다. 외곽 배지는 기존 "Google Sheets 확인 필요" 건수와 합산한다 —
+  // 기존 알림을 없애지 않고 한 줄만 더한다.
+  function renderRequestMaterialBadge(){
+    const pending = (D.pendingRequestMaterialDocs && D.pendingRequestMaterialDocs()) || [];
+    const item = document.getElementById('crmReqMatCount');
+    if(item) item.textContent = pending.length ? ('(' + pending.length + ')') : '';
+    const gs = (gsheetImportState.reviewItems || []).length;
+    const total = gs + pending.length;
     const outerBadge = document.getElementById('crmDataUpdateReviewBadge');
     if(outerBadge){
-      if(n){ outerBadge.textContent = String(n); outerBadge.style.display = ''; }
+      if(total){ outerBadge.textContent = String(total); outerBadge.style.display = ''; }
       else { outerBadge.textContent = ''; outerBadge.style.display = 'none'; }
     }
+  }
+  // 발송대기 목록 모달 — 업체명 / 요청자료 / 요청일 / 요청자 / 상태 + [고객카드 보기] [발송완료]
+  function openRequestMaterialModal(){
+    let root = document.getElementById('reqMatModalRoot');
+    if(!root){ root = document.createElement('div'); root.id = 'reqMatModalRoot'; document.body.appendChild(root); }
+    const render = ()=>{
+      const pending = (D.pendingRequestMaterialDocs && D.pendingRequestMaterialDocs()) || [];
+      const rows = pending.map(d=>{
+        const co = D.findCompany(d.companyId);
+        return `
+          <div class="reqmat-row" data-reqmat-doc="${esc(d.id)}">
+            <div class="reqmat-row-main">
+              <div class="reqmat-row-name">${esc(co ? co.name : '(삭제된 업체)')}</div>
+              <div class="reqmat-row-text">${esc(String(d.requestMaterials || '').trim())}</div>
+              <div class="reqmat-row-meta">요청 ${esc(fmtDate(d.requestMaterialRequestedAt))}${d.requestMaterialRequestedBy ? ' · ' + esc(d.requestMaterialRequestedBy) : ''}</div>
+            </div>
+            <div class="reqmat-row-actions">
+              <span class="reqmat-badge is-pending">발송대기</span>
+              ${co ? `<button type="button" class="co-text-action" data-reqmat-open="${esc(co.id)}">고객카드 보기</button>` : ''}
+              <button type="button" class="reqmat-send-btn" data-reqmat-sent="${esc(d.id)}">발송완료</button>
+            </div>
+          </div>`;
+      }).join('');
+      root.innerHTML = `
+        <div class="pi-overlay" id="reqMatOverlay" style="z-index:10020;">
+          <div class="pi-panel" style="max-width:660px;" role="dialog" aria-modal="true" aria-label="미팅 후 요청자료">
+            <div class="pi-head">
+              <div class="pi-title">미팅 후 요청자료 <span class="reqmat-title-count">발송대기 ${pending.length}건</span></div>
+              <button type="button" class="chart-close-btn" id="reqMatModalClose" aria-label="닫기">&times;</button>
+            </div>
+            <div class="pi-body">
+              ${pending.length ? `<div class="reqmat-list">${rows}</div>` : '<div class="local-cloud-diag-empty">발송대기 중인 요청자료가 없습니다.</div>'}
+            </div>
+          </div>
+        </div>`;
+      document.getElementById('reqMatModalClose').addEventListener('click', ()=>{ root.innerHTML = ''; });
+      bindSafeBackdropClose(document.getElementById('reqMatOverlay'), ()=>{ root.innerHTML = ''; });
+      root.querySelectorAll('[data-reqmat-open]').forEach(b=> b.addEventListener('click', ()=>{
+        const id = b.getAttribute('data-reqmat-open');
+        root.innerHTML = '';
+        openCard(id);
+      }));
+      root.querySelectorAll('[data-reqmat-sent]').forEach(b=> b.addEventListener('click', async ()=>{
+        const r = D.markDocumentMaterialsSent(b.getAttribute('data-reqmat-sent'), crmCurrentUserLabel());
+        if(!r || !r.ok){ alert('발송완료 처리에 실패했습니다.'); return; }
+        render();
+        renderRequestMaterialBadge();
+        const cloud = await confirmDocsCloudSave(r.list);
+        if(!cloud.ok) alert('발송완료는 이 기기에 저장됐지만 서버 반영 확인에 실패했습니다 — ' + cloudSaveErrorMessage(cloud.err));
+      }));
+    };
+    render();
   }
   // §확인 필요 큐 구조 오류 버그 수정 라운드(신규) — pourWonSyncNote/orphanedDeletedNote와
   // 같은 자리에 탭 구조 오류(필수 컬럼을 못 찾아 그 탭 전체를 건너뜀)를 명시적으로 보여준다
@@ -37253,6 +37618,9 @@ window.SHIN2_CRM_APP_INIT = function(){
   document.getElementById('crmLocalCloudDiagBtn').addEventListener('click', ()=>{ closeUpdateMenu(); openLocalCloudDiagModal(); });
   document.getElementById('crmGiftGradeBtn').addEventListener('click', ()=>{ closeUpdateMenu(); openGiftGradeModal(); });
   document.getElementById('crmGsheetReviewBtn').addEventListener('click', ()=>{ closeUpdateMenu(); openGsheetReviewModal(); });
+  // §미팅 후 요청자료 라운드(신규) — 기존 드롭다운 항목과 같은 방식(메뉴 닫고 모달 열기).
+  document.getElementById('crmReqMatBtn').addEventListener('click', ()=>{ closeUpdateMenu(); openRequestMaterialModal(); });
+  renderRequestMaterialBadge();   // 첫 진입 시 발송대기 건수를 배지에 반영
   // §관리 도구 정리 라운드(신규) — 위 두 버튼을 메뉴에서 뺐으므로 바인딩도 함께 뺀다.
   // (버튼이 없는 상태에서 getElementById(...).addEventListener를 부르면 그 뒤의 다른
   //  바인딩까지 통째로 죽는다.)
