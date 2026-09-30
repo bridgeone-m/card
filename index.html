@@ -4724,6 +4724,43 @@ table.pdf-doc-table thead{ background:var(--bg); }
 .crm-list-col .lastpour-detail{ gap:3px !important; }
 /* 총매출 숫자 ↔ 아래 연도별 매출 */
 .crm-list-col .col-revenue-combo{ gap:5px !important; }
+
+/* ==========================================================================
+   §고객목록 타이포그래피 축소 라운드(신규) — 사용자 요청: "글씨가 전체적으로 조금 크고
+   무겁게 보인다. 한 단계 작고 정돈되게, 정보밀도 높은 B2B CRM 테이블처럼."
+
+   글자 크기·행 여백만 건드린다. 그리드 컬럼 폭(위 crm-list-col 규칙), 정렬, 클릭,
+   데이터·계산은 전혀 손대지 않았다. 범위도 고객목록 테이블(.crm-list-col) 안으로만
+   묶어서 검색창·KPI 카드·지도 글자는 그대로 둔다.
+   숫자는 전부 실측값 기준 1~1.5px 축소다(실측 전/후는 커밋 메시지 표 참고).
+   ========================================================================== */
+/* 1. 업체명 — bold 유지, 14 → 12.5px. 업체코드 보조줄도 반 단계만 */
+.crm-list-col .co-name-text{ font-size:12.5px !important; line-height:1.35 !important; }
+.crm-list-col .co-code-sub{ font-size:10px !important; line-height:1.4 !important; }
+/* 2. 최근 실적 건수 배지 — 숫자 17 → 16px, 배지 높이·패딩도 소폭 */
+.crm-list-col .lastpour-total-num{ font-size:16px !important; }
+.crm-list-col .lastpour-total-box{ padding:3px 6px !important; height:auto !important; min-height:30px !important; }
+/* 3. 최근 실적 설명 — 연도/공종 12 → 11px, 현장명 10.5 → 9.5px, 줄간격도 조금 */
+.crm-list-col .lastpour-main{ font-size:11px !important; }
+.crm-list-col .lastpour-site{ font-size:9.5px !important; }
+.crm-list-col .lastpour-detail{ line-height:1.25 !important; }
+/* 4. 총매출 — 메인 금액 13.5 → 12.5px, 연도별 줄 11.5 → 10.5px */
+.crm-list-col .revenue-combo-total{ font-size:12.5px !important; }
+.crm-list-col .revenue-combo-yr{ font-size:10.5px !important; }
+.crm-list-col .revenue-combo-yr-label{ font-size:9.5px !important; }
+/* 5. 최근 요청 — 12 → 11px */
+.crm-list-col .col-request, .crm-list-col .request-cell{ font-size:11px !important; }
+.crm-list-col .np2-col-lastreq-type{ font-size:11px !important; }
+.crm-list-col .np2-col-lastreq-date{ font-size:10px !important; }
+/* 6. 최근 흐름 / 실적·매출 — 상태 텍스트 1px 축소. ▲ · ● 같은 표시는 글자라서
+      font-size를 줄이면 아이콘·점도 같은 비율로 함께 작아진다(별도 규칙 불필요). */
+.crm-list-col .trend-cell{ font-size:11px !important; }
+.crm-list-col .contrib-level{ font-size:10.5px !important; }
+.crm-list-col .contrib-trigger{ font-size:11px !important; }
+/* 7. 테이블 헤더 — 11.5 → 10.5px, 세로 패딩도 함께 */
+.crm-list-col .co-table-head{ font-size:10.5px !important; padding:10px 18px !important; }
+/* 8. 행 높이 — 70 → 63px(-10%), 세로 패딩만 11 → 9px. 좌우 여백과 컬럼 폭은 그대로. */
+.crm-list-col .co-row{ min-height:63px !important; padding:9px 18px !important; }
 .crm-list-col .col-pour{ flex:none; word-break:keep-all; white-space:normal; }
 .co-code-sub{ font-size:10.5px; color:var(--text-muted); font-weight:500; margin-top:1px; }
 .col-trend, .col-contrib{ min-width:0; text-align:right; font-size:12px; word-break:keep-all; }
