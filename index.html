@@ -3332,6 +3332,65 @@ body.map-modal-lock{ overflow:hidden; }
 .cdet-panel[data-cdet-panel="activity"] .cdash2-timeline-item{ padding-bottom:9px; }
 .cdet-panel[data-cdet-panel="activity"] .cdash2-timeline-text{ margin-top:2px; color:var(--text-muted); font-size:12px; }
 .cdet-panel[data-cdet-panel="activity"] .cdash2-timeline-scroll{ max-height:none; }
+
+/* ==========================================================================
+   §통합 고객 상세 팝업 compact 라운드(신규) — 사용자 요청: "기능은 합쳐졌지만 각 탭
+   내용이 너무 크고 흩어져 보인다. 전체를 더 compact하게."
+   기능·데이터·렌더 함수는 건드리지 않고 크기와 여백만 줄인다.
+   ========================================================================== */
+.chart-panel{ width:min(980px, 82vw) !important; max-width:980px !important; max-height:84vh !important; }
+@media(max-width:1100px){ .chart-panel{ width:calc(100vw - 24px) !important; max-width:none !important; } }
+#chartBody{ padding:12px 16px 14px !important; }
+/* 탭바 — 한 줄 유지, 높이·글자 한 단계 축소(좁은 화면에서만 가로 스크롤) */
+#chartTabBar{ padding:6px 12px 0 !important; }
+#chartTabBar .cdash2-tab{ padding:7px 11px !important; font-size:12px !important; }
+#chartTabBar .cdash2-tabbar{ overflow-x:auto; }
+#chartTabBar .chip-count{ font-size:10.5px; }
+/* 패널 안 카드 — 내부 여백과 카드 간격을 줄인다 */
+.cdet-panel .cdet-stack{ gap:10px !important; }
+.cdet-panel .cdet-grid2{ gap:10px !important; }
+.cdet-panel .cdash2-card{ padding:11px 13px !important; }
+.cdet-panel .cdash2-card-title{ font-size:12.5px !important; margin-bottom:7px !important; }
+.cdet-panel .cdash2-docs-section{ padding:11px 13px !important; }
+.cdet-sec-title{ font-size:12.5px; font-weight:800; color:var(--navy); margin-bottom:8px; }
+.cdet-sec-hint{ font-size:11.5px; color:var(--text-muted); padding:9px 12px; background:var(--bg); border-radius:8px; line-height:1.5; }
+/* 헤더 — 서류 업로드 버튼은 고객 인사이트 버튼과 같은 톤 */
+#chartDocUploadBtn{ margin-left:4px; }
+/* 고객 인사이트 — 질문지 상담 탭의 입력칸 */
+.insight-note-block{ margin-top:0; }
+.insight-note-head{ display:flex; align-items:center; gap:8px; margin-bottom:2px; }
+.insight-note-title{ font-size:12.5px; font-weight:800; color:var(--navy); }
+.insight-note-status{ font-size:11px; color:var(--text-muted); }
+.insight-note-status.is-err{ color:#B3261E; }
+.insight-note-desc{ font-size:11px; color:var(--text-muted); margin-bottom:8px; line-height:1.45; }
+.insight-note-input{
+  width:100%; min-height:86px; resize:vertical; padding:9px 10px; font-family:inherit;
+  font-size:12.5px; line-height:1.55; border:1px solid var(--line); border-radius:8px; background:#fff; outline:none;
+}
+.insight-note-input:focus{ border-color:var(--navy); }
+/* 기본정보 탭의 요약(읽기 전용) */
+.insight-note-card{ margin-top:10px; }
+.insight-note-view{ font-size:12.5px; color:var(--text); line-height:1.6; white-space:pre-wrap; word-break:break-word; }
+.insight-note-view.is-clamped{ display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; overflow:hidden; }
+.insight-note-more{
+  margin-top:5px; padding:0; background:none; border:none; cursor:pointer; font-family:inherit;
+  font-size:11.5px; font-weight:700; color:var(--blue);
+}
+.insight-note-more:hover{ text-decoration:underline; }
+/* 서류 업로드 모달 */
+.doc-upload-panel{ max-width:720px; width:calc(100vw - 40px); }
+.doc-upload-panel .pi-body{ max-height:70vh; overflow-y:auto; }
+/* 위험 영역 접기 — 기본은 한 줄, 펼쳐야 삭제 버튼이 나온다 */
+.cdash-danger-fold{ border-top:1px solid var(--line); }
+.cdash-danger-fold-head{
+  list-style:none; cursor:pointer; user-select:none; padding:8px 16px;
+  font-size:11.5px; font-weight:700; color:var(--text-muted);
+}
+.cdash-danger-fold-head::-webkit-details-marker{ display:none; }
+.cdash-danger-fold-head::before{ content:'▸ '; font-size:10px; }
+.cdash-danger-fold[open] > .cdash-danger-fold-head::before{ content:'▾ '; }
+.cdash-danger-fold-head:hover{ color:var(--text); }
+.cdash-danger-fold .cdash-danger-zone{ border-top:none; }
 /* 매출현황 탭 — .cdash2-summary-row는 원래 3열 그리드의 가운데 칼럼(좁은 첫 열 + 1fr)에
    맞춰진 격자다. 탭에서는 카드 하나가 전체 폭을 쓰게 한다(기존 .cdash2-col-stack 규칙과
    같은 방식 — 카드 내용·계산은 그대로). */
@@ -9527,7 +9586,10 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
   const CUSTOMER_INSIGHT_FIELDS = ['decisionStyle','interests','needs','concerns','preferredContact','keyQuote','nextAction','evidence','tags','insightIds','customInsights','importantInsightIds',
     'decisionTraits','interestTraits','priceTraits','materialPreferences','competitorUsageTraits','competitorCompanies','preferredCompanyTraits','preferredCompanies','barrierTraits','importantTraits',
     'currentUsageStatus','competitorUsageStatus',
-    'oneLiner','relationshipTraits','relatedContacts','backgroundTraits','backgroundNote','businessNote','methodNote','rawMeetingNote'];
+    'oneLiner','relationshipTraits','relatedContacts','backgroundTraits','backgroundNote','businessNote','methodNote','rawMeetingNote',
+    // §통합 팝업 정리 라운드(신규) — 질문지 상담 탭에서 직접 적는 자유 입력 인사이트.
+    // 새 컬렉션/새 최상위 필드를 만들지 않고 이미 있는 co.customerInsight 객체에만 더한다.
+    'note'];
   function setCustomerInsight(companyId, patch){
     const co = findCompany(companyId); if(!co) return null;
     const merged = Object.assign({}, co.customerInsight || {});
@@ -16992,9 +17054,12 @@ window.SHIN2_CRM_APP_INIT = function(){
     ['overview','기본정보'],
     ['activity','최근 접촉기록'],
     ['sales','매출현황'],
+    // §통합 팝업 정리 라운드(신규) — "최근 POUR 시공실적"을 매출현황에서 떼어 자기 탭으로.
+    // 렌더 함수(renderPourResultsCard)와 데이터는 그대로이고 컨테이너 위치만 옮겼다.
+    ['pour','최근 시공실적'],
     ['agreement','협약 진행'],
     ['questionnaire','질문지 상담'],
-    ['documents','서류']
+    ['documents','서류 체크']
   ];
   const CUSTOMER_DETAIL_TAB_KEYS = CUSTOMER_DETAIL_TABS.map(t=> t[0]);
   function normalizeCustomerDetailTab(tab){
@@ -17322,6 +17387,8 @@ window.SHIN2_CRM_APP_INIT = function(){
                 <div id="cdashCompanySummaryCard"></div>
                 <div id="cdashRelationsCard"></div>
               </div>
+              <!-- 고객 인사이트 요약(읽기 전용, 3~4줄 + 더보기) — 수정은 질문지 상담 탭. -->
+              <div id="cdashInsightNoteSummary"></div>
               <div class="cdash2-docs-section" style="margin-top:10px;" id="cdashReactionsCol"></div>
             </div>
 
@@ -17337,6 +17404,13 @@ window.SHIN2_CRM_APP_INIT = function(){
             <div class="cdet-panel" data-cdet-panel="sales">
               <div class="cdet-stack">
                 <div id="cdashSummaryRow"></div>
+              </div>
+            </div>
+
+            <!-- §통합 팝업 정리 라운드(신규) — 최근 시공실적 전용 탭. 매출현황 탭에 있던
+                 #cdashPourResultsCard를 통째로 옮겼을 뿐 렌더 함수·데이터는 그대로다. -->
+            <div class="cdet-panel" data-cdet-panel="pour">
+              <div class="cdet-stack">
                 <div id="cdashPourResultsCard"></div>
               </div>
             </div>
@@ -17355,6 +17429,9 @@ window.SHIN2_CRM_APP_INIT = function(){
                 <div id="cdashQuestionnaireWork"></div>
                 <div id="cdashQuestionnaireCard"></div>
                 <div class="cdash2-docs-section" id="cdashMaterialsBlock"></div>
+                <!-- §통합 팝업 정리 라운드(신규) — 고객 인사이트 자유 입력. 여기서 쓰고
+                     기본정보 탭에서는 요약만 읽는다. 상담 메모와 저장 위치가 다르다. -->
+                <div id="cdashInsightNoteEditor"></div>
               </div>
             </div>
 
@@ -17368,7 +17445,10 @@ window.SHIN2_CRM_APP_INIT = function(){
                   <div class="cdet-sec-title">협약 서류 체크</div>
                   <div id="agreementDocSection"></div>
                 </section>
-                <div class="cdash2-docs-section" id="cdashDocStatusBlock"></div>
+                <!-- 실제 업로드/보기/삭제(#cdashDocStatusBlock)는 헤더 [서류 업로드] 버튼이
+                     여는 모달로 옮겼다. 컨테이너를 지우지 않고 그대로 옮기기만 해서
+                     renderDocStatusBlock/renderDocsSection의 배선이 한 줄도 안 바뀐다. -->
+                <div class="cdet-sec-hint">실제 파일 업로드·보기·삭제는 상단 <b>[서류 업로드]</b> 버튼에서 합니다.</div>
               </div>
             </div>
           </div>
@@ -17388,6 +17468,9 @@ window.SHIN2_CRM_APP_INIT = function(){
     renderPourResultsCard(co);
     renderMemoPreviewCard(co);
     renderRequestedMaterialsSection(co);
+    // §통합 팝업 정리 라운드(신규) — 고객 인사이트: 질문지 상담 탭에서 쓰고 기본정보 탭에서 읽는다.
+    renderInsightNoteEditor(co);
+    renderInsightNoteSummary(co);
     renderFooterBar(co);
 
     // 고객 정보(업체 기본정보 + 반응/성향 + 업체 관계)는 기본정보 탭 본문에 그대로 그린다.
@@ -17522,6 +17605,11 @@ window.SHIN2_CRM_APP_INIT = function(){
           <button type="button" class="cdash2-header-insight-btn" id="chartHeaderInsightBtn" title="고객 인사이트 보기">
             <span aria-hidden="true">💡</span> 고객 인사이트${hasInsight ? ' <span class="cdash2-header-insight-dot" aria-hidden="true">●</span>' : ''}
           </button>
+          <!-- §통합 팝업 정리 라운드(신규) — 실제 파일 관리는 서류 탭이 아니라 이 버튼이
+               여는 별도 모달에서 한다(서류 탭은 체크리스트만 = 상태 확인 전용). -->
+          <button type="button" class="cdash2-header-insight-btn" id="chartDocUploadBtn" title="서류 파일 업로드·보기·삭제">
+            <span aria-hidden="true">📎</span> 서류 업로드
+          </button>
         </div>
         <button type="button" class="cdash2-header-close" id="chartCloseBtn" title="닫기" aria-label="닫기">&times;</button>
       </div>
@@ -17533,6 +17621,8 @@ window.SHIN2_CRM_APP_INIT = function(){
     }
     const insightBtn = document.getElementById('chartHeaderInsightBtn');
     if(insightBtn) insightBtn.addEventListener('click', ()=> openHeaderInsightModal(co));
+    const docUpBtn = document.getElementById('chartDocUploadBtn');
+    if(docUpBtn) docUpBtn.addEventListener('click', ()=> openDocUploadModal(co));
   }
 
   /* §통합 고객 상세 팝업 라운드(신규) — 상단 가로 탭바(§1/§13/§16).
@@ -18496,6 +18586,115 @@ window.SHIN2_CRM_APP_INIT = function(){
   // 로직 없음). 문서가 여러 건이면 questionnaireWorkHtml과 동일하게 docs[0](가장 최근
   // 등록·교체된 것) 하나만 본다. 문항 텍스트/라벨은 QUESTIONNAIRE_SESSION_QUESTIONS
   // 상수를 그대로 읽어 한 글자도 새로 하드코딩하지 않는다.
+  // ==========================================================================
+  // §통합 팝업 정리 라운드(신규) — 고객 인사이트 자유 입력.
+  //   질문지 상담 탭 = 작성/수정   |   기본정보 탭 = 요약 확인(3~4줄 + 더보기)
+  // 저장은 이미 있는 co.customerInsight 객체에 note 한 필드만 더해 D.setCustomerInsight를
+  // 그대로 쓴다 — 새 컬렉션도, 새 최상위 필드도, 상담 메모와의 혼용도 없다.
+  // ==========================================================================
+  function customerInsightNote(co){
+    return String((co && co.customerInsight && co.customerInsight.note) || '').trim();
+  }
+  // §통합 팝업 정리 라운드(신규) — 서류 파일 관리 전용 모달.
+  // 서류 탭(체크리스트) = 상태 확인 / 이 모달 = 실제 파일 업로드·보기·삭제 로 역할을 나눈다.
+  // 안에 들어가는 건 원래 서류 탭에 있던 #cdashDocStatusBlock 컨테이너 그대로다 —
+  // renderDocStatusBlock/renderDocsSection이 자기 id를 찾아 그리고 이벤트를 붙이는
+  // 구조라(이 파일의 관례), 컨테이너를 새로 만들지 않고 위치만 옮겨야 배선이 안 끊긴다.
+  function openDocUploadModal(co){
+    let root = document.getElementById('docUploadModalRoot');
+    if(!root){ root = document.createElement('div'); root.id = 'docUploadModalRoot'; document.body.appendChild(root); }
+    root.innerHTML = `
+      <div class="pi-overlay" id="docUploadOverlay" style="z-index:10025;">
+        <div class="pi-panel doc-upload-panel" role="dialog" aria-modal="true" aria-label="서류 업로드">
+          <div class="pi-head">
+            <div class="pi-title">서류 업로드 — ${esc(co.name)}</div>
+            <button type="button" class="chart-close-btn" id="docUploadClose" aria-label="닫기">&times;</button>
+          </div>
+          <div class="pi-body">
+            <div class="cdash2-docs-section" id="cdashDocStatusBlock"></div>
+          </div>
+        </div>
+      </div>`;
+    const close = ()=>{
+      root.innerHTML = '';
+      // 닫을 때 서류 탭 체크리스트를 다시 그려 방금 올린 파일이 바로 반영되게 한다.
+      if(document.getElementById('agreementDocSection')) bindAgreementDocChecklistHandlers(co.id);
+      renderCustomerDetailTabBar(co);   // 탭 배지(서류 N/6)도 같이 갱신
+      applyCustomerDetailTab();
+    };
+    document.getElementById('docUploadClose').addEventListener('click', close);
+    bindSafeBackdropClose(document.getElementById('docUploadOverlay'), close);
+    renderDocStatusBlock(co);   // 기존 렌더 함수 그대로
+  }
+  function renderInsightNoteEditor(co){
+    const wrap = document.getElementById('cdashInsightNoteEditor');
+    if(!wrap) return;
+    wrap.innerHTML = `
+      <div class="cdash2-docs-section insight-note-block">
+        <div class="insight-note-head">
+          <span class="insight-note-title">고객 인사이트</span>
+          <span class="insight-note-status" id="cdashInsightNoteStatus"></span>
+        </div>
+        <div class="insight-note-desc">상담 메모와 별개입니다 — 업체 자체의 성향을 남겨 두는 칸입니다.</div>
+        <textarea id="cdashInsightNoteInput" class="insight-note-input"
+          placeholder="업체 성향, 관심도, 의사결정 특징, 영업 포인트 등을 기록하세요.">${esc(customerInsightNote(co))}</textarea>
+      </div>`;
+    const input = document.getElementById('cdashInsightNoteInput');
+    const status = document.getElementById('cdashInsightNoteStatus');
+    if(!input) return;
+    let timer = null;
+    let lastSaved = customerInsightNote(co);
+    const save = async ()=>{
+      const val = input.value.trim();
+      if(val === lastSaved){ return; }
+      status.textContent = '저장 중…'; status.className = 'insight-note-status';
+      const rec = D.setCustomerInsight(co.id, { note: val });
+      if(!rec){ status.textContent = '저장 실패'; status.className = 'insight-note-status is-err'; return; }
+      lastSaved = val;
+      renderInsightNoteSummary(D.findCompany(co.id) || co);   // 기본정보 탭 요약도 바로 맞춘다
+      const r = await confirmCloudSave('companies');
+      if(r.ok){ status.textContent = '저장됨'; setTimeout(()=>{ if(status.textContent === '저장됨') status.textContent = ''; }, 1800); }
+      else { status.textContent = '이 기기에 저장됨 · 서버 확인 실패'; status.className = 'insight-note-status is-err'; }
+    };
+    input.addEventListener('input', ()=>{ clearTimeout(timer); timer = setTimeout(save, 600); });
+    input.addEventListener('blur', ()=>{ clearTimeout(timer); save(); });
+  }
+  function renderInsightNoteSummary(co){
+    const wrap = document.getElementById('cdashInsightNoteSummary');
+    if(!wrap) return;
+    const note = customerInsightNote(co);
+    if(!note){
+      wrap.innerHTML = `
+        <div class="cdash2-card insight-note-card">
+          <div class="cdash2-card-title">고객 인사이트</div>
+          <div class="chart-empty">아직 기록된 인사이트가 없습니다 — 질문지 상담 탭에서 작성할 수 있습니다.</div>
+        </div>`;
+      return;
+    }
+    // 3~4줄을 넘기면 잘라 보여주고 [더보기]로 전체를 편다(수정은 질문지 상담 탭에서).
+    const isLong = note.length > 150 || note.split('\n').length > 4;
+    wrap.innerHTML = `
+      <div class="cdash2-card insight-note-card">
+        <div class="cdash2-card-title" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+          <span>고객 인사이트</span>
+          <button type="button" class="co-text-action" id="cdashInsightNoteEditBtn" style="font-size:11px;padding:2px 8px;white-space:nowrap;">질문지 상담에서 수정</button>
+        </div>
+        <div class="insight-note-view${isLong ? ' is-clamped' : ''}" id="cdashInsightNoteView">${esc(note)}</div>
+        ${isLong ? `<button type="button" class="insight-note-more" id="cdashInsightNoteMore">더보기</button>` : ''}
+      </div>`;
+    const more = document.getElementById('cdashInsightNoteMore');
+    if(more) more.addEventListener('click', ()=>{
+      const view = document.getElementById('cdashInsightNoteView');
+      const open = view.classList.toggle('is-clamped');
+      more.textContent = open ? '더보기' : '접기';
+    });
+    const editBtn = document.getElementById('cdashInsightNoteEditBtn');
+    if(editBtn) editBtn.addEventListener('click', ()=>{
+      setCustomerDetailTab('questionnaire');
+      const el = document.getElementById('cdashInsightNoteInput');
+      if(el) el.focus();
+    });
+  }
   function renderQuestionnaireSummaryCard(co, questionnaireDoc){
     const wrap = document.getElementById('cdashQuestionnaireCard');
     if(!wrap) return;
@@ -18602,22 +18801,22 @@ window.SHIN2_CRM_APP_INIT = function(){
       <div class="cdash2-footer">
         <div class="cdash2-footer-right">
           <button type="button" class="co-text-action" id="cdashFooterMemoBtn">상담 메모</button>
-          <!-- §디자인 개편 라운드(신규) — 참고 시안의 하단 고정 바 "닫기" 버튼. 새 닫기
-               로직을 만들지 않고 헤더 X 버튼과 완전히 같은 closeChart()를 그대로 호출한다
-               (§ 기존 함수 재사용). 이 화면 구조에는 단일 "전체 저장" 개념이 없다 — 각 영역
-               (기본정보/인사이트/메모/서류)이 각자 독립적으로 즉시 저장되므로(§ 기존 관례),
-               새로운 통합 저장 버튼/로직은 만들지 않았다(§ 보고서 3절 참고, 데이터 소실 위험
-               있는 기능을 새로 만들지 않기 위한 의도적 결정). -->
-          <button type="button" class="btn-secondary-action" id="cdashFooterCloseBtn" style="height:30px;padding:0 14px;font-size:12px;">닫기</button>
+          <!-- §통합 팝업 compact 라운드(신규) — 하단 [닫기] 버튼을 없앴다. 헤더 X와 완전히
+               같은 closeChart()를 부르던 중복 버튼이라, 지워도 닫는 방법(헤더 X · 바깥
+               클릭 · ESC)은 그대로다. 저장은 원래도 영역별 즉시 저장이라 영향이 없다. -->
         </div>
       </div>
-      <div class="cdash-danger-zone">
-        <span class="cdash-danger-zone-label">위험 영역</span>
-        <button type="button" class="btn-danger-link" id="cdashDeleteCoBtn">삭제</button>
-      </div>
+      <!-- 위험 영역 — 기본 상태에서는 접어 둔다(항상 펼쳐진 [삭제]가 눈에 띄던 문제).
+           details 하나로만 감쌌을 뿐 삭제 버튼 id·핸들러는 그대로다. -->
+      <details class="cdash-danger-fold">
+        <summary class="cdash-danger-fold-head">위험 영역</summary>
+        <div class="cdash-danger-zone">
+          <span class="cdash-danger-zone-label">이 업체를 삭제합니다 — 되돌리려면 쓰레기통에서 복구해야 합니다.</span>
+          <button type="button" class="btn-danger-link" id="cdashDeleteCoBtn">삭제</button>
+        </div>
+      </details>
     `;
     document.getElementById('cdashDeleteCoBtn').addEventListener('click', ()=> openDeleteCompanyModal(co.id));
-    document.getElementById('cdashFooterCloseBtn').addEventListener('click', closeChart);
     // §서류현황 삭제 라운드(신규) — "서류 현황"(협약서/질문서 완료 상태 칩) 버튼을
     // 요청대로 없앴다. 그 버튼이 하던 "관련 문서 섹션으로 스크롤" 기능은 그 섹션
     // 자체가 이미 화면 하단에 항상 노출돼 있어(#cdashDocsSectionWrap, §디자인 개편
