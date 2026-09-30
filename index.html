@@ -23245,6 +23245,108 @@ window.SHIN2_CRM_APP_INIT = function(){
         message: messageText
       };
     }
+    /* ==========================================================================
+       §첨부자료 상단 안내 박스 라운드(신규) — 요청: "수신자가 메일을 열자마자 첨부자료가
+       있다는 걸 바로 알 수 있게 본문 상단에 안내 박스를 추가."
+
+       [이 앱의 실제 첨부 구조 — 확인 결과]
+       이 메일은 MIME 첨부(EmailJS attachments)를 쓰지 않는다. emailjs.send에 넘기는
+       파라미터는 to/cc/from/subject/message_html/message_text 뿐이고, 발송자료는
+       appendMailAssetsToParams가 본문 "끝"에 다운로드/시청 링크로 붙여서 나간다.
+       사용자가 "메일 하단에 작게 보인다"고 한 것이 바로 그 링크 줄이다.
+       그래서 이 박스는 하단 링크를 대체하지 않는다 — 하단 링크는 그대로 두고(실제 전달
+       경로이므로 절대 건드리지 않는다) 상단에 안내만 얹는다(§12/§14).
+
+       [스타일이 인라인인 이유]
+       sanitizeMailBodyForEmailHtml은 font-size/weight/color/background-color 등 8개
+       속성만 통과시키고 border·padding·border-radius는 전부 떨어뜨린다. 그래서 이 박스는
+       사용자가 쓴 본문과 달리 sanitizer를 태우지 않고 여기서 직접 조립한다 — 파일명은
+       전부 esc()로, URL은 https만 통과시켜 직접 만들므로 사용자 입력이 그대로 들어갈
+       여지가 없다. 표는 flex/grid 없이 table 한 겹만 써서 네이버/하이웍스/Gmail/Outlook
+       어디서든 같은 모양으로 떨어지게 한다(§13).
+       ========================================================================== */
+    function mailNoticeSafeUrl(raw){
+      const v = String(raw || '').trim();
+      if(!v || /[\u0000-\u001f\u007f<>"]/.test(v)) return '';
+      return /^https:\/\//i.test(v) ? v : '';
+    }
+    // 실제로 이번 발송에 나가는 자료만 모은다(§5 하드코딩 금지) — 화면에 보여주는
+    // 업체 서류함(attachDoc)은 이 앱에서 실제로 발송되지 않으므로 넣지 않는다.
+    function buildMailAttachmentNoticeItems(links){
+      const items = [];
+      const urlAt = (i)=> mailNoticeSafeUrl(links && links[i] && links[i].url);
+      let i = 0;
+      if(commonDoc){ items.push({ name: String(commonDoc.fileName || '첨부파일').trim(), url: urlAt(i) }); i++; }
+      if(commonVideo){ items.push({ name: String(commonVideo.fileName || '동영상').trim(), url: urlAt(i) }); i++; }
+      return items.filter(it=> it.name);
+    }
+    function buildMailAttachmentNoticeHtml(items){
+      if(!items.length) return ''; // §9 첨부가 없으면 박스 자체를 만들지 않는다(빈 박스 금지)
+      const rows = items.map(it=>{
+        const nameCell = `<span style="font-size:13.5px;font-weight:600;color:#163A63;">${esc(it.name)}</span>`;
+        const link = it.url
+          ? ` <a href="${esc(it.url)}" target="_blank" rel="noopener noreferrer" style="font-size:12px;font-weight:600;color:#2563EB;text-decoration:underline;">[다운로드]</a>`
+          : '';
+        return `<tr><td style="padding:3px 0;font-size:13.5px;color:#163A63;line-height:1.55;word-break:break-all;">`
+             + `<span style="color:#8095B0;">&bull;</span>&nbsp;${nameCell}${link}</td></tr>`;
+      }).join('');
+      return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%;border-collapse:separate;background-color:#F7FAFC;border:1px solid #D9E3EF;border-radius:8px;margin:14px 0;">
+        <tr><td style="padding:13px 14px;">
+          <div style="font-size:14px;font-weight:700;color:#163A63;padding-bottom:6px;">첨부자료</div>
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%;border-collapse:collapse;">${rows}</table>
+          <div style="font-size:11.5px;color:#7A8AA0;padding-top:7px;">첨부파일을 확인해 주세요.</div>
+        </td></tr>
+      </table>`;
+    }
+    /* 인사말(첫 문단) 바로 아래에 끼워 넣는다(§1/§7). 본문은 사용자가 쓴 것이라 구조를
+       가정할 수 없으므로, 첫 번째 블록 요소 뒤에 넣고 그런 요소가 없으면 맨 앞에 둔다.
+       평문(message_text/message)에도 같은 내용을 같은 위치 감각으로 넣는다 — 평문에는
+       "첫 문단"이라는 구조가 없어 맨 앞에 붙인다. */
+    function prependAttachmentNoticeToParams(params, links){
+      const items = buildMailAttachmentNoticeItems(links);
+      if(!items.length) return;
+      const noticeHtml = buildMailAttachmentNoticeHtml(items);
+      const holder = document.createElement('div');
+      holder.innerHTML = params.message_html;
+      const body = holder.firstElementChild || holder;
+      const notice = document.createElement('div');
+      notice.innerHTML = noticeHtml;
+      const noticeNode = notice.firstElementChild;
+      if(noticeNode){
+        /* "첫 문단 바로 아래"를 본문 두 가지 형태 모두에서 찾는다.
+           ① 레거시 평문 본문: 한 겹 <div> 안에 <br>로만 줄을 나눈다. 이때 문단 경계는
+              빈 줄, 즉 연속된 <br> 두 개다 — 그 뒤에 넣는다("안녕하세요 …" 다음).
+           ② 에디터가 저장한 HTML: <p>/<div> 블록이 있다 — 첫 블록 뒤에 넣는다.
+           둘 다 못 찾으면(한 줄짜리 본문 등) 맨 앞에 둔다. */
+        const kids = Array.from(body.childNodes);
+        let anchorNode = null;
+        for(let i = 0; i < kids.length - 1; i++){
+          if(kids[i].nodeName !== 'BR') continue;
+          let j = i + 1;
+          while(j < kids.length && kids[j].nodeType === 3 && !String(kids[j].nodeValue || '').trim()) j++;
+          if(j < kids.length && kids[j].nodeName === 'BR'){ anchorNode = kids[j]; break; }
+        }
+        if(!anchorNode){
+          const firstBlock = Array.from(body.children).find(el=> ['P','DIV','UL','OL'].includes(el.tagName));
+          if(firstBlock) anchorNode = firstBlock;
+        }
+        if(anchorNode && anchorNode.nextSibling) body.insertBefore(noticeNode, anchorNode.nextSibling);
+        else if(anchorNode) body.appendChild(noticeNode);
+        else body.insertBefore(noticeNode, body.firstChild);
+        params.message_html = holder.innerHTML;
+      }
+      // 평문에도 같은 자리(인사말 다음 빈 줄 뒤)에 넣는다 — HTML을 못 보는 클라이언트에서도
+      // 읽는 순서가 같도록. 빈 줄이 없으면 맨 앞에 둔다.
+      const textNotice = '[첨부자료]\n' + items.map(it=> '- ' + it.name + (it.url ? ' (' + it.url + ')' : '')).join('\n') + '\n첨부파일을 확인해 주세요.\n';
+      const insertTextNotice = (src)=>{
+        const text = String(src || '');
+        const at = text.indexOf('\n\n');
+        if(at < 0) return textNotice + '\n' + text;
+        return text.slice(0, at + 2) + textNotice + '\n' + text.slice(at + 2);
+      };
+      params.message_text = insertTextNotice(params.message_text);
+      params.message = insertTextNotice(params.message);
+    }
     function appendMailAssetsToParams(params, links, globalImgUrl){
       const textParts = [];
       const htmlParts = [];
@@ -23364,6 +23466,9 @@ window.SHIN2_CRM_APP_INIT = function(){
         const params = buildMailSendParams(toEmail, ccEmails, latestSettings);
         // 첨부 링크/공통 이미지는 HTML 본문과 plain text fallback 양쪽에 같은 내용으로
         // 덧붙인다. HTML 쪽 링크와 이미지는 발송용 허용 목록을 다시 통과한다.
+        // §첨부자료 상단 안내 박스 라운드 — 상단 안내를 먼저 넣고, 그 다음 기존 하단
+        // 링크/이미지를 붙인다. 둘 다 존재한다(§12: 상단=안내, 하단=실제 전달 링크).
+        prependAttachmentNoticeToParams(params, links);
         appendMailAssetsToParams(params, links, globalImgUrl);
         perf.mark('payload');
         emailAttempted = true;
