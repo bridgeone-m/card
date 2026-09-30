@@ -3486,6 +3486,37 @@ body.map-modal-lock{ overflow:hidden; }
    늘린다(§"기존 UI 구조 재사용, 새 시스템 만들지 않기"). */
 .deleted-co-table.has-exclude-cols .deleted-co-head,
 .deleted-co-table.has-exclude-cols .deleted-co-row{ grid-template-columns:92px 1fr 84px 1.3fr 1fr 1fr 84px; }
+/* §영구삭제 라운드 — 삭제업체 탭은 [복구]와 [영구삭제 대상] 두 버튼이 들어가 마지막
+   열이 좁으면 줄바꿈된다. 쓰레기통 탭(.is-trash)에서만 마지막 열을 넓힌다. */
+.deleted-co-table.has-exclude-cols.is-trash .deleted-co-head,
+.deleted-co-table.has-exclude-cols.is-trash .deleted-co-row{ grid-template-columns:92px 1fr 84px 1.2fr .9fr .9fr 150px; }
+.deleted-co-table.is-trash .deleted-co-actions,
+.permdel-table .deleted-co-actions{ display:flex; flex-wrap:wrap; align-items:center; gap:4px 8px; }
+/* §영구삭제 라운드(신규) — 쓰레기통 안의 두 탭(삭제업체 / 영구삭제)과 영구삭제 표.
+   기존 .deleted-co-* 격자를 그대로 쓰고 열 폭만 바꾼다(7열: 삭제일/업체명/업체코드/
+   삭제사유/지정일/지정자/버튼). 위험한 화면이라 배경·테두리를 붉은 계열로 분리한다. */
+.trash-subtabs{ display:flex; align-items:center; gap:6px; border-bottom:1px solid var(--line); margin-bottom:10px; }
+.trash-subtab{ appearance:none; border:none; background:transparent; cursor:pointer; font-size:12.5px; font-weight:700;
+  color:var(--text-muted); padding:8px 12px; border-bottom:2px solid transparent; margin-bottom:-1px; border-radius:6px 6px 0 0; }
+.trash-subtab:hover{ background:var(--bg); color:var(--text); }
+.trash-subtab.is-on{ color:var(--brand); border-bottom-color:var(--brand); }
+.trash-subtab.is-on.is-danger{ color:#B23B3B; border-bottom-color:#B23B3B; }
+.trash-subtab-count{ display:inline-block; margin-left:5px; font-size:11px; font-weight:800; }
+.permdel-warn{ background:#FDF3F3; border:1px solid #F0D4D4; border-radius:8px; padding:10px 12px; margin-bottom:10px;
+  font-size:12px; line-height:1.65; color:#8A3B3B; }
+.permdel-warn b{ color:#B23B3B; }
+.permdel-table .deleted-co-head,
+.permdel-table .deleted-co-row{ grid-template-columns:92px 1fr 84px 1.2fr 92px 88px 132px !important; }
+.permdel-table .deleted-co-row{ background:#FEFAFA; }
+.permdel-meta{ font-size:11.5px; color:var(--text-muted); }
+.permdel-modal-body{ font-size:12.5px; line-height:1.7; color:var(--text); }
+.permdel-modal-body .permdel-scope{ background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:9px 11px; margin:9px 0; }
+.permdel-modal-body .permdel-keep{ background:#F3F8F3; border:1px solid #D9E7D9; border-radius:8px; padding:9px 11px; margin:9px 0; color:#3B6B3B; }
+.permdel-modal-body .permdel-typed{ width:100%; margin-top:6px; }
+.permdel-modal-body .permdel-target{ font-weight:800; color:#B23B3B; }
+@media (max-width:820px){
+  .permdel-table .deleted-co-row{ grid-template-columns:1fr !important; }
+}
 .deleted-co-code{ color:var(--text-muted); white-space:nowrap; font-variant-numeric:tabular-nums; }
 .deleted-co-source, .deleted-co-note{ color:var(--text-muted); word-break:break-word; font-size:11.5px; }
 .deleted-co-actions{ text-align:right; white-space:nowrap; }
@@ -5972,6 +6003,7 @@ table.sales-import-table td{ padding:5px 8px; border-bottom:1px solid #EEF2F7; v
   <!-- §업체 삭제(휴지통) 라운드(신규) — 고객 상세 팝업 "업체 삭제" 버튼이 여는 확인 모달
        전용 root. 같은 .pi-overlay/.pi-panel 패턴. -->
   <div id="deleteCompanyModalRoot"></div>
+  <div id="permDeleteModalRoot"></div>
   <!-- §고객 요청 Google Sheets 연동 라운드(신규) — "신규 협약사" 탭의 [요청 전체 보기]
        버튼이 여는 전용 root. 같은 .pi-overlay/.pi-panel 패턴. -->
   <div id="gsheetReqListModalRoot"></div>
@@ -9561,7 +9593,119 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
   // 로직이 필요 없다(§요청 7).
   function isCompanyDeleted(co){ return !!(co && co.deletedAt); }
   function loadActiveCompanies(){ return loadCompanies().filter(co=> !co.deletedAt); }
-  function loadDeletedCompanies(){ return loadCompanies().filter(co=> !!co.deletedAt); }
+  /* §영구삭제 라운드(신규) -------------------------------------------------------------
+     쓰레기통(소프트 삭제) 안에 "영구삭제 대기"라는 한 단계를 더 둔다. 버튼 한 번으로
+     바로 지우지 않기 위해서다.
+
+       활성 → softDeleteCompany → 쓰레기통(삭제업체 탭, 복구 가능)
+            → markPermanentDeletePending → 영구삭제 탭(대기, 취소 가능)
+            → permanentlyDeleteCompany → 실제 삭제(복구 불가)
+
+     대기 상태는 co.permanentDeletePending = { requestedAt, requestedBy } 하나로만
+     표시한다. 대기 중에도 deletedAt은 그대로라서 활성 목록·검색·지도·PDF·메일에는
+     애초에 안 나온다(loadActiveCompanies가 이미 거른다). 삭제업체 탭에서만 빠지도록
+     loadDeletedCompanies에서 제외한다. */
+  function isPermanentDeletePending(co){ return !!(co && co.deletedAt && co.permanentDeletePending); }
+  function loadDeletedCompanies(){ return loadCompanies().filter(co=> !!co.deletedAt && !co.permanentDeletePending); }
+  function loadPermanentDeletePendingCompanies(){ return loadCompanies().filter(co=> isPermanentDeletePending(co)); }
+  function markPermanentDeletePending(companyId){
+    const co = findCompany(companyId); if(!co) return null;
+    if(!co.deletedAt) return null;                 // 소프트 삭제된 업체만 대기로 보낼 수 있다
+    if(co.permanentDeletePending) return co;
+    const rec = updateCompany(companyId, { permanentDeletePending: { requestedAt: nowIso(), requestedBy: currentUserLabel() } });
+    addActivity(companyId, '[영구삭제 대기] 영구삭제 대상으로 지정했습니다 — 아직 삭제되지 않았습니다.');
+    return rec;
+  }
+  function cancelPermanentDeletePending(companyId){
+    const co = findCompany(companyId); if(!co) return null;
+    if(!co.permanentDeletePending) return co;
+    const rec = updateCompany(companyId, { permanentDeletePending: null });
+    addActivity(companyId, '[영구삭제 대기 취소] 다시 삭제업체(복구 가능) 상태로 돌렸습니다.');
+    return rec;
+  }
+  // 감사로그 — "어떤 업체가 언제 영구삭제됐는지"만 남긴다(개인정보 전체 백업이 아니다).
+  const PERMANENT_DELETE_LOG_KEY = 'shin2-permanent-delete-log-v1';
+  function loadPermanentDeleteLog(){ return readArr(PERMANENT_DELETE_LOG_KEY); }
+  /* permanentlyDeleteCompany: 실제 완전 삭제.
+     [지우는 것] companyId로 이 업체를 가리키는 레코드만.
+       · companies 배열의 이 업체 레코드(그 안의 미팅/질문서/MOU/formerNames/
+         sheetReqAliases/m1MailLog/docChecks/partnerDashboard 등은 레코드 안에 있어 함께 사라짐)
+       · customerActivities (a.companyId)
+       · customerDocuments (d.companyId) + 그 문서의 Storage 파일(best effort)
+       · memos (targetType==='company' && targetId)
+       · 다른 업체의 relatedCompanies에 남은 이 업체 참조(고아 참조 제거)
+     [지우지 않는 것] 회사 공통 원장·스냅샷.
+       · salesLedger(2026 매출 원장) / SHIN2_REVENUE_*_SNAPSHOT / SHIN2_POUR_SNAPSHOT
+       조사 결과 이 데이터들은 companyId를 아예 저장하지 않고 업체명(정규화)으로 런타임
+       매칭한다. 그래서 업체를 지워도 원장은 그대로 남고 고아 레코드도 생기지 않는다 —
+       그 업체 이름의 매출은 "CRM 미등록 업체"로 분류될 뿐이다. 지울 이유도 방법도 없다.
+     배열이 줄어드는 저장이라 writeArr의 축소 방지 가드에 걸리므로 allowShrink를 준다. */
+  function permanentlyDeleteCompany(companyId){
+    const co = findCompany(companyId);
+    if(!co) return { ok:false, reason:'NOT_FOUND' };
+    if(!co.deletedAt || !co.permanentDeletePending) return { ok:false, reason:'NOT_PENDING' };
+
+    const audit = {
+      id: genId('permdel'),
+      companyId: co.id,
+      name: co.name || '',
+      code: co.code || co.masterCode || '',
+      deletedAt: co.deletedAt || '',
+      deleteReason: co.deleteReason || '',
+      requestedAt: (co.permanentDeletePending && co.permanentDeletePending.requestedAt) || '',
+      requestedBy: (co.permanentDeletePending && co.permanentDeletePending.requestedBy) || '',
+      permanentlyDeletedAt: nowIso(),
+      permanentlyDeletedBy: currentUserLabel()
+    };
+
+    // 1) 문서 — Storage 파일은 best effort로 지우고(실패해도 진행), 메타데이터는 제거
+    const docs = loadDocuments();
+    const mine = docs.filter(d=> String(d.companyId) === String(companyId));
+    const restDocs = docs.filter(d=> String(d.companyId) !== String(companyId));
+    const ST = window.SHIN2_STORAGE;
+    mine.forEach(d=>{
+      if(d.storagePath && ST && ST.deleteFile){
+        try{ ST.deleteFile(d.storagePath).catch(e=> console.warn('[영구삭제] Storage 파일 삭제 실패(무시하고 진행)', d.storagePath, e)); }
+        catch(e){ console.warn('[영구삭제] Storage 파일 삭제 호출 실패', e); }
+      }
+    });
+    audit.removedDocuments = mine.length;
+    if(mine.length) saveDocuments(restDocs, { allowShrink:true });
+
+    // 2) 활동이력
+    const acts = loadActivities();
+    const restActs = acts.filter(a=> String(a.companyId) !== String(companyId));
+    audit.removedActivities = acts.length - restActs.length;
+    if(audit.removedActivities) saveActivities(restActs, { allowShrink:true });
+
+    // 3) 메모
+    const memos = loadMemos();
+    const restMemos = memos.filter(m=> !(m.targetType === 'company' && String(m.targetId) === String(companyId)));
+    audit.removedMemos = memos.length - restMemos.length;
+    if(audit.removedMemos) saveMemos(restMemos, { allowShrink:true });
+
+    // 4) companies — 이 업체 제거 + 다른 업체가 들고 있던 참조 정리
+    const list = loadCompanies();
+    let refsCleaned = 0;
+    const rest = list.filter(c=> String(c.id) !== String(companyId)).map(c=>{
+      if(!Array.isArray(c.relatedCompanies) || !c.relatedCompanies.length) return c;
+      const kept = c.relatedCompanies.filter(r=> String(r.companyId) !== String(companyId));
+      if(kept.length === c.relatedCompanies.length) return c;
+      refsCleaned += c.relatedCompanies.length - kept.length;
+      return Object.assign({}, c, { relatedCompanies: kept });
+    });
+    audit.cleanedRelatedRefs = refsCleaned;
+    if(rest.length === list.length) return { ok:false, reason:'NOT_FOUND' };
+
+    // 5) 감사로그를 먼저 남기고(삭제 실패해도 기록은 남게) companies를 저장
+    const log = loadPermanentDeleteLog().slice();
+    log.push(audit);
+    writeArr(PERMANENT_DELETE_LOG_KEY, log);
+
+    const saved = saveCompanies(rest, { allowShrink:true });
+    if(!saved) return { ok:false, reason:'SAVE_FAILED', audit };
+    return { ok:true, audit };
+  }
   function softDeleteCompany(companyId, reason){
     const co = findCompany(companyId); if(!co) return null;
     if(co.deletedAt) return co; // 이미 삭제된 업체 — 재시도로 또 처리되지 않게 그대로 반환
@@ -9576,7 +9720,10 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
   function restoreDeletedCompany(companyId){
     const co = findCompany(companyId); if(!co) return null;
     if(!co.deletedAt) return co;
-    const rec = updateCompany(companyId, { deletedAt: null, deletedBy: null, deleteReason: null });
+    // 영구삭제 대기 표시도 같이 지운다 — 복구된 업체가 대기 딱지를 들고 활성 목록에
+    // 돌아가는 상태를 애초에 만들지 않는다(대기 중인 업체는 삭제업체 탭에 안 나오므로
+    // 이 경로로 올 일은 없지만, 방어적으로).
+    const rec = updateCompany(companyId, { deletedAt: null, deletedBy: null, deleteReason: null, permanentDeletePending: null });
     addActivity(companyId, '[업체 복구] 삭제를 취소했습니다 — 이전 데이터가 그대로 유지됩니다.');
     return rec;
   }
@@ -11231,6 +11378,8 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
     isAgreementTerminated, terminateAgreement, restoreAgreement, renameCompanyKeepId,
     getMouManualConfirm, isMouManuallyConfirmed, setMouManualConfirm,
     isCompanyDeleted, loadActiveCompanies, loadDeletedCompanies, softDeleteCompany, restoreDeletedCompany,
+    isPermanentDeletePending, loadPermanentDeletePendingCompanies, markPermanentDeletePending, cancelPermanentDeletePending,
+    permanentlyDeleteCompany, loadPermanentDeleteLog,
     addCurrentSituation, removeCurrentSituation, addInterestField, removeInterestField,
     previewPartnerImport, applyPartnerImport,
     previewMasterImportRoster, applyMasterImportRoster,
@@ -14172,7 +14321,8 @@ window.SHIN2_CRM_APP_INIT = function(){
     // (§요청 3). 새 집계 없이 바로 위/FILTER_DEFS 루프에서 이미 계산된 두 값만 더한다.
     // 실제 쓰레기통 목록(renderTrashTab)도 이 두 집합을 그대로 합쳐서 보여주므로 배지
     // 숫자와 목록 건수가 항상 일치한다.
-    filterCounts.trash = (filterCounts.agreementTerminated || 0) + filterCounts.deleted;
+    // §영구삭제 라운드 — 영구삭제 대기 업체도 여전히 쓰레기통 안에 있으므로(다른 탭) 배지에 포함한다.
+    filterCounts.trash = (filterCounts.agreementTerminated || 0) + filterCounts.deleted + D.loadPermanentDeletePendingCompanies().length;
     // §L2→L3 전환관리 탭 라운드(신규) — matchesFilter로는 못 세는 별도 판정(§9 근처
     // buildL2L3AnalysisBase, sheetRequests까지 봐야 함)이라 여기서 따로 채운다. N(30/60/90)과
     // 무관한 "전체 대상 수"만 필요하므로 가벼운 base(rows.length)만 조회한다.
@@ -15935,8 +16085,94 @@ window.SHIN2_CRM_APP_INIT = function(){
   // deletedAt이 없어 D.restoreDeletedCompany를 불러도 아무 의미가 없으므로 버튼 자체를
   // 만들지 않는다(§요청 5, "복원 버튼 노출 금지"). 정렬/복구 로직·삭제 사유 표시 등
   // 기존 소프트삭제 동작은 전혀 안 바꿨다.
+  /* §영구삭제 라운드(신규) — 쓰레기통 화면을 두 탭으로 나눈다.
+       [삭제업체]  기존 목록 그대로(복구 가능) + "영구삭제 대상으로 지정" 버튼 추가
+       [영구삭제]  대상으로 지정된 업체만. 여기서만 실제 완전삭제를 할 수 있다.
+     기본 탭은 항상 삭제업체다 — 위험한 탭이 먼저 열리지 않게 한다. */
+  let trashSubTab = 'deleted';
+  function trashSubTabsHtml(deletedCount, pendingCount){
+    return `
+      <div class="trash-subtabs">
+        <button type="button" class="trash-subtab ${trashSubTab === 'deleted' ? 'is-on' : ''}" data-trash-subtab="deleted">
+          삭제업체<span class="trash-subtab-count">${deletedCount}</span></button>
+        <button type="button" class="trash-subtab is-danger ${trashSubTab === 'permdel' ? 'is-on' : ''}" data-trash-subtab="permdel">
+          영구삭제<span class="trash-subtab-count">${pendingCount}</span></button>
+      </div>`;
+  }
+  function bindTrashSubTabs(){
+    listEl.querySelectorAll('[data-trash-subtab]').forEach(btn=> btn.addEventListener('click', ()=>{
+      const next = btn.getAttribute('data-trash-subtab');
+      if(next === trashSubTab) return;
+      trashSubTab = next;
+      renderList();
+    }));
+  }
+  // 영구삭제 탭 — 대기 중인 업체만. 7열: 삭제일/업체명/업체코드/삭제사유/지정일/지정자/작업
+  function renderTrashPermDelTab(deletedCount){
+    const pending = D.loadPermanentDeletePendingCompanies()
+      .slice().sort((a,b)=> new Date((b.permanentDeletePending||{}).requestedAt||0) - new Date((a.permanentDeletePending||{}).requestedAt||0));
+    const log = D.loadPermanentDeleteLog();
+    renderPagination(0);
+    listEl.innerHTML = trashSubTabsHtml(deletedCount, pending.length) + `
+      <div class="permdel-warn">
+        <b>이 탭의 업체는 완전 삭제 대기 중입니다.</b> 여기 있는 동안에는 아직 삭제되지 않았고,
+        [대기 취소]를 누르면 복구 가능한 삭제업체로 되돌아갑니다.
+        [완전 삭제]는 업체명을 다시 입력해야 실행되며 <b>되돌릴 수 없습니다</b>.
+        매출 원장과 시공실적 데이터는 삭제 대상이 아니며 그대로 보존됩니다.
+      </div>` + (!pending.length ? `
+      <div class="empty-note">영구삭제 대기 중인 업체가 없습니다.<br>
+        삭제업체 탭에서 [영구삭제 대상]을 눌러 지정할 수 있습니다.</div>` : `
+      <div class="deleted-co-table permdel-table">
+        <div class="deleted-co-head">
+          <span>삭제일</span><span>업체명</span><span>업체코드</span><span>삭제사유</span><span>지정일</span><span>지정자</span><span></span>
+        </div>
+        ${pending.map(co=> {
+          const req = co.permanentDeletePending || {};
+          return `
+          <div class="deleted-co-row" data-permdel-co="${esc(co.id)}">
+            <span class="deleted-co-date">${esc(fmtDate(co.deletedAt || ''))}</span>
+            <span class="deleted-co-name"><span class="trash-status-badge is-deleted">대기</span>${esc(co.name || '(업체명 없음)')}</span>
+            <span class="deleted-co-code">${esc(co.code || co.masterCode || '—')}</span>
+            <span class="deleted-co-reason">${esc(co.deleteReason || '사유 미기재')}</span>
+            <span class="permdel-meta">${esc(fmtDate(req.requestedAt || ''))}</span>
+            <span class="permdel-meta">${esc(req.requestedBy || '—')}</span>
+            <span class="deleted-co-actions">
+              <button type="button" class="co-text-action" data-permdel-cancel="${esc(co.id)}">대기 취소</button>
+              <button type="button" class="co-text-action danger" data-permdel-erase="${esc(co.id)}">완전 삭제</button>
+              <span class="cdash-cloud-save-status" id="permDelStatus_${esc(co.id)}"></span>
+            </span>
+          </div>`;
+        }).join('')}
+      </div>`) + (log.length ? `
+      <div class="permdel-meta" style="margin-top:14px;padding-top:10px;border-top:1px solid var(--line);">
+        지금까지 완전 삭제된 업체 ${log.length}건 (감사기록 보관 중):
+        ${esc(log.slice(-5).reverse().map(e=> (e.name || '(이름없음)') + ' · ' + fmtDate(e.permanentlyDeletedAt || '')).join(' / '))}
+      </div>` : '');
+    bindTrashSubTabs();
+    // 대기 취소 — 되돌리기는 위험하지 않으므로 확인 한 번만 받는다.
+    listEl.querySelectorAll('[data-permdel-cancel]').forEach(btn=> btn.addEventListener('click', async ()=>{
+      const id = btn.getAttribute('data-permdel-cancel');
+      const co = D.findCompany(id);
+      if(!co) return;
+      if(!confirm(`"${co.name}" 업체의 영구삭제 대기를 취소하시겠습니까?\n복구 가능한 삭제업체 상태로 돌아갑니다.`)) return;
+      const statusEl = document.getElementById('permDelStatus_' + id);
+      btn.disabled = true;
+      D.cancelPermanentDeletePending(id);
+      const r = await confirmCloudSave('companies');
+      btn.disabled = false;
+      if(!r.ok){ showCloudSaveStatus(statusEl, false, r.err); return; }
+      renderList();
+    }));
+    // 완전 삭제 — 2단계 모달(업체명 재입력)을 거쳐야만 실행된다.
+    listEl.querySelectorAll('[data-permdel-erase]').forEach(btn=> btn.addEventListener('click', ()=>{
+      openPermDeleteModal('erase', btn.getAttribute('data-permdel-erase'));
+    }));
+  }
   function renderTrashTab(enriched, relationIndex){
-    const deletedItems = D.loadDeletedCompanies().map(co=> ({
+    const pendingCount = D.loadPermanentDeletePendingCompanies().length;
+    const deletedList = D.loadDeletedCompanies();
+    if(trashSubTab === 'permdel'){ renderTrashPermDelTab(deletedList.length); return; }
+    const deletedItems = deletedList.map(co=> ({
       co, status:'deleted', dateVal: co.deletedAt || '', reason: co.deleteReason || '사유 미기재'
     }));
     const terminatedItems = (enriched || [])
@@ -15947,7 +16183,8 @@ window.SHIN2_CRM_APP_INIT = function(){
     const items = deletedItems.concat(terminatedItems).sort((a,b)=> new Date(b.dateVal||0) - new Date(a.dateVal||0));
     renderPagination(0);
     if(!items.length){
-      listEl.innerHTML = '<div class="empty-note">쓰레기통에 업체가 없습니다.</div>';
+      listEl.innerHTML = trashSubTabsHtml(0, pendingCount) + '<div class="empty-note">쓰레기통에 업체가 없습니다.</div>';
+      bindTrashSubTabs();
       return;
     }
     // §삭제된 업체 매칭-불일치 소급 탐지 라운드(신규) — 업체별 "삭제 후 들어온 요청" 건수만
@@ -15955,8 +16192,8 @@ window.SHIN2_CRM_APP_INIT = function(){
     // 소프트삭제 업체에만 의미 있는 경고라 협약종료 업체에는 자연히 안 붙는다.
     const orphanedByCoId = new Map(computeOrphanedDeletedCompanies().map(o=> [o.company.id, o.count]));
     const STATUS_BADGE = { deleted:'삭제됨', agreementTerminated:'협약종료' };
-    listEl.innerHTML = `
-      <div class="deleted-co-table has-exclude-cols">
+    listEl.innerHTML = trashSubTabsHtml(deletedItems.length, pendingCount) + `
+      <div class="deleted-co-table has-exclude-cols is-trash">
         <div class="deleted-co-head">
           <span>삭제일</span><span>업체명</span><span>업체코드</span><span>사유</span><span>출처</span><span>비고</span><span></span>
         </div>
@@ -15970,6 +16207,7 @@ window.SHIN2_CRM_APP_INIT = function(){
             <span class="deleted-co-note">${esc(co.excludeNote || '—')}</span>
             <span class="deleted-co-actions">
               ${status === 'deleted' ? `<button type="button" class="co-text-action primary" data-restore-co="${esc(co.id)}">복구</button>
+              <button type="button" class="co-text-action danger" data-mark-permdel="${esc(co.id)}">영구삭제 대상</button>
               <span class="cdash-cloud-save-status" id="restoreStatus_${esc(co.id)}"></span>` : ''}
             </span>
           </div>
@@ -15996,6 +16234,12 @@ window.SHIN2_CRM_APP_INIT = function(){
       if(!r.ok){ showCloudSaveStatus(statusEl, false, r.err); return; }
       renderList();
       if(typeof refreshMapIfOpen === 'function') refreshMapIfOpen();
+    }));
+    bindTrashSubTabs();
+    // "영구삭제 대상" — 여기서는 아무것도 지우지 않는다. 1단계 모달(업체명 입력)을 거쳐
+    // 영구삭제 탭으로 옮기기만 한다. 협약종료 행에는 이 버튼 자체가 붙지 않는다(위 템플릿).
+    listEl.querySelectorAll('[data-mark-permdel]').forEach(btn=> btn.addEventListener('click', ()=>{
+      openPermDeleteModal('mark', btn.getAttribute('data-mark-permdel'));
     }));
   }
 
@@ -17136,6 +17380,164 @@ window.SHIN2_CRM_APP_INIT = function(){
     // §요청 10 "삭제된 업체는 일반 목록에서 제외" — 카드가 이 업체를 보여주고 있었으므로
     // 그대로 두면 이미 숨겨진 업체 화면이 남는다. 목록으로 돌아가 즉시 반영을 보여준다.
     closeChart();
+  }
+
+  /* ==========================================================================
+     §영구삭제 라운드(신규) — 쓰레기통 안의 "영구삭제" 탭에서 쓰는 2단계 확인 모달.
+
+     한 번 클릭으로 즉시 완전삭제되는 경로는 만들지 않는다. 경로는 항상 세 걸음이다.
+       [삭제업체 탭] "영구삭제 대상으로 지정"  → 1단계 확인(업체명 입력) → 영구삭제 대기
+       [영구삭제 탭] "완전 삭제"               → 2단계 확인(업체명 다시 입력) → 실제 삭제
+     대기 상태에서 "대기 취소"를 누르면 언제든 복구 가능한 삭제업체로 되돌아간다.
+
+     두 단계 모두 업체명을 정확히 입력해야 버튼이 열린다(기존 소프트 삭제 모달과 같은 규칙:
+     양끝 공백만 트림). 저장 실패 시 모달을 닫지 않아 그대로 재시도할 수 있고, 로컬 반영은
+     모달 인스턴스당 한 번만 해 재시도로 활동기록·감사로그가 중복되지 않는다.
+     ========================================================================== */
+  let permDelModalState = null; // { stage:'mark'|'erase', companyId, typedName, saving, err, applied }
+  function closePermDeleteModal(){
+    permDelModalState = null;
+    const root = document.getElementById('permDeleteModalRoot');
+    if(root) root.innerHTML = '';
+  }
+  function openPermDeleteModal(stage, companyId){
+    const co = D.findCompany(companyId);
+    if(!co) return;
+    permDelModalState = { stage, companyId, typedName:'', saving:false, err:null, applied:false };
+    renderPermDeleteModal();
+  }
+  // 이 업체를 지우면 같이 지워지는 것 / 그대로 남는 것을 실제 건수로 계산해 보여준다.
+  // 지어낸 숫자가 아니라 permanentlyDeleteCompany가 실제로 지우는 대상과 같은 조건이다.
+  function permDelScopeCounts(companyId){
+    const idStr = String(companyId);
+    let activities = 0, documents = 0, memos = 0, relatedRefs = 0;
+    try{ activities = D.loadActivities().filter(a=> String(a.companyId) === idStr).length; }catch(e){}
+    try{ documents = D.loadDocuments().filter(d=> String(d.companyId) === idStr).length; }catch(e){}
+    try{ memos = D.loadMemos().filter(m=> m.targetType === 'company' && String(m.targetId) === idStr).length; }catch(e){}
+    try{
+      D.loadCompanies().forEach(c=>{
+        if(String(c.id) === idStr || !Array.isArray(c.relatedCompanies)) return;
+        relatedRefs += c.relatedCompanies.filter(r=> String(r.companyId) === idStr).length;
+      });
+    }catch(e){}
+    return { activities, documents, memos, relatedRefs };
+  }
+  function renderPermDeleteModal(){
+    const root = document.getElementById('permDeleteModalRoot');
+    if(!root) return;
+    const s = permDelModalState;
+    if(!s){ root.innerHTML = ''; return; }
+    const co = D.findCompany(s.companyId);
+    if(!co){ closePermDeleteModal(); return; }
+    const isErase = s.stage === 'erase';
+    const canConfirm = s.typedName.trim() === (co.name || '').trim() && !!co.name && !s.saving;
+    const n = permDelScopeCounts(s.companyId);
+    const bodyHtml = isErase ? `
+      <div class="permdel-modal-body">
+        <div><span class="permdel-target">${esc(co.name || '(업체명 없음)')}</span> 업체를 <b>완전히 삭제</b>합니다.
+          이 작업은 <b>되돌릴 수 없습니다</b> — 복구 버튼도, 쓰레기통도 남지 않습니다.</div>
+        <div class="permdel-scope">
+          <b>함께 삭제되는 데이터</b><br>
+          · 업체 기본정보 · 협약 진행상황(미팅·질문서·MOU) · 이전 업체명 · 서류 체크<br>
+          · 활동이력 ${n.activities}건 · 첨부문서 ${n.documents}건(파일 포함) · 메모 ${n.memos}건<br>
+          · 다른 업체에 남아 있는 이 업체 연결 ${n.relatedRefs}건
+        </div>
+        <div class="permdel-keep">
+          <b>그대로 보존되는 데이터</b><br>
+          · 매출 원장 및 연도별 매출 데이터<br>
+          · 시공실적(POUR) 데이터<br>
+          이 데이터들은 업체 ID가 아니라 업체명으로 연결되어 있어 삭제 대상이 아닙니다.
+          해당 이름의 매출·실적은 "CRM 미등록 업체"로 계속 조회됩니다.
+        </div>
+        <div class="delete-co-modal-field">
+          <label for="permDelNameInput">확인을 위해 업체명을 똑같이 입력해주세요</label>
+          <input type="text" id="permDelNameInput" value="${esc(s.typedName)}" placeholder="${esc(co.name || '')}" autocomplete="off" />
+        </div>
+        ${s.err ? `<div class="delete-co-modal-err">${esc(s.err)}</div>` : ''}
+      </div>` : `
+      <div class="permdel-modal-body">
+        <div><span class="permdel-target">${esc(co.name || '(업체명 없음)')}</span> 업체를 <b>영구삭제 대상</b>으로 지정합니다.</div>
+        <div class="permdel-scope">
+          지금 삭제되는 것은 <b>없습니다</b>. 이 업체는 "영구삭제" 탭으로 옮겨지고,
+          거기서 한 번 더 확인해야 실제로 삭제됩니다. 지정한 뒤에도 <b>대기 취소</b>로
+          언제든 복구 가능한 삭제업체 상태로 되돌릴 수 있습니다.
+        </div>
+        <div class="delete-co-modal-field">
+          <label for="permDelNameInput">확인을 위해 업체명을 똑같이 입력해주세요</label>
+          <input type="text" id="permDelNameInput" value="${esc(s.typedName)}" placeholder="${esc(co.name || '')}" autocomplete="off" />
+        </div>
+        ${s.err ? `<div class="delete-co-modal-err">${esc(s.err)}</div>` : ''}
+      </div>`;
+    root.innerHTML = `
+      <div class="pi-overlay" id="permDelOverlay">
+        <div class="pi-panel" style="max-width:470px;" role="dialog" aria-modal="true" aria-label="${isErase ? '완전 삭제 확인' : '영구삭제 대상 지정'}">
+          <div class="pi-head">
+            <div class="pi-title">${isErase ? '완전 삭제 (2단계)' : '영구삭제 대상 지정 (1단계)'}</div>
+            <button type="button" class="chart-close-btn" id="permDelCloseBtn" aria-label="닫기">&times;</button>
+          </div>
+          <div class="pi-body">${bodyHtml}</div>
+          <div class="pi-actions">
+            <button type="button" class="delete-co-modal-cancel-btn" id="permDelCancelBtn">취소</button>
+            <button type="button" class="delete-co-modal-confirm-btn" id="permDelConfirmBtn" ${canConfirm ? '' : 'disabled'}>${
+              s.saving ? '처리 중…' : (isErase ? '완전 삭제' : '대상으로 지정')}</button>
+          </div>
+        </div>
+      </div>
+    `;
+    const close = ()=> closePermDeleteModal();
+    document.getElementById('permDelCloseBtn').addEventListener('click', close);
+    document.getElementById('permDelCancelBtn').addEventListener('click', close);
+    bindSafeBackdropClose(document.getElementById('permDelOverlay'), close);
+    const nameInput = document.getElementById('permDelNameInput');
+    nameInput.addEventListener('input', ()=>{
+      s.typedName = nameInput.value; renderPermDeleteModal();
+      const el = document.getElementById('permDelNameInput');
+      if(el){ el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+    });
+    document.getElementById('permDelConfirmBtn').addEventListener('click', confirmPermDeleteModal);
+  }
+  async function confirmPermDeleteModal(){
+    const s = permDelModalState;
+    if(!s) return;
+    const co = D.findCompany(s.companyId);
+    if(!co) return;
+    if(s.typedName.trim() !== (co.name || '').trim()) return; // 방어적 재확인
+    const isErase = s.stage === 'erase';
+    s.saving = true; s.err = null;
+    renderPermDeleteModal();
+    if(!s.applied){
+      if(isErase){
+        const r = D.permanentlyDeleteCompany(s.companyId);
+        if(!r.ok){
+          s.saving = false;
+          s.err = r.reason === 'NOT_PENDING' ? '영구삭제 대기 상태가 아닙니다. 목록을 새로고침해주세요.'
+                : r.reason === 'NOT_FOUND' ? '업체를 찾을 수 없습니다. 이미 삭제되었을 수 있습니다.'
+                : '로컬 저장에 실패해 삭제를 중단했습니다. 다시 시도해주세요.';
+          renderPermDeleteModal();
+          return;
+        }
+      } else {
+        if(!D.markPermanentDeletePending(s.companyId)){
+          s.saving = false;
+          s.err = '영구삭제 대상으로 지정할 수 없습니다(삭제업체가 아닙니다).';
+          renderPermDeleteModal();
+          return;
+        }
+      }
+      s.applied = true;
+    }
+    const r = await confirmCloudSave('companies');
+    if(!permDelModalState) return;   // 그 사이 닫혔으면 더 손대지 않음
+    if(!r.ok){
+      s.saving = false;
+      s.err = cloudSaveErrorMessage(r.err);
+      renderPermDeleteModal();
+      return;
+    }
+    if(isErase) trashSubTab = 'permdel';
+    closePermDeleteModal();
+    renderList();
+    if(typeof refreshMapIfOpen === 'function') refreshMapIfOpen();
   }
 
   // §시안 레이아웃 정합 라운드(신규) — 참고 시안의 좌측 상단 "기업 요약" 카드. 새 데이터/
