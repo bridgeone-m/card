@@ -4445,6 +4445,50 @@ table.pdf-doc-table thead{ background:var(--bg); }
 .questionnaire-work-title{ font-size:13px; font-weight:700; color:var(--navy); }
 .questionnaire-work-meta{ margin-top:5px; font-size:11.5px; color:var(--text-muted); }
 .questionnaire-work-actions{ display:flex; flex-wrap:wrap; gap:7px; margin-top:9px; }
+/* §질문서 상담 평가 라운드(신규) — 상/중/하 선택기와 배지.
+   연한 배경 + 진한 텍스트로, 버튼처럼 과하게 보이지 않게. */
+.questionnaire-work-head-right{ display:inline-flex; align-items:center; gap:6px; }
+.qrating-badge{
+  display:inline-flex; align-items:center; gap:4px; flex:none;
+  padding:2px 8px; border-radius:999px; font-size:11px; font-weight:750; white-space:nowrap;
+  background:var(--bg); color:var(--text-muted); border:1px solid var(--line);
+}
+.qrating-badge.is-high{ background:#E9F6EF; color:#0F7A42; border-color:#BFE6CF; }
+.qrating-badge.is-mid{ background:#FFF4E5; color:#A2620A; border-color:#F5DDB6; }
+.qrating-badge.is-low{ background:#FDECEC; color:#B3261E; border-color:#F3C9C6; }
+.qrating-memo{
+  margin-top:6px; font-size:11.5px; color:var(--text); line-height:1.5;
+  background:var(--bg); border-radius:7px; padding:7px 9px; white-space:pre-wrap; word-break:break-word;
+}
+.qrating-memo-label{ display:block; font-size:10.5px; font-weight:700; color:var(--text-muted); margin-bottom:2px; }
+/* 팝업 안 선택기 */
+.qrating-block{ margin-bottom:12px; padding-bottom:12px; border-bottom:1px solid #EFF3F8; }
+.qrating-head{ display:flex; align-items:baseline; gap:8px; margin-bottom:7px; }
+.qrating-title{ font-size:12.5px; font-weight:750; color:var(--text); }
+.qrating-hint{ font-size:11px; color:var(--text-faint); }
+.qrating-options{ display:flex; gap:6px; flex-wrap:wrap; }
+.qrating-opt{
+  flex:1 1 0; min-width:84px; display:flex; flex-direction:column; align-items:flex-start; gap:1px;
+  padding:7px 10px; border-radius:8px; cursor:pointer; font-family:inherit; text-align:left;
+  background:#fff; border:1px solid var(--line); color:var(--text-muted);
+  transition:border-color .12s, background .12s;
+}
+.qrating-opt:hover{ border-color:#C3D0E2; background:#FAFCFF; }
+.qrating-opt:focus-visible{ outline:2px solid var(--navy); outline-offset:1px; }
+.qrating-opt-label{ font-size:13px; font-weight:800; color:var(--text); line-height:1.2; }
+.qrating-opt-desc{ font-size:10px; color:var(--text-faint); line-height:1.3; }
+.qrating-opt.is-none{ flex:0 0 auto; min-width:0; justify-content:center; }
+.qrating-opt.is-none .qrating-opt-label{ font-size:11.5px; font-weight:700; color:var(--text-muted); }
+/* 선택 상태 — 연한 배경 + 진한 텍스트 + 같은 계열 테두리 */
+.qrating-opt.is-high.is-on{ background:#E9F6EF; border-color:#0F7A42; }
+.qrating-opt.is-high.is-on .qrating-opt-label{ color:#0F7A42; }
+.qrating-opt.is-mid.is-on{ background:#FFF4E5; border-color:#C2790E; }
+.qrating-opt.is-mid.is-on .qrating-opt-label{ color:#A2620A; }
+.qrating-opt.is-low.is-on{ background:#FDECEC; border-color:#B3261E; }
+.qrating-opt.is-low.is-on .qrating-opt-label{ color:#B3261E; }
+.qrating-opt.is-none.is-on{ background:var(--bg); border-color:var(--text-muted); }
+.qrating-opt.is-none.is-on .qrating-opt-label{ color:var(--text); }
+@media(max-width:480px){ .qrating-opt-desc{ display:none; } }
 .questionnaire-file-label{ display:inline-block; cursor:pointer; }
 .questionnaire-file-input{ position:absolute; width:1px; height:1px; opacity:0; overflow:hidden; }
 .questionnaire-session-panel{ max-width:1180px !important; width:calc(100vw - 42px); height:min(780px, calc(100vh - 42px)); display:flex; flex-direction:column; }
@@ -8603,19 +8647,32 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
   // documents 전체 배열을 두 번 parse/stringify했다. 한 번 읽어 두 필드를 함께 바꾸며,
   // 내용이 같으면 어떤 로컬/클라우드 저장도 만들지 않는다. 호출부가 같은 배열로 즉시
   // 클라우드 저장을 확인하므로 여기서는 500ms 예약 push도 만들지 않는다.
-  function setDocumentConsultation(id, memo, qaAnswers){
+  // §질문서 상담 평가 라운드(신규) — 상/중/하 평가값. 질문지 문서 레코드에 필드 하나만
+  // 더한다(새 저장소·새 컬렉션 없음). 값이 없는 기존 문서는 '미평가'로 읽는다 —
+  // 기존 메모를 분석해 자동 분류하지 않는다(§요청 6).
+  const QUESTIONNAIRE_RATINGS = ['high','mid','low'];
+  function normalizeQuestionnaireRating(v){
+    const s = String(v || '').trim();
+    return QUESTIONNAIRE_RATINGS.indexOf(s) >= 0 ? s : '';
+  }
+  // rating은 선택 인자다 — 넘기지 않으면(undefined) 기존 값을 그대로 둔다. 예전 호출부가
+  // 3개 인자만 넘겨도 평가가 지워지지 않는다.
+  function setDocumentConsultation(id, memo, qaAnswers, rating){
     const list = loadDocuments();
     const rec = list.find(d=> d.id===id);
     if(!rec) return { ok:false, changed:false, reason:'NOT_FOUND' };
     const nextMemo = memo || '';
     const nextQa = Object.assign({}, rec.qaAnswers || {}, qaAnswers || {});
+    const prevRating = normalizeQuestionnaireRating(rec.consultRating);
+    const nextRating = rating === undefined ? prevRating : normalizeQuestionnaireRating(rating);
     const sameMemo = (rec.memo || '') === nextMemo;
     const prevQa = rec.qaAnswers || {};
     const qaKeys = new Set(Object.keys(prevQa).concat(Object.keys(nextQa)));
     const sameQa = Array.from(qaKeys).every(key=> (prevQa[key] || '') === (nextQa[key] || ''));
-    if(sameMemo && sameQa) return { ok:true, changed:false, rec, list };
+    if(sameMemo && sameQa && prevRating === nextRating) return { ok:true, changed:false, rec, list };
     rec.memo = nextMemo;
     rec.qaAnswers = nextQa;
+    rec.consultRating = nextRating;
     rec.updatedAt = nowIso();
     const ok = saveDocuments(list, { skipCloudPush:true, knownExistingLength:list.length });
     return { ok, changed:ok, rec, list, reason:ok ? null : 'LOCAL_SAVE_FAILED' };
@@ -11156,7 +11213,7 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
     loadActivities, addActivity, updateActivityText, deleteActivity, activitiesForCompany, classifyActivity, buildActivitiesIndex,
     loadSheetRequests, buildSheetRequestsIndex, latestSheetRequestForCompany,
     loadCaseByCaseCompanies, loadExclusionAudit, caseByCaseIdForNormName, exclusionIdForNormName, findCaseByCaseByNormName, findCaseByCaseById, isUserExcludedNormName,
-    loadDocuments, documentsForCompany, buildDocumentsIndex, addDocument, updateDocumentExtracted, getBlob, getLocalDocFile, renameDocument, setDocumentMemo, setDocumentQaAnswers, setDocumentConsultation, setDocumentVerification, deleteDocument, findDocument, migrateDocumentToCloud,
+    loadDocuments, documentsForCompany, buildDocumentsIndex, addDocument, updateDocumentExtracted, getBlob, getLocalDocFile, renameDocument, setDocumentMemo, setDocumentQaAnswers, setDocumentConsultation, normalizeQuestionnaireRating, QUESTIONNAIRE_RATINGS, setDocumentVerification, deleteDocument, findDocument, migrateDocumentToCloud,
     loadMemos, memosFor, addMemo, updateMemo, deleteMemo, buildMemosIndex,
     pendingActivitiesForCompany, tasksForCompany, calendarEventsForCompany, upcomingCalendarEventsForCompany,
     DEAL_STAGES, setDealStage, setAssigneeUserId, addNeed, removeNeed, dismissNeedSuggestion, addSpecialNote, removeSpecialNote, setImportant, suggestNeedFor,
@@ -17647,12 +17704,16 @@ window.SHIN2_CRM_APP_INIT = function(){
     // 여부(answered.length)만 반영한다. 새 상태를 만들지 않고 이미 계산된 answered 배열을
     // 그대로 읽어 "답변 미등록"/"답변 등록됨"만 표시한다(§ 가짜 상태 금지).
     const qaBadgeHtml = `<span class="cdash2-tag${answered.length ? ' is-done' : ''} cdash2-qa-badge">${answered.length ? '답변 등록됨' : '답변 미등록'}</span>`;
+    // §질문서 상담 평가 라운드 — 상/중/하 배지를 먼저, 그 아래 상담 메모를 보여준다.
+    const ratingBadgeHtml = doc ? qratingBadgeHtml(doc) : '';
+    const memoText = String((doc && doc.memo) || '').trim();
     wrap.innerHTML = `
       <div class="cdash2-card">
         <div class="cdash2-card-title" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
           <span><span aria-hidden="true">📄</span> 질문지 상담 요약</span>
-          <div style="display:flex;align-items:center;gap:6px;">${qaBadgeHtml}${openBtnHtml}</div>
+          <div style="display:flex;align-items:center;gap:6px;">${ratingBadgeHtml}${qaBadgeHtml}${openBtnHtml}</div>
         </div>
+        ${memoText ? `<div class="qrating-memo"><span class="qrating-memo-label">메모</span>${esc(memoText)}</div>` : ''}
         ${answered.length ? `
           <div class="cdash-qa-summary-list">
             ${answered.map(q=> `
@@ -23560,6 +23621,58 @@ window.SHIN2_CRM_APP_INIT = function(){
     const root = document.getElementById('questionnaireSessionRoot');
     if(root) root.innerHTML = '';
   }
+  // ==========================================================================
+  // §질문서 상담 평가 라운드(신규) — 사용자 요청: "메모만 자유입력하던 걸, 먼저 상/중/하
+  // 평가를 체크하고 필요하면 짧은 메모를 덧붙이는 구조로."
+  //
+  // 저장은 질문지 문서 레코드에 consultRating 한 필드만 더한다(D.setDocumentConsultation의
+  // 네 번째 인자). 기존 memo·qaAnswers는 손대지 않고, 값이 없는 문서는 '미평가'로 읽는다 —
+  // 기존 메모를 분석해 상/중/하로 자동 분류하지 않는다.
+  // ==========================================================================
+  const QRATING_DEFS = [
+    ['high','상','관심 높음 / 진행 가능성 높음'],
+    ['mid', '중','보통 / 추가 확인 필요'],
+    ['low', '하','관심 낮음 / 진행 가능성 낮음']
+  ];
+  function qratingOf(doc){
+    return (D.normalizeQuestionnaireRating && D.normalizeQuestionnaireRating(doc && doc.consultRating)) || '';
+  }
+  function qratingLabel(v){
+    const hit = QRATING_DEFS.find(d=> d[0] === v);
+    return hit ? hit[1] : '미평가';
+  }
+  // 목록·요약에 붙는 작은 배지(상 초록 / 중 주황 / 하 빨강 / 미평가 회색).
+  function qratingBadgeHtml(doc, opts){
+    const v = qratingOf(doc);
+    const o = opts || {};
+    if(!v && o.hideWhenEmpty) return '';
+    const hit = QRATING_DEFS.find(d=> d[0] === v);
+    return `<span class="qrating-badge is-${esc(v || 'none')}"${hit ? ` title="${esc(hit[2])}"` : ''}>${esc(qratingLabel(v))}</span>`;
+  }
+  // 팝업 안의 선택기 — 라디오처럼 하나만 켜진다(같은 걸 다시 누르면 해제되지 않는다,
+  // 해제는 "미평가" 칩으로 명시적으로 한다).
+  function qratingPickerHtml(doc){
+    const cur = qratingOf(doc);
+    return `
+      <div class="qrating-block">
+        <div class="qrating-head">
+          <span class="qrating-title">상담 평가</span>
+          <span class="qrating-hint">선택하면 바로 저장됩니다</span>
+        </div>
+        <div class="qrating-options" role="radiogroup" aria-label="상담 평가">
+          ${QRATING_DEFS.map(([val,label,desc])=> `
+            <button type="button" class="qrating-opt is-${esc(val)}${cur===val?' is-on':''}"
+              data-qrating="${esc(val)}" role="radio" aria-checked="${cur===val?'true':'false'}" title="${esc(desc)}">
+              <span class="qrating-opt-label">${esc(label)}</span>
+              <span class="qrating-opt-desc">${esc(desc)}</span>
+            </button>`).join('')}
+          <button type="button" class="qrating-opt is-none${cur===''?' is-on':''}"
+            data-qrating="" role="radio" aria-checked="${cur===''?'true':'false'}" title="아직 평가하지 않음">
+            <span class="qrating-opt-label">미평가</span>
+          </button>
+        </div>
+      </div>`;
+  }
   function openQuestionnaireSession(companyId, docId){
     const co = D.findCompany(companyId);
     const doc = D.documentsForCompany(companyId, 'questionnaire').find(d=> d.id === docId);
@@ -23578,10 +23691,11 @@ window.SHIN2_CRM_APP_INIT = function(){
             <section class="questionnaire-viewer" id="questionnaireViewer"><div class="doc-preview-loading">질문서를 불러오는 중…</div></section>
             <section class="questionnaire-note-pane">
               <div class="questionnaire-note-scroll" id="questionnaireNoteScroll">
+                ${qratingPickerHtml(doc)}
                 ${questionnaireQaFieldsHtml(doc)}
                 <div class="questionnaire-qa-item questionnaire-qa-etc">
-                  <label for="questionnaireConsultationMemo">기타 메모</label>
-                  <textarea id="questionnaireConsultationMemo" placeholder="질문지를 보면서 상담 내용, 요청사항, 다음 조치를 바로 기록하세요.">${esc(doc.memo || '')}</textarea>
+                  <label for="questionnaireConsultationMemo">상담 메모</label>
+                  <textarea id="questionnaireConsultationMemo" placeholder="상담 내용이나 특이사항을 입력하세요.">${esc(doc.memo || '')}</textarea>
                 </div>
               </div>
               <div class="questionnaire-note-footer"><span class="questionnaire-save-status" id="questionnaireSaveStatus">이 질문지에 함께 저장됩니다</span><button type="button" class="btn-primary-action" id="questionnaireMemoSave" style="height:34px;padding:0 16px;">저장</button></div>
@@ -23596,6 +23710,18 @@ window.SHIN2_CRM_APP_INIT = function(){
     const refreshSummaryCard = (questionnaireDoc)=>{
       if(currentCompanyId === companyId){
         renderQuestionnaireSummaryCard(co, questionnaireDoc);
+      }
+      // §질문서 상담 평가 라운드 — 협약 진행관리 팝업이 열려 있으면 그쪽의 "질문지 상담"
+      // 줄(상/중/하 배지·메모)도 같이 갱신한다. 팝업 전체를 다시 그리면 사용자가 열어 둔
+      // 접기 구획이 닫혀 버리므로, 그 카드 하나만 제자리에서 바꿔 끼우고 다시 바인딩한다
+      // (마크업·바인딩 함수는 기존 것 그대로 재사용 — 새 렌더 경로 없음).
+      const agrBody = document.getElementById('agreementPopupBody');
+      const workCard = agrBody && agrBody.querySelector('.questionnaire-work-card');
+      if(workCard){
+        const tmp = document.createElement('div');
+        tmp.innerHTML = questionnaireWorkHtml(companyId);
+        const fresh = tmp.firstElementChild;
+        if(fresh){ workCard.replaceWith(fresh); bindQuestionnaireWork(companyId); }
       }
     };
     let flushPendingSave = ()=> false;
@@ -23626,14 +23752,17 @@ window.SHIN2_CRM_APP_INIT = function(){
       });
       return {
         memo: document.getElementById('questionnaireConsultationMemo').value.trim(),
-        qaAnswers: normalizeQaAnswers(qaAnswers)
+        qaAnswers: normalizeQaAnswers(qaAnswers),
+        // §질문서 상담 평가 라운드 — 평가는 입력칸이 아니라 눌린 칩에서 읽는다.
+        rating: (()=>{ const on = noteScroll.querySelector('[data-qrating].is-on'); return on ? on.getAttribute('data-qrating') : ''; })()
       };
     };
     const draftSignature = draft=> JSON.stringify([
       draft.memo,
-      QUESTIONNAIRE_SESSION_QUESTIONS.map(q=> draft.qaAnswers[q.key] || '')
+      QUESTIONNAIRE_SESSION_QUESTIONS.map(q=> draft.qaAnswers[q.key] || ''),
+      draft.rating || ''
     ]);
-    const initialDraft = { memo:(doc.memo || '').trim(), qaAnswers:normalizeQaAnswers(doc.qaAnswers || {}) };
+    const initialDraft = { memo:(doc.memo || '').trim(), qaAnswers:normalizeQaAnswers(doc.qaAnswers || {}), rating: qratingOf(doc) };
     let lastSavedSignature = draftSignature(initialDraft);
     let pendingDraft = initialDraft;
     let pendingSignature = lastSavedSignature;
@@ -23671,7 +23800,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       console.info('[MEMO-SAVE] request start');
       inFlight = (async ()=>{
         const localStarted = performance.now();
-        const localResult = D.setDocumentConsultation(doc.id, draft.memo, draft.qaAnswers);
+        const localResult = D.setDocumentConsultation(doc.id, draft.memo, draft.qaAnswers, draft.rating);
         if(!localResult || !localResult.ok) throw new Error((localResult && localResult.reason) || 'LOCAL_SAVE_FAILED');
         console.info(`[MEMO-SAVE] local complete: ${Math.round(performance.now() - localStarted)}ms`);
         const renderStarted = performance.now();
@@ -23728,6 +23857,21 @@ window.SHIN2_CRM_APP_INIT = function(){
     };
     noteScroll.addEventListener('input', handleDraftChange);
     noteScroll.addEventListener('change', handleDraftChange);
+    // §질문서 상담 평가 라운드 — 평가 칩은 입력칸이 아니라 버튼이라 위 handleDraftChange가
+    // 잡지 못한다. 클릭에서 선택 상태만 바꾸고, 저장은 기존 큐(queueSave)에 그대로 태운다
+    // — 새 저장 경로를 만들지 않아 메모 저장과 충돌하지 않는다(같은 스냅샷 한 번에 나간다).
+    noteScroll.addEventListener('click', e=>{
+      const btn = e.target.closest('[data-qrating]');
+      if(!btn || !noteScroll.contains(btn)) return;
+      const val = btn.getAttribute('data-qrating');
+      noteScroll.querySelectorAll('[data-qrating]').forEach(b=>{
+        const on = b === btn;
+        b.classList.toggle('is-on', on);
+        b.setAttribute('aria-checked', on ? 'true' : 'false');
+      });
+      queueSave(true);   // 평가는 타이핑이 아니므로 바로 저장한다
+      void val;
+    });
     saveBtn.addEventListener('click', ()=> queueSave(true));
     noteScroll.addEventListener('keydown', e=>{
       if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's'){ e.preventDefault(); queueSave(true); }
@@ -23774,7 +23918,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     const accepted = '.pdf,.jpg,.jpeg,.png,.gif,.webp';
     const inputHtml = `<input type="file" id="agreementQuestionnaireInput" class="questionnaire-file-input" accept="${accepted}" />`;
     if(!doc) return `<div class="questionnaire-work-card"><div class="questionnaire-work-head"><span class="questionnaire-work-title">질문지 상담</span></div><div class="questionnaire-work-meta">질문서를 등록하면, 문서를 보면서 상담 메모를 바로 저장할 수 있습니다.</div><div class="questionnaire-work-actions">${inputHtml}<label for="agreementQuestionnaireInput" class="co-text-action primary questionnaire-file-label">질문지 등록</label></div></div>`;
-    return `<div class="questionnaire-work-card"><div class="questionnaire-work-head"><span class="questionnaire-work-title">질문지 상담</span><span class="status-badge is-progress">등록됨</span></div><div class="questionnaire-work-meta">${esc(doc.fileName || doc.originalFileName || '질문서')} · ${esc(fmtDate(doc.createdAt))} 등록${doc.memo ? ' · 상담 메모 있음' : ''}${doc.localOnly ? ' · 이 브라우저에만 저장됨' : ''}</div><div class="questionnaire-work-actions">${inputHtml}<button type="button" class="co-text-action primary" data-questionnaire-session="${esc(doc.id)}">질문지 열고 상담 메모</button><label for="agreementQuestionnaireInput" class="co-text-action questionnaire-file-label">질문지 교체</label></div></div>`;
+    return `<div class="questionnaire-work-card"><div class="questionnaire-work-head"><span class="questionnaire-work-title">질문지 상담</span><span class="questionnaire-work-head-right">${qratingBadgeHtml(doc)}<span class="status-badge is-progress">등록됨</span></span></div><div class="questionnaire-work-meta">${esc(doc.fileName || doc.originalFileName || '질문서')} · ${esc(fmtDate(doc.createdAt))} 등록${doc.localOnly ? ' · 이 브라우저에만 저장됨' : ''}</div>${String(doc.memo || '').trim() ? `<div class="qrating-memo"><span class="qrating-memo-label">메모</span>${esc(String(doc.memo).trim())}</div>` : ''}<div class="questionnaire-work-actions">${inputHtml}<button type="button" class="co-text-action primary" data-questionnaire-session="${esc(doc.id)}">질문지 열고 상담 메모</button><label for="agreementQuestionnaireInput" class="co-text-action questionnaire-file-label">질문지 교체</label></div></div>`;
   }
   function bindQuestionnaireWork(companyId){
     const input = document.getElementById('agreementQuestionnaireInput');
