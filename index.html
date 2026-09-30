@@ -3338,8 +3338,31 @@ body.map-modal-lock{ overflow:hidden; }
    내용이 너무 크고 흩어져 보인다. 전체를 더 compact하게."
    기능·데이터·렌더 함수는 건드리지 않고 크기와 여백만 줄인다.
    ========================================================================== */
-.chart-panel{ width:min(980px, 82vw) !important; max-width:980px !important; max-height:84vh !important; }
-@media(max-width:1100px){ .chart-panel{ width:calc(100vw - 24px) !important; max-width:none !important; } }
+/* 사용자 요청("크기 더 줄여줘 지금 반으로") — 폭을 980 → 490px로 정확히 반으로 줄였다.
+   실측으로 490px에서도 본문 가로 넘침 0, 매출 차트 정상, 탭은 한 줄을 유지한 채
+   가로 스크롤만 생긴다(원래 의도된 동작). 높이는 84vh → 62vh.
+   높이까지 반(42vh)으로 줄이면 본문이 서너 줄밖에 안 남아 탭마다 계속 스크롤해야 해서
+   거기까지는 내리지 않았다 — 더 줄이려면 이 한 값만 바꾸면 된다. */
+/* 아래쪽 레이어에 .chart-panel{ height:min(85vh,820px)!important } 같은 규칙이 더 있어서
+   같은 특이도로는 높이가 안 잡힌다 — 오버레이를 앞에 붙여 특이도를 한 단계 올린다. */
+.chart-overlay .chart-panel, .chart-panel{
+  width:min(490px, 92vw) !important; max-width:490px !important;
+  height:auto !important; max-height:62vh !important;
+}
+@media(max-width:540px){
+  .chart-overlay .chart-panel, .chart-panel{
+    width:calc(100vw - 16px) !important; max-width:none !important; max-height:92vh !important;
+  }
+}
+/* 폭이 절반이 되면서 2열 카드는 한 칸이 225px밖에 안 남는다 — 1열로 접는다. */
+.cdet-panel .cdet-grid2{ grid-template-columns:1fr !important; }
+/* 폭이 490px이 되면서 상단 정보 줄(대표 · 전화번호 · 주소 · 고객 정보 수정)이 한 줄에
+   눌려 글자가 서로 겹쳤다. 항목마다 한 줄씩 쓰게 풀고, 값은 넘치면 말줄임으로 흘린다. */
+.cdet-panel .cdash2-info-strip{ flex-wrap:wrap !important; row-gap:6px !important; align-items:flex-start !important; }
+.cdet-panel .cdash2-info-item{ flex:1 1 100% !important; min-width:0 !important; }
+.cdet-panel .cdash2-info-value{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.cdet-panel .cdash2-info-strip > .co-text-action,
+.cdet-panel .cdash2-info-strip > button{ flex:0 0 auto !important; margin-left:auto; white-space:nowrap; }
 #chartBody{ padding:12px 16px 14px !important; }
 /* 탭바 — 한 줄 유지, 높이·글자 한 단계 축소(좁은 화면에서만 가로 스크롤) */
 #chartTabBar{ padding:6px 12px 0 !important; }
