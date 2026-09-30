@@ -623,6 +623,21 @@
   /* 제목 줄의 [펼치기] 칩도 한 단계 낮춰 제목 줄 자체를 얇게 만든다. */
   .l2l3-active .npcmp-head .list-filter-chip{ height:26px !important; padding:0 11px !important; font-size:11.5px !important; }
   .l2l3-active .npcmp-title{ font-size:13px !important; }
+  /* §좁은 폭 목록 눌림 수정 라운드(신규) — L2→L3 목록 행의 5컬럼이 뒤 4개 고정폭
+     (108/168/104/84px)이라 행 최소 폭이 764px로 굳어 있었다. 목록 칸이 그보다 좁아지는
+     구간(2단 레이아웃의 1280px대, 1열 전환 직후의 700~820px대)에서 표가 가로로 넘쳤다.
+     다섯 칸 모두 minmax로 바꿔 좁아지면 같이 줄어들게 한다 — 컬럼 개수·순서·내용은
+     그대로이고, 640px 이하에서는 기존 모바일 카드 레이아웃이 그대로 넘겨받는다. */
+  #crmList.l2l3-active .np2-table-head,
+  #crmList.l2l3-active .np2-row{
+    grid-template-columns:
+      minmax(120px,1.6fr) minmax(84px,0.85fr) minmax(96px,1fr)
+      minmax(88px,0.95fr) minmax(76px,0.8fr) !important;
+    gap:10px !important;
+  }
+  /* 칸이 줄면 긴 값은 말줄임으로 흘린다(잘려서 옆 칸을 밀지 않게). */
+  #crmList.l2l3-active .np2-row > *, #crmList.l2l3-active .np2-table-head > *{ min-width:0; }
+  #crmList.l2l3-active .np2-col-name{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   @media(max-width:700px){ .l2l3v2-analysis-toggle-hint{ display:none; } }
   .l2l3v2-source-rows{ gap:11px !important; margin-top:12px !important; }
   .l2l3v2-source-row{ grid-template-columns:104px 38px 34px 1fr !important; }
@@ -4884,8 +4899,37 @@ table.pdf-doc-table thead{ background:var(--bg); }
 .col-trend, .col-contrib{ min-width:0; text-align:right; font-size:12px; word-break:keep-all; }
 .crm-list-col .co-table-head .col-trend, .crm-list-col .co-table-head .col-contrib{ text-align:right; }
 
+/* §좁은 폭 목록 눌림 수정 라운드(신규) — 1180px에서 1열로 바뀌기 "직전" 구간(노트북에서
+   흔한 1280px대)은 지도가 아직 옆에 있어 목록 칸이 730px쯤 된다. 그런데 목록 6컬럼의
+   최소 폭 합은 810px이라 이 구간에서만 표가 가로로 넘쳤다(이번 그리드 수정과 무관한
+   기존 동작으로, 수정 전 빌드에서도 같았다). 이 띠 구간에서만 컬럼 최소폭과 간격을
+   한 단계 줄인다 — 1180px 이하는 아래 기존 규칙이 그대로 담당한다. */
+@media(min-width:1181px) and (max-width:1400px){
+  .crm-list-col .co-table-head, .crm-list-col .co-row{
+    grid-template-columns:
+      minmax(128px,1.55fr) minmax(96px,1.05fr) minmax(104px,1.05fr)
+      minmax(80px,0.85fr) minmax(74px,0.68fr) minmax(78px,0.68fr) !important;
+    gap:12px !important;
+  }
+}
+
 @media(max-width:1180px){
   .crm-main-grid{ grid-template-columns: 1fr; }
+  /* §좁은 폭 목록 눌림 수정 라운드(신규) — 여기서 그리드를 1열로 바꾸지만, 세 칸에
+     걸려 있는 명시적 배치(.crm-kpi-cell grid-column:1/row:1, .crm-list-col 1/2,
+     .crm-map-col 2/row:1 span 2)는 그대로 남아 있었다. 지도 카드가 계속 2번 열을
+     요구하니 브라우저가 "암시적 2번째 열"을 만들어 버리고, 그 열은 크기 지정이 없어
+     내용(정사각형 지도) 크기만큼 부풀어 1번 열(목록)을 밀어냈다 — 1150px에서 목록
+     385px, 820px에서 83px까지 눌리고 그만큼 표가 가로로 넘쳤다.
+     1열이 되는 순간에는 배치도 같이 풀어 셋이 위아래로 쌓이게 한다. */
+  .crm-kpi-cell, .crm-list-col, .crm-map-col{ grid-column:1 !important; grid-row:auto !important; }
+  .crm-map-col{ height:auto !important; align-self:auto !important; }
+  /* 1열로 쌓이면 지도 폭이 화면 전체가 된다. 이때도 1:1 비율을 유지하면 1180px에서
+     1114x1114px짜리 지도가 되어 한 화면을 통째로 잡아먹는다(옆에 나란히 있을 때를
+     기준으로 정한 비율이라 쌓인 배치에는 맞지 않는다). 쌓였을 때만 비율을 풀고 높이를
+     고정한다 — 1181px 이상, 즉 목록 옆에 있을 때는 정사각형 그대로다.
+     아래쪽 모바일 규칙의 .crm-map-col max-height:360px와 같은 값이라 잘리지 않는다. */
+  .map-embed-root .map-modal-mapcol{ aspect-ratio:auto !important; height:360px !important; }
   .crm-list-col{ overflow-x:auto; }
   .crm-list-col .co-table-head, .crm-list-col .co-list{ min-width:840px; }
   .crm-list-col .co-table-head, .crm-list-col .co-row{
