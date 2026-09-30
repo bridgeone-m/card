@@ -3907,36 +3907,68 @@ table.pdf-doc-table thead{ background:var(--bg); }
 }
 @media (max-width:820px){ .kpi-strip{ flex-wrap:wrap; } .kpi-item{ flex:1 1 45%; } }
 /* TOP5 팝오버 — 카드 바로 아래 뜨는 작은 패널(모달 아님). body에 붙여 좌표로 배치하므로
-   position:fixed 다(부모의 overflow:hidden에 잘리지 않게). */
+   position:fixed 다(부모의 overflow:hidden에 잘리지 않게).
+
+   §TOP5 팝오버 입체감 라운드(신규) — 뒤의 고객목록·지도와 같은 흰 톤이라 "카드 하나가
+   겹친" 것처럼 묻혀 보이던 문제. 전체 화면을 덮는 딤(모달) 없이 팝오버 자신의 그림자·
+   테두리·헤더 톤·꼬리만으로 "KPI 카드에서 튀어나온 floating panel"로 보이게 한다.
+   데이터·계산·열고 닫는 동작은 전혀 건드리지 않았다.
+
+   레이어: 기존 z-index:600은 토스트(--z-toast 500)보다도 위라 이 앱의 레이어 순서를
+   넘어서 있었다. 이 팝오버가 덮어야 할 것(지도 10 · sticky 100 · 드롭다운/자동완성 200)
+   보다 위이면서 모달(--z-modal 400)보다는 아래인 --z-popup(300)으로 맞춘다. */
 .rise-pop{
-  position:fixed; z-index:600; width:320px; max-width:calc(100vw - 16px);
-  background:#fff; border:1px solid #DCE4EF; border-radius:10px;
-  box-shadow:0 10px 28px rgba(15,32,60,.16); overflow:hidden;
+  position:fixed; z-index:var(--z-popup); width:320px; max-width:calc(100vw - 16px);
+  background:#FCFDFE; border:1px solid rgba(120,145,175,.22); border-radius:12px;
+  /* 배경과 확실히 분리 — 넓고 부드러운 그림자 + 바로 아래 짧은 그림자 */
+  box-shadow:0 18px 45px rgba(20,42,74,.18), 0 4px 12px rgba(20,42,74,.10);
+  overflow:visible;                      /* 꼬리(::before/::after)가 잘리지 않게 */
+  --rise-arrow-x:28px;                   /* JS가 버튼 중앙에 맞춰 덮어쓴다 */
+  animation:risePopIn .16s cubic-bezier(.2,.7,.3,1) both;
 }
+@keyframes risePopIn{
+  from{ opacity:0; transform:translateY(-4px) scale(.98); }
+  to  { opacity:1; transform:translateY(0) scale(1); }
+}
+@media (prefers-reduced-motion:reduce){ .rise-pop{ animation:none; } }
+/* 꼬리 — 테두리색 삼각형 위에 배경색 삼각형을 1px 겹쳐 "테두리 있는 삼각형"을 만든다.
+   .is-above(카드 위로 뜬 경우)면 아래쪽을 가리키게 뒤집는다. */
+.rise-pop::before, .rise-pop::after{
+  content:''; position:absolute; left:var(--rise-arrow-x);
+  width:0; height:0; border-left:7px solid transparent; border-right:7px solid transparent;
+}
+.rise-pop::before{ top:-7px; border-bottom:7px solid rgba(120,145,175,.30); }
+.rise-pop::after { top:-6px; border-bottom:7px solid #F4F7FC; }   /* 헤더 배경색과 맞춤 */
+.rise-pop.is-above::before{ top:auto; bottom:-7px; border-bottom:0; border-top:7px solid rgba(120,145,175,.30); }
+.rise-pop.is-above::after { top:auto; bottom:-6px; border-bottom:0; border-top:7px solid #FCFDFE; }
+
+/* 헤더 — 연한 회청색으로 본문과 분리 */
 .rise-pop-head{
-  display:flex; flex-direction:column; gap:2px; padding:10px 13px;
-  border-bottom:1px solid #EFF3F8; font-size:12.5px; font-weight:700; color:var(--text);
+  display:flex; flex-direction:column; gap:3px; padding:12px 16px;
+  background:#F4F7FC; border-bottom:1px solid #E3EAF4; border-radius:11px 11px 0 0;
+  font-size:13px; font-weight:750; color:var(--navy); letter-spacing:-.01em;
 }
-.rise-pop-head-sub{ font-size:11px; font-weight:500; color:var(--text-muted); }
-.rise-pop-list{ display:flex; flex-direction:column; padding:4px 0; }
+.rise-pop-head-sub{ font-size:11px; font-weight:500; color:var(--text-muted); letter-spacing:0; }
+.rise-pop-list{ display:flex; flex-direction:column; gap:2px; padding:8px 6px; background:#fff; border-radius:0 0 11px 11px; }
 .rise-pop-row{
-  display:flex; align-items:center; gap:10px; width:100%;
-  padding:8px 13px; background:transparent; border:none; border-radius:0;
+  display:flex; align-items:center; gap:12px; width:100%;
+  padding:9px 10px; background:transparent; border:none; border-radius:8px;
   font-family:inherit; text-align:left; cursor:pointer;
+  transition:background .13s ease;
 }
-.rise-pop-row:hover{ background:#F7FAFE; }
+.rise-pop-row:hover{ background:#F1F6FD; }
 .rise-pop-row:focus-visible{ outline:2px solid var(--blue); outline-offset:-2px; }
 .rise-pop-rank{
-  flex:none; width:19px; height:19px; border-radius:5px; background:var(--bg);
-  color:var(--text-muted); font-size:11px; font-weight:700;
+  flex:none; width:20px; height:20px; border-radius:6px; background:#EEF3FA;
+  color:#5A6B85; font-size:11px; font-weight:800; font-variant-numeric:tabular-nums;
   display:flex; align-items:center; justify-content:center;
 }
-.rise-pop-main{ flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:1px; }
+.rise-pop-main{ flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:2px; }
 .rise-pop-name{ font-size:12.5px; font-weight:700; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .rise-pop-delta{ font-size:11px; color:var(--text-muted); font-variant-numeric:tabular-nums; }
-.rise-pop-pct{ flex:none; font-size:12px; font-weight:800; color:#0F7A42; font-variant-numeric:tabular-nums; }
+.rise-pop-pct{ flex:none; margin-left:6px; font-size:12px; font-weight:800; color:#0F7A42; font-variant-numeric:tabular-nums; white-space:nowrap; }
 .rise-pop-pct.is-new{ font-size:11px; font-weight:700; color:var(--blue); }
-.rise-pop-empty{ padding:14px 13px; font-size:12px; color:var(--text-muted); }
+.rise-pop-empty{ padding:16px; font-size:12px; color:var(--text-muted); background:#fff; border-radius:0 0 11px 11px; }
 /* §PDF 내보내기(MOU 체결 협력사) 라운드(신규) — KPI 요약 바 레이아웃/카드 5개(전체
    고객/MOU 체결/상승 업체/L2→L3 전환율)는 전혀 안 건드리고, 그 옆에 버튼 하나만 얹기
    위해 얇은 flex 줄로만 감싼다(§요청 "기존 카드 레이아웃/디자인 방해 없이"). 버튼
@@ -24825,11 +24857,17 @@ window.SHIN2_CRM_APP_INIT = function(){
       const w = pop.offsetWidth || 300;
       const h = pop.offsetHeight || 260;
       const left = Math.max(8, Math.min(window.innerWidth - w - 8, r.left));
-      const top = (r.bottom + 8 + h > window.innerHeight - 8 && r.top - 8 - h > 8)
+      const above = (r.bottom + 8 + h > window.innerHeight - 8 && r.top - 8 - h > 8);
+      const top = above
         ? r.top - 8 - h            // 아래 공간이 모자라면 카드 위로 띄운다
         : r.bottom + 8;
       pop.style.left = left + 'px';
       pop.style.top = Math.max(8, top) + 'px';
+      // §TOP5 팝오버 입체감 라운드(신규) — 꼬리(삼각형)를 KPI 카드 중앙에 맞춘다.
+      // 위치 계산 로직 자체는 그대로고, 표시용 값 두 개만 덧붙인다.
+      pop.classList.toggle('is-above', above);
+      const arrowX = Math.max(14, Math.min(w - 21, (r.left + r.width / 2) - left - 7));
+      pop.style.setProperty('--rise-arrow-x', Math.round(arrowX) + 'px');
     };
     place();
     const onDocDown = e=>{ if(!pop.contains(e.target) && !btn.contains(e.target)) closeRisingTop5Popover(); };
