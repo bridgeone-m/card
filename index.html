@@ -578,6 +578,51 @@
   .l2l3v2-analysis-toggle-label{ font-size:13.5px; font-weight:750; color:var(--navy); white-space:nowrap; }
   .l2l3v2-analysis-toggle-hint{ font-size:11.5px; color:var(--text-faint); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .l2l3v2-analysis-body{ margin-top:14px; }
+
+  /* ======================================================================
+     §L2→L3 상단 압축 라운드(신규) — 사용자 요청: "상단 요약영역이 세로 공간을 너무
+     많이 차지한다. 한 화면에 더 많이 보이게 compact하게."
+     계산(전환율·신규협약·전환완료·관찰중/관리필요 판정·경과일 필터·상세분석 데이터)은
+     전혀 건드리지 않았다. 여백·글자 크기·대표카드 배치만 줄인다.
+     ====================================================================== */
+  /* 1·2. KPI 카드 — 대표카드가 제일 크고 나머지는 stretch로 따라오므로 대표카드를
+     줄이면 4개가 함께 줄어든다. 숫자는 여전히 잘 보이게 크기를 남긴다. */
+  .l2l3v2-kpi-row{ gap:10px !important; margin-bottom:8px !important; }
+  .l2l3v2-kpi-main{ padding:12px 16px !important; gap:3px !important; }
+  .l2l3v2-kpi-main-label{ font-size:12px !important; }
+  .l2l3v2-kpi-main-headline{ display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
+  .l2l3v2-kpi-main-rate{ font-size:30px !important; line-height:1.05 !important; margin-top:0 !important; }
+  .l2l3v2-kpi-main-frac{ font-size:12px !important; color:var(--text-muted) !important; }
+  .l2l3v2-kpi-main-bar{ height:5px !important; margin-top:5px; }
+  .l2l3v2-kpi-main-sub{
+    font-size:11px !important; margin-top:5px !important; line-height:1.35 !important;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .l2l3v2-kpi-card{ padding:10px 14px !important; gap:1px !important; }
+  .l2l3v2-kpi-card-value{ font-size:22px !important; }
+  .l2l3v2-kpi-card-label{ font-size:11.5px !important; }
+  /* 3·4. 상태 필터 + 경과일 — 원래도 같은 줄(space-between)이다. 높이만 줄인다. */
+  .l2l3v2-controls-row{ padding:0 2px 8px !important; gap:8px !important; }
+  .l2l3v2-controls-row .list-filter-chip{ height:28px !important; padding:0 11px !important; font-size:11.5px !important; }
+  .l2l3v2-elapsed-label{ font-size:11.5px !important; }
+  /* 5. 상세 분석 보기 — 큰 연한 파란 박스를 걷어내고 한 줄짜리 링크형 토글로. */
+  .l2l3v2-analysis-block{ margin-bottom:8px !important; }
+  .l2l3v2-analysis-toggle{
+    background:transparent !important; border:none !important; border-bottom:1px solid #E6ECF4 !important;
+    border-radius:0 !important; padding:8px 2px !important; gap:7px !important;
+  }
+  .l2l3v2-analysis-toggle:hover{ background:transparent !important; }
+  .l2l3v2-analysis-toggle:hover .l2l3v2-analysis-toggle-label{ text-decoration:underline; }
+  .l2l3v2-analysis-toggle-label{ font-size:12.5px !important; }
+  .l2l3v2-analysis-toggle-hint{ font-size:11px !important; }
+  .l2l3v2-analysis-body{ margin-top:10px !important; }
+  /* 6. 전환 업체별 상세표 — 제목 줄과 표 사이 공백 제거. .l2l3-active .npcmp-section의
+     넉넉한 패딩이 이 표에도 걸려 있어서 아래가 특히 비어 보였다. */
+  .l2l3-active .npcmp-section{ padding:10px 16px 12px !important; margin-bottom:10px !important; }
+  .l2l3-active .npcmp-head{ margin-bottom:6px !important; }
+  /* 제목 줄의 [펼치기] 칩도 한 단계 낮춰 제목 줄 자체를 얇게 만든다. */
+  .l2l3-active .npcmp-head .list-filter-chip{ height:26px !important; padding:0 11px !important; font-size:11.5px !important; }
+  .l2l3-active .npcmp-title{ font-size:13px !important; }
   @media(max-width:700px){ .l2l3v2-analysis-toggle-hint{ display:none; } }
   .l2l3v2-source-rows{ gap:11px !important; margin-top:12px !important; }
   .l2l3v2-source-row{ grid-template-columns:104px 38px 34px 1fr !important; }
@@ -15398,12 +15443,15 @@ window.SHIN2_CRM_APP_INIT = function(){
       <div class="l2l3v2-kpi-row">
         <div class="l2l3v2-kpi-main">
           <div class="l2l3v2-kpi-main-label">L2 → L3 전환율</div>
-          <div class="l2l3v2-kpi-main-rate">${esc(analysis.rate)}%</div>
-          <div class="l2l3v2-kpi-main-barrow">
-            <div class="l2l3v2-kpi-main-bar"><div class="l2l3v2-kpi-main-bar-fill" style="width:${Math.max(0,Math.min(100,rateNum))}%;"></div></div>
-            <span class="l2l3v2-kpi-main-frac">${esc(analysis.converted.length)} / ${esc(analysis.total)} 업체 전환 완료</span>
+          <!-- §L2→L3 상단 압축 라운드(신규) — 숫자·분수를 세로로 쌓지 않고 한 줄에 둔다.
+               값(analysis.rate / converted.length / total)은 전부 그대로다. -->
+          <div class="l2l3v2-kpi-main-headline">
+            <span class="l2l3v2-kpi-main-rate">${esc(analysis.rate)}%</span>
+            <span class="l2l3v2-kpi-main-frac">${esc(analysis.converted.length)} / ${esc(analysis.total)} 전환 완료</span>
           </div>
-          <div class="l2l3v2-kpi-main-sub">신규 협약 업체 중 실제 플랫폼 이용 단계(L3)까지 전환된 비율 · 2026-05-20 이후 협약, 경과 ${esc(npCmpPeriodDays)}일 기준</div>
+          <div class="l2l3v2-kpi-main-bar"><div class="l2l3v2-kpi-main-bar-fill" style="width:${Math.max(0,Math.min(100,rateNum))}%;"></div></div>
+          <!-- 긴 기준 설명(협약 시점·경과일)은 한 줄을 더 쓰지 않도록 title 툴팁으로 옮겼다. -->
+          <div class="l2l3v2-kpi-main-sub" title="2026-05-20 이후 협약, 경과 ${esc(npCmpPeriodDays)}일 기준">신규 협약 업체 중 실제 플랫폼 이용 단계(L3) 전환 비율</div>
         </div>
         <div class="l2l3v2-kpi-card l2l3v2-kpi-card-new"><span class="l2l3v2-kpi-card-value">${esc(analysis.total)}</span><span class="l2l3v2-kpi-card-label">신규 협약</span></div>
         <div class="l2l3v2-kpi-card l2l3v2-kpi-card-done"><span class="l2l3v2-kpi-card-value">${esc(analysis.converted.length)}</span><span class="l2l3v2-kpi-card-label">전환 완료</span></div>
