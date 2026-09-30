@@ -34029,6 +34029,13 @@ window.SHIN2_CRM_APP_INIT = function(){
       if(tab === mapActiveTab) return;
       mapActiveTab = tab;
       mapFocusedCompanyList = null;
+      // §8 — 탭을 바꾸면 검색어를 초기화한다(가장 안전한 방식). 시공사 탭에서 친 업체명이
+      // 아파트 탭에 그대로 적용되면 "검색 결과 0건"처럼 보여 데이터가 없다고 오해하게 된다.
+      // 지역 드릴다운도 함께 푼다 — 두 탭의 지역 키 체계(업체 주소 / 아파트 소재지)가 달라
+      // 그대로 넘기면 엉뚱한 지역으로 좁혀진다.
+      mapFilterState.search = '';
+      aptFilterState.search = '';
+      mapEmbedFocusedRegion = null;
       root.querySelectorAll('[data-map-tab]').forEach(b=> b.classList.toggle('is-active', b === btn));
       const titleEl = document.getElementById('mapModalTitle');
       const subEl = document.getElementById('mapModalSubtitle');
@@ -34096,6 +34103,13 @@ window.SHIN2_CRM_APP_INIT = function(){
       if(tab === mapActiveTab) return;
       mapActiveTab = tab;
       mapFocusedCompanyList = null;
+      // §8 — 탭을 바꾸면 검색어를 초기화한다(가장 안전한 방식). 시공사 탭에서 친 업체명이
+      // 아파트 탭에 그대로 적용되면 "검색 결과 0건"처럼 보여 데이터가 없다고 오해하게 된다.
+      // 지역 드릴다운도 함께 푼다 — 두 탭의 지역 키 체계(업체 주소 / 아파트 소재지)가 달라
+      // 그대로 넘기면 엉뚱한 지역으로 좁혀진다.
+      mapFilterState.search = '';
+      aptFilterState.search = '';
+      mapEmbedFocusedRegion = null;
       root.querySelectorAll('[data-map-tab]').forEach(b=> b.classList.toggle('is-active', b === btn));
       const titleEl = document.getElementById('mapModalTitle');
       const subEl = document.getElementById('mapModalSubtitle');
@@ -34467,26 +34481,67 @@ window.SHIN2_CRM_APP_INIT = function(){
     if(normSigunguForApt(e.region, e.city) === key) return true;
     return false;
   }
-  // §요청 5 — "시공 아파트 목록" 고정 구획을 채운다. buildPourApartmentEntries()를 그대로
-  // 재사용하고(새 데이터 집계 없음), mapEmbedFocusedRegion이 있으면 그 지역만 좁힌다.
-  // 지도 임베드 카드가 마운트돼 있지 않으면(옛 전체화면 팝업 등) 아무 것도 하지 않는다.
-  function renderMapEmbedApartmentList(){
-    const bodyEl = document.getElementById('mapEmbedAptListBody');
+  /* §지도 탭 데이터 분리 라운드(신규) — 사용자 보고: "상단 탭은 [시공사]가 선택돼 있는데
+     하단 목록은 '시공 아파트 목록'이 나온다."
+
+     원인: 이 고정 구획(#mapModalAptListCol)은 시공사 탭에서만 그려지는데, 내용은
+     buildPourApartmentEntries()(아파트 데이터)를 그대로 보여주고 있었다. 게다가
+     mapFilterState(검색/공종/실적)를 전혀 보지 않아 지도는 필터되고 목록은 전체가
+     나오는 상태였다(§7 위반).
+
+     수정: 이 구획은 시공사 탭 전용이므로 "시공사 목록"을 보여준다. 데이터는 지도 마커와
+     완전히 같은 applyMapFilters(buildMapCompanies()) 결과 하나만 쓴다 — 지도에 18개가
+     보이면 목록도 같은 18개다(§2 단일 source of truth, §7 동기화). 지역 드릴다운
+     (mapEmbedFocusedRegion, 클러스터·지역행 클릭으로 이미 채워지는 기존 상태)도 같은
+     기준으로 좁힌다. 새 필터 로직/새 판정 기준은 만들지 않았다. */
+  function companyEntryMatchesEmbedRegion(e, key){
+    if(!key) return true;
+    if(e.region === key) return true;
+    if(e.sigungu === key) return true;
+    return false;
+  }
+  // 목록 한 줄의 보조 설명 — "서울 강남구 · 도장 · 2026". 전부 이미 계산된 값이거나
+  // 기존 조회 함수 결과다(새 판정 없음). 연도는 화면에 실제로 그리는 행에서만 조회해
+  // (최대 300행) 전체 업체를 훑지 않는다 — 목록 렌더가 무거워지지 않게.
+  function mapCompanyRowSubText(e){
+    const parts = [];
+    parts.push(e.sigungu || e.region || '지역 미확인');
+    parts.push(e.mainCategory || '공종 미상');
+    let year = null;
+    try{
+      const recs = getTotalPourRecordsForCompany(e.co); // 이미 연도 내림차순 정렬
+      for(let i=0;i<recs.length;i++){
+        const y = Number(recs[i].year);
+        if(Number.isFinite(y) && y > 1900 && y < 2999){ year = y; break; }
+      }
+    }catch(err){ /* 실적 조회 실패는 이 줄에서만 '연도 미상'으로 표시 */ }
+    parts.push(year ? year + '년' : '연도 미상');
+    return parts.join(' · ');
+  }
+  function renderMapEmbedCompanyList(){
+    const bodyEl = document.getElementById('mapEmbedSideListBody');
     if(!bodyEl) return;
-    let allEntries;
-    try{ allEntries = buildPourApartmentEntries(); }
-    catch(err){ console.warn('시공 아파트 목록(지도 카드) 계산 실패:', err); allEntries = []; }
-    const filtered = mapEmbedFocusedRegion ? allEntries.filter(e=> aptEntryMatchesEmbedRegion(e, mapEmbedFocusedRegion)) : allEntries;
-    const countEl = document.getElementById('mapEmbedAptListCount');
-    if(countEl) countEl.textContent = `총 ${filtered.length.toLocaleString('ko-KR')}건`;
-    const resetEl = document.getElementById('mapEmbedAptListReset');
+    let filtered;
+    try{ filtered = applyMapFilters(buildMapCompanies()); }
+    catch(err){ console.warn('시공사 목록(지도 카드) 계산 실패:', err); filtered = []; }
+    if(mapEmbedFocusedRegion) filtered = filtered.filter(e=> companyEntryMatchesEmbedRegion(e, mapEmbedFocusedRegion));
+    const countEl = document.getElementById('mapEmbedSideListCount');
+    if(countEl) countEl.textContent = `총 ${filtered.length.toLocaleString('ko-KR')}개`;
+    const resetEl = document.getElementById('mapEmbedSideListReset');
     if(resetEl) resetEl.style.display = mapEmbedFocusedRegion ? '' : 'none';
-    bodyEl.innerHTML = filtered.length ? filtered.map(e=> `
-      <div class="map-embed-apt-row">
-        <div class="map-embed-apt-row-name">${esc(e.name)}</div>
-        <div class="map-embed-apt-row-sub">${esc([e.region, e.city].filter(Boolean).join(' ') || '지역 미확인')} · ${esc(fmtAptHouseholds(e.households))} · ${esc(e.categories[0] || '공종 미상')} · ${esc(e.years.length ? e.years[0] + '년' : '연도 미상')}</div>
+    // 아파트 목록과 같은 상한(300행). 넘으면 제목 옆 총 건수로 전체 수를 알 수 있다.
+    const shown = filtered.slice(0, 300);
+    bodyEl.innerHTML = shown.length ? shown.map(e=> `
+      <div class="map-embed-apt-row" data-map-embed-co="${esc(e.co.id)}" role="button" tabindex="0" title="클릭하면 고객 상세를 엽니다">
+        <div class="map-embed-apt-row-name">${esc(e.co.name || '(업체명 없음)')}</div>
+        <div class="map-embed-apt-row-sub">${esc(mapCompanyRowSubText(e))}</div>
       </div>
-    `).join('') : `<div class="map-modal-empty" style="padding:8px 0;">표시할 시공 아파트가 없습니다.</div>`;
+    `).join('') : `<div class="map-modal-empty" style="padding:8px 0;">조건에 맞는 시공사가 없습니다.</div>`;
+    bodyEl.querySelectorAll('[data-map-embed-co]').forEach(row=>{
+      const open = ()=> openCard(row.getAttribute('data-map-embed-co'), { source:'map' });
+      row.addEventListener('click', open);
+      row.addEventListener('keydown', (ev)=>{ if(ev.key === 'Enter' || ev.key === ' '){ ev.preventDefault(); open(); } });
+    });
   }
   function aptEntryMatchesSearch(e, q){
     if(!q) return true;
@@ -34584,7 +34639,8 @@ window.SHIN2_CRM_APP_INIT = function(){
       <div class="map-modal-filters">
         <label class="map-search-field">
           ${MAP_SEARCH_ICO}
-          <input type="text" class="map-modal-search" id="mapFilterSearch" placeholder="업체명 · 지역 검색" value="${esc(mapFilterState.search)}" aria-label="업체명 · 지역 검색" />
+          <!-- §4 — 현재 탭의 검색 대상이 문구로 드러나게(시공 아파트 탭은 "아파트명 · 지역 검색"). -->
+          <input type="text" class="map-modal-search" id="mapFilterSearch" placeholder="시공사명 · 지역 검색" value="${esc(mapFilterState.search)}" aria-label="시공사명 · 지역 검색" />
         </label>
         ${mapFilterChipsHtml()}
         <select class="map-modal-select" id="mapFilterCategory" aria-label="공종">
@@ -34606,12 +34662,16 @@ window.SHIN2_CRM_APP_INIT = function(){
           <div class="map-modal-canvas" id="mapModalCanvas"></div>
         </div>
         <div class="map-modal-infocol" id="mapModalInfoCol"></div>
+        <!-- §지도 탭 데이터 분리 라운드 — 이 구획은 시공사 탭에서만 그려진다(시공 아파트
+             탭은 infocol 자체가 아파트 목록이라 이 구획을 만들지 않는다). 그래서 제목·
+             데이터·건수 전부 시공사 기준이다(§1/§5). 클래스는 기존 것을 그대로 써서
+             레이아웃/스타일을 새로 만들지 않았다. -->
         <div class="map-modal-aptlistcol" id="mapModalAptListCol">
           <div class="map-embed-aptlist-head">
-            <span>시공 아파트 목록</span>
-            <span><span class="map-embed-aptlist-count" id="mapEmbedAptListCount"></span><a href="#" class="map-embed-aptlist-reset" id="mapEmbedAptListReset" style="display:none;">전체 보기</a></span>
+            <span>시공사 목록</span>
+            <span><span class="map-embed-aptlist-count" id="mapEmbedSideListCount"></span><a href="#" class="map-embed-aptlist-reset" id="mapEmbedSideListReset" style="display:none;">전체 보기</a></span>
           </div>
-          <div class="map-embed-aptlist-body" id="mapEmbedAptListBody"></div>
+          <div class="map-embed-aptlist-body" id="mapEmbedSideListBody"></div>
         </div>
       </div>
     `;
@@ -34654,13 +34714,13 @@ window.SHIN2_CRM_APP_INIT = function(){
     mapPerfMark('extra render start (info panel)');
     renderMapInfoPanel(allEntries);
     mapPerfMark('extra render done (info panel)');
-    const embedAptResetLink = document.getElementById('mapEmbedAptListReset');
+    const embedAptResetLink = document.getElementById('mapEmbedSideListReset');
     if(embedAptResetLink) embedAptResetLink.addEventListener('click', (e)=>{
       e.preventDefault();
       mapEmbedFocusedRegion = null;
-      renderMapEmbedApartmentList();
+      renderMapEmbedCompanyList();
     });
-    renderMapEmbedApartmentList();
+    renderMapEmbedCompanyList();
     mapPerfMark('visible');
     mapPerfMark('total');
   }
@@ -34676,7 +34736,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       try{ updateMapMarkers(allEntries); } catch(err){ console.warn('지도 마커 갱신 실패:', err); }
     }
     renderMapInfoPanel(allEntries);
-    renderMapEmbedApartmentList(); // §지도 카드 고정 3단 스택: 업체 데이터가 바뀌면 아파트 목록도 최신으로
+    renderMapEmbedCompanyList(); // §지도 탭 데이터 분리: 업체 데이터가 바뀌면 시공사 목록도 최신으로
   }
 
   // §지도분포4 동기화 훅: 지도 팝업이 열려 있을 때만 다시 그린다(§동기화 규칙 "팝업이
@@ -34801,9 +34861,9 @@ window.SHIN2_CRM_APP_INIT = function(){
       e.preventDefault();
       mapFocusedCompanyList = null;
       mapFilterState.listView = 'inBounds';
-      mapEmbedFocusedRegion = null; // §지도 카드 고정 3단 스택: "전체"로 돌아가면 시공 아파트 목록도 전체로
+      mapEmbedFocusedRegion = null; // §지도 탭 데이터 분리: "전체"로 돌아가면 시공사 목록도 전체로
       renderMapInfoPanel(allEntries);
-      renderMapEmbedApartmentList();
+      renderMapEmbedCompanyList();
     });
   }
 
@@ -35036,9 +35096,9 @@ window.SHIN2_CRM_APP_INIT = function(){
       console.log('[REGION-CLICK] matched companies=' + targets.length);
       mapFocusedCompanyList = { label:key, companyIds:targets.map(e=> e.co.id) };
       mapFilterState.listView = 'inBounds';
-      mapEmbedFocusedRegion = key; // §지도 카드 고정 3단 스택: 클러스터 클릭 → 시공 아파트 목록도 같은 지역으로 좁힌다
+      mapEmbedFocusedRegion = key; // §지도 탭 데이터 분리: 클러스터 클릭 → 시공사 목록도 같은 지역으로 좁힌다
       renderMapInfoPanel(buildMapCompanies());
-      renderMapEmbedApartmentList();
+      renderMapEmbedCompanyList();
       scrollMapCompanyListIntoView();
       console.log('[REGION-CLICK] open list');
       const bounds = new kakao.maps.LatLngBounds();
@@ -35151,9 +35211,9 @@ window.SHIN2_CRM_APP_INIT = function(){
       if(!targets.length) return;
       mapFocusedCompanyList = { label:regionName, companyIds:targets.map(e=> e.co.id) };
       mapFilterState.listView = 'inBounds';
-      mapEmbedFocusedRegion = regionName; // §지도 카드 고정 3단 스택: "지역별 업체 수" 행 클릭 → 시공 아파트 목록도 같은 지역으로 좁힌다
+      mapEmbedFocusedRegion = regionName; // §지도 탭 데이터 분리: "지역별 업체 수" 행 클릭 → 시공사 목록도 같은 지역으로 좁힌다
       renderMapInfoPanel(buildMapCompanies());
-      renderMapEmbedApartmentList();
+      renderMapEmbedCompanyList();
       scrollMapCompanyListIntoView();
       const bounds = new kakao.maps.LatLngBounds();
       targets.forEach(e=> bounds.extend(new kakao.maps.LatLng(e.co.latitude, e.co.longitude)));
@@ -35672,9 +35732,13 @@ window.SHIN2_CRM_APP_INIT = function(){
     // 근처검색 중이면 "📍 근처 시공 아파트"만, 아니면 "시공 아파트 목록"만 — 동시에
     // 두 목록이 뜨는 일이 없도록(이 탭에는 아예 다른 목록 구획을 만들지 않았다, 위
     // 템플릿 참고) 이 하나의 제목/목록이 상태에 따라 전환되기만 한다.
+    // §지도 탭 데이터 분리 라운드 §5 — 시공사 탭의 "시공사 목록 … 총 N개"와 대칭으로
+    // 이 탭에도 현재 필터 결과의 총 건수를 제목에 붙인다(listSource는 지도 화면 안/근처
+    // 검색 결과라 상한 300에 걸릴 수 있어, 총 건수는 필터 결과 전체 filtered로 센다).
+    const aptTotalText = ` — 총 ${filtered.length.toLocaleString('ko-KR')}건`;
     const listTitle = aptFilterState.nearCenter
-      ? `📍 근처 시공 아파트${listSource.length > 300 ? '(상위 300곳)' : ''}`
-      : `시공 아파트 목록${listSource.length > 300 ? ' — 상위 300곳' : ''}`;
+      ? `📍 근처 시공 아파트${aptTotalText}${listSource.length > 300 ? ' (상위 300곳 표시)' : ''}`
+      : `시공 아파트 목록${aptTotalText}${listSource.length > 300 ? ' (상위 300곳 표시)' : ''}`;
     const nearEmptyMsg = '검색 반경 내 시공 아파트가 없습니다.';
     const rowsEmptyMsg = aptFilterState.nearCenter
       ? nearEmptyMsg
@@ -35723,7 +35787,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       <div class="map-modal-filters">
         <label class="map-search-field">
           ${MAP_SEARCH_ICO}
-          <input type="text" class="map-modal-search" id="aptFilterSearch" placeholder="아파트명 · 주소 · 시공사 검색" value="${esc(aptFilterState.search)}" aria-label="아파트명 · 주소 · 시공사 검색" />
+          <input type="text" class="map-modal-search" id="aptFilterSearch" placeholder="아파트명 · 지역 검색" value="${esc(aptFilterState.search)}" aria-label="아파트명 · 지역 검색" />
         </label>
         <select class="map-modal-select" id="aptFilterYear" aria-label="시공 연도">
           <option value="all">연도 전체</option>
