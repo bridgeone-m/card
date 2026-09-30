@@ -2930,6 +2930,57 @@ html,body{background:radial-gradient(circle at 75% -10%,rgba(11,91,211,.055),tra
    팝업들은 그보다 큰 오프셋을 쓴다. */
 .map-modal-overlay{ position:fixed; inset:0; z-index:350; background:rgba(20,24,34,.45); display:flex; align-items:center; justify-content:center; padding:20px; }
 .map-modal-panel{ background:#fff; border-radius:12px; width:88%; max-width:1400px; height:86vh; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 20px 50px rgba(17,24,39,.22); }
+/* §지도 팝업 전환 라운드(신규) §2 — 요청한 정확한 크기로 맞춘다(desktop
+   width:min(1280px,92vw) / height:min(820px,88vh), 중앙 정렬). 배경 dim은 "아주 약하게"라
+   기존 .45 → .28로 낮춘다. 구조(flex column, 헤더/탭/본문 고정)는 그대로. */
+.map-modal-overlay{ background:rgba(20,24,34,.28); }
+.map-modal-panel{
+  width:min(1280px, 92vw); max-width:min(1280px, 92vw);
+  height:min(820px, 88vh); max-height:88vh;
+}
+/* §9 — 헤더·탭·필터 toolbar·지도는 고정, 목록만 내부 스크롤. 팝업 전체는 스크롤되지 않는다.
+   .map-modal-panel이 이미 flex column + overflow:hidden이라 헤더/탭은 flex-shrink만으로
+   고정된다. 여기서는 본문(#mapModalBody)을 남은 높이에 정확히 가두고, 오른쪽 칼럼 안에서
+   목록 영역만 늘어나 스크롤하게 한다. */
+.map-modal-panel > #mapModalBody{ flex:1 1 auto; min-height:0; display:flex; flex-direction:column; overflow:hidden; }
+.map-modal-panel > #mapModalBody > .map-modal-filters{ flex:none; }
+.map-modal-panel > #mapModalBody > .map-apt-summary{ flex:none; }
+.map-modal-panel > #mapModalBody > .map-modal-body-main{ flex:1 1 auto; min-height:0; }
+/* 오른쪽 칼럼: 지역 요약은 고정, 목록 블록만 늘어나 스크롤(§7/§9). */
+.map-modal-overlay .map-modal-infocol{ overflow:hidden; gap:12px; }
+.map-modal-overlay .map-sidelist-block{ flex:1 1 auto; min-height:0; display:flex; flex-direction:column; }
+.map-modal-overlay .map-sidelist-body{ flex:1 1 auto; min-height:0; overflow-y:auto; }
+.map-sidelist-head{ display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
+.map-sidelist-head-right{ display:inline-flex; align-items:baseline; gap:8px; font-weight:600; }
+.map-sidelist-count{ font-size:11.5px; color:var(--text-muted); font-weight:700; }
+.map-sidelist-head-right a{ font-weight:500; font-size:11px; }
+/* 검색창 돋보기 아이콘(.map-search-field .map-search-ico가 left:11px에 겹쳐 놓는다)과
+   글자가 겹치지 않게 왼쪽 여백을 준다. 예전엔 이 여백이 인라인 카드 전용
+   (.map-embed-root .map-modal-search)에만 있어서, 팝업 전용으로 되돌리면서 문구가
+   아이콘에 가려졌다. 컨트롤 높이/모서리도 그때의 다듬어진 값을 그대로 가져온다. */
+.map-modal-overlay .map-search-field{ flex:1 1 220px; min-width:180px; }
+.map-modal-overlay .map-modal-search{
+  height:36px; padding:0 12px 0 33px; font-size:12.5px;
+  border:1px solid #DCE4EF; border-radius:8px; background:#fff;
+}
+.map-modal-overlay .map-modal-search:focus{ outline:none; border-color:var(--navy); box-shadow:0 0 0 3px rgba(8,47,103,.10); }
+.map-modal-overlay .map-modal-search::placeholder{ color:#9AA7B8; }
+.map-modal-overlay .map-modal-select{
+  height:36px; padding:0 30px 0 12px; font-size:12.5px; font-weight:600;
+  border:1px solid #DCE4EF; border-radius:8px; background-color:#fff; color:var(--text);
+  appearance:none; -webkit-appearance:none; -moz-appearance:none;
+  background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235E6E83' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat; background-position:right 10px center; cursor:pointer;
+}
+.map-modal-overlay .map-modal-select:hover{ border-color:#C3D0E2; }
+.map-modal-overlay .map-modal-toggle-group{ flex:none; }
+@media(max-width:900px){
+  /* §12 — 작은 화면은 지도 위 / 목록 아래 1열. 이때는 본문 전체가 세로로 흐르고
+     오른쪽 칼럼의 내부 스크롤 잠금을 풀어 페이지처럼 자연스럽게 읽히게 한다. */
+  .map-modal-overlay .map-modal-infocol{ overflow:visible; }
+  .map-modal-overlay .map-sidelist-block{ flex:0 0 auto; }
+  .map-modal-overlay .map-sidelist-body{ overflow-y:visible; }
+}
 .map-modal-head{ flex:none; padding:16px 22px; border-bottom:1px solid var(--line); display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
 .map-modal-title-wrap{ flex:1; min-width:0; }
 .map-modal-title{ font-size:18px; font-weight:700; color:var(--text); }
@@ -5006,6 +5057,25 @@ table.pdf-doc-table thead{ background:var(--bg); }
   margin-top:14px;
 }
 @media(min-width:1400px){ .crm-main-grid{ grid-template-columns: 1fr minmax(400px, 28%); } }
+/* §지도 팝업 전환 라운드(신규) §13 — 오른쪽 지도 카드(.crm-map-col)를 없앴으므로 2열
+   그리드를 1열로 되돌린다. 고객목록이 그 폭까지 자연스럽게 넓어져 빈 공간이 남지 않는다.
+   위쪽 2열 선언들(§고객관리 메인화면 재배치 라운드)은 지우지 않고 여기서 덮어쓴다 —
+   .crm-kpi-cell/.crm-list-col의 grid-column/row 지정도 함께 무력화한다. */
+.crm-main-grid{ grid-template-columns: minmax(0,1fr) !important; grid-template-rows: auto auto !important; }
+.crm-kpi-cell{ grid-column:1 !important; grid-row:1 !important; }
+.crm-list-col{ grid-column:1 !important; grid-row:2 !important; }
+/* §1 — 고정 지도 패널을 대신하는 compact 버튼. 칩 줄에 얹히는 한 줄짜리 버튼이라
+   "+ 고객 등록"(.list-add-btn)과 같은 높이/모서리를 쓰되 보조 동작이라 흰 배경이다. */
+.map-open-btn{
+  display:inline-flex; align-items:center; gap:6px; flex:none;
+  height:32px; padding:0 13px; border-radius:8px;
+  border:1px solid #D4DEEC; background:#fff; color:var(--navy);
+  font-size:12.5px; font-weight:700; cursor:pointer; white-space:nowrap;
+}
+.map-open-btn:hover{ background:#F4F7FC; border-color:#B9C9DF; }
+.map-open-btn:focus-visible{ outline:2px solid var(--navy); outline-offset:2px; }
+.map-open-btn-ico{ font-size:13.5px; line-height:1; }
+@media(max-width:600px){ .map-open-btn span:not(.map-open-btn-ico){ display:none; } .map-open-btn{ padding:0 10px; } }
 .crm-panel{ background:#fff; border:1px solid var(--line); border-radius:12px; padding:14px 16px 16px; box-shadow:0 2px 8px rgba(22,44,78,.035); }
 .crm-kpi-cell{ grid-column:1; grid-row:1; margin-bottom:0!important; }
 .crm-list-col{ min-width:0; grid-column:1; grid-row:2; }
@@ -5325,8 +5395,12 @@ table.pdf-doc-table thead{ background:var(--bg); }
    억지로 빈 칸을 만들지 않도록 .app 상단 패딩만 살짝 줄인다. */
 .app{ padding-top:20px!important; }
 /* "리마인드 필요" 카드 삭제 후 남은 4개 KPI가 한 줄에서 고르게 나눠 갖도록 — 너무
-   퍼지지 않게 max-width로 살짝 눌러준다. */
-.kpi-strip{ max-width:920px!important; }
+   퍼지지 않게 max-width로 살짝 눌러준다.
+   §지도 팝업 전환 라운드(신규) §13 — 이 920px 상한은 오른쪽 지도 카드가 있어서 KPI 줄이
+   실제로 ~1000px 안에 들어가던 시절의 값이다. 지도 카드를 빼면서 줄 폭이 1400px대가 되어
+   오른쪽에 눈에 띄는 빈 공간이 남았다. 상한을 풀어 고객목록과 같은 폭을 채우게 한다
+   (카드 개수·내용·계산은 그대로, flex:1 1 0으로 여전히 고르게 나눠 갖는다). */
+.kpi-strip{ max-width:none!important; }
 .kpi-item{ flex:1 1 0!important; }
 
 /* ==========================================================================
@@ -5985,6 +6059,12 @@ table.sales-import-table td{ padding:5px 8px; border-bottom:1px solid #EEF2F7; v
         <div class="list-filter-row-wrap" id="crmFilterRowWrap">
           <div class="list-filter-row" id="crmFilterRow"></div>
           <button type="button" id="crmAddBtn" class="list-add-btn list-add-btn-inline">+ 고객 등록</button>
+          <!-- §지도 팝업 전환 라운드(신규) §1 — 고정 지도 패널을 대신하는 compact 버튼.
+               큰 카드가 아니라 칩 줄에 얹히는 한 줄짜리 버튼이다. 클릭하면 기존
+               openMapDistributionModal()을 그대로 연다(새 팝업/새 렌더 경로 없음). -->
+          <button type="button" id="crmMapOpenBtn" class="map-open-btn" title="시공사 지역 분포를 크게 보기">
+            <span class="map-open-btn-ico" aria-hidden="true">🗺</span><span>시공사 지역 분포</span>
+          </button>
           <!-- §쓰레기통 중복 정리 라운드(신규) — KPI 스트립 오른쪽에 있던 쓰레기통 아이콘
                버튼을 이 줄(= "+ 고객 등록" 줄) 맨 오른쪽으로 옮겼다. id/배지 id/클릭 동작
                (filterKey='trash' → renderList() → renderTrashTab())은 그대로라
@@ -6061,15 +6141,13 @@ table.sales-import-table td{ padding:5px 8px; border-bottom:1px solid #EEF2F7; v
         <div class="co-list" id="crmList"></div>
         <div class="list-pagination" id="crmPagination"></div>
       </div>
-      <!-- 우: 지도 분포 카드 — §요청 14-19. 기존 팝업(openMapDistributionModal)이 쓰던
-           것과 완전히 같은 렌더 함수(renderMapModalBody/renderMapModalMain/
-           renderMapInfoPanel)를 그대로 재사용하되, 팝업으로 열지 않고 이 자리에 항상
-           마운트해 둔다(아래 mountMapDistributionInline, renderList()에서 최초 1회만 호출). -->
-      <div class="crm-panel crm-map-col">
-        <div class="crm-panel-title">시공사 지역 분포</div>
-        <div id="mapDistributionModalRoot" class="map-embed-root"></div>
-      </div>
     </div>
+    <!-- §지도 팝업 전환 라운드(신규) — 지도를 메인 우측 고정 카드(.crm-map-col)에서 빼고
+         팝업으로만 연다(§요청 1/14). 그 자리는 고객목록이 전체 폭으로 넓어져 채운다
+         (§13, 아래 .crm-main-grid 1열 규칙). 이 root는 이제 팝업 전용이라 그리드 밖
+         최상위에 둔다 — openMapDistributionModal이 여기에 .map-modal-overlay(position:fixed)를
+         그린다. 인라인 전용이던 .map-embed-root 클래스는 더 이상 붙이지 않는다. -->
+    <div id="mapDistributionModalRoot"></div>
     <!-- §TOP5 KPI 카드 이동 라운드(신규) — 페이지 맨 아래에 있던 "실적상승 업체 TOP 5"
          섹션(#crmRisingSection)을 없앴다. 같은 내용을 상단 KPI 5번째 카드의 팝오버에서
          보여준다(renderKpiStrip의 risingTop5 항목 + openRisingTop5Popover 참고).
@@ -14567,11 +14645,10 @@ window.SHIN2_CRM_APP_INIT = function(){
     // 계산(관리필요 버튼/모달/고객카드 배너가 계속 씀) 자체는 그대로 둔다.
     renderKpiStrip(filterCounts);
     renderTrashSummaryBtn(filterCounts);
-    // §고객관리 메인화면 재배치 라운드(신규) — 지도 분포를 팝업이 아니라 페이지에 항상
-    // 인라인으로 마운트한다(§요청 14-17). mountMapDistributionInline 내부에서 mapModalOpen
-    // 플래그로 최초 1회만 실제로 마운트하므로, 필터/검색/페이지 이동으로 renderList()가
-    // 반복 호출돼도 카카오맵 인스턴스를 매번 새로 만들지 않는다.
-    if(typeof mountMapDistributionInline === 'function') mountMapDistributionInline();
+    // §지도 팝업 전환 라운드(신규) — 지도는 더 이상 메인에 상시 마운트하지 않는다.
+    // "[시공사 지역 분포]" 버튼을 눌렀을 때만 openMapDistributionModal()이 연다(§요청 1/2).
+    // 목록을 다시 그려도 카카오맵을 건드리지 않으므로 renderList()가 더 가벼워진다.
+    // (mountMapDistributionInline 함수 자체는 지우지 않았다 — 호출부만 없앴다.)
 
     // §쓰레기통 통합 라운드(신규) — "쓰레기통" 탭(구 "삭제된 업체"+"협약종료" 두 탭)은
     // 위에서 이미 칩/KPI 스트립까지 정상적으로 그린 뒤(다른 탭과 똑같이 계속 클릭
@@ -34661,18 +34738,12 @@ window.SHIN2_CRM_APP_INIT = function(){
         <div class="map-modal-mapcol" id="mapModalMapCol">
           <div class="map-modal-canvas" id="mapModalCanvas"></div>
         </div>
+        <!-- §지도 팝업 전환 라운드(신규) §5 — 팝업은 "지도(좌 72%) + 목록(우 28%)" 2열이다.
+             예전 인라인 카드 시절의 3번째 칼럼(.map-modal-aptlistcol)은 인라인 마운트가
+             사라지면서 팝업에서는 항상 CSS로 숨겨지는 죽은 구획이 됐으므로 없앴다 —
+             그 자리에 있던 "시공사 목록"은 아래 renderMapInfoPanel이 오른쪽 칼럼 안에
+             그대로 그린다(§7 제목·총 건수·업체명/지역/공종/최근 실적). -->
         <div class="map-modal-infocol" id="mapModalInfoCol"></div>
-        <!-- §지도 탭 데이터 분리 라운드 — 이 구획은 시공사 탭에서만 그려진다(시공 아파트
-             탭은 infocol 자체가 아파트 목록이라 이 구획을 만들지 않는다). 그래서 제목·
-             데이터·건수 전부 시공사 기준이다(§1/§5). 클래스는 기존 것을 그대로 써서
-             레이아웃/스타일을 새로 만들지 않았다. -->
-        <div class="map-modal-aptlistcol" id="mapModalAptListCol">
-          <div class="map-embed-aptlist-head">
-            <span>시공사 목록</span>
-            <span><span class="map-embed-aptlist-count" id="mapEmbedSideListCount"></span><a href="#" class="map-embed-aptlist-reset" id="mapEmbedSideListReset" style="display:none;">전체 보기</a></span>
-          </div>
-          <div class="map-embed-aptlist-body" id="mapEmbedSideListBody"></div>
-        </div>
       </div>
     `;
     document.getElementById('mapFilterSearch').addEventListener('input', (e)=>{
@@ -34714,13 +34785,6 @@ window.SHIN2_CRM_APP_INIT = function(){
     mapPerfMark('extra render start (info panel)');
     renderMapInfoPanel(allEntries);
     mapPerfMark('extra render done (info panel)');
-    const embedAptResetLink = document.getElementById('mapEmbedSideListReset');
-    if(embedAptResetLink) embedAptResetLink.addEventListener('click', (e)=>{
-      e.preventDefault();
-      mapEmbedFocusedRegion = null;
-      renderMapEmbedCompanyList();
-    });
-    renderMapEmbedCompanyList();
     mapPerfMark('visible');
     mapPerfMark('total');
   }
@@ -34802,9 +34866,13 @@ window.SHIN2_CRM_APP_INIT = function(){
       ? mapFocusedCompanyList.companyIds.map(id=> filteredById.get(id)).filter(Boolean)
       : null;
     const listEntries = mapFilterState.listView === 'unlocated' ? unlocated : (focusedEntries || visibleEntries);
+    // §지도 팝업 전환 라운드(신규) §7 — 오른쪽 칼럼의 목록 제목을 "시공사 목록 · 총 N개"로
+    // 맞춘다. 건수는 지금 실제로 그려지는 목록(listEntries)의 수라 화면과 항상 일치한다
+    // (§8). 지역/미확인/포커스 상태일 때는 무엇을 보고 있는지 제목에 그대로 남긴다.
     const listTitle = mapFilterState.listView === 'unlocated'
       ? '위치 미확인 업체'
-      : (mapFocusedCompanyList ? `${mapFocusedCompanyList.label} 업체 (${listEntries.length}곳)` : '현재 지도 내 업체');
+      : (mapFocusedCompanyList ? `${mapFocusedCompanyList.label} 시공사` : '시공사 목록');
+    const listCountText = `총 ${listEntries.length.toLocaleString('ko-KR')}개`;
     infoCol.innerHTML = `
       <button type="button" class="map-embed-panel-close-btn" id="mapEmbedPanelCloseBtn" aria-label="지역 요약 패널 닫기">&times;</button>
       <div>
@@ -34822,14 +34890,25 @@ window.SHIN2_CRM_APP_INIT = function(){
           </div>
         `).join('') : '<div class="map-modal-empty" style="padding:8px 0;">표시할 업체가 없습니다.</div>'}
       </div>
-      <div id="mapCompanyListBlock">
-        <div class="map-info-block-title">${esc(listTitle)}${mapFilterState.listView === 'unlocated' || mapFocusedCompanyList ? ' <a href="#" id="mapBackToInBounds" style="font-weight:500;font-size:11px;">목록 닫기</a>' : ''}</div>
+      <div id="mapCompanyListBlock" class="map-sidelist-block">
+        <div class="map-info-block-title map-sidelist-head">
+          <span>${esc(listTitle)}</span>
+          <span class="map-sidelist-head-right">
+            <span class="map-sidelist-count">${esc(listCountText)}</span>
+            ${mapFilterState.listView === 'unlocated' || mapFocusedCompanyList ? '<a href="#" id="mapBackToInBounds">전체 보기</a>' : ''}
+          </span>
+        </div>
+        <div class="map-sidelist-body">
         ${listEntries.length ? listEntries.slice(0, 200).map(e=> `
           <div class="map-company-row" data-map-company="${esc(e.co.id)}">
             <div class="map-company-row-name">${esc(e.co.name)}</div>
-            <div class="map-company-row-sub">${esc(e.region || '지역 미확인')} · ${e.progress.hasAny ? esc(e.progress.stages[e.progress.currentIdx].label) : '단계 미확인'} · 총 실적 ${e.pourCount ? e.pourCount + '건' : '없음'}</div>
+            <!-- §7 시공사 행: 지역 · 공종 · 최근 실적. mapCompanyRowSubText가 지역(sigungu)·
+                 공종(mainCategory)·최근 실적 연도를 만들고, 그 뒤에 실적 건수를 덧붙인다 —
+                 전부 이미 계산된 값이거나 기존 조회 함수 결과다(새 판정 없음). -->
+            <div class="map-company-row-sub">${esc(mapCompanyRowSubText(e))} · ${e.pourCount ? '실적 ' + e.pourCount + '건' : '실적 없음'}</div>
           </div>
         `).join('') : '<div class="map-modal-empty" style="padding:8px 0;">표시할 업체가 없습니다.</div>'}
+        </div>
       </div>
       ${unlocated.length ? `
         <div class="map-unlocated-summary">
@@ -35189,8 +35268,36 @@ window.SHIN2_CRM_APP_INIT = function(){
     }
     kakao.maps.event.addListener(map, 'idle', refreshVisibleList);
 
+    /* §지도 팝업 전환 라운드(신규) §10 — 지도가 팝업 안에서 만들어지므로, 컨테이너 크기가
+       확정되기 전에 Map이 생성되면 카카오맵이 0×0으로 크기를 잡아 타일이 안 그려지거나
+       중앙이 어긋난다. 팝업이 실제로 레이아웃된 다음 프레임에 relayout()을 부르고, 원래
+       보여주려던 영역(setBounds로 잡아 둔 현재 bounds)을 그대로 다시 적용해 중심을
+       유지한다 — 새 중심/줌을 계산하지 않는다(§11 기존 동작 유지).
+       ResizeObserver로 컨테이너가 처음 0이 아닌 크기를 얻는 순간에도 한 번 더 맞춰,
+       느린 기기에서 한 프레임으로 부족한 경우까지 덮는다. */
+    const relayoutToFit = ()=>{
+      try{
+        if(!container || !container.clientWidth || !container.clientHeight) return false;
+        const keep = map.getBounds();
+        map.relayout();
+        if(keep && typeof map.setBounds === 'function') map.setBounds(keep);
+        return true;
+      }catch(err){ console.warn('지도 relayout 실패:', err); return true; }
+    };
+    requestAnimationFrame(()=> requestAnimationFrame(relayoutToFit));
+    let mapResizeObserver = null;
+    try{
+      if(typeof ResizeObserver === 'function'){
+        mapResizeObserver = new ResizeObserver(()=>{
+          if(relayoutToFit() && mapResizeObserver){ mapResizeObserver.disconnect(); mapResizeObserver = null; }
+        });
+        mapResizeObserver.observe(container);
+      }
+    }catch(err){ /* ResizeObserver 미지원 환경은 위 rAF 경로만으로 동작 */ }
+
     mapCanvasState = {
       map, clusterer,
+      relayout: relayoutToFit,
       getVisibleEntries(){
         const bounds = map.getBounds();
         if(!bounds) return [];
@@ -35199,6 +35306,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       destroy(){
         // 위 버그의 근본 조치 — 인스턴스를 버릴 때 idle 리스너 자체도 명시적으로 뗀다
         // (mapActiveTab 가드는 방어선 하나 더, 이건 애초에 안 불리게 막는 조치).
+        try{ if(mapResizeObserver){ mapResizeObserver.disconnect(); mapResizeObserver = null; } } catch(err){ /* 무시 */ }
         try{ kakao.maps.event.removeListener(map, 'idle', refreshVisibleList); } catch(err){ /* 무시 */ }
         try{ clusterer.clear(); clearClusterOverlays(); clearHeatmap(); infoWindow.close(); } catch(err){ /* 무시 — 팝업 자체가 사라지므로 잔여 정리는 최선 노력만 */ }
       }
@@ -35608,6 +35716,29 @@ window.SHIN2_CRM_APP_INIT = function(){
     }
     kakao.maps.event.addListener(map, 'idle', refreshVisible);
 
+    // §지도 팝업 전환 라운드(신규) §10 — 시공사 지도와 완전히 같은 조치를 아파트 지도에도
+    // 대칭으로 적용한다(팝업 안에서 컨테이너 크기가 늦게 확정되는 문제). 원래 보고 있던
+    // 영역(bounds)을 그대로 다시 적용해 중심을 유지한다.
+    const aptRelayoutToFit = ()=>{
+      try{
+        if(!container || !container.clientWidth || !container.clientHeight) return false;
+        const keep = map.getBounds();
+        map.relayout();
+        if(keep && typeof map.setBounds === 'function') map.setBounds(keep);
+        return true;
+      }catch(err){ console.warn('아파트 지도 relayout 실패:', err); return true; }
+    };
+    requestAnimationFrame(()=> requestAnimationFrame(aptRelayoutToFit));
+    let aptResizeObserver = null;
+    try{
+      if(typeof ResizeObserver === 'function'){
+        aptResizeObserver = new ResizeObserver(()=>{
+          if(aptRelayoutToFit() && aptResizeObserver){ aptResizeObserver.disconnect(); aptResizeObserver = null; }
+        });
+        aptResizeObserver.observe(container);
+      }
+    }catch(err){ /* 미지원 환경은 rAF 경로만으로 동작 */ }
+
     // §근처 아파트 검색 라운드 — 검색 지점을 반경 원(옅은 파란 점선)으로 지도에 표시하고
     // 그 지점으로 이동/확대한다. 새 판정 로직 없음 — applyAptFilters가 이미 계산한
     // aptFilterState.nearRadiusKm을 그대로 반지름으로 쓴다.
@@ -35632,6 +35763,7 @@ window.SHIN2_CRM_APP_INIT = function(){
 
     aptCanvasState = {
       map, clusterer,
+      relayout: aptRelayoutToFit,
       // §지도 클러스터 클릭 버그 수정 — 시공사 탭의 getVisibleEntries(§28786)와 동일
       // 패턴. renderAptInfoPanel이 이 함수가 있으면 "필터 결과 전체"가 아니라 "현재
       // 지도 화면 안에 보이는 아파트"만 목록에 보여줄 수 있게 한다.
@@ -37812,9 +37944,9 @@ window.SHIN2_CRM_APP_INIT = function(){
   }
 
   // ---------------- 진입 ----------------
-  // §고객관리 메인화면 재배치 라운드(신규) — "지도 분포" 버튼을 화면에서 없앴으므로(위
-  // HTML 수정 참고, 지도는 이제 mountMapDistributionInline으로 항상 인라인 표시) 이 버튼
-  // 클릭 바인딩도 함께 지운다. openMapDistributionModal 함수 자체는 그대로 남겨뒀다.
+  // §지도 팝업 전환 라운드(신규) — 지도를 다시 팝업으로만 연다(§요청 1/2). 고객목록 칩 줄의
+  // compact 버튼 [시공사 지역 분포] 하나가 유일한 진입점이다.
+  document.getElementById('crmMapOpenBtn').addEventListener('click', openMapDistributionModal);
   // §PDF 내보내기/목록 출력 통합 라운드(신규) — crmPdfExportBtn(중복 "목록 출력" 텍스트
   // 버튼)은 HTML에서 제거했으므로 그 바인딩도 함께 없앤다. 상단 "PDF 내보내기" 버튼
   // 하나만 openPdfExportModal을 연다(예전엔 openMouPdfMenuModal이었음).
