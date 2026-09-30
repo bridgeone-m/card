@@ -3242,6 +3242,52 @@ body.map-modal-lock{ overflow:hidden; }
 .cdash2-card{ padding:14px 15px; }
 
 /* ==========================================================================
+   §통합 고객 상세 팝업 라운드(신규) — 고객 상세 팝업과 협약 진행관리 팝업을 하나로 합치고
+   상단 가로 탭으로 나눈다(§요청 1/12/13). 탭바는 이미 이 파일에 있던 .cdash2-tabbar /
+   .cdash2-tab(얇은 underline tab, 선택 탭만 남색)을 그대로 쓴다 — 새 탭 디자인 시스템을
+   만들지 않았다. 여기서는 위치(헤더 아래 고정)와 패널 show/hide만 더한다.
+   ========================================================================== */
+/* §12 권장 크기(desktop width:min(1080px,84vw) / max-height:86vh)는 파일 맨 뒤의 기존
+   규칙이 이미 !important로 그대로 적용하고 있어 여기서 다시 선언하지 않는다. 다만 그
+   규칙은 height:auto라 탭마다 내용 높이가 달라지면 팝업 크기가 눈에 띄게 출렁인다 —
+   본문에 최소 높이만 줘서 탭을 바꿔도 창 크기가 튀지 않게 한다(상한 86vh는 그대로). */
+#chartBody{ min-height:min(520px, 58vh); }
+@media(max-width:760px){ #chartBody{ min-height:0; } }
+/* 탭바는 헤더 바로 아래 고정 — .chart-panel이 flex column이라 flex:none만으로 고정된다.
+   §16 "탭이 화면보다 많으면 가로 스크롤, 두 줄 금지" — nowrap + overflow-x:auto. */
+#chartTabBar{ flex:none; padding:8px 12px 0; background:var(--card, #fff); }
+#chartTabBar .cdash2-tabbar{ margin-bottom:0; flex-wrap:nowrap; scrollbar-width:thin; }
+#chartTabBar .cdash2-tab{ padding:9px 14px; }
+/* §12 "한 번에 모든 정보를 다 보여주지 말 것 — 탭을 눌러야 해당 정보가 나타나도록".
+   패널은 전부 DOM에 있고(기존 렌더 함수·이벤트 배선이 그대로 살아있게) 보이는 것만 활성. */
+.cdet-panel{ display:none; }
+.cdet-panel.is-active{ display:block; }
+/* §2 "큰 카드 여러 개 금지 — compact 2~3열 정보형 레이아웃" */
+.cdet-grid2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; align-items:start; }
+.cdet-stack{ display:flex; flex-direction:column; gap:10px; }
+@media(max-width:900px){ .cdet-grid2{ grid-template-columns:1fr; } } /* §16 작은 화면 1열 */
+/* 헤더 핵심정보 한 줄(담당자/연락처/이메일) — §1 "업체명 + 핵심정보". 남색 헤더 안이라
+   글자색만 밝게 맞춘다(새 카드/새 박스를 만들지 않는다). */
+.cdet-head-contacts{ display:flex; flex-wrap:wrap; gap:4px 14px; margin-top:3px; }
+.cdet-head-contact{ font-size:11.5px; color:rgba(255,255,255,.72); white-space:nowrap; }
+.cdet-head-contact b{ color:#fff; font-weight:650; margin-left:4px; }
+/* 탭 안 구획 제목(협약 진행/질문지/서류 패널에서 공통) */
+.cdet-sec{ margin-bottom:12px; }
+.cdet-sec:last-child{ margin-bottom:0; }
+.cdet-sec-title{ font-size:12px; font-weight:800; color:var(--text-muted); letter-spacing:.2px; margin:0 0 7px; }
+.cdet-empty{ font-size:12px; color:var(--text-faint); padding:10px 2px; }
+/* 최근 접촉기록 탭 — 한 줄에 날짜·유형, 그 아래 내용 한 줄(말줄임). 클릭하면 기존 상세
+   팝업(openContactDetailModal)이 전체 원문을 보여주므로 여기서는 잘라도 정보 손실 없음. */
+.cdet-panel[data-cdet-panel="activity"] .cdash2-timeline-item{ padding-bottom:9px; }
+.cdet-panel[data-cdet-panel="activity"] .cdash2-timeline-text{ margin-top:2px; color:var(--text-muted); font-size:12px; }
+.cdet-panel[data-cdet-panel="activity"] .cdash2-timeline-scroll{ max-height:none; }
+/* 매출현황 탭 — .cdash2-summary-row는 원래 3열 그리드의 가운데 칼럼(좁은 첫 열 + 1fr)에
+   맞춰진 격자다. 탭에서는 카드 하나가 전체 폭을 쓰게 한다(기존 .cdash2-col-stack 규칙과
+   같은 방식 — 카드 내용·계산은 그대로). */
+.cdet-stack .cdash2-summary-row{ grid-template-columns:1fr; margin-bottom:0; }
+.cdet-stack .cdash2-revenue-card .cdash2-chart-outer{ min-height:150px; }
+
+/* ==========================================================================
    §정답 시안 정밀 반영 라운드(신규) — 사용자가 첨부한 상세 참고 스크린샷을 "정답"으로
    지정하고, 여러 차례 실제 브라우저 스크린샷과 비교하며 다듬은 최종 오버라이드 블록.
    전부 기존 클래스/기존 렌더 함수의 출력 위에 스타일만 덧씌운다 — 새 DOM 구조나 새
@@ -16856,19 +16902,58 @@ window.SHIN2_CRM_APP_INIT = function(){
   // 'map'  = 지도 분포 팝업 위에서 연 경우(X/Esc/뒤로가기 버튼을 눌러도 카드만 닫고
   // 지도 분포 팝업은 그대로 유지 — closeMapDistributionModal을 호출하지 않는다).
   let chartOpenSource = 'list';
+  /* ==========================================================================
+     §통합 고객 상세 팝업 라운드(신규) — 요청: "고객 상세 팝업"과 "협약 진행관리 팝업"을
+     완전히 하나로 합친다. 데이터를 합치는 게 아니라 보는 UI만 하나로 만드는 작업이다 —
+     읽는 데이터·계산·저장 경로는 전부 기존 것을 그대로 쓴다(§14/§15).
+
+     탭 6개. 각 탭 패널은 전부 DOM에 함께 만들어 두고(기존 렌더 함수가 자기 컨테이너를
+     찾아 그리고, 이벤트 배선이 그대로 살아있게) 활성 패널만 보인다(.is-active) —
+     "겉모습만 합치고 이벤트 연결이 끊기는 실수"(§17)를 구조적으로 막기 위해서다.
+     ========================================================================== */
+  const CUSTOMER_DETAIL_TABS = [
+    ['overview','기본정보'],
+    ['activity','최근 접촉기록'],
+    ['sales','매출현황'],
+    ['agreement','협약 진행'],
+    ['questionnaire','질문지 상담'],
+    ['documents','서류']
+  ];
+  const CUSTOMER_DETAIL_TAB_KEYS = CUSTOMER_DETAIL_TABS.map(t=> t[0]);
+  function normalizeCustomerDetailTab(tab){
+    return CUSTOMER_DETAIL_TAB_KEYS.includes(tab) ? tab : 'overview';
+  }
+  /* 통합 진입점(§11) — 어느 화면에서 열든 같은 팝업을 열고, 처음 열리는 탭만 다르다(§9).
+       openCustomerDetail(id)                  고객관리·검색 등 → 기본정보
+       openCustomerDetail(id,'agreement')      MOU 진행상황     → 협약 진행
+       openCustomerDetail(id,'sales')          매출 화면        → 매출현황
+       openCustomerDetail(id,'questionnaire')  질문지           → 질문지 상담
+     openCard(id, opts)는 그대로 남겨 기존 호출부(지도 source:'map' 등)를 건드리지 않는다 —
+     openCustomerDetail이 그 위에 initialTab만 얹은 얇은 래퍼다. */
+  function openCustomerDetail(companyId, initialTab, opts){
+    openCard(companyId, Object.assign({}, opts || {}, { tab: normalizeCustomerDetailTab(initialTab) }));
+  }
   function openCard(id, opts){
     const co = D.findCompany(id);
     if(!co){ return; }
     const wasClosed = cardView.style.display !== 'block';
+    const sameCompany = currentCompanyId === id && !wasClosed;
     currentCompanyId = id;
     chartOpenSource = (opts && opts.source === 'map') ? 'map' : 'list';
+    // §8 "마지막으로 본 탭은 팝업을 닫기 전까지 유지" — 같은 업체를 다시 그릴 때(수정 저장
+    // 등으로 refreshChart가 불릴 때)는 보던 탭을 유지하고, 새로 열 때만 initialTab을 쓴다.
+    if(opts && opts.tab) cardState.detailTab = normalizeCustomerDetailTab(opts.tab);
+    else if(!sameCompany) cardState.detailTab = 'overview';
     cardState.evidenceOpen = {}; // 업체를 새로 열 때만 근거 펼침 상태 초기화 — 같은 업체 재렌더링(수정 등) 중에는 유지
     cardState.questionLinkOpenId = null;
     cardState.memoModal = null;
     cardState.sectionEdit = {};
     cardState.progressStageSel = null; // §진행 기록 라운드: 업체를 새로 열 때만 선택 단계 초기화
     cardState.pourExpanded = false; cardState.pourYearFilter = 'all'; // §POUR 시공실적 라운드
-    cardState.accordionOpen = { info: false, docs: false, insight: false }; // §고객카드 아코디언 라운드/§고객 성향 컬럼 라운드 §4: 업체를 새로 열 때는 항상 접힘부터 시작(§4, 별도 저장값 없음)
+    // §통합 고객 상세 팝업 라운드 — info/docs는 이제 "기본정보 탭"과 "서류 탭" 그 자체라
+    // 접힌 채로 열면 탭을 눌렀는데 빈 화면이 보인다. 아코디언 구조(renderReactionsCol /
+    // renderDocStatusBlock)는 그대로 두고 초기값만 펼침으로 바꾼다 — 접기 토글은 그대로 동작.
+    cardState.accordionOpen = { info: true, docs: true, insight: false };
     cardState.insightSummaryExpanded = false; // §인사이트 요약 표시 라운드 §1/§8: 업체를 새로 열 때는 항상 "핵심 요약"부터 시작(전체보기는 매번 다시 눌러야 함)
     cardState.insightQuickStep = 'note'; cardState.insightAdvancedOpen = false; cardState.insightParsedPreview = null; // §1차미팅 메모 자동정리 라운드: 업체를 새로 열 때는 항상 메모 입력 화면부터 시작
     cardState.insightSubOpen = null; // §고객 인사이트 수정화면 정리 라운드: 접이식 소그룹 열림 상태도 업체마다 새로 계산(이 업체 데이터 기준으로 자동 펼침)
@@ -16952,7 +17037,7 @@ window.SHIN2_CRM_APP_INIT = function(){
   // sectionEdit: 영업 대시보드 카드의 각 영역별 독립 "수정" 토글(§15) — 전체 카드를 한 번에
   // 편집모드로 바꾸는 대신, 영역 제목 옆 작은 [수정]을 누른 영역만 편집 상태가 된다. 키:
   // header/basicInfo/wants/situation/interest/questions/reactions/nextActions/summary.
-  let cardState = { editingCompany: false, chartEditing: false, evidenceOpen: {}, questionLinkOpenId: null, memoModal: null, sectionEdit: {}, progressStageSel: null, pourExpanded: false, pourYearFilter: 'all', accordionOpen: { info: false, docs: false } };
+  let cardState = { editingCompany: false, chartEditing: false, evidenceOpen: {}, questionLinkOpenId: null, memoModal: null, sectionEdit: {}, progressStageSel: null, pourExpanded: false, pourYearFilter: 'all', accordionOpen: { info: false, docs: false }, detailTab: 'overview' };
   // 다른 탭(v2 또는 CRM 다른 탭)에서 shin2-companies-staging이 바뀌었을 때 지금 이 탭이
   // 편집 폼을 띄워둔 상태라면 storage 이벤트로 인한 재렌더링이 사용자의 입력 중인 내용을
   // 덮어쓰지 않도록 막는 플래그(§ crm 신규등록 폼).
@@ -17136,66 +17221,77 @@ window.SHIN2_CRM_APP_INIT = function(){
     cardView.innerHTML = `
       <div class="chart-overlay" id="chartOverlay">
         <div class="chart-panel" role="dialog" aria-modal="true" aria-label="고객 상세" aria-labelledby="chartCoNameTitle">
-          <!-- §팝업 전체 크기 축소 라운드 §6: 헤더/하단 버튼을 스크롤 영역(.cdash-body,
-               flex:1;overflow-y:auto는 그대로) 밖으로 꺼내 .chart-panel의 형제로 뒀다 —
-               .chart-panel이 이미 display:flex;flex-direction:column이라 이 둘은 기본
-               flex-shrink만으로 상단/하단에 고정되고, 가운데 .cdash-body만 스크롤된다. -->
+          <!-- §통합 고객 상세 팝업 라운드(신규) — 업체명+핵심정보 헤더 / 상단 가로 탭바 /
+               탭별 본문 / 하단 바. 헤더와 탭바, 하단 바는 .chart-panel(flex column)의
+               직계 자식이라 flex-shrink만으로 고정되고 가운데 .cdash-body만 스크롤된다.
+               탭 패널은 6개 전부 DOM에 만들어 두고 활성 패널만 .is-active로 보인다 —
+               기존 렌더 함수들이 각자 자기 컨테이너 id를 찾아 그리고 이벤트를 붙이는
+               구조라(이 파일의 관례), 패널을 지웠다 그렸다 하면 배선이 끊긴다(§17). -->
           <div id="chartHeader"></div>
+          <div id="chartTabBar"></div>
           <div class="cdash-body" id="chartBody">
-            <!-- §고객 정보/고객 인사이트/서류 현황의 실제 편집 UI는 여기 그대로(#cdashHeaderPopover)
-                 재사용한다 — renderInsightBlock/renderReactionsCol/renderDocStatusBlock은
-                 한 글자도 안 바꿨다. 새 카드(인사이트 태그 카드/하단 서류 바)를 클릭하면 이
-                 팝오버가 해당 section만 열린 채로 뜬다(§ openHeaderSection 그대로 재사용). -->
+            <!-- 헤더 "💡 고객 인사이트" 버튼이 여는 팝오버. 고객 정보(#cdashReactionsCol)는
+                 이제 기본정보 탭 본문으로 옮겼고, 인사이트 편집만 여기 남는다. -->
             <div class="cdash-header-popover" id="cdashHeaderPopover">
               <button type="button" class="cdash-header-popover-close" id="cdashHeaderPopoverClose" aria-label="닫기">&times;</button>
               <div class="cdash-header-popover-section" id="cdashInsightBlock"></div>
-              <div class="cdash-header-popover-section" id="cdashReactionsCol"></div>
             </div>
             <div id="cdashMgmtNeedBanner"></div>
-            <div id="cdashInfoStrip"></div>
-            <!-- §상세 팝업 단순화 라운드(신규) — 이전엔 여기에 시각적 탭바(#cdashTabBar,
-                 renderTabBar)가 있었다. 실제 탭 전환 로직은 없었고(클릭하면 해당 카드로
-                 스크롤만 함) 사용자 요청대로 완전히 뺐다 — CDASH_TABS 배열과
-                 renderTabBar 함수 자체는 지우지 않았다(호출부도 그대로 둠, 대상 컨테이너가
-                 없으면 조용히 no-op). -->
-            <!-- §정답 시안 정밀 반영 라운드(신규) — 사용자가 첨부한 상세 참고 스크린샷을
-                 "정답"으로 못박고 배치를 다시 맞췄다: 좌(기업요약/업체관계/고객인사이트/
-                 상담메모) · 중(매출현황/최근접촉기록) · 우(최근POUR시공실적/질문지상담요약).
-                 이전 라운드 대비 바뀐 것은 컨테이너 위치뿐이다 — renderCompanySummaryCard/
-                 renderCompanyRelationsCard/renderInsightTagsCard/renderMemoPreviewCard/
-                 renderSummaryRow2/renderContactTimelineCard/renderPourResultsCard/
-                 renderQuestionnaireSummaryCard 전부 기존 함수 그대로 재사용, 데이터/로직
-                 무변경(§ "기존 함수 출력 그대로, 컨테이너만 재배치" 원칙 유지). 시공실적을
-                 가운데 열 맨 아래→오른쪽 열 맨 위로 옮긴 것이 이번 라운드의 핵심 변경점
-                 (§요청 "시공실적을 보려고 한참 스크롤해야 하는 구조 금지"). -->
-            <!-- §상세 팝업 단순화 라운드(신규) — 사용자 확인 반영: 탭 메뉴(#cdashTabBar)/
-                 기업 요약(#cdashCompanySummaryCard)/상담 메모(#cdashMemoPreviewCard)/
-                 질문지 상담 요약(#cdashQuestionnaireCard)/서류 현황(#cdashDocsSectionWrap)
-                 컨테이너를 화면에서 뺐다. 렌더 함수(renderTabBar/renderCompanySummaryCard/
-                 renderMemoPreviewCard/renderQuestionnaireSummaryCard/renderDocStatusBlock/
-                 renderDocsSection) 자체와 데이터는 전혀 안 지웠다 — 전부 "const wrap =
-                 document.getElementById(...); if(!wrap) return;" 가드가 이미 있어(이
-                 파일의 기존 관례, §고객카드 전면 개선 라운드가 먼저 세운 패턴) 대상 컨테이너가
-                 없으면 조용히 아무 것도 안 그리고 끝난다 — renderChart() 안의 호출부도 그대로
-                 둬서 안전하다(다른 곳에서 이 함수들을 다시 쓸 때도 그대로 재사용 가능).
-                 핵심 4개(고객 인사이트/매출 현황/최근 POUR 시공실적/최근 접촉 기록)만 남기고,
-                 "최근 접촉 기록"은 표 아래 전체 폭 1줄로 뺐다(§요청 10 "아래: 최근 접촉
-                 기록"). -->
-            <!-- §고객 상세 팝업 재구성(3열) 라운드(신규) — "고객 인사이트" 카드를 왼쪽 열에서
-                 빼고(§요청 6, 네이비 헤더의 버튼/칩으로 이동, 아래 renderChartHeader 참고)
-                 그 자리에 "최근 접촉 기록"을 요약 카드로 옮겼다(§요청 5, 예전엔 그리드
-                 밖 전체 폭 1줄이었다). renderInsightTagsCard 함수 자체는 지우지 않았다
-                 (호출부만 없앰, § 기존 로직 삭제 금지 원칙) — 대상 컨테이너가 없으면
-                 조용히 no-op. -->
-            <div class="cdash2-body-grid cdash2-body-grid-3col">
-              <div class="cdash2-col-stack" id="cdashColLeft">
+
+            <!-- ① 기본정보 (§2) — compact 2열 정보형. 큰 카드 여러 개로 만들지 않는다. -->
+            <div class="cdet-panel" data-cdet-panel="overview">
+              <div id="cdashInfoStrip"></div>
+              <div class="cdet-grid2">
+                <div id="cdashCompanySummaryCard"></div>
+                <div id="cdashRelationsCard"></div>
+              </div>
+              <div class="cdash2-docs-section" style="margin-top:10px;" id="cdashReactionsCol"></div>
+            </div>
+
+            <!-- ② 최근 접촉기록 (§3) — 활동/상담/메모/전화·미팅 기록을 한 탭에. -->
+            <div class="cdet-panel" data-cdet-panel="activity">
+              <div class="cdet-stack">
                 <div id="cdashTimelineCard"></div>
+                <div id="cdashMemoPreviewCard"></div>
               </div>
-              <div class="cdash2-col-stack" id="cdashColMid">
+            </div>
+
+            <!-- ③ 매출현황 (§4) — 상단 compact KPI(renderSummaryRow2) → 아래 실적 상세. -->
+            <div class="cdet-panel" data-cdet-panel="sales">
+              <div class="cdet-stack">
                 <div id="cdashSummaryRow"></div>
-              </div>
-              <div class="cdash2-col-stack" id="cdashColRight">
                 <div id="cdashPourResultsCard"></div>
+              </div>
+            </div>
+
+            <!-- ④ 협약 진행 (§5) — 기존 협약 진행관리 팝업 본문을 그대로 이 컨테이너에
+                 그린다. id를 #agreementPopupBody 그대로 둬서 renderAgreementPopupBody와
+                 그 안의 모든 이벤트 배선이 한 글자도 안 바뀌고 그대로 동작한다. -->
+            <div class="cdet-panel" data-cdet-panel="agreement">
+              <div id="agreementPopupBody"></div>
+            </div>
+
+            <!-- ⑤ 질문지 상담 (§6) — 질문지 등록/교체·상/중/하 평가·상담 메모·Q1~Q8 답변,
+                 그리고 미팅 후 요청자료(발송대기/발송완료)까지 한 탭에 모은다. -->
+            <div class="cdet-panel" data-cdet-panel="questionnaire">
+              <div class="cdet-stack">
+                <div id="cdashQuestionnaireWork"></div>
+                <div id="cdashQuestionnaireCard"></div>
+                <div class="cdash2-docs-section" id="cdashMaterialsBlock"></div>
+              </div>
+            </div>
+
+            <!-- ⑥ 서류 (§7) — 협약 서류 체크리스트(명함/사업자등록증/로고/통장사본/
+                 물품공급계약서/MOU 체결서)와 실제 업로드 드롭존을 한 탭에. -->
+            <div class="cdet-panel" data-cdet-panel="documents">
+              <div class="cdet-stack">
+                <section class="cdash2-docs-section">
+                  <!-- 보유 개수는 아래 체크리스트가 자기 줄("서류 N/6 확인")로 이미
+                       보여주므로 제목에 다시 넣지 않는다. -->
+                  <div class="cdet-sec-title">협약 서류 체크</div>
+                  <div id="agreementDocSection"></div>
+                </section>
+                <div class="cdash2-docs-section" id="cdashDocStatusBlock"></div>
               </div>
             </div>
           </div>
@@ -17205,31 +17301,34 @@ window.SHIN2_CRM_APP_INIT = function(){
     `;
     document.body.classList.add('chart-lock');
     renderChartHeader(co);
+    renderCustomerDetailTabBar(co);
     renderMgmtNeedBanner(co);
     renderInfoStrip(co);
-    renderTabBar(co);
     renderCompanySummaryCard(co);
     renderSummaryRow2(co);
     renderContactTimelineCard(co);
     renderQuestionnaireSummaryCard(co);
     renderPourResultsCard(co);
     renderMemoPreviewCard(co);
+    renderRequestedMaterialsSection(co);
     renderFooterBar(co);
 
-    // 팝오버 안 실제 콘텐츠(고객 정보/고객 인사이트/서류 현황)는 그대로 채워 둔다 — 열려있지
-    // 않으면 화면엔 안 보이지만(.cdash-header-popover-section에 is-open 없으면 display:none),
-    // 새 카드를 클릭했을 때 openHeaderSection이 바로 보여줄 수 있게 항상 최신 상태로 렌더.
+    // 고객 정보(업체 기본정보 + 반응/성향 + 업체 관계)는 기본정보 탭 본문에 그대로 그린다.
+    // 순서가 중요하다 — renderReactionsCol이 #crmBasicInfo와 #cdashRelationsCard가 쓸
+    // 자리를 만든 뒤에 그 둘을 채워야 한다(기존 renderChart의 호출 순서 그대로 유지).
     renderReactionsCol(co);
-    // §업체 관계 헤더 이관 라운드(신규) — #cdashRelationsCard가 이제 메인 그리드가 아니라
-    // renderReactionsCol이 그리는 "고객 정보" 팝오버 안(#crmBasicInfo 옆)에 있으므로, 그
-    // div가 실제로 DOM에 생긴 뒤(renderReactionsCol 호출 이후)에 그려야 한다 — 순서를
-    // 바꾸면 wrap이 없어 조용히 no-op된다(renderCompanyRelationsCard의 `if(!wrap) return`).
     renderCompanyRelationsCard(co);
     renderInsightBlock(co);
     if(cardState.chartEditing){ renderBasicInfoForm(co); }
     else { renderBasicInfoView(co); }
     renderDocCounts(co);
     renderDocsSection(co);
+    // 협약 진행 / 질문지 상담(등록·교체 카드) / 협약 서류 체크 — 기존 협약 진행관리 팝업의
+    // 렌더·배선 함수를 그대로 호출한다(새 구현 없음). 위 카드들이 먼저 그려진 뒤에 불러야
+    // 이 함수가 마지막에 하는 bindQuestionnaireWork/bindAgreementDocChecklistHandlers가
+    // 자기 DOM을 찾을 수 있다.
+    renderAgreementPopupBody(co.id);
+    applyCustomerDetailTab();
 
     const popoverClose = document.getElementById('cdashHeaderPopoverClose');
     if(popoverClose) popoverClose.addEventListener('click', closeHeaderSection);
@@ -17331,6 +17430,14 @@ window.SHIN2_CRM_APP_INIT = function(){
           <div>
             <div class="cdash2-title" id="chartCoNameTitle" title="${esc(co.name)}">${esc(co.name)}</div>
             <div class="cdash2-deal-summary">${esc(dealSummary)}${relationsInline ? ' · ' + esc(relationsInline) : ''}</div>
+            <!-- §통합 고객 상세 팝업 라운드 §1 "업체명 + 담당자/연락처/이메일 등 핵심정보" —
+                 예전 협약 진행관리 팝업 상단(.agr-top-info)이 보여주던 바로 그 세 가지를
+                 통합 팝업 헤더로 옮겼다(같은 필드, 같은 '—' 표기). -->
+            <div class="cdet-head-contacts">
+              <span class="cdet-head-contact">담당자<b>${esc(co.contactName || '—')}</b></span>
+              <span class="cdet-head-contact">연락처<b>${esc(co.phone || co.mobile || '—')}</b></span>
+              <span class="cdet-head-contact">이메일<b>${esc(co.email || '—')}</b></span>
+            </div>
           </div>
           <span class="cdash2-tag${isDone ? ' is-done' : ''}">${esc(stageText)}</span>
           ${isCore ? `<span class="cdash2-tag is-core">핵심 고객</span>` : ''}
@@ -17349,6 +17456,58 @@ window.SHIN2_CRM_APP_INIT = function(){
     }
     const insightBtn = document.getElementById('chartHeaderInsightBtn');
     if(insightBtn) insightBtn.addEventListener('click', ()=> openHeaderInsightModal(co));
+  }
+
+  /* §통합 고객 상세 팝업 라운드(신규) — 상단 가로 탭바(§1/§13/§16).
+     세로탭 금지, 두 줄 금지 — nowrap + 가로 스크롤(위 #chartTabBar CSS). 디자인은 이 파일에
+     이미 있던 .cdash2-tabbar/.cdash2-tab(얇은 underline, 선택 탭만 남색)을 그대로 쓴다.
+     탭 라벨 옆 숫자는 지어내지 않는다 — 실제로 셀 수 있는 것(접촉기록/서류 등록 수)만 붙인다. */
+  function customerDetailTabBadge(key, co){
+    try{
+      if(key === 'activity'){ const n = buildContactHistoryItems(co).length; return n ? String(n) : ''; }
+      if(key === 'documents'){
+        const list = buildDocStatusList(co);
+        return list.length ? (list.filter(d=> d.count > 0).length + '/' + list.length) : '';
+      }
+    }catch(e){ /* 배지는 보조 정보라 계산 실패 시 조용히 생략 */ }
+    return '';
+  }
+  function renderCustomerDetailTabBar(co){
+    const wrap = document.getElementById('chartTabBar');
+    if(!wrap) return;
+    const cur = normalizeCustomerDetailTab(cardState.detailTab);
+    wrap.innerHTML = `
+      <div class="cdash2-tabbar" role="tablist" aria-label="고객 상세 탭">
+        ${CUSTOMER_DETAIL_TABS.map(([key,label])=>{
+          const badge = customerDetailTabBadge(key, co);
+          return `<button type="button" class="cdash2-tab${key===cur?' is-active':''}" role="tab"
+            aria-selected="${key===cur?'true':'false'}" data-cdet-tab="${esc(key)}">${esc(label)}${
+            badge ? ` <span class="chip-count">${esc(badge)}</span>` : ''}</button>`;
+        }).join('')}
+      </div>`;
+    wrap.querySelectorAll('[data-cdet-tab]').forEach(btn=> btn.addEventListener('click', ()=>{
+      setCustomerDetailTab(btn.getAttribute('data-cdet-tab'));
+    }));
+  }
+  /* 탭 전환 — 팝업을 닫거나 다시 그리지 않고 패널 show/hide만 한다(§8 "탭 간 이동해도
+     팝업이 닫히지 않고 현재 업체 유지"). 각 패널은 이미 렌더·배선이 끝나 있으므로
+     전환 비용이 없고, 어떤 이벤트 핸들러도 다시 붙일 필요가 없다. */
+  function applyCustomerDetailTab(){
+    const cur = normalizeCustomerDetailTab(cardState.detailTab);
+    document.querySelectorAll('#chartBody [data-cdet-panel]').forEach(el=>{
+      el.classList.toggle('is-active', el.getAttribute('data-cdet-panel') === cur);
+    });
+    document.querySelectorAll('#chartTabBar [data-cdet-tab]').forEach(btn=>{
+      const on = btn.getAttribute('data-cdet-tab') === cur;
+      btn.classList.toggle('is-active', on);
+      btn.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+  }
+  function setCustomerDetailTab(tab){
+    cardState.detailTab = normalizeCustomerDetailTab(tab);
+    applyCustomerDetailTab();
+    const body = document.getElementById('chartBody');
+    if(body) body.scrollTop = 0; // 탭을 바꾸면 그 탭의 맨 위부터 보이게
   }
 
   // ---- §고객카드 전면 개선 라운드 [2] 기본정보 줄 — 대표자/전화번호/주소 + [고객 정보
@@ -18175,13 +18334,20 @@ window.SHIN2_CRM_APP_INIT = function(){
   function renderContactTimelineCard(co){
     const wrap = document.getElementById('cdashTimelineCard');
     if(!wrap) return;
-    const allItems = buildContactHistoryItems(co);
-    const items = allItems.slice(0, 6);
+    // §통합 고객 상세 팝업 라운드(신규) §3 — 이제 이 카드가 "최근 접촉기록" 탭 전체를
+    // 차지하므로, 3열 그리드에 끼어 있던 시절의 6건 요약 대신 최신순 전체 목록을 보여준다.
+    // 데이터는 그대로 buildContactHistoryItems(co) 하나 — 활동기록(전화/미팅/상담)과 메모를
+    // 이미 합쳐 최신순 정렬해 주는 기존 함수다(§14 새 데이터 만들지 않음).
+    // 열은 날짜 / 유형 / 내용. "담당자"는 activity·memo 레코드 어디에도 없는 필드라
+    // 지어내지 않고 뺐다(이 파일의 기존 원칙, openContactDetailModal 주석과 동일).
+    const items = buildContactHistoryItems(co);
     wrap.innerHTML = `
       <div class="cdash2-card">
         <div class="cdash2-card-title" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-          <span><span aria-hidden="true">⭐</span> 최근 접촉 기록</span>
-          ${allItems.length ? `<button type="button" class="co-text-action" id="cdashContactReqBtn" style="font-size:11px;padding:2px 8px;white-space:nowrap;">전체 ${esc(allItems.length)}건 보기 &gt;</button>` : ''}
+          <span><span aria-hidden="true">⭐</span> 최근 접촉 기록 ${items.length ? `<span class="chip-count">${esc(items.length)}</span>` : ''}</span>
+          <!-- §3 "[+ 접촉기록 추가]" — 새 저장 경로를 만들지 않고, 지금도 접촉기록(상담 메모)을
+               남기는 기존 입력창(renderMemoPanel의 작성 모드)을 그대로 연다. -->
+          <button type="button" class="co-text-action primary" id="cdashContactAddBtn" style="font-size:11.5px;padding:3px 10px;white-space:nowrap;">+ 접촉기록 추가</button>
         </div>
         ${items.length ? `
           <div class="cdash2-timeline cdash2-timeline-scroll">
@@ -18192,14 +18358,19 @@ window.SHIN2_CRM_APP_INIT = function(){
                   <span class="cdash2-timeline-date">${esc(fmtMonthDayShort(it.raw))}</span>
                   <span class="cdash2-timeline-type">${esc(it.type)}</span>
                 </div>
+                <div class="cdash2-timeline-text">${esc(it.text)}</div>
               </div>
             `).join('')}
           </div>
         ` : `<div class="chart-empty">최근 접촉 기록 없음</div>`}
       </div>
     `;
-    const reqBtn = document.getElementById('cdashContactReqBtn');
-    if(reqBtn) reqBtn.addEventListener('click', (e)=>{ e.stopPropagation(); openContactHistoryModal(co); });
+    const addBtn = document.getElementById('cdashContactAddBtn');
+    if(addBtn) addBtn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      memoPanelState = { editingId: null, drafting: true, deleteConfirmId: null };
+      renderMemoPanel(co);
+    });
     wrap.querySelectorAll('[data-timeline-idx]').forEach(el=>{
       const openIt = (e)=>{ e.stopPropagation(); openContactDetailModal(items[Number(el.getAttribute('data-timeline-idx'))]); };
       el.addEventListener('click', openIt);
@@ -18452,7 +18623,16 @@ window.SHIN2_CRM_APP_INIT = function(){
     // §디자인 개편 라운드(신규) — "docs"(서류 현황)는 더 이상 이 팝오버 안에 있지 않다
     // (#cdashDocStatusBlock이 화면 하단 상시 노출 "관련 문서" 섹션으로 옮겨짐, renderFooterBar
     // 참고) — 매핑에서 빼서 실수로 빈 팝오버가 뜨는 일을 막는다.
-    const ids = { insight:'cdashInsightBlock', info:'cdashReactionsCol' };
+    // §통합 고객 상세 팝업 라운드(신규) — "고객 정보"(info)는 이제 팝오버가 아니라
+    // "기본정보" 탭 본문 그 자체다. 팝오버로 띄우는 대신 그 탭으로 이동하고, 편집 영역이
+    // 화면 안에 들어오도록 스크롤만 맞춘다(편집 폼·저장 로직은 기존 그대로).
+    if(section === 'info'){
+      setCustomerDetailTab('overview');
+      const el = document.getElementById('cdashReactionsCol');
+      if(el) requestAnimationFrame(()=> el.scrollIntoView({ behavior:'smooth', block:'nearest' }));
+      return;
+    }
+    const ids = { insight:'cdashInsightBlock' };
     const popover = document.getElementById('cdashHeaderPopover');
     const target = document.getElementById(ids[section]);
     if(!popover || !target) return;
@@ -20727,7 +20907,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     wrap.querySelectorAll('[data-workq-open-co]').forEach(btn=> btn.addEventListener('click', ()=>{
       // §협약 진행관리 팝업 라운드(신규): 업무관리에서 업체명 클릭 -> 고객카드 대신
       // 이 팝업(고객카드를 열려면 팝업 안 "고객카드 보기" 버튼을 눌러야 함, §요청 [1]).
-      openAgreementPopup(btn.getAttribute('data-workq-open-co'));
+      openCustomerDetail(btn.getAttribute('data-workq-open-co'), 'agreement'); // §9 MOU 진행상황 → 협약 진행 탭
     }));
     wrap.querySelectorAll('[data-workq-mail]').forEach(btn=> btn.addEventListener('click', ()=>{
       // §요청 [8] 연결 위치: 업무관리 1차미팅 대상(type==='m1') 버튼은 firstMeeting 템플릿.
@@ -23208,7 +23388,7 @@ window.SHIN2_CRM_APP_INIT = function(){
   function openCardFromWorkQueue(id){
     document.getElementById('workQueueView').style.display = 'none';
     updateTopTabsUI('customer');
-    openCard(id);
+    openCustomerDetail(id, 'overview');
   }
 
   /* ==========================================================================
@@ -24132,9 +24312,12 @@ window.SHIN2_CRM_APP_INIT = function(){
     loadPreview();
   }
 
+  // 통합 팝업으로 합쳐진 뒤로는 "협약 진행관리 팝업 닫기" = 통합 고객 상세 팝업 닫기다.
+  // 남아 있을 수 있는 예전 오버레이 root도 함께 비워 둔다(방어적).
   function closeAgreementPopup(){
     const root = document.getElementById('agreementModalRoot');
     if(root) root.innerHTML = '';
+    if(currentCompanyId) closeChart();
   }
   // 질문지와 상담 기록은 같은 문서 레코드에 저장한다(별도 저장소 없음). 문항별 답변은
   // qaAnswers 필드에, 자유 서술 메모는 기존 memo 필드에 담아 고객카드 서류함에서도 함께
@@ -24680,27 +24863,23 @@ window.SHIN2_CRM_APP_INIT = function(){
     const rows = buildAgreementStageRows(co);
     const nextText = agreementNextActionText(rows);
     const displayGroups = buildAgreementDisplayGroups(rows);
-    const recentAct = D.activitiesForCompany(co.id).slice(0, 3);
     // §협약 진행관리 compact 패널 라운드(신규) — "다음 해야 할 일" 오른쪽 컬럼을 없애고
     // 단일 컬럼으로 바꾼다. 안내 문구(agreementNextActionText)는 화면에서 빼지만, 그 아래
     // 있던 동작 버튼(agreementStageActionButtonsHtml)은 그대로 둔다 — "질문서 회신 확인",
     // "1차 미팅 제안 메일"(예정일이 아직 없을 때 쓰는 버튼)처럼 단계 줄에서는 누를 수 없는
     // 동작이 섞여 있어, 같이 지우면 기능이 사라진다(§요청 "기능은 그대로 두고").
     const extraActionsHtml = agreementStageActionButtonsHtml(co, rows);
-    const qDocCount = D.documentsForCompany(co.id, 'questionnaire').length ? 1 : 0;
     const docCount = agrDocCheckedCount(co.id);
+    /* §통합 고객 상세 팝업 라운드(신규) — 이 함수는 이제 통합 팝업의 "협약 진행" 탭 본문을
+       그린다. 화면에서 뺀 것은 세 가지뿐이고 기능은 하나도 줄지 않았다.
+         · 상단 업체명/담당자/연락처/이메일(.agr-top) → 통합 팝업 헤더가 이미 보여준다
+         · "고객카드 보기" 버튼(agrOpenCardBtn) → §10, 이제 같은 팝업의 다른 탭이다
+         · "최근 활동" 접기 → §3, "최근 접촉기록" 탭이 전부 보여준다
+       "질문지 상담"과 "서류 현황"은 지운 게 아니라 각각의 탭 패널로 옮겼다 — 아래에서
+       같은 HTML(questionnaireWorkHtml / agreementDocChecklistHtml)을 그 컨테이너에 그리고,
+       이 함수 끝의 bindQuestionnaireWork / bindAgreementDocChecklistHandlers가 그대로
+       배선한다(문서 체크·업로드·질문지 등록/교체 전부 기존 경로 그대로). */
     body.innerHTML = `
-      <div class="agr-top">
-        <div class="agr-top-main">
-          <div class="agr-top-name">${esc(co.name)}</div>
-          <div class="agr-top-info">
-            <div class="agr-top-item"><span>담당자</span><b>${esc(co.contactName || '—')}</b></div>
-            <div class="agr-top-item"><span>연락처</span><b>${esc(co.phone || '—')}</b></div>
-            <div class="agr-top-item"><span>이메일</span><b>${esc(co.email || '—')}</b></div>
-          </div>
-        </div>
-        <button type="button" class="agr-ghost-btn" id="agrOpenCardBtn">고객카드 보기</button>
-      </div>
       <div class="agr-section-title-row">
         <div class="agr-section-title">진행 단계</div>
         <span class="agr-save-status-pill" id="agrSaveStatusPill" style="display:none;"></span>
@@ -24722,34 +24901,16 @@ window.SHIN2_CRM_APP_INIT = function(){
           </div>`).join('')}
       </div>
       ${extraActionsHtml ? `<div class="agr-stage-btn-row">${extraActionsHtml}</div>` : ''}
-      <details class="agr-fold">
-        <summary class="agr-fold-head">최근 활동 <b>${recentAct.length}건</b></summary>
-        <div class="agr-fold-body">
-          <div class="agr-recent-list">
-            ${recentAct.length ? recentAct.map(a=> `<div class="agr-recent-item" title="클릭하면 전체 내용을 볼 수 있습니다">${esc(fmtDate(a.createdAt))} · ${esc(a.activityText)}</div>`).join('') : '<div class="agr-recent-item is-empty">활동 기록이 없습니다</div>'}
-          </div>
-        </div>
-      </details>
-      <details class="agr-fold">
-        <summary class="agr-fold-head">질문지 상담 <b>${qDocCount}건</b></summary>
-        <div class="agr-fold-body">${questionnaireWorkHtml(companyId)}</div>
-      </details>
-      <!-- §서류 현황 고정 표시 라운드(신규) — 접기(details)에서 항상 보이는 고정 구획으로
-           바꿨다. 최근 활동·질문지 상담은 접기 그대로 두고 이 구획만 펼쳐 둔다.
-           .agr-fold / .agr-fold-head / .agr-fold-body 클래스와 id(agrDocFoldCount,
-           agreementDocSection)는 그대로 써서 기존 스타일·갱신 코드가 전부 그대로 돈다. -->
-      <section class="agr-fold agr-fold-static">
-        <div class="agr-fold-head">서류 현황 <b id="agrDocFoldCount">${docCount.checked}/${docCount.total}</b></div>
-        <div class="agr-fold-body"><div id="agreementDocSection">${agreementDocChecklistHtml(co.id)}</div></div>
-      </section>
     `;
-    document.getElementById('agrOpenCardBtn').addEventListener('click', ()=> openCardFromWorkQueue(co.id));
-    // §협약 진행단계 행 병합 라운드(신규) — 최근 활동 한 줄이 길면 CSS로 말줄임(...)만
-    // 하고, 클릭하면 그 줄만 펼쳐서 전체 텍스트를 보여준다. 데이터(a.activityText)는
-    // 전혀 가공하지 않는다.
-    body.querySelectorAll('.agr-recent-item:not(.is-empty)').forEach(el=>{
-      el.addEventListener('click', ()=> el.classList.toggle('is-expanded'));
-    });
+    // 질문지 상담 탭 — 질문지 등록/교체 카드(상/중/하 배지·메모 포함). 통합 팝업이 아닌
+    // 곳에서 불려도 안전하도록 컨테이너가 없으면 조용히 건너뛴다(이 파일의 기존 관례).
+    const qWrap = document.getElementById('cdashQuestionnaireWork');
+    if(qWrap) qWrap.innerHTML = questionnaireWorkHtml(companyId);
+    // 서류 탭 — 협약 서류 체크리스트 + 보유 개수 요약(기존 id 그대로라 갱신 코드도 그대로).
+    const docWrap = document.getElementById('agreementDocSection');
+    if(docWrap) docWrap.innerHTML = agreementDocChecklistHtml(co.id);
+    const docCountEl = document.getElementById('agrDocFoldCount');
+    if(docCountEl) docCountEl.textContent = `${docCount.checked}/${docCount.total}`;
     body.querySelectorAll('[data-agr-do]').forEach(btn=> btn.addEventListener('click', ()=>{
       const action = btn.getAttribute('data-agr-do');
       if(action === 'mail-questionnaire') openMailComposeModal(co.id, 'questionnaire');
@@ -24838,25 +24999,17 @@ window.SHIN2_CRM_APP_INIT = function(){
     });
     bindAgreementDocChecklistHandlers(co.id);
     bindQuestionnaireWork(co.id);
+    // 질문지 상담 요약 카드(같은 탭의 Q1~Q8 답변·평가)도 같은 소스로 함께 갱신한다 —
+    // 질문지를 등록/교체하면 이 함수가 다시 불리므로 요약이 뒤처지지 않는다.
+    // 컨테이너가 없으면 조용히 no-op(renderQuestionnaireSummaryCard의 기존 가드).
+    renderQuestionnaireSummaryCard(co);
   }
+  /* §통합 고객 상세 팝업 라운드(신규) §11 "중복 팝업 제거" — 예전에는 여기서
+     #agreementModalRoot에 별도 오버레이(.agr-panel)를 그려 고객카드와 다른 팝업을 띄웠다.
+     이제 협약 진행은 통합 팝업의 한 탭이므로, 같은 팝업을 "협약 진행" 탭으로 열기만 한다
+     (§9 entry point별 기본 탭). 이름은 기존 호출부 호환을 위해 그대로 둔다. */
   function openAgreementPopup(companyId){
-    const co = D.findCompany(companyId);
-    if(!co) return;
-    const root = document.getElementById('agreementModalRoot');
-    if(!root) return;
-    root.innerHTML = `
-      <div class="pi-overlay" id="agreementPopupOverlay">
-        <div class="pi-panel agr-panel" style="max-width:600px;" role="dialog" aria-modal="true" aria-label="협약 진행관리 — ${esc(co.name)}">
-          <div class="pi-head">
-            <div class="pi-title">협약 진행관리</div>
-            <button type="button" class="chart-close-btn" id="agreementCloseBtn" aria-label="닫기">&times;</button>
-          </div>
-          <div class="pi-body" id="agreementPopupBody"></div>
-        </div>
-      </div>`;
-    document.getElementById('agreementCloseBtn').addEventListener('click', closeAgreementPopup);
-    bindSafeBackdropClose(document.getElementById('agreementPopupOverlay'), closeAgreementPopup);
-    renderAgreementPopupBody(companyId);
+    openCustomerDetail(companyId, 'agreement');
   }
   // §최근 활동 컬럼: firstActivity는 앵커가 된 MOU 완료일 + "MOU" 라벨, l2Stall/reuse는
   // 앵커가 된 실제 활동의 날짜 + 그 활동의 실제 category(classifyActivity 결과, 지어낸
@@ -27216,7 +27369,8 @@ window.SHIN2_CRM_APP_INIT = function(){
       root.querySelectorAll('[data-reqmat-open]').forEach(b=> b.addEventListener('click', ()=>{
         const id = b.getAttribute('data-reqmat-open');
         root.innerHTML = '';
-        openCard(id);
+        // §통합 고객 상세 팝업 §9 — 요청자료(질문지)에서 열면 "질문지 상담" 탭부터 보인다.
+        openCustomerDetail(id, 'questionnaire');
       }));
       root.querySelectorAll('[data-reqmat-sent]').forEach(b=> b.addEventListener('click', async ()=>{
         const r = D.markDocumentMaterialsSent(b.getAttribute('data-reqmat-sent'), crmCurrentUserLabel());
