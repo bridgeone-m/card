@@ -5480,8 +5480,13 @@ table.sales-import-table td{ padding:5px 8px; border-bottom:1px solid #EEF2F7; v
           <span id="gsheetStructureErrorNote" style="font-size:12px;color:#B23B3B;margin-left:4px;"></span>
           <div class="update-menu-divider"></div>
           <div class="update-menu-group-label">가져오기</div>
-          <button type="button" id="crmMasterImportBtn">마스터 업체 명단 가져오기</button>
-          <button type="button" id="crmPartnerExcelImportBtn">협력사 엑셀 일괄 반영</button>
+          <!-- §관리 도구 정리 라운드(신규) — 사용자 요청으로 "마스터 업체 명단 가져오기"
+               (crmMasterImportBtn)와 "협력사 엑셀 일괄 반영"(crmPartnerExcelImportBtn)
+               두 진입점을 메뉴에서 제거했다. 두 기능의 모달/계산 코드
+               (openMasterImportModal, openPartnerExcelImportModal와 그 아래 미리보기·
+               적용 로직, window.SHIN2_MASTER_COMPANY_SNAPSHOT)는 지우지 않고 그대로
+               남겨 뒀다 — 다른 화면이 같은 스냅샷·헬퍼를 참조하고 있어 함께 지우면
+               그쪽이 깨진다. 여는 버튼만 없앤 것이라 다시 필요하면 이 두 줄만 되살리면 된다. -->
           <button type="button" id="crmSalesImportBtn">매출 Excel 업로드</button>
           <button type="button" id="crmLocalCloudDiagBtn">로컬-클라우드 비교</button>
           <div class="update-menu-divider"></div>
@@ -36382,8 +36387,9 @@ window.SHIN2_CRM_APP_INIT = function(){
   document.getElementById('crmLocalCloudDiagBtn').addEventListener('click', ()=>{ closeUpdateMenu(); openLocalCloudDiagModal(); });
   document.getElementById('crmGiftGradeBtn').addEventListener('click', ()=>{ closeUpdateMenu(); openGiftGradeModal(); });
   document.getElementById('crmGsheetReviewBtn').addEventListener('click', ()=>{ closeUpdateMenu(); openGsheetReviewModal(); });
-  document.getElementById('crmMasterImportBtn').addEventListener('click', ()=>{ closeUpdateMenu(); openMasterImportModal(); });
-  document.getElementById('crmPartnerExcelImportBtn').addEventListener('click', ()=>{ closeUpdateMenu(); openPartnerExcelImportModal(); });
+  // §관리 도구 정리 라운드(신규) — 위 두 버튼을 메뉴에서 뺐으므로 바인딩도 함께 뺀다.
+  // (버튼이 없는 상태에서 getElementById(...).addEventListener를 부르면 그 뒤의 다른
+  //  바인딩까지 통째로 죽는다.)
   document.getElementById('crmSalesImportBtn').addEventListener('click', ()=>{ closeUpdateMenu(); openSalesImportModal(); });
   document.getElementById('crmMergeDupBtn').addEventListener('click', ()=>{ closeUpdateMenu(); openDupListModal(); });
   function closeUpdateMenu(){ document.getElementById('crmUpdateMenu').classList.remove('is-open'); }
