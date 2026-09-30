@@ -20529,6 +20529,55 @@ window.SHIN2_CRM_APP_INIT = function(){
   const INVISIBLE_CHARS_RE = /[\u200B-\u200F\u202A-\u202E\u2060-\u2064\uFEFF\u00AD]/g;
   function stripInvisibleChars(s){ return String(s || '').replace(INVISIBLE_CHARS_RE, ''); }
   let emailjsLoadPromise = null;
+  /* §메일 발송 속도 라운드(신규) ------------------------------------------------------
+     [측정] 버튼 클릭부터 완료까지 구간별 시간을 performance.now()로 재서 콘솔에
+     [MAIL-PERF] 표로 찍는다. 발송 로직에는 영향이 없다(시간만 기록).
+     [캐시] 첨부/공통 이미지 링크는 Firebase Storage getDownloadURL 네트워크 왕복인데,
+     지금까지는 보낼 때마다 매번 새로 받아왔다. 같은 파일이면 URL도 같으므로
+     storagePath + uploadedAt을 키로 세션 동안만 재사용한다 — 파일이 바뀌면
+     uploadedAt이 바뀌어 키가 달라지므로 자동으로 다시 받아온다.
+     저장 구조는 건드리지 않는다(메모리 Map 하나뿐, localStorage/Firebase 쓰기 없음). */
+  function mailPerf(){
+    const t0 = (performance && performance.now) ? performance.now() : Date.now();
+    let last = t0; const marks = [];
+    return {
+      mark(name){
+        const now = (performance && performance.now) ? performance.now() : Date.now();
+        marks.push([name, now - last]); last = now;
+      },
+      total(){ const now = (performance && performance.now) ? performance.now() : Date.now(); return now - t0; },
+      dump(){
+        const tot = this.total();
+        const lines = marks.map(([n,ms])=> '  ' + n.padEnd(16) + Math.round(ms) + 'ms').join('\n');
+        console.info('[MAIL-PERF]\n' + lines + '\n  ' + 'total'.padEnd(16) + Math.round(tot) + 'ms');
+        return tot;
+      }
+    };
+  }
+  const mailAssetUrlCache = new Map();
+  function mailAssetCacheKey(asset){
+    if(!asset || !asset.storagePath) return '';
+    return asset.storagePath + '|' + (asset.uploadedAt || '');
+  }
+  // 캐시된 링크를 돌려준다. 미스일 때만 실제 getDownloadURL을 호출하고, 실패한 약속은
+  // 캐시에 남기지 않는다(다음 발송에서 다시 시도할 수 있게).
+  function mailAssetUrlCached(asset){
+    const key = mailAssetCacheKey(asset);
+    if(!key) return Promise.resolve(null);
+    const hit = mailAssetUrlCache.get(key);
+    if(hit) return hit;
+    const pr = D.getMailAssetFileURL(asset.storagePath).catch(err=>{
+      mailAssetUrlCache.delete(key);
+      throw err;
+    });
+    mailAssetUrlCache.set(key, pr);
+    return pr;
+  }
+  // 모달을 열 때 미리 데워 둔다 — 실패해도 무시하고, 실제 발송 경로가 다시 판단한다.
+  function mailWarmup(assets){
+    try{ loadEmailJsSdk().catch(()=>{}); }catch(e){}
+    (assets || []).forEach(a=>{ if(a && a.storagePath) mailAssetUrlCached(a).catch(()=>{}); });
+  }
   function loadEmailJsSdk(){
     if(emailjsLoadPromise) return emailjsLoadPromise;
     if(window.emailjs){ emailjsLoadPromise = Promise.resolve(window.emailjs); return emailjsLoadPromise; }
@@ -21933,6 +21982,11 @@ window.SHIN2_CRM_APP_INIT = function(){
     // 포함된다(사용자 확정: 예외 없음). 여기서는 표시만 하고, 실제 삽입은 doSend에서
     // commonDoc/commonVideo 링크와 같은 시점에 최신 URL을 다시 조회해서 붙인다.
     const globalImg = D.getGlobalMailAsset().image;
+    // §메일 발송 속도 라운드(신규) — 모달을 여는 순간 EmailJS SDK와 첨부 링크를 미리
+    // 받아 둔다. 사용자가 제목·본문을 확인하는 사이에 네트워크가 끝나 있어서, [발송]을
+    // 누른 뒤 기다리는 시간이 그만큼 줄어든다. 실패해도 무시하고 실제 발송 경로가
+    // 다시 판단한다(발송 전 차단 규칙은 그대로).
+    mailWarmup([commonDoc, commonVideo, globalImg]);
     // §요청 "필수 질문서 파일이 없으면... 그대로 발송되지 않도록 차단" — questionnaire
     // 템플릿은 본문이 "첨부된 질문서를 확인해주세요" 문구를 전제하므로, 공통 자료도
     // 업체별 서류함 자료도 전혀 없으면 발송 자체를 막는다(다른 3종은 첨부가 필수라고
@@ -22145,12 +22199,19 @@ window.SHIN2_CRM_APP_INIT = function(){
       return { valid:errors.length === 0, errors, emailJsValidation, fromName, fromEmail, recipient };
     }
     function restoreMailSendButton(){
+      mailSendInFlight = false;
       sendBtn.disabled = !!questionnaireBlocked;
       sendBtn.textContent = sendBtnOriginalText;
     }
+    let mailSendInFlight = false;
     async function doSend(toEmail, ccEmails){
+      // §메일 발송 속도 라운드 — 중복 클릭/중복 진입 차단. 버튼 disabled만으로는
+      // 최종확인 창 등 다른 진입점에서 두 번 들어올 수 있어 플래그로 한 번 더 막는다.
+      if(mailSendInFlight){ console.info('[EMAIL-SEND] 이미 발송 중 — 중복 요청 무시'); return { ok:false, busy:true }; }
+      const perf = mailPerf();
       const statusEl = document.getElementById('mailComposeStatus');
       const latestSettings = D.loadMailSettings();
+      perf.mark('settings');
       const ready = validateMailConnection(latestSettings, toEmail);
       const validation = ready.emailJsValidation;
       if(!ready.valid){
@@ -22167,36 +22228,51 @@ window.SHIN2_CRM_APP_INIT = function(){
       // 최종확인 버튼과 이 팝업의 발송 버튼을 함께 잠근다.
       sendBtn.disabled = true;
       sendBtn.textContent = '발송 중...';
+      mailSendInFlight = true;
       // §첨부파일(공통 발송자료) 라운드(신규) — 공통 문서/동영상은 실제 첨부가 아니라
       // 다운로드/시청 링크를 본문 끝에 덧붙여 보낸다(§확정: sendForm 재구조화 없이
       // 진행). 링크를 못 가져오면(로그인 끊김/Storage 규칙 미적용 등) 이메일 자체를
       // 보내지 않고 원인을 표시한다(§요청 "링크 접근이 불가능하면 발송 전에 차단").
       let emailAttempted = false;
       const linkFetches = [];
-      if(commonDoc) linkFetches.push(D.getMailAssetFileURL(commonDoc.storagePath).then(url=> ({ label: commonDoc.fileName + ' 다운로드', url })));
-      if(commonVideo) linkFetches.push(D.getMailAssetFileURL(commonVideo.storagePath).then(url=> ({ label: '시청 링크', url })));
+      // §메일 발송 속도 라운드 — 같은 파일이면 링크도 같으므로 세션 캐시를 먼저 본다
+      // (mailAssetUrlCached). 첨부가 없으면 배열이 비어 Storage 호출 자체가 일어나지 않는다.
+      if(commonDoc) linkFetches.push(mailAssetUrlCached(commonDoc).then(url=> ({ label: commonDoc.fileName + ' 다운로드', url })));
+      if(commonVideo) linkFetches.push(mailAssetUrlCached(commonVideo).then(url=> ({ label: '시청 링크', url })));
       // §"모든 메일에 이 이미지를 꼭 첨부" 라운드(신규) — 사용자 확정: 예외 없이 모든
       // 메일에 포함. 링크와 마찬가지로 발송 시점에 최신 URL을 다시 조회하고, 못 가져오면
       // (로그인 끊김·규칙 미적용 등) "꼭 첨부"가 지켜질 수 없으므로 다른 첨부자료와
       // 똑같이 발송 자체를 막는다(§요청 "링크 접근 불가능하면 발송 전 차단"과 동일 원칙).
-      const globalImgFetch = globalImg ? D.getMailAssetFileURL(globalImg.storagePath) : Promise.resolve(null);
+      const globalImgFetch = globalImg ? mailAssetUrlCached(globalImg) : Promise.resolve(null);
+      const hasAssets = linkFetches.length > 0 || !!globalImg;
       try{
-        let links, globalImgUrl;
+        let links, globalImgUrl, emailjs;
+        if(hasAssets) statusEl.textContent = '첨부자료 준비 중…';
         try{
-          [links, globalImgUrl] = await Promise.all([Promise.all(linkFetches), globalImgFetch]);
+          // §메일 발송 속도 라운드 — 서로 의존이 없는 세 가지(첨부 링크 / 공통 이미지 /
+          // EmailJS SDK)를 한꺼번에 기다린다. 예전에는 첨부 링크를 다 받은 "뒤에" SDK를
+          // 받아서 두 네트워크 대기가 직렬로 쌓였다. 실제 send는 지금도 딱 한 번이다.
+          [links, globalImgUrl, emailjs] = await Promise.all([
+            Promise.all(linkFetches), globalImgFetch, loadEmailJsSdk()
+          ]);
         }catch(assetError){
+          // SDK 로드 실패는 첨부 링크 실패와 원인이 달라 메시지를 나눈다(§요청 8).
+          if(assetError && /EmailJS/.test(String(assetError.message || ''))) throw assetError;
           throw Object.assign(new Error('공통 발송자료 또는 전체 공통 이미지 링크를 불러오지 못했습니다 — 로그인 상태 또는 Storage 공유 규칙을 확인해주세요.'), { code:'ASSET_LINK_FAILED' });
         }
+        perf.mark('assets+sdk');
         const params = buildMailSendParams(toEmail, ccEmails, latestSettings);
         // 첨부 링크/공통 이미지는 HTML 본문과 plain text fallback 양쪽에 같은 내용으로
         // 덧붙인다. HTML 쪽 링크와 이미지는 발송용 허용 목록을 다시 통과한다.
         appendMailAssetsToParams(params, links, globalImgUrl);
-        const emailjs = await loadEmailJsSdk();
+        perf.mark('payload');
         emailAttempted = true;
+        statusEl.textContent = '메일 전송 중…';
         console.info('[EMAIL-SEND] request start');
         const res = await emailjs.send(validation.values.emailjsServiceId, validation.values.emailjsTemplateId, params, validation.values.emailjsPublicKey);
         const responseStatus = Number(res && res.status);
         if(!Number.isFinite(responseStatus) || responseStatus < 200 || responseStatus >= 300) throw (res || new Error('EmailJS 성공 응답을 확인할 수 없습니다.'));
+        perf.mark('emailjs');
         console.info('[EMAIL-SEND] request success');
         statusEl.textContent = '메일이 정상적으로 발송되었습니다.';
         appendM1MailLog(co.id, {
@@ -22208,24 +22284,41 @@ window.SHIN2_CRM_APP_INIT = function(){
           emailjsStatus: res.status
         });
         D.addActivity(co.id, `${MAIL_TYPE_SUCCESS_LOG_TEXT[mailType]} (받는사람: ${toEmail})`);
-        // 이메일 성공과 발송기록 저장 확인은 구분한다. 기록 저장 실패로 이미 발송된 메일을
-        // 실패처럼 표시하거나 다시 보내도록 유도하지 않는다.
-        const [companiesR, actR] = await Promise.all([confirmCloudSave('companies'), confirmCloudSave('customerActivities')]);
-        if(!companiesR.ok || !actR.ok) statusEl.textContent = '메일이 정상적으로 발송되었습니다. (발송 이력 저장 확인 실패 — 새로고침 후 기록을 확인해주세요)';
+        perf.mark('history(local)');
+        // §메일 발송 속도 라운드 — 이력은 이미 로컬(appendM1MailLog/addActivity)에 저장돼
+        // 있다. 남은 건 클라우드 저장 "확인"뿐인데, 예전에는 이걸 await하느라 메일이
+        // 이미 나간 뒤에도 모달이 계속 떠 있었다. 이제 기다리지 않고 후처리로 돌린다 —
+        // 실패하면 그때 화면 문구만 바꾸고 콘솔에 남긴다(이력 자체는 삭제되지 않는다).
+        Promise.all([confirmCloudSave('companies'), confirmCloudSave('customerActivities')])
+          .then(([companiesR, actR])=>{
+            if(companiesR.ok && actR.ok) return;
+            console.warn('[EMAIL-SEND] 발송 이력 클라우드 저장 확인 실패', { companiesR, actR });
+            if(statusEl.isConnected) statusEl.textContent = '메일이 정상적으로 발송되었습니다. (발송 이력 저장 확인 실패 — 새로고침 후 기록을 확인해주세요)';
+          })
+          .catch(e=> console.warn('[EMAIL-SEND] 발송 이력 저장 확인 중 오류', e));
         if(typeof renderWorkQueueView === 'function' && document.getElementById('workQueueView') && document.getElementById('workQueueView').style.display === 'block') renderWorkQueueView();
         if(currentCompanyId === co.id && cardView.style.display === 'block' && typeof refreshChart === 'function') refreshChart();
         if(typeof opts.onSent === 'function') opts.onSent();
+        perf.mark('ui');
+        perf.dump();
         setTimeout(closeMailComposeModal, 1200);
         return { ok:true, response:res };
       }catch(err){
+        // §요청 8 — 어느 단계에서 실패했는지 구분해서 남긴다.
+        const stage = !emailAttempted
+          ? (err && err.code === 'ASSET_LINK_FAILED' ? '첨부자료 링크' : '준비(설정/SDK)')
+          : 'EmailJS 전송';
         console.error('[EMAIL-SEND] request failed', {
+          stage,
           status: err && err.status != null ? err.status : null,
           message: err && (err.text || err.message) ? String(err.text || err.message) : '알 수 없는 오류'
         });
+        perf.mark('failed:' + stage);
+        perf.dump();
         restoreMailSendButton();
         statusEl.classList.add('is-err');
         const errMsg = err && err.code === 'ASSET_LINK_FAILED' ? err.message : emailJsErrorMessage(err);
-        statusEl.textContent = '메일 발송 실패 · ' + errMsg;
+        statusEl.textContent = '메일 발송 실패 (' + stage + ') · ' + errMsg;
         // 실패 시 작성 모달과 입력 상태는 그대로 둔다. 실제 EmailJS 요청을 시도한 경우만
         // 기존 실패 이력을 유지한다.
         if(emailAttempted){
