@@ -3187,6 +3187,29 @@ body.map-modal-lock{ overflow:hidden; }
 .map-near-actions{ display:flex; gap:8px; }
 .map-near-actions .map-modal-retry-btn{ flex:1 1 auto; justify-content:center; height:38px; }
 .map-near-hint{ font-size:11px; color:var(--text-faint); line-height:1.5; margin-top:10px; }
+/* ==========================================================================
+   §근처검색 검색창 분리 라운드(신규) — 팝오버 대신 필터 줄에 펼쳐 놓는 "근처 검색"
+   검색창. 왼쪽 검색창(아파트명·지역)과 나란히 서되, 한 덩어리로 읽히게 옅은 배경과
+   테두리로 묶는다. 위 .map-near-pop 관련 규칙은 지우지 않았다(팝오버 마크업만 사라졌고
+   .map-near-radius-chip 등은 이 검색창이 그대로 재사용한다).
+   ========================================================================== */
+.map-near-field{
+  display:flex; align-items:center; gap:6px; flex:2 1 400px; min-width:300px;
+  background:#F7FAFC; border:1px solid #DCE4EF; border-radius:8px; padding:4px 5px;
+}
+.map-near-field.is-on{ border-color:#5FAE85; background:#F2FAF5; }
+.map-near-field .map-search-field{ flex:1 1 170px; min-width:140px; }
+.map-near-field .map-modal-search{ height:30px; border-color:#E3EAF4; }
+.map-near-field .map-search-ico{ color:#3E8E63; }
+.map-near-field .map-near-radius{ margin-bottom:0; gap:3px; flex:none; }
+.map-near-field .map-near-radius-chip{ flex:none; height:30px; padding:0 8px; font-size:11.5px; }
+.map-near-field .map-near-go{ height:30px; padding:0 11px; font-size:12px; flex:none; }
+@media(max-width:900px){
+  /* 좁은 화면에서는 반경 칩을 숨겨 입력칸을 살린다 — 반경은 기본 5km로 동작하고,
+     넓은 화면에서 언제든 바꿀 수 있다(값 자체는 aptFilterState에 그대로 남는다). */
+  .map-near-field{ flex:1 1 100%; }
+  .map-near-field .map-near-radius{ display:none; }
+}
 /* 근처 검색이 켜져 있을 때 요약 줄에 붙는 배지 */
 .map-near-active-badge{
   display:inline-flex; align-items:center; gap:5px; font-size:11.5px; font-weight:650;
@@ -36248,6 +36271,25 @@ window.SHIN2_CRM_APP_INIT = function(){
           ${MAP_SEARCH_ICO}
           <input type="text" class="map-modal-search" id="aptFilterSearch" placeholder="아파트명 · 지역 검색" value="${esc(aptFilterState.search)}" aria-label="아파트명 · 지역 검색" />
         </label>
+        <!-- §근처검색 검색창 분리 라운드(신규) — 사용자 요청: "근처검색 탭을 따로 두지 말고
+             검색창을 따로 만들어줘." 탭 줄의 초록 토글 버튼 + 플로팅 팝오버를 없애고,
+             바로 옆에 두 번째 검색창으로 펼쳐 놓는다. 두 칸의 의미가 눈에 바로 보인다.
+               왼쪽  아파트명·지역  — 입력하는 즉시 문자열로 거른다
+               오른쪽 주소·장소명    — Enter/[찾기]로 지오코딩해 반경 안만 거리순으로
+             입력/버튼 id(aptNearSearchInput / aptNearSearchBtn / aptNearClearBtn)와
+             반경 칩(data-apt-near-radius)은 한 글자도 안 바꿨다 — 자리만 옮겼다.
+             지오코딩·거리 계산·반경 판정 경로도 그대로다. -->
+        <div class="map-near-field${aptFilterState.nearCenter ? ' is-on' : ''}" id="aptNearField">
+          <label class="map-search-field map-near-search">
+            ${MAP_PIN_ICO}
+            <input type="text" class="map-modal-search" id="aptNearSearchInput" placeholder="주소로 근처 찾기" value="${esc(aptFilterState.nearQuery || '')}" aria-label="주소·장소명으로 근처 시공 아파트 찾기" title="주소나 장소명을 넣고 Enter 또는 [찾기] — 반경 안의 시공 아파트만 거리순으로 보여줍니다." />
+          </label>
+          <div class="map-near-radius" role="group" aria-label="검색 반경">
+            ${[1,3,5,10].map(km=> `<button type="button" class="map-near-radius-chip${aptFilterState.nearRadiusKm===km?' is-active':''}" data-apt-near-radius="${km}" aria-pressed="${aptFilterState.nearRadiusKm===km?'true':'false'}">${km}km</button>`).join('')}
+          </div>
+          <button type="button" class="map-modal-retry-btn is-primary map-near-go" id="aptNearSearchBtn">찾기</button>
+          <button type="button" class="map-modal-retry-btn map-near-go" id="aptNearClearBtn"${aptFilterState.nearCenter ? '' : ' hidden'}>해제</button>
+        </div>
         <select class="map-modal-select" id="aptFilterYear" aria-label="시공 연도">
           <option value="all">연도 전체</option>
           ${opts.years.map(y=> `<option value="${esc(y)}"${String(aptFilterState.year)===String(y)?' selected':''}>${esc(y)}년</option>`).join('')}
@@ -36289,43 +36331,10 @@ window.SHIN2_CRM_APP_INIT = function(){
     // 새 로직을 만들지 않았다.
     const tabsActionsEl = document.getElementById('mapModalTabsActions');
     if(tabsActionsEl){
-      // §근처검색 별도 탭 라운드(신규) — 사용자 요청: "근처검색은 별도로 탭 하나
-      // 만들어줘, 다른 색으로." 필터 줄(공종/지역/세대수와 같은 줄)에 섞여 있던 근처
-      // 검색을 탭 줄로 올리고, 필터 초기화·PDF 내보내기와 구분되는 초록 계열로 칠한다
-      // (.is-near-tab). 버튼/입력 id(aptNearToggleBtn / aptNearPop / aptNearSearchInput /
-      // aptNearSearchBtn / aptNearClearBtn)와 팝오버 마크업은 한 글자도 안 바꿨다 —
-      // 자리만 옮겼다. 거리 계산·지오코딩 경로도 그대로다.
+      // §근처검색 검색창 분리 라운드(신규) — 근처 검색 토글 버튼과 플로팅 팝오버를 없앴다.
+      // 그 내용(주소 입력·반경 칩·찾기·해제)은 위 필터 줄의 두 번째 검색창으로 펼쳐 놨다.
+      // 여기에는 원래대로 필터 초기화/PDF 내보내기만 남는다.
       tabsActionsEl.innerHTML = `
-        <!-- §지도 분포 UI 통일 라운드 — 근처 검색을 항상 펼쳐진 한 줄에서 툴바 버튼 +
-             작은 플로팅 패널로 바꿨다. 입력/버튼 id는 그대로라(aptNearSearchInput /
-             aptNearSearchBtn / aptNearClearBtn) 지오코딩·거리 계산 경로는 손대지 않았다.
-             패널은 hidden 속성으로만 여닫으므로 닫혀 있어도 DOM에 있어 기존
-             document.getElementById 바인딩이 그대로 동작한다. -->
-        <div class="map-near-wrap">
-          <button type="button" class="map-modal-retry-btn is-near-tab${aptFilterState.nearCenter ? ' is-near-on' : ''}" id="aptNearToggleBtn" aria-expanded="false" aria-controls="aptNearPop">
-            ${MAP_PIN_ICO}<span>근처 검색${aptFilterState.nearCenter ? ' · 켜짐' : ''}</span>
-          </button>
-          <div class="map-near-pop" id="aptNearPop" role="dialog" aria-label="근처 시공 아파트 검색" hidden>
-            <div class="map-near-pop-head">
-              <span class="map-near-pop-title">근처 시공 아파트 검색</span>
-              <button type="button" class="map-near-pop-close" id="aptNearPopCloseBtn" aria-label="닫기">&times;</button>
-            </div>
-            <span class="map-near-label">검색 반경</span>
-            <div class="map-near-radius" role="group" aria-label="검색 반경">
-              ${[1,3,5,10].map(km=> `<button type="button" class="map-near-radius-chip${aptFilterState.nearRadiusKm===km?' is-active':''}" data-apt-near-radius="${km}" aria-pressed="${aptFilterState.nearRadiusKm===km?'true':'false'}">${km}km</button>`).join('')}
-            </div>
-            <span class="map-near-label">기준 위치</span>
-            <label class="map-search-field">
-              ${MAP_SEARCH_ICO}
-              <input type="text" class="map-modal-search" id="aptNearSearchInput" placeholder="주소 또는 장소명 입력" value="${esc(aptFilterState.nearQuery || '')}" aria-label="근처 검색 기준 주소" />
-            </label>
-            <div class="map-near-actions">
-              <button type="button" class="map-modal-retry-btn is-primary" id="aptNearSearchBtn">이 위치로 찾기</button>
-              <button type="button" class="map-modal-retry-btn" id="aptNearClearBtn"${aptFilterState.nearCenter ? '' : ' hidden'}>해제</button>
-            </div>
-            <div class="map-near-hint">입력한 위치를 기준으로 반경 안의 시공 아파트만 거리순으로 보여줍니다.</div>
-          </div>
-        </div>
         <button type="button" class="map-modal-retry-btn" id="aptFilterResetBtn">필터 초기화</button>
         <button type="button" class="map-modal-retry-btn is-primary" id="aptPdfExportBtn">${MAP_DOC_ICO}<span>PDF 내보내기</span></button>
       `;
@@ -36361,44 +36370,6 @@ window.SHIN2_CRM_APP_INIT = function(){
       });
       if(aptFilterState.nearCenter) refreshAptInfoAndMarkers();
     }));
-    // 팝오버 열기/닫기 — 바깥 클릭·ESC로 닫힌다(§접근성). 여는 순간 주소칸에 포커스.
-    const nearToggleBtn = document.getElementById('aptNearToggleBtn');
-    const nearPop = document.getElementById('aptNearPop');
-    if(nearToggleBtn && nearPop){
-      // fixed 팝오버라 좌표를 직접 잡는다 — 버튼 아래, 오른쪽 끝을 버튼에 맞추되
-      // 화면 밖으로 나가지 않게 양쪽을 clamp한다.
-      const placeNearPop = ()=>{
-        const r = nearToggleBtn.getBoundingClientRect();
-        const w = nearPop.offsetWidth || 328;
-        // §근처검색 별도 탭 라운드 — 버튼이 필터 줄 오른쪽에서 탭 줄 왼쪽으로 옮겨졌다.
-        // 예전처럼 버튼 오른쪽 끝에 맞추면(r.right - w) 팝오버가 카드 왼쪽 밖으로 삐져
-        // 나간다. 버튼 왼쪽에 맞추되, 오른쪽이 화면을 넘으면 그때만 안으로 당긴다.
-        const left = Math.max(8, Math.min(window.innerWidth - w - 8, r.left));
-        const top = Math.min(window.innerHeight - 12, r.bottom + 8);
-        nearPop.style.left = left + 'px';
-        nearPop.style.top = top + 'px';
-      };
-      const setNearPopOpen = (open)=>{
-        nearPop.hidden = !open;
-        nearToggleBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
-        if(open){
-          placeNearPop();
-          const inp = document.getElementById('aptNearSearchInput'); if(inp) inp.focus();
-        }
-      };
-      // 스크롤·리사이즈로 버튼이 움직이면 좌표가 어긋나므로 그냥 닫는다(예측 가능한 동작).
-      const closeOnMove = ()=>{ if(!nearPop.hidden) setNearPopOpen(false); };
-      window.addEventListener('resize', closeOnMove);
-      window.addEventListener('scroll', closeOnMove, true);
-      nearToggleBtn.addEventListener('click', (e)=>{ e.stopPropagation(); setNearPopOpen(nearPop.hidden); });
-      const closeBtn = document.getElementById('aptNearPopCloseBtn');
-      if(closeBtn) closeBtn.addEventListener('click', ()=>{ setNearPopOpen(false); nearToggleBtn.focus(); });
-      nearPop.addEventListener('click', (e)=> e.stopPropagation());
-      document.addEventListener('click', ()=>{ if(!nearPop.hidden) setNearPopOpen(false); });
-      nearPop.addEventListener('keydown', (e)=>{
-        if(e.key === 'Escape'){ e.preventDefault(); e.stopPropagation(); setNearPopOpen(false); nearToggleBtn.focus(); }
-      });
-    }
     document.getElementById('aptFilterYear').addEventListener('change', (e)=>{ aptFilterState.year = e.target.value; refreshAptInfoAndMarkers(); });
     document.getElementById('aptFilterCategory').addEventListener('change', (e)=>{ aptFilterState.category = e.target.value; refreshAptInfoAndMarkers(); });
     document.getElementById('aptFilterRegion').addEventListener('change', (e)=>{ aptFilterState.region = e.target.value; refreshAptInfoAndMarkers(); });
@@ -36720,7 +36691,7 @@ window.SHIN2_CRM_APP_INIT = function(){
   // 이 함수는 hidden 속성만 켰다 껐다 한다(예전엔 .map-apt-near-row에 DOM을 붙였다
   // 뗐다 했는데 그 줄 자체가 없어졌다). 해제가 하는 일(nearCenter/nearQuery 초기화 +
   // refreshAptInfoAndMarkers)은 그대로다. onclick으로 붙여 핸들러 중복이 안 쌓인다.
-  // 툴바의 "근처 검색" 버튼에도 켜짐 상태를 같이 반영한다(색만이 아니라 글자로도).
+  // 근처 검색이 켜져 있으면 [해제] 버튼을 보이고 검색창을 강조한다.
   function syncAptNearClearBtnVisibility(){
     const on = !!aptFilterState.nearCenter;
     const btn = document.getElementById('aptNearClearBtn');
@@ -36733,12 +36704,10 @@ window.SHIN2_CRM_APP_INIT = function(){
         refreshAptInfoAndMarkers();
       };
     }
-    const toggleBtn = document.getElementById('aptNearToggleBtn');
-    if(toggleBtn){
-      toggleBtn.classList.toggle('is-near-on', on);
-      const label = toggleBtn.querySelector('span');
-      if(label) label.textContent = on ? '근처 검색 · 켜짐' : '근처 검색';
-    }
+    // §근처검색 검색창 분리 라운드 — 토글 버튼이 없어졌으므로 "켜짐"은 검색창 자체를
+    // 강조해서 알린다(테두리 초록). 상태 문구는 기존 setAptNearStatus가 그대로 담당한다.
+    const field = document.getElementById('aptNearField');
+    if(field) field.classList.toggle('is-on', on);
   }
   async function runAptNearSearch(kakao){
     const input = document.getElementById('aptNearSearchInput');
