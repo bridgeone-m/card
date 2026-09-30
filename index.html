@@ -3668,6 +3668,32 @@ table.pdf-doc-table thead{ background:var(--bg); }
 .mail-preview-body{ font-size:12.5px; color:var(--text); white-space:pre-wrap; line-height:1.5; margin-bottom:6px; }
 /* §본문 이미지 첨부 라운드(신규) */
 .mail-body-toolbar{ display:flex; align-items:center; gap:10px; margin-bottom:6px; flex-wrap:wrap; }
+/* §메일 본문 서식 라운드(신규) — 글씨 크기 select + 형광펜 색 견본 + 서식 지우기.
+   메일 설정 편집기와 메일 작성 팝업 두 곳에서 같은 마크업을 쓴다. */
+.mail-fmt-group{ display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.mail-fmt-sep{ width:1px; height:16px; background:var(--line); margin:0 2px; }
+.mail-fmt-label{ font-size:11.5px; color:var(--text-muted); font-weight:600; }
+.mail-fmt-size{
+  height:28px; padding:0 8px; font-size:12px; font-family:inherit; cursor:pointer;
+  border:1px solid var(--line); border-radius:6px; background:#fff; color:var(--text);
+}
+.mail-fmt-size:hover{ border-color:var(--blue); }
+.mail-fmt-swatch{
+  width:20px; height:20px; padding:0; border-radius:5px; cursor:pointer;
+  border:1px solid rgba(15,32,60,.22); background:#fff;
+}
+.mail-fmt-swatch:hover{ box-shadow:0 0 0 2px rgba(15,32,60,.14); }
+.mail-fmt-swatch:focus-visible{ outline:2px solid var(--navy); outline-offset:1px; }
+/* 형광펜 지우기 — 색이 없다는 걸 빗금으로 보여준다 */
+.mail-fmt-swatch.is-none{
+  background:linear-gradient(to top left, transparent calc(50% - 1px), #C64B3A 50%, transparent calc(50% + 1px)), #fff;
+}
+.mail-fmt-btn{
+  height:28px; padding:0 10px; font-size:11.5px; font-weight:600; font-family:inherit; cursor:pointer;
+  border:1px solid var(--line); border-radius:6px; background:#fff; color:var(--text-muted);
+}
+.mail-fmt-btn:hover{ border-color:var(--blue); color:var(--blue); }
+.mail-fmt-hint{ font-size:11.5px; color:#B26A00; font-weight:600; }
 /* §A-5 본문 편집기 폭/높이 라운드(신규) — 진단 보고서 A-5: 편집기 높이가 min-height
    220px로 낮아 PC 화면에서도 본문을 몇 줄만 써도 스크롤이 생기던 문제. 좌측 컬럼이
    이미 minmax(0,1fr)로 넓게 잡혀 있어(§메일 설정 2열 레이아웃 라운드) 폭은 그대로
@@ -20596,6 +20622,8 @@ window.SHIN2_CRM_APP_INIT = function(){
               <input type="file" id="mailBodyImgInput_${key}" accept="${(D.MAIL_ASSET_ALLOWED_EXT.inlineImage||[]).map(e=>'.'+e).join(',')}" style="display:none;" />
               <span class="mailx-hint" tabindex="0" role="img" aria-label="이미지 제한 안내" title="이미지를 추가하면 자동 업로드되어 커서 위치에 삽입됩니다. 최대 ${mailAssetSizeLabel(D.MAIL_ASSET_MAX_CLOUD_BYTES.inlineImage)} · ${(D.MAIL_ASSET_ALLOWED_EXT.inlineImage||[]).join('/')}">?</span>
               <span class="mailx-toolbar-sep" aria-hidden="true"></span>
+              ${mailFormatToolbarHtml('mailSetBody_' + key)}
+              <span class="mailx-toolbar-sep" aria-hidden="true"></span>
               <span class="mailx-vars mailx-vars-inline">${MAIL_PLACEHOLDER_BUTTONS.map(([ph,label])=> `<button type="button" class="mail-placeholder-btn" data-ph-target="mailSetBody_${key}" data-ph-value="${esc(ph)}">${esc(label)}</button>`).join('')}</span>
             </div>
           </div>
@@ -21007,6 +21035,125 @@ window.SHIN2_CRM_APP_INIT = function(){
       refreshMailGlobalImgBox();
       if(img && img.storagePath) D.deleteMailAssetFile(img.storagePath);
     });
+  }
+  // ==========================================================================
+  // §메일 본문 서식 라운드(신규) — 사용자 요청: "메일에 형광펜이나 글씨 크기를 자체적으로
+  // 수정할 수는 없나?" → 형광펜·글씨 크기 둘 다.
+  //
+  // 발송 경로는 원래부터 이 두 가지를 허용하고 있었다(sanitizeMailBodyForEmailHtml의
+  // safeStyleValue가 font-size 8~72px와 background-color를 통과시킨다). 지금까지 없던 건
+  // "그 스타일을 입히는 UI"뿐이라, 이 라운드는 툴바 컨트롤과 선택 영역에 스타일을 입히는
+  // 코드만 추가한다 — 저장(sanitizeMailBodyHtml)·발송(EmailJS)·치환변수·이미지 업로드
+  // 로직은 한 줄도 건드리지 않았다.
+  //
+  // 편집기 두 곳(메일 설정 템플릿 mailSetBody_*, 메일 작성 팝업 mailComposeBody)이 같은
+  // .mail-body-editor 클래스를 쓰므로 컨트롤·핸들러를 한 벌만 만들어 양쪽에 쓴다.
+  // ==========================================================================
+  const MAIL_FMT_SIZES = [['13px','작게'], ['15px','보통'], ['18px','크게'], ['24px','아주 크게'], ['32px','제목급']];
+  const MAIL_FMT_HILITES = [['#FFF27A','노랑'], ['#B6F2C4','초록'], ['#FFC9DE','분홍'], ['#BFE3FF','하늘']];
+  // 툴바 버튼을 누르면 편집기에서 포커스가 빠지면서 선택이 사라진다. 그래서 선택이 바뀔
+  // 때마다 마지막 위치를 기억해 두고, 버튼을 누르는 순간 그 선택을 되살린 뒤 명령을 건다.
+  let mailFmtSavedRange = null;
+  let mailFmtSavedEditorId = '';
+  function mailFmtInstallOnce(){
+    if(mailFmtInstallOnce.done) return;
+    mailFmtInstallOnce.done = true;
+    document.addEventListener('selectionchange', ()=>{
+      const sel = window.getSelection();
+      if(!sel || !sel.rangeCount) return;
+      const node = sel.anchorNode;
+      const el = node ? (node.nodeType === 1 ? node : node.parentElement) : null;
+      const ed = el && el.closest ? el.closest('.mail-body-editor') : null;
+      if(ed && ed.id){ mailFmtSavedRange = sel.getRangeAt(0).cloneRange(); mailFmtSavedEditorId = ed.id; }
+    });
+    document.addEventListener('click', (e)=>{
+      const btn = e.target.closest && e.target.closest('[data-mail-fmt]');
+      if(!btn) return;
+      e.preventDefault();
+      const kind = btn.getAttribute('data-mail-fmt');
+      const targetId = btn.getAttribute('data-mail-fmt-target');
+      if(kind === 'hilite') mailFmtApply(targetId, 'hilite', btn.getAttribute('data-mail-fmt-value'));
+      else if(kind === 'hilite-off') mailFmtApply(targetId, 'hilite', 'transparent');
+      else if(kind === 'clear') mailFmtApply(targetId, 'clear', '');
+    });
+    document.addEventListener('change', (e)=>{
+      const sel = e.target.closest && e.target.closest('[data-mail-fmt="size"]');
+      if(!sel) return;
+      const v = sel.value;
+      sel.value = '';
+      if(v) mailFmtApply(sel.getAttribute('data-mail-fmt-target'), 'size', v);
+    });
+  }
+  // 저장해 둔 선택을 되살린다. 선택된 글자가 없으면(커서만 있음) null을 돌려준다 —
+  // 그 상태에서 명령을 걸면 아무 데도 적용되지 않으면서 이후 입력만 바뀌어 헷갈린다.
+  function mailFmtRestoreSelection(editorId){
+    const ed = document.getElementById(editorId);
+    if(!ed) return null;
+    ed.focus();
+    if(mailFmtSavedEditorId === editorId && mailFmtSavedRange){
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(mailFmtSavedRange);
+    }
+    const sel = window.getSelection();
+    if(!sel || !sel.rangeCount || sel.isCollapsed) return null;
+    const node = sel.anchorNode;
+    const el = node ? (node.nodeType === 1 ? node : node.parentElement) : null;
+    return (el && el.closest && el.closest('.mail-body-editor') === ed) ? sel : null;
+  }
+  function mailFmtHint(editorId, text){
+    const el = document.querySelector(`[data-mail-fmt-hint="${editorId}"]`);
+    if(!el) return;
+    el.textContent = text;
+    clearTimeout(mailFmtHint.timer);
+    mailFmtHint.timer = setTimeout(()=>{ if(el) el.textContent = ''; }, 2600);
+  }
+  function mailFmtApply(editorId, kind, value){
+    const ed = document.getElementById(editorId);
+    if(!ed) return;
+    if(!mailFmtRestoreSelection(editorId)){
+      mailFmtHint(editorId, '먼저 본문에서 바꿀 글자를 드래그해 선택해주세요.');
+      return;
+    }
+    if(kind === 'size'){
+      // execCommand('fontSize')는 1~7만 받는다. 7로 한 번 칠한 뒤 그때 생긴 <font size="7">
+      // 만 원하는 px의 <span>으로 바꾼다 — 널리 쓰는 방식이고, 발송 sanitizer가 px를
+      // 그대로 통과시키므로(8~72px) 메일에도 같은 크기로 나간다.
+      document.execCommand('styleWithCSS', false, false);
+      document.execCommand('fontSize', false, '7');
+      ed.querySelectorAll('font[size="7"]').forEach(f=>{
+        const span = document.createElement('span');
+        span.style.fontSize = value;
+        while(f.firstChild) span.appendChild(f.firstChild);
+        f.parentNode.replaceChild(span, f);
+      });
+    } else if(kind === 'hilite'){
+      document.execCommand('styleWithCSS', false, true);
+      // hiliteColor는 일부 브라우저에서 지원하지 않는다 — 그때는 backColor로 떨어진다.
+      if(!document.execCommand('hiliteColor', false, value)) document.execCommand('backColor', false, value);
+    } else if(kind === 'clear'){
+      document.execCommand('removeFormat');
+    }
+    // 위임 input 리스너(메일 설정의 "저장하지 않은 변경사항" 표시)가 DOM 직접 수정까지
+    // 알아채도록 input 이벤트를 한 번 올려 준다.
+    ed.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+  function mailFormatToolbarHtml(editorId){
+    mailFmtInstallOnce();
+    return `
+      <span class="mail-fmt-group">
+        <select class="mail-fmt-size" data-mail-fmt="size" data-mail-fmt-target="${esc(editorId)}" aria-label="글씨 크기">
+          <option value="">글씨 크기</option>
+          ${MAIL_FMT_SIZES.map(([px,label])=> `<option value="${px}">${esc(label)} (${px})</option>`).join('')}
+        </select>
+        <span class="mail-fmt-sep" aria-hidden="true"></span>
+        <span class="mail-fmt-label">형광펜</span>
+        ${MAIL_FMT_HILITES.map(([hex,name])=> `<button type="button" class="mail-fmt-swatch" data-mail-fmt="hilite" data-mail-fmt-value="${hex}" data-mail-fmt-target="${esc(editorId)}" style="background:${hex}" title="형광펜 ${esc(name)}" aria-label="형광펜 ${esc(name)}"></button>`).join('')}
+        <button type="button" class="mail-fmt-swatch is-none" data-mail-fmt="hilite-off" data-mail-fmt-target="${esc(editorId)}" title="형광펜 지우기" aria-label="형광펜 지우기"></button>
+        <span class="mail-fmt-sep" aria-hidden="true"></span>
+        <button type="button" class="mail-fmt-btn" data-mail-fmt="clear" data-mail-fmt-target="${esc(editorId)}" title="선택한 글자의 서식(크기·형광펜·굵기 등)을 모두 지웁니다">서식 지우기</button>
+        <span class="mail-fmt-hint" data-mail-fmt-hint="${esc(editorId)}"></span>
+      </span>`;
   }
   // §본문 이미지 첨부 라운드(신규) — 템플릿 편집 화면(mailSetBody_*)과 메일 작성창
   // (mailComposeBody) 양쪽에서 공유하는 이미지 업로드/삽입/교체/삭제 로직. 업로드는
@@ -21626,6 +21773,7 @@ window.SHIN2_CRM_APP_INIT = function(){
                 <button type="button" class="co-text-action" id="mailComposeImgAddBtn">🖼 이미지 추가</button>
                 <input type="file" id="mailComposeImgInput" accept="${(D.MAIL_ASSET_ALLOWED_EXT.inlineImage||[]).map(e=>'.'+e).join(',')}" style="display:none;" />
                 <span id="mailComposeImgStatus" class="mail-asset-status"></span>
+                ${mailFormatToolbarHtml('mailComposeBody')}
               </div>
               <div class="mail-body-editor" id="mailComposeBody" contenteditable="true">${bodyFilledHtml}</div>
             </div>
