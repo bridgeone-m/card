@@ -35166,8 +35166,20 @@ window.SHIN2_CRM_APP_INIT = function(){
       }
       .pdf-foot-brand{ display:flex; align-items:center; gap:2.4mm; min-width:0; }
       .pdf-foot-logo{ height:4.1mm; width:auto; display:block; }
+      /* .pdf-foot-tag — 예전 "BUILDING SOLUTION PARTNER" 워드마크용. 지금은 안 쓰지만
+         되돌릴 때를 위해 남겨 둔다. */
       .pdf-foot-tag{ font-size:${ls ? 7.2 : 7.6}px; font-weight:600; letter-spacing:.09em; color:var(--pdf-muted); white-space:nowrap; }
       .pdf-foot-pour{ font-size:${ls ? 7.2 : 7.6}px; font-weight:700; letter-spacing:.11em; color:var(--pdf-navy); white-space:nowrap; }
+      /* §PDF 푸터 연락처 라운드(신규) — 가운데 한 줄에 사이트·전화/팩스·메일.
+         한 줄에 다 안 들어가는 폭(세로 A4의 좁은 컬럼 조합)에서는 접히게 두되,
+         항목 안에서는 끊기지 않게 한다(전화번호가 줄 사이에서 쪼개지면 못 읽는다). */
+      .pdf-foot-contact{
+        flex:1 1 auto; min-width:0; display:flex; flex-wrap:wrap;
+        align-items:center; justify-content:center; gap:0 2.2mm;
+        font-size:${ls ? 7.2 : 7.6}px; font-weight:600; color:var(--pdf-muted);
+      }
+      .pdf-foot-contact-item{ white-space:nowrap; }
+      .pdf-foot-dot{ color:var(--pdf-muted); opacity:.55; }
       .pdf-foot-page{ font-weight:700; color:var(--pdf-navy); white-space:nowrap; }
     `;
   }
@@ -35248,16 +35260,29 @@ window.SHIN2_CRM_APP_INIT = function(){
         <div class="pdf-conthead-right"><span class="pdf-conthead-meta">${esc(ctx.regionLabel)} · ${ctx.companies.length}${esc(ctx.countUnit || '건')}</span>${pour}</div>
       </div>`;
   }
-  // 푸터 문구는 시안에 있는 브랜드 워드마크(NETFORM BUILDING SOLUTION PARTNER /
-  // POUR METHOD OF CONSTRUCTION)만 쓴다 — 대표번호·대표이메일 등 확정되지 않은
-  // 연락처는 넣지 않는다(§요청 10 "모르는 연락처를 추측해서 넣지 말 것").
+  // §PDF 푸터 연락처 라운드(신규) — 사용자 요청: "결과물 밑에 다른 문구 다 빼고(로고는
+  // 그대로), 사이트 주소 · TEL/FAX · 메일만 기재해줘."
+  //
+  // 예전에는 확정된 연락처가 없어 브랜드 워드마크(BUILDING SOLUTION PARTNER /
+  // POUR METHOD OF CONSTRUCTION)만 넣어 뒀다(§요청 10 "모르는 연락처를 추측해서 넣지
+  // 말 것"). 이번에 사용자가 실제 값을 직접 지정해 줬으므로 그 값만 그대로 쓴다 —
+  // 아래 PDF_FOOT_CONTACT 세 줄이 전부이고, 여기 없는 정보는 만들어 내지 않는다.
+  // 두 PDF(업체 목록 / 시공 아파트)가 이 함수 하나를 같이 쓰므로 한 곳만 고치면 된다.
+  const PDF_FOOT_CONTACT = [
+    'https://www.pour1.net/',
+    'TEL : 1899-2734｜FAX : 031-373-2734',
+    'Mail : netform@netformrnd.com'
+  ];
   function pdfExportFooterHtml(ctx, pageNo, pageTotal){
     const netform = ctx.netformLogo
       ? `<img class="pdf-foot-logo" src="${esc(ctx.netformLogo)}" alt="NETFORM" />` : '<span class="pdf-foot-pour">NETFORM</span>';
+    const contact = PDF_FOOT_CONTACT
+      .map(t=> `<span class="pdf-foot-contact-item">${esc(t)}</span>`)
+      .join('<span class="pdf-foot-dot" aria-hidden="true">·</span>');
     return `
       <div class="pdf-page-foot">
-        <div class="pdf-foot-brand">${netform}<span class="pdf-foot-tag">BUILDING SOLUTION PARTNER</span></div>
-        <div class="pdf-foot-pour">POUR METHOD OF CONSTRUCTION</div>
+        <div class="pdf-foot-brand">${netform}</div>
+        <div class="pdf-foot-contact">${contact}</div>
         <div class="pdf-foot-page">페이지 ${pageNo} / ${pageTotal}</div>
       </div>`;
   }
