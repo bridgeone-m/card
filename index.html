@@ -3172,6 +3172,14 @@ html,body{background:radial-gradient(circle at 75% -10%,rgba(11,91,211,.055),tra
   background:#EDF3FF; color:#1D4ED8; font-size:11px; font-weight:700; white-space:nowrap;
 }
 .crv-rate-btn.is-choice{ width:auto; min-width:0; padding:0 10px; flex:none; }
+/* 고른 칩의 색. 상/중/하 칩은 .is-high/.is-mid/.is-low별로 색이 따로 있지만 선택지·관심
+   포인트 칩에는 그 짝이 없어서, 눌러도 저장만 되고 화면에는 표시가 안 됐다.
+   세 클래스를 겹쳐 써서 뒤에 오는 .crv-rate-btn:hover보다 우선한다. */
+.crv-rate-btn.is-choice.is-on{
+  background:#2563EB; border-color:#2563EB; color:#fff; font-weight:700;
+}
+.crv-rate-btn.is-choice.is-on:hover{ background:#1D4ED8; border-color:#1D4ED8; }
+.crv-rate-btn.is-choice:not(.is-on):hover{ background:#EDF3FF; border-color:#BBD4F7; color:#1D4ED8; }
 /* 선택 칩은 제목 줄(.crv-card-head) 안에서 자리를 다투지 않고 제목 아래 독립된 줄을 쓴다.
    상/중/하 3칩과 달리 선택지는 4개에 글자도 길어("확인 필요") 좁은 폭에서 밀려날 수 있다.
    position/z-index를 명시해 떠 있는 다른 요소가 위를 덮지 못하게 한다. */
