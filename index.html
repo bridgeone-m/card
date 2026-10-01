@@ -6786,6 +6786,11 @@ body{
   border:1px solid #F0C2BF; background:#FFF6F5; border-radius:9px;
   padding:9px 11px; margin:8px 0;
 }
+/* 발송 완료된 건은 빨간 강조를 풀고 회색으로 가라앉힌다(기록은 그대로 보인다). */
+.crv-req-callout.is-done{ border-color:#E4EAF2; background:#F7F9FC; }
+.crv-req-callout.is-done .crv-req-callout-head{ color:#6F7C91; }
+.crv-req-callout.is-done .crv-req-callout-text{ color:#55637A; }
+.crv-req-badge.is-done{ background:#EDF1F7; color:#6F7C91; }
 .crv-req-callout-head{ display:flex; align-items:center; gap:7px; font-size:11.5px; font-weight:800; color:#C2403A; margin-bottom:4px; }
 .crv-req-callout-text{ font-size:12px; color:#6B3A38; line-height:1.5; white-space:pre-wrap; word-break:break-word; }
 /* 고객 인사이트 — 연한 파랑 summary box, 읽기 전용 */
@@ -6865,11 +6870,22 @@ body{
 .consult-req-alert-sub{ font-size:11px; opacity:.88; }
 .consult-req-alert-list{ background:#fff; max-height:260px; overflow-y:auto; border:1px solid #F0C2BF; border-top:0; }
 .consult-req-alert-row{
-  width:100%; display:flex; flex-direction:column; gap:3px; text-align:left;
-  padding:9px 13px; border:0; background:transparent; cursor:pointer;
+  display:flex; align-items:center; gap:8px; padding:7px 10px 7px 13px;
 }
 .consult-req-alert-row + .consult-req-alert-row{ border-top:1px solid #FBEDEC; }
 .consult-req-alert-row:hover{ background:#FFF6F5; }
+.consult-req-alert-row-main{
+  flex:1; min-width:0; display:flex; flex-direction:column; gap:3px; text-align:left;
+  padding:2px 0; border:0; background:transparent; cursor:pointer;
+}
+.consult-req-alert-done{
+  flex:none; height:26px; padding:0 11px; border-radius:999px; cursor:pointer;
+  border:1px solid #E6B9B6; background:#fff; color:#C2403A;
+  font-size:11px; font-weight:800; white-space:nowrap;
+}
+.consult-req-alert-done:hover{ background:#D93B37; border-color:#D93B37; color:#fff; }
+.consult-req-alert-done:disabled{ opacity:.5; cursor:default; }
+.consult-req-alert-done:focus-visible{ outline:2px solid #D93B37; outline-offset:2px; }
 .consult-req-alert-row-name{ font-size:12px; font-weight:750; color:#23364F; display:flex; align-items:center; gap:6px; }
 .consult-req-alert-flag{ font-size:9.5px; font-weight:800; color:#C2403A; background:#FFF0F0; border-radius:999px; padding:1px 6px; }
 .consult-req-alert-row-memo{ font-size:11px; color:#6F7C91; line-height:1.45; }
@@ -10054,11 +10070,12 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
     out.secondMeetingPreparation.memo = String((src.secondMeetingPreparation || {}).memo || '');
     const rm = src.requestedMaterialsAfterMeeting || {};
     out.requestedMaterialsAfterMeeting.memo = String(rm.memo || '');
-    // pending은 저장값을 믿지 않고 메모 유무로 항상 다시 판정한다(§8 규칙) — 저장이
-    // 중간에 끊겨 플래그만 남는 일이 없다.
-    out.requestedMaterialsAfterMeeting.pending = !!String(rm.memo || '').trim();
+    // pending은 저장값을 믿지 않고 "메모가 있고 아직 완료 처리 안 됨"으로 항상 다시
+    // 판정한다 — 저장이 중간에 끊겨 플래그만 남는 일이 없다.
     out.requestedMaterialsAfterMeeting.notifiedAt = String(rm.notifiedAt || '');
     out.requestedMaterialsAfterMeeting.completedAt = String(rm.completedAt || '');
+    out.requestedMaterialsAfterMeeting.pending =
+      !!String(rm.memo || '').trim() && !out.requestedMaterialsAfterMeeting.completedAt;
     const ai = src.autoInsight || {};
     out.autoInsight.summary = String(ai.summary || '');
     out.autoInsight.verdict = String(ai.verdict || '');
@@ -10104,26 +10121,48 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
     // §8 — 메모가 비어있지 않으면 pending=true, 비어있으면 false. 알림은 이 값만 본다.
     const memoNow = next.requestedMaterialsAfterMeeting.memo.trim();
     next.requestedMaterialsAfterMeeting.pending = !!memoNow;
-    if(memoNow && !prev.requestedMaterialsAfterMeeting.memo.trim()){
-      // 알림이 처음 생긴 시점. 이후 "완료 처리" 기능을 붙일 때 그대로 쓸 수 있게 남겨둔다.
-      next.requestedMaterialsAfterMeeting.notifiedAt = nowIso();
-      next.requestedMaterialsAfterMeeting.completedAt = '';
-    } else if(!memoNow){
+    if(!memoNow){
       next.requestedMaterialsAfterMeeting.notifiedAt = '';
       next.requestedMaterialsAfterMeeting.completedAt = '';
+    } else if(memoNow !== prev.requestedMaterialsAfterMeeting.memo.trim()){
+      // 요청 내용이 바뀌면(처음 적은 것이든 고쳐 적은 것이든) 새 요청으로 보고 알림을
+      // 되살린다 — 완료 처리해 둔 뒤 다른 자료를 더 적었는데 조용히 묻히면 안 된다.
+      next.requestedMaterialsAfterMeeting.notifiedAt = nowIso();
+      next.requestedMaterialsAfterMeeting.completedAt = '';
     }
+    next.requestedMaterialsAfterMeeting.pending =
+      !!memoNow && !next.requestedMaterialsAfterMeeting.completedAt;
     if(next.autoInsight.summary !== prev.autoInsight.summary) next.autoInsight.updatedAt = nowIso();
     rec.consultReview = next;
     rec.updatedAt = nowIso();
     saveDocuments(list);
     return { ok:true, changed:true, rec, list };
   }
-  // MOU 진행상황 알림이 읽는 목록. "메모가 들어오면 알림" 구조라 완료 체크는 보지 않는다.
+  // MOU 진행상황 알림이 읽는 목록 — 메모가 있고 아직 완료 처리되지 않은 건만.
   function pendingConsultReviewDocs(){
-    return loadDocuments().filter(d=>
-      d.documentType === 'questionnaire'
-      && String(((d.consultReview || {}).requestedMaterialsAfterMeeting || {}).memo || '').trim()
-    );
+    return loadDocuments().filter(d=>{
+      if(d.documentType !== 'questionnaire') return false;
+      const rm = (d.consultReview || {}).requestedMaterialsAfterMeeting || {};
+      return !!String(rm.memo || '').trim() && !String(rm.completedAt || '').trim();
+    });
+  }
+  // §요청자료 알림 완료 처리 라운드(신규) — 알림에서 [완료]를 누르면 그 건만 알림에서
+  // 사라진다. 요청 내용(memo)은 지우지 않는다 — 무엇을 보냈는지는 질문지 상담 화면에
+  // 그대로 남아 있어야 하고, 사용자가 적은 글을 대신 지우지 않는다. 별도의 완료 이력
+  // 목록은 만들지 않는다(§요청 "따로 기록 안 남겨도 된다") — completedAt 한 칸뿐이다.
+  function markConsultRequestDone(docId, actorLabel){
+    const list = loadDocuments();
+    const rec = list.find(d=> d.id === docId);
+    if(!rec) return { ok:false, reason:'NOT_FOUND' };
+    const cur = readConsultReview(rec);
+    if(!cur.requestedMaterialsAfterMeeting.memo.trim()) return { ok:false, reason:'NO_REQUEST' };
+    cur.requestedMaterialsAfterMeeting.completedAt = nowIso();
+    cur.requestedMaterialsAfterMeeting.pending = false;
+    if(actorLabel) cur.requestedMaterialsAfterMeeting.completedBy = String(actorLabel);
+    rec.consultReview = cur;
+    rec.updatedAt = nowIso();
+    saveDocuments(list);
+    return { ok:true, rec, list };
   }
   function setDocumentVerification(id, patch){
     const list = loadDocuments(); const rec = list.find(d=> d.id===id); if(!rec) return null;
@@ -12773,7 +12812,7 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
     loadSheetRequests, buildSheetRequestsIndex, latestSheetRequestForCompany,
     loadCaseByCaseCompanies, loadExclusionAudit, caseByCaseIdForNormName, exclusionIdForNormName, findCaseByCaseByNormName, findCaseByCaseById, isUserExcludedNormName,
     loadDocuments, documentsForCompany, buildDocumentsIndex, addDocument, updateDocumentExtracted, getBlob, getLocalDocFile, renameDocument, setDocumentMemo, setDocumentQaAnswers, setDocumentConsultation, normalizeQuestionnaireRating, QUESTIONNAIRE_RATINGS, markDocumentMaterialsSent, pendingRequestMaterialDocs,
-    readConsultReview, setDocumentConsultReview, pendingConsultReviewDocs, CONSULT_REVIEW_RATED, setDocumentVerification, deleteDocument, findDocument, migrateDocumentToCloud,
+    readConsultReview, setDocumentConsultReview, pendingConsultReviewDocs, markConsultRequestDone, CONSULT_REVIEW_RATED, setDocumentVerification, deleteDocument, findDocument, migrateDocumentToCloud,
     loadMemos, memosFor, addMemo, updateMemo, deleteMemo, buildMemosIndex,
     pendingActivitiesForCompany, tasksForCompany, calendarEventsForCompany, upcomingCalendarEventsForCompany,
     DEAL_STAGES, setDealStage, setAssigneeUserId, addNeed, removeNeed, dismissNeedSuggestion, addSpecialNote, removeSpecialNote, setImportant, suggestNeedFor,
@@ -20009,15 +20048,16 @@ window.SHIN2_CRM_APP_INIT = function(){
     const r = doc ? D.readConsultReview(doc) : null;
     const ratedCount = r ? D.CONSULT_REVIEW_RATED.filter(([k])=> r[k].rating).length : 0;
     const reqText = r ? r.requestedMaterialsAfterMeeting.memo.trim() : '';
+    const reqPending = !!(r && r.requestedMaterialsAfterMeeting.pending);
     const insight = r ? parseConsultInsightSummary(r.autoInsight.summary) : { sections:[] };
     const stateBadge = `<span class="cdash2-tag${ratedCount ? ' is-done' : ''} cdash2-qa-badge">${ratedCount ? `평가 ${ratedCount}/3` : '상담 기록 없음'}</span>`;
     wrap.innerHTML = `
       <div class="cdash2-card">
         <div class="cdash2-card-title" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
           <span><span aria-hidden="true">📄</span> 질문지 상담 요약</span>
-          <div style="display:flex;align-items:center;gap:6px;">${reqText ? '<span class="crv-req-badge">요청자료</span>' : ''}${stateBadge}${openBtnHtml}</div>
+          <div style="display:flex;align-items:center;gap:6px;">${reqText ? (reqPending ? '<span class="crv-req-badge">요청자료</span>' : '<span class="crv-req-badge is-done">발송 완료</span>') : ''}${stateBadge}${openBtnHtml}</div>
         </div>
-        ${reqText ? `<div class="crv-req-callout"><div class="crv-req-callout-head">미팅 후 요청 자료</div><div class="crv-req-callout-text">${esc(reqText)}</div></div>` : ''}
+        ${reqText ? `<div class="crv-req-callout${reqPending ? '' : ' is-done'}"><div class="crv-req-callout-head">미팅 후 요청 자료${reqPending ? '' : ' <span class="crv-req-badge is-done">발송 완료</span>'}</div><div class="crv-req-callout-text">${esc(reqText)}</div></div>` : ''}
         ${r ? consultRatingSummaryHtml(doc) : ''}
         ${insight.sections.length ? `
           <div class="crv-insight-box is-compact">${consultInsightInnerHtml(insight, r.autoInsight.updatedAt)}</div>
@@ -26120,13 +26160,14 @@ window.SHIN2_CRM_APP_INIT = function(){
         </div>
         <textarea class="crv-memo" data-crv-memo="secondMeetingPreparation" placeholder="2차 미팅 전에 준비할 내용을 적어주세요.">${esc(r.secondMeetingPreparation.memo)}</textarea>
       </section>
-      <section class="crv-card is-request${reqMemo.trim() ? ' is-pending' : ''}" data-crv-section="requestedMaterialsAfterMeeting">
+      <section class="crv-card is-request${r.requestedMaterialsAfterMeeting.pending ? ' is-pending' : ''}" data-crv-section="requestedMaterialsAfterMeeting">
         <div class="crv-card-head">
           <div class="crv-card-titles">
             <div class="crv-card-title">미팅 후 요청 자료</div>
             <div class="crv-card-desc">여기에 내용을 적으면 MOU 진행상황 화면에 빨간 알림이 뜹니다.</div>
           </div>
-          <span class="crv-req-badge" id="crvReqBadge"${reqMemo.trim() ? '' : ' hidden'}>알림 발생</span>
+          <span class="crv-req-badge" id="crvReqBadge"${r.requestedMaterialsAfterMeeting.pending ? '' : ' hidden'}>알림 발생</span>
+          <span class="crv-req-badge is-done" id="crvReqDoneBadge"${r.requestedMaterialsAfterMeeting.completedAt ? '' : ' hidden'}>발송 완료</span>
         </div>
         <textarea class="crv-memo" data-crv-memo="requestedMaterialsAfterMeeting" placeholder="예: 협약서, 시방서, 최근 실적자료 발송 요청">${esc(reqMemo)}</textarea>
       </section>
@@ -26337,10 +26378,13 @@ window.SHIN2_CRM_APP_INIT = function(){
       </button>
       <div class="consult-req-alert-list" id="consultReqAlertList" hidden>
         ${items.slice(0, 8).map(it=> `
-          <button type="button" class="consult-req-alert-row" data-consult-req-co="${esc(it.co.id)}">
-            <span class="consult-req-alert-row-name">${esc(it.co.name)}${it.afterM1 ? '<span class="consult-req-alert-flag">1차 미팅 후</span>' : ''}</span>
-            <span class="consult-req-alert-row-memo">${esc(it.memo.length > 60 ? it.memo.slice(0,60) + '…' : it.memo)}</span>
-          </button>`).join('')}
+          <div class="consult-req-alert-row">
+            <button type="button" class="consult-req-alert-row-main" data-consult-req-co="${esc(it.co.id)}">
+              <span class="consult-req-alert-row-name">${esc(it.co.name)}${it.afterM1 ? '<span class="consult-req-alert-flag">1차 미팅 후</span>' : ''}</span>
+              <span class="consult-req-alert-row-memo">${esc(it.memo.length > 60 ? it.memo.slice(0,60) + '…' : it.memo)}</span>
+            </button>
+            <button type="button" class="consult-req-alert-done" data-consult-req-done="${esc(it.doc.id)}" title="이 건을 알림에서 지웁니다(요청 내용은 질문지 상담에 그대로 남습니다)">완료</button>
+          </div>`).join('')}
         ${items.length > 8 ? `<div class="consult-req-alert-more">외 ${esc(items.length - 8)}건</div>` : ''}
       </div>`;
     const list = document.getElementById('consultReqAlertList');
@@ -26351,6 +26395,25 @@ window.SHIN2_CRM_APP_INIT = function(){
     el.querySelectorAll('[data-consult-req-co]').forEach(b=> b.addEventListener('click', ()=>{
       // 기존 통합 고객 상세 팝업을 "질문지 상담" 탭으로 연다(새 화면 없음).
       openCustomerDetail(b.getAttribute('data-consult-req-co'), 'questionnaire');
+    }));
+    // [완료] — 누르는 즉시 그 줄이 알림에서 사라진다. 요청 내용은 지우지 않고
+    // completedAt만 찍는다(§요청 "그냥 바로 사라지게, 따로 기록 안 남겨도 된다").
+    el.querySelectorAll('[data-consult-req-done]').forEach(b=> b.addEventListener('click', async (ev)=>{
+      ev.stopPropagation();
+      const docId = b.getAttribute('data-consult-req-done');
+      b.disabled = true;
+      const r = D.markConsultRequestDone(docId, crmCurrentUserLabel());
+      if(!r || !r.ok){ b.disabled = false; alert('완료 처리에 실패했습니다.'); return; }
+      // 로컬 저장 시점에 화면을 바로 정리한다 — 클라우드 확인을 기다리지 않는다.
+      renderConsultRequestAlert();
+      const openId = (typeof currentCompanyId !== 'undefined') ? currentCompanyId : null;
+      if(openId && String(r.rec.companyId) === String(openId)){
+        // 고객 상세가 열려 있으면 그 안의 요청자료 표시도 같이 맞춘다.
+        const co = D.findCompany(openId);
+        if(co){ try{ renderQuestionnaireSummaryCard(co, r.rec); }catch(err){ /* 탭이 안 그려졌으면 무시 */ } }
+      }
+      const cloud = await confirmDocsCloudSave(r.list);
+      if(!cloud.ok) showMiniSaveToast('완료 저장 확인 실패 - 다시 시도');
     }));
   }
   function closeQuestionnaireSession(){
@@ -26707,11 +26770,14 @@ window.SHIN2_CRM_APP_INIT = function(){
     function syncConsultReviewChrome(freshDoc){
       if(!freshDoc) return;
       const r = D.readConsultReview(freshDoc);
-      const pending = !!r.requestedMaterialsAfterMeeting.memo.trim();
+      const pending = r.requestedMaterialsAfterMeeting.pending;
+      const done = !!r.requestedMaterialsAfterMeeting.completedAt;
       const card = noteScroll.querySelector('[data-crv-section="requestedMaterialsAfterMeeting"]');
       if(card) card.classList.toggle('is-pending', pending);
       const badge = document.getElementById('crvReqBadge');
       if(badge) badge.hidden = !pending;
+      const doneBadge = document.getElementById('crvReqDoneBadge');
+      if(doneBadge) doneBadge.hidden = !done;
     }
     saveBtn.addEventListener('click', ()=> queueSave(true));
     noteScroll.addEventListener('keydown', e=>{
@@ -26766,8 +26832,9 @@ window.SHIN2_CRM_APP_INIT = function(){
   function consultWorkCardHtml(doc){
     const r = D.readConsultReview(doc);
     const req = r.requestedMaterialsAfterMeeting.memo.trim();
+    const reqPending = r.requestedMaterialsAfterMeeting.pending;
     const verdict = r.autoInsight.verdict || parseConsultInsightSummary(r.autoInsight.summary).verdict;
-    return `${req ? `<div class="crv-req-callout"><div class="crv-req-callout-head">미팅 후 요청 자료 <span class="crv-req-badge">발송 필요</span></div><div class="crv-req-callout-text">${esc(req)}</div></div>` : ''}`
+    return `${req ? `<div class="crv-req-callout${reqPending ? '' : ' is-done'}"><div class="crv-req-callout-head">미팅 후 요청 자료 <span class="crv-req-badge${reqPending ? '' : ' is-done'}">${reqPending ? '발송 필요' : '발송 완료'}</span></div><div class="crv-req-callout-text">${esc(req)}</div></div>` : ''}`
       + consultRatingSummaryHtml(doc)
       + `${verdict ? `<div class="crv-verdict-line">${esc(verdict)}</div>` : ''}`;
   }
