@@ -3574,6 +3574,16 @@ body.map-modal-lock{ overflow:hidden; }
    테두리로 묶는다. 위 .map-near-pop 관련 규칙은 지우지 않았다(팝오버 마크업만 사라졌고
    반경 드롭다운(.map-near-radius-select) 등은 이 검색창이 그대로 재사용한다).
    ========================================================================== */
+/* §근처 찾기 탭 분리 라운드(신규) — 두 검색칸을 한 줄에 같이 두지 않고 탭으로 가른다.
+   "시공 아파트" 보기에서는 아파트명·지역 칸만, "주소로 근처 찾기" 보기에서는 주소 칸과
+   반경만 보인다. 마크업·id·핸들러는 그대로이고 어느 쪽을 보여줄지만 다르다. */
+.map-modal-filters .map-near-field{ display:none; }
+.map-modal-filters.is-near-mode .map-near-field{ display:flex; }
+.map-modal-filters.is-near-mode #aptFilterSearch{ display:none; }
+.map-modal-filters.is-near-mode > label.map-search-field:not(.map-near-search){ display:none; }
+/* 근처 찾기 보기에서는 주소 칸이 주인공이라 넉넉하게. */
+.map-modal-filters.is-near-mode .map-near-field{ flex:1 1 420px; min-width:300px; }
+
 .map-near-field{
   display:flex; align-items:center; gap:6px; flex:2 1 400px; min-width:300px;
   background:#F7FAFC; border:1px solid #DCE4EF; border-radius:8px; padding:4px 5px;
@@ -38601,6 +38611,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     aptFilterState = { search:'', year:'all', category:'all', region:'all', households:'all', nearCenter:null, nearRadiusKm:5, nearQuery:'' };
     mapEmbedFocusedRegion = null; // §지도 카드 고정 3단 스택: 다음에 열 때는 항상 "전체" 상태로 새로 시작
     mapActiveTab = 'company'; // §요청 "기본 선택은 시공사" — 매번 열 때 항상 기본 탭으로 시작
+    mapAptViewMode = 'list';
     invalidateMapCompaniesCache(); // §MAP-PERF: 닫을 때도 비워둔다(다음 open이 항상 새로 계산하도록, 방어적)
     if(mapCanvasState && typeof mapCanvasState.destroy === 'function'){
       try{ mapCanvasState.destroy(); } catch(err){ /* 지도 정리 실패는 무시 — 다음 열기에서 새로 만들어짐 */ }
@@ -38659,6 +38670,11 @@ window.SHIN2_CRM_APP_INIT = function(){
             <div class="map-modal-tabs-list">
               <button type="button" class="map-modal-tab-btn is-active" data-map-tab="company">시공사</button>
               <button type="button" class="map-modal-tab-btn" data-map-tab="apartment">시공 아파트</button>
+              <!-- §근처 찾기 탭 분리 라운드(신규) — 시공 아파트 탭 필터 줄 안에 섞여 있던
+                   "주소로 근처 찾기" 검색칸을 독립 탭으로 뺐다. 지오코딩·거리 계산·반경
+                   판정·마커·목록은 전부 그대로다 — 같은 renderMapModalMainApartment를
+                   같은 id로 그리고, 어느 칸을 보여줄지만 모드로 가른다. -->
+              <button type="button" class="map-modal-tab-btn" data-map-tab="near">주소로 근처 찾기</button>
             </div>
             <!-- §요청 — "필터 초기화"/"PDF 내보내기"를 탭 옆으로 이동. 이 자리는 항상
                  비어 있다가 시공 아파트 탭일 때만 renderMapModalMainApartment가 채운다
@@ -38678,8 +38694,18 @@ window.SHIN2_CRM_APP_INIT = function(){
     mapEscHandlerFn = onEsc; // §지도→고객카드 뒤로가기: 카드가 지도 위에 열려있는 동안 pause/resume 대상
     root.querySelectorAll('[data-map-tab]').forEach(btn=> btn.addEventListener('click', ()=>{
       const tab = btn.getAttribute('data-map-tab');
-      if(tab === mapActiveTab) return;
-      mapActiveTab = tab;
+      // "주소로 근처 찾기"는 시공 아파트와 같은 데이터·같은 지도를 쓰는 다른 보기다.
+      // mapActiveTab 값은 'company'/'apartment' 둘뿐으로 유지한다 — 이 값을 보는 곳이
+      // 열 군데가 넘어서 세 번째 값을 넣으면 전부 'company'로 잘못 읽힌다.
+      const nextTab = (tab === 'near') ? 'apartment' : tab;
+      const nextMode = (tab === 'near') ? 'near' : 'list';
+      if(nextTab === mapActiveTab && nextMode === mapAptViewMode) return;
+      mapActiveTab = nextTab;
+      mapAptViewMode = nextMode;
+      // 보기를 바꾸면 반대쪽 조건은 풀어 둔다 — 근처 반경이 남은 채 "시공 아파트"로
+      // 돌아가면 목록이 말없이 좁혀져 있어 데이터가 없는 것처럼 보인다.
+      aptFilterState.nearQuery = '';
+      aptFilterState.nearCenter = null;
       mapFocusedCompanyList = null;
       // §8 — 탭을 바꾸면 검색어를 초기화한다(가장 안전한 방식). 시공사 탭에서 친 업체명이
       // 아파트 탭에 그대로 적용되면 "검색 결과 0건"처럼 보여 데이터가 없다고 오해하게 된다.
@@ -38691,8 +38717,10 @@ window.SHIN2_CRM_APP_INIT = function(){
       root.querySelectorAll('[data-map-tab]').forEach(b=> b.classList.toggle('is-active', b === btn));
       const titleEl = document.getElementById('mapModalTitle');
       const subEl = document.getElementById('mapModalSubtitle');
-      if(titleEl) titleEl.textContent = tab === 'apartment' ? 'POUR 시공 아파트 분포' : '시공사 지역 분포';
-      if(subEl) subEl.textContent = tab === 'apartment' ? '고객관리카드에 등록된 업체의 실제 POUR 시공실적 기준' : '전국 등록 업체의 위치와 영업 현황';
+      if(titleEl) titleEl.textContent = tab === 'near' ? '주소로 근처 찾기'
+        : (tab === 'apartment' ? 'POUR 시공 아파트 분포' : '시공사 지역 분포');
+      if(subEl) subEl.textContent = tab === 'near' ? '주소·장소명 기준 반경 안의 시공 아파트를 거리순으로'
+        : (tab === 'apartment' ? '고객관리카드에 등록된 업체의 실제 POUR 시공실적 기준' : '전국 등록 업체의 위치와 영업 현황');
       // §1 "탭을 전환할 때 기존 마커를 정리한 뒤 선택한 종류의 마커만 표시... 중복으로
       // 쌓이지 않게" — 두 탭의 지도 인스턴스는 완전히 분리돼 있어(mapCanvasState/
       // aptCanvasState) 전환 시 이전 탭의 인스턴스를 명시적으로 destroy한 뒤 renderMapModalBody()가
@@ -38739,6 +38767,11 @@ window.SHIN2_CRM_APP_INIT = function(){
             <div class="map-modal-tabs-list">
               <button type="button" class="map-modal-tab-btn is-active" data-map-tab="company">시공사</button>
               <button type="button" class="map-modal-tab-btn" data-map-tab="apartment">시공 아파트</button>
+              <!-- §근처 찾기 탭 분리 라운드(신규) — 시공 아파트 탭 필터 줄 안에 섞여 있던
+                   "주소로 근처 찾기" 검색칸을 독립 탭으로 뺐다. 지오코딩·거리 계산·반경
+                   판정·마커·목록은 전부 그대로다 — 같은 renderMapModalMainApartment를
+                   같은 id로 그리고, 어느 칸을 보여줄지만 모드로 가른다. -->
+              <button type="button" class="map-modal-tab-btn" data-map-tab="near">주소로 근처 찾기</button>
             </div>
             <!-- §요청 — "필터 초기화"/"PDF 내보내기"를 탭 옆으로 이동. 이 자리는 항상
                  비어 있다가 시공 아파트 탭일 때만 renderMapModalMainApartment가 채운다
@@ -38752,8 +38785,18 @@ window.SHIN2_CRM_APP_INIT = function(){
     `;
     root.querySelectorAll('[data-map-tab]').forEach(btn=> btn.addEventListener('click', ()=>{
       const tab = btn.getAttribute('data-map-tab');
-      if(tab === mapActiveTab) return;
-      mapActiveTab = tab;
+      // "주소로 근처 찾기"는 시공 아파트와 같은 데이터·같은 지도를 쓰는 다른 보기다.
+      // mapActiveTab 값은 'company'/'apartment' 둘뿐으로 유지한다 — 이 값을 보는 곳이
+      // 열 군데가 넘어서 세 번째 값을 넣으면 전부 'company'로 잘못 읽힌다.
+      const nextTab = (tab === 'near') ? 'apartment' : tab;
+      const nextMode = (tab === 'near') ? 'near' : 'list';
+      if(nextTab === mapActiveTab && nextMode === mapAptViewMode) return;
+      mapActiveTab = nextTab;
+      mapAptViewMode = nextMode;
+      // 보기를 바꾸면 반대쪽 조건은 풀어 둔다 — 근처 반경이 남은 채 "시공 아파트"로
+      // 돌아가면 목록이 말없이 좁혀져 있어 데이터가 없는 것처럼 보인다.
+      aptFilterState.nearQuery = '';
+      aptFilterState.nearCenter = null;
       mapFocusedCompanyList = null;
       // §8 — 탭을 바꾸면 검색어를 초기화한다(가장 안전한 방식). 시공사 탭에서 친 업체명이
       // 아파트 탭에 그대로 적용되면 "검색 결과 0건"처럼 보여 데이터가 없다고 오해하게 된다.
@@ -38765,8 +38808,10 @@ window.SHIN2_CRM_APP_INIT = function(){
       root.querySelectorAll('[data-map-tab]').forEach(b=> b.classList.toggle('is-active', b === btn));
       const titleEl = document.getElementById('mapModalTitle');
       const subEl = document.getElementById('mapModalSubtitle');
-      if(titleEl) titleEl.textContent = tab === 'apartment' ? 'POUR 시공 아파트 분포' : '시공사 지역 분포';
-      if(subEl) subEl.textContent = tab === 'apartment' ? '고객관리카드에 등록된 업체의 실제 POUR 시공실적 기준' : '전국 등록 업체의 위치와 영업 현황';
+      if(titleEl) titleEl.textContent = tab === 'near' ? '주소로 근처 찾기'
+        : (tab === 'apartment' ? 'POUR 시공 아파트 분포' : '시공사 지역 분포');
+      if(subEl) subEl.textContent = tab === 'near' ? '주소·장소명 기준 반경 안의 시공 아파트를 거리순으로'
+        : (tab === 'apartment' ? '고객관리카드에 등록된 업체의 실제 POUR 시공실적 기준' : '전국 등록 업체의 위치와 영업 현황');
       if(mapCanvasState && typeof mapCanvasState.destroy === 'function'){ try{ mapCanvasState.destroy(); }catch(err){ /* 무시 */ } }
       mapCanvasState = null; updateMapMarkers = null; focusMapRegion = null; focusMapCompany = null;
       if(aptCanvasState && typeof aptCanvasState.destroy === 'function'){ try{ aptCanvasState.destroy(); }catch(err){ /* 무시 */ } }
@@ -38918,6 +38963,9 @@ window.SHIN2_CRM_APP_INIT = function(){
   // §POUR 시공 아파트 지도 라운드(신규) — 지도 상단 탭 상태. 'company'(기본)|'apartment'.
   // 팝업을 닫으면 항상 'company'로 되돌아간다(§1 "기본 선택은 '시공사'").
   let mapActiveTab = 'company';
+  // 시공 아파트 탭의 보기 — 'list'(아파트명·지역 검색) / 'near'(주소로 근처 찾기).
+  // mapActiveTab은 그대로 두고 이 값만 따로 들어서 기존 분기를 건드리지 않는다.
+  let mapAptViewMode = 'list';
   const MAP_FILTER_DEFS = [
     ['all','전체'], ['partner','협력업체'], ['inProgress','진행중'],
     ['managementNeeded','관리필요'], ['receivable','미수 업체']
@@ -40662,7 +40710,7 @@ if(!window.__mapxRowDelegated){
     catch(err){ console.warn('시공 아파트 데이터 계산 실패:', err); allEntries = []; } // §12
     const opts = buildAptFilterOptions(allEntries);
     wrap.innerHTML = `
-      <div class="map-modal-filters">
+      <div class="map-modal-filters${mapAptViewMode === 'near' ? ' is-near-mode' : ''}">
         <label class="map-search-field">
           ${MAP_SEARCH_ICO}
           <input type="text" class="map-modal-search" id="aptFilterSearch" placeholder="아파트명 · 지역 검색" value="${esc(aptFilterState.search)}" aria-label="아파트명 · 지역 검색" />
