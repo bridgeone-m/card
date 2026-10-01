@@ -3112,29 +3112,17 @@ html,body{background:radial-gradient(circle at 75% -10%,rgba(11,91,211,.055),tra
 .mapx-legend-row{ display:flex; align-items:center; gap:7px; font-size:11px; color:#6B778C; line-height:1.9; }
 .mapx-legend-dot{ width:10px; height:10px; border-radius:50%; flex:none; border:1px solid rgba(15,23,42,.08); }
 /* ---- 반응형 ---- */
-/* §W — 긴 "지역 요약 / 지역별 업체 수" 세로 표를 좌측에서 걷어낸다. 남은 숫자는 목록
-   헤더 바로 아래의 한 줄 summary line으로, 지역별 집계는 가로로 한 줄 흐르는 칩 스트립으로
-   옮겼다. 지역 칩을 눌러 드릴다운하는 기존 동작(data-map-region)은 그대로다 — 모양만 바꿨다. */
+/* 공종 / 실적 / 지역 세 드롭다운이 좁은 좌측 패널에서도 한 줄에 들어가게. */
+.map-modal-overlay .map-modal-filters > .map-modal-select{
+  flex:1 1 0 !important; min-width:0 !important; width:auto !important;
+  padding-right:22px !important; text-overflow:ellipsis;
+}
+@media(max-width:1100px){
+  .map-modal-overlay .map-modal-filters > .map-modal-select{ flex:1 1 140px !important; }
+}
+/* §W — 좌측에는 목록만 남긴다. 지역은 위쪽 필터바의 "지역 전체" 드롭다운이, 건수는
+   목록 헤더가 맡는다 — 긴 세로 표도, 지역 칩 줄도, 주소 미확인 줄도 두지 않는다. */
 .map-modal-overlay .map-modal-infocol{ display:flex; flex-direction:column; gap:9px; }
-.map-modal-overlay .mapx-chipstrip{
-  flex:none; display:flex; gap:5px; align-items:center; overflow-x:auto; overflow-y:hidden;
-  padding-bottom:2px; scrollbar-width:thin;
-}
-.map-modal-overlay .mapx-chipstrip-label{
-  flex:none; font-size:11px; font-weight:700; color:var(--map-muted); padding-right:2px;
-}
-.map-modal-overlay .map-region-row{
-  display:inline-flex !important; align-items:center; gap:5px; width:auto; flex:none;
-  padding:4px 10px !important; border:1px solid var(--map-border) !important; border-radius:999px;
-  background:#fff; font-size:11.5px !important; white-space:nowrap; cursor:pointer;
-}
-.map-modal-overlay .map-region-row:hover{ border-color:var(--map-primary) !important; background:#EFF5FF; }
-.map-modal-overlay .map-region-count{ font-weight:800; color:var(--map-primary); }
-.map-modal-overlay .mapx-summaryline{
-  display:flex; flex-wrap:wrap; gap:3px 10px; padding:7px 9px; margin:6px 0 2px;
-  background:var(--map-bg); border-radius:11px; font-size:11px; color:var(--map-muted);
-}
-.map-modal-overlay .mapx-summaryline b{ color:var(--map-text); font-weight:800; }
 .map-modal-overlay .mapx-nocoord-badge{
   display:inline-block; margin-left:4px; padding:1px 6px; border-radius:999px;
   background:#EDF1F6; color:#8794A6; font-size:10px; font-weight:700;
@@ -35929,7 +35917,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     // §지도분포2: 팝업을 닫으면 필터/지도 인스턴스 상태를 초기화한다 — 다음에 열 때는
     // 항상 "전체" 상태로 새로 시작하고, 닫혀있던 동안 바뀐 최신 companies로 다시
     // 그려진다(§동기화 규칙 "닫혀 있어도 다음에 열 때 최신 데이터 사용").
-    mapFilterState = { search:'', filterKey:'all', category:'all', pourRange:'all', viewMode:'cluster', listView:'inBounds' };
+    mapFilterState = { search:'', filterKey:'all', category:'all', region:'all', pourRange:'all', viewMode:'cluster', listView:'inBounds' };
     aptFilterState = { search:'', year:'all', category:'all', region:'all', households:'all', nearCenter:null, nearRadiusKm:5, nearQuery:'' };
     mapEmbedFocusedRegion = null; // §지도 카드 고정 3단 스택: 다음에 열 때는 항상 "전체" 상태로 새로 시작
     mapActiveTab = 'company'; // §요청 "기본 선택은 시공사" — 매번 열 때 항상 기본 탭으로 시작
@@ -36246,7 +36234,7 @@ window.SHIN2_CRM_APP_INIT = function(){
   // 초기화된다(별도 저장 없음, 목록 화면의 filterKey/searchQuery와는 독립적인
   // 상태다 — 서로 전혀 안 건드림). §지도분포6: 기본 보기를 '클러스터'로 바꿨다
   // (이전 이름 'marker' → 'cluster', 지역/시군구 단위로 묶어서 보여주는 게 기본).
-  let mapFilterState = { search:'', filterKey:'all', category:'all', pourRange:'all', viewMode:'cluster' };
+  let mapFilterState = { search:'', filterKey:'all', category:'all', region:'all', pourRange:'all', viewMode:'cluster' };
   // §POUR 시공 아파트 지도 라운드(신규) — 지도 상단 탭 상태. 'company'(기본)|'apartment'.
   // 팝업을 닫으면 항상 'company'로 되돌아간다(§1 "기본 선택은 '시공사'").
   let mapActiveTab = 'company';
@@ -36291,10 +36279,23 @@ window.SHIN2_CRM_APP_INIT = function(){
       mapEntryMatchesSearch(e, mapFilterState.search) &&
       mapEntryMatchesFilter(e, mapFilterState.filterKey) &&
       (mapFilterState.category === 'all' || e.mainCategory === mapFilterState.category) &&
+      // §지역 드롭다운 — 업체 entry가 이미 들고 있는 region을 그대로 비교만 한다(새 지역 판정 없음).
+      (mapFilterState.region === 'all' || (e.region || '지역 미확인') === mapFilterState.region) &&
       (mapFilterState.pourRange === 'all' ||
         (mapFilterState.pourRange === 'has' && e.pourCount) ||
         (mapFilterState.pourRange === 'none' && !e.pourCount))
     );
+  }
+
+  // §지역 드롭다운 옵션 — 지금 지도에 올라와 있는 업체들의 region만 건수 많은 순으로.
+  //   (좌측에서 걷어낸 "지역별 업체 수" 집계와 같은 값이다 — 표시 위치만 옮겼다.)
+  function buildMapRegionOptions(entries){
+    const by = new Map();
+    entries.forEach(e=>{
+      const k = e.region || '지역 미확인';
+      by.set(k, (by.get(k) || 0) + 1);
+    });
+    return Array.from(by.entries()).sort((a,b)=> b[1] - a[1]);
   }
 
   // §지도분포2: 카테고리 드롭다운 옵션 — 실제 데이터에 존재하는 mainCategory만
@@ -36764,6 +36765,7 @@ if(!window.__mapxRowDelegated){
     const hasCoordsCount = allEntries.filter(e=> e.hasCoords).length;
     mapPerfMark('coordinate prepare done', 'withCoords=' + hasCoordsCount + '/' + allEntries.length);
     const categoryOptions = buildMapCategoryOptions(allEntries);
+    const regionOptions = buildMapRegionOptions(allEntries);
     wrap.innerHTML = `
       <div class="map-modal-filters">
         <label class="map-search-field">
@@ -36780,6 +36782,10 @@ if(!window.__mapxRowDelegated){
           <option value="all">실적 전체</option>
           <option value="has"${mapFilterState.pourRange==='has'?' selected':''}>실적 있음</option>
           <option value="none"${mapFilterState.pourRange==='none'?' selected':''}>실적 없음</option>
+        </select>
+        <select class="map-modal-select" id="mapFilterRegion" aria-label="지역">
+          <option value="all">지역 전체</option>
+          ${regionOptions.map(([name,count])=> `<option value="${esc(name)}"${mapFilterState.region===name?' selected':''}>${esc(name)} (${count})</option>`).join('')}
         </select>
         <div class="map-modal-toggle-group">
           <button type="button" class="map-modal-toggle-btn${mapFilterState.viewMode==='cluster'?' is-active':''}" data-map-viewmode="cluster">클러스터</button>
@@ -36817,6 +36823,10 @@ if(!window.__mapxRowDelegated){
     });
     document.getElementById('mapFilterPour').addEventListener('change', (e)=>{
       mapFilterState.pourRange = e.target.value;
+      refreshMapInfoAndMarkers();
+    });
+    document.getElementById('mapFilterRegion').addEventListener('change', (e)=>{
+      mapFilterState.region = e.target.value;
       refreshMapInfoAndMarkers();
     });
     wrap.querySelectorAll('[data-map-viewmode]').forEach(btn=> btn.addEventListener('click', ()=>{
@@ -36927,14 +36937,6 @@ if(!window.__mapxRowDelegated){
     const listCountText = `총 ${listEntries.length.toLocaleString('ko-KR')}개`;
     infoCol.innerHTML = `
       <button type="button" class="map-embed-panel-close-btn" id="mapEmbedPanelCloseBtn" aria-label="지역 요약 패널 닫기">&times;</button>
-      <div class="mapx-chipstrip">
-        <span class="mapx-chipstrip-label">지역</span>
-        ${regionRows.length ? regionRows.map(([name,count])=> `
-          <div class="map-region-row" data-map-region="${esc(name)}">
-            <span>${esc(name)}</span><span class="map-region-count">${count}</span>
-          </div>
-        `).join('') : '<span class="mapx-chipstrip-label">표시할 업체가 없습니다.</span>'}
-      </div>
       <div id="mapCompanyListBlock" class="map-sidelist-block">
         <div class="map-info-block-title map-sidelist-head">
           <span>${esc(listTitle)}</span>
@@ -36942,14 +36944,6 @@ if(!window.__mapxRowDelegated){
             <span class="map-sidelist-count">${esc(listCountText)}</span>
             ${mapFilterState.listView === 'unlocated' || mapFocusedCompanyList ? '<a href="#" id="mapBackToInBounds">전체 보기</a>' : ''}
           </span>
-        </div>
-        <!-- §W/Z — 걷어낸 "지역 요약" 표의 숫자는 여기 한 줄로만 남긴다. 목록 총 건수와
-             지도에 실제로 찍히는 건수(위치 확인)가 다를 수 있다는 걸 이 줄이 보여준다. -->
-        <div class="mapx-summaryline">
-          <span>수도권 <b>${capital.length}</b></span>
-          <span>비수도권 <b>${nonCapital.length}</b></span>
-          <span>지도 표시 <b>${located.length}</b></span>
-          <span>위치 미확인 <b>${unlocated.length}</b></span>
         </div>
         <div class="map-sidelist-body">
         ${listEntries.length ? listEntries.slice(0, 200).map(e=> `
@@ -36963,12 +36957,6 @@ if(!window.__mapxRowDelegated){
         `).join('') : '<div class="map-modal-empty" style="padding:8px 0;">표시할 업체가 없습니다.</div>'}
         </div>
       </div>
-      ${unlocated.length ? `
-        <div class="map-unlocated-summary">
-          위치 미확인 업체 ${unlocated.length}개(주소 없음/지오코딩 대기 또는 실패 포함)
-          <div><button type="button" class="map-unlocated-btn" id="mapShowUnlocatedBtn">위치 미확인 업체 보기</button></div>
-        </div>
-      ` : ''}
     `;
     const embedCloseBtn = document.getElementById('mapEmbedPanelCloseBtn');
     if(embedCloseBtn) embedCloseBtn.addEventListener('click', (e)=>{
@@ -37964,7 +37952,6 @@ if(!window.__mapxRowDelegated){
           </div>
         `).join('') : `<div class="map-modal-empty" style="padding:8px 0;">${esc(rowsEmptyMsg)}</div>`}
       </div>
-      ${unlocated.length ? `<div class="map-unlocated-summary">위치 확인 필요 ${esc(unlocated.length)}곳(주소 검색 실패 또는 정보 부족)</div>` : ''}
       ${pending.length ? `<div class="map-unlocated-summary">위치 확인 중 ${esc(pending.length)}곳…</div>` : ''}
     `;
     infoCol.querySelectorAll('[data-apt-key]').forEach(row=> row.addEventListener('click', ()=>{
