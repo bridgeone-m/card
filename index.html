@@ -3136,18 +3136,33 @@ html,body{background:radial-gradient(circle at 75% -10%,rgba(11,91,211,.055),tra
 @media(min-width:1101px){
   /* §프레임형 — 연한 하늘색 바탕이 상하좌우 같은 두께로 보이게 한다.
      예전에는 위 1px / 아래 15px / 좌우 121px(가운데 정렬 max-width 탓)로 제각각이었다.
-     고정 모드에서는 가운데 정렬 폭 제한을 풀고 사방에 같은 안쪽 여백만 준다 —
-     그래야 화면 폭이 달라져도 테두리 두께가 그대로다. */
-  body.crm-fixed-view{ height:100vh; overflow:hidden; margin:0 !important; --crm-frame:20px; }
-  body.crm-fixed-view .app{
-    height:100vh; max-height:100vh; overflow:hidden;
-    display:flex; flex-direction:column;
-    width:100% !important; max-width:none !important;
-    margin:0 !important;
-    padding:var(--crm-frame) !important;
+     고정 모드에서는 가운데 정렬 폭 제한을 풀고 사방에 같은 두께의 바탕만 남긴다.
+     중요: 이 여백은 .app의 안쪽 padding이 아니라 바깥 margin이다 — padding으로 주면
+     흰 패널이 화면을 꽉 채워 바탕색이 아예 안 보이고 화면이 평평해진다(실제로 그랬다).
+     margin으로 줘야 흰 콘텐츠 패널이 연한 바탕 위에 살짝 떠 보인다. */
+  /* 프레임 두께는 body의 padding으로 준다. .app에 margin을 주면 body가 뷰포트에
+     overflow를 넘겨주는 특수 규칙 때문에 BFC가 생기지 않아, 그 margin이 <html>로
+     새어 나가 페이지가 프레임 두께만큼 스크롤됐다(실측 14px). */
+  body.crm-fixed-view{
+    height:100vh; overflow:hidden; margin:0 !important;
+    padding:var(--crm-frame) !important; --crm-frame:14px;
   }
-  /* 안쪽 요소가 또 좌우 여백을 더하면 프레임이 두꺼워 보인다 — 여기서 0으로 맞춘다. */
-  body.crm-fixed-view .crm-main-grid{ padding-left:0 !important; padding-right:0 !important; }
+  body.crm-fixed-view .app{
+    height:100%; max-height:none; overflow:hidden;
+    display:flex; flex-direction:column;
+    width:auto !important; max-width:none !important;
+    margin:0 !important;
+    padding:0 !important;
+    border-radius:20px !important;
+    /* 완전한 흰색이 아니라 반투명 — 뒤 바탕이 아주 조금 비쳐 카드(순백)와 구분된다. */
+    background:rgba(255,255,255,.92) !important;
+    border:1px solid rgba(220,228,238,.8) !important;
+    box-shadow:0 8px 30px rgba(32,55,90,.05) !important;
+  }
+  /* .app의 안쪽 여백을 0으로 바꿨으니 본문 격자가 좌우·아래 숨 쉴 공간을 맡는다. */
+  body.crm-fixed-view .crm-main-grid{ padding:0 16px 14px !important; }
+  /* 헤더 높이 56~62px 유지 — 탭이 바뀌어도 이 값은 변하지 않는다. */
+  body.crm-fixed-view .gnav-inner{ padding:12px 20px !important; }
   body.crm-fixed-view #listView{
     flex:1 1 auto; min-height:0; display:flex; flex-direction:column;
   }
@@ -3169,13 +3184,11 @@ html,body{background:radial-gradient(circle at 75% -10%,rgba(11,91,211,.055),tra
   body.crm-fixed-view .nf-side-right{ min-height:0; }
   /* 낮은 노트북(1366×768)에서는 여백·KPI 높이를 한 단계 줄여 한 화면에 들어오게 한다.
      전체를 transform:scale로 줄이지 않는다 — 글자가 흐려지기 때문이다. */
-  @media(max-height:880px){
-    body.crm-fixed-view{ --crm-frame:14px; }
-    body.crm-fixed-view .crm-main-grid{ margin-top:8px; gap:10px; }
-    body.crm-fixed-view .kpi-strip .kpi-item{ min-height:84px; padding:10px 12px !important; }
-    body.crm-fixed-view .kpi-strip .kpi-item-value{ min-height:26px; }
-    body.crm-fixed-view .kpi-strip .kpi-item-label{ min-height:24px; }
-    body.crm-fixed-view .kpi-strip .kpi-item-sub{ min-height:22px; }
+  @media(max-height:940px){
+    body.crm-fixed-view{ --crm-frame:10px; }
+    body.crm-fixed-view .gnav-inner{ padding:10px 18px !important; }
+    body.crm-fixed-view .crm-main-grid{ margin-top:10px; gap:12px; padding:0 12px 10px !important; }
+    body.crm-fixed-view .kpi-strip .kpi-item{ min-height:78px !important; padding:10px 12px !important; }
     body.crm-fixed-view .crm-list-col .co-row{ min-height:52px !important; padding-top:6px !important; padding-bottom:6px !important; }
     body.crm-fixed-view .crm-list-col .list-pagination{ min-height:38px; }
   }
@@ -7332,8 +7345,171 @@ html.modal-scroll-lock, body.modal-scroll-lock{
 
 /* ⑤ 추가 고객 메모 — 통합 카드와 같은 모양의 두 번째 덩어리 */
 .insight-note-block.qtab-card{ padding:12px 14px; }
-.insight-note-block.qtab-card .insight-note-title{ font-size:11.5px; font-weight:800; color:#5B6B82; }
-.insight-note-block.qtab-card .insight-note-desc{ font-size:11px; color:#8A97A8; line-height:1.5; margin:2px 0 7px; }
+
+/* ==========================================================================
+   §깊이·계층 라운드(신규) — "여백 정리"는 그대로 두고, 평평해 보이던 화면에
+   아주 얕은 깊이감만 되돌린다. 흰 카드가 흰 패널 위에 붙어 보이던 게 원인이라
+   (1) 바탕을 아주 연한 blue-gray로 깔고 (2) 콘텐츠 패널을 반투명 흰색으로 띄우고
+   (3) 카드만 순백으로 둬서 세 겹이 구분되게 한다. 색·그림자는 전부 미세한 값이고
+   진한 네이비 덩어리·큰 그라데이션·글로는 쓰지 않는다.
+   마크업과 데이터는 건드리지 않는다 — 전부 CSS다(지도 아래 지역 요약만 예외로,
+   이미 계산돼 있는 buildMapCompanies()의 region 값을 읽어 표시만 한다).
+   ========================================================================== */
+
+/* §1 페이지 배경 — 눈에 띄면 실패. '흰 사이트가 살짝 떠 있다'는 느낌만. */
+body{
+  background:linear-gradient(135deg, #EDF3FD 0%, #F4F9FF 45%, #EDF6F2 100%) !important;
+  background-attachment:fixed !important;
+}
+
+/* §2·§9 콘텐츠 shell — 모든 탭이 같은 틀을 쓴다. 예전에는 고객관리 탭만 화면을 꽉
+   채우고 다른 탭은 가운데 1680px로 좁아져 탭을 옮길 때 화면이 덜컥 바뀌었다.
+   (고객관리 탭은 body padding으로 같은 두께의 프레임을 만들므로 margin만 0으로 덮는다.) */
+@media(min-width:1101px){
+  .app{
+    width:auto !important; max-width:none !important;
+    margin:14px !important;
+    border-radius:20px !important;
+    background:rgba(255,255,255,.92) !important;
+    border:1px solid rgba(220,228,238,.8) !important;
+    box-shadow:0 8px 30px rgba(32,55,90,.05) !important;
+  }
+  .gnav-inner{ padding:12px 20px !important; }
+}
+
+/* §3 상단 헤더 — 흰색 유지, 아래 아주 얇은 선, 현재 탭은 파란 밑줄.
+   탭이 바뀌어도 높이가 변하지 않도록 밑줄은 항상 자리를 차지한다(투명 → 파랑). */
+.gnav{ border-bottom:1px solid rgba(225,232,241,.9) !important; }
+.gnav-menu .top-tab{
+  border-radius:0 !important; padding:0 12px !important;
+  border-bottom:2px solid transparent !important;
+  background:transparent !important;
+}
+.gnav-menu .top-tab:hover{ background:transparent !important; color:var(--nf-text) !important; }
+.gnav-menu .top-tab.is-active{
+  background:transparent !important; color:var(--nf-primary-strong) !important;
+  border-bottom-color:var(--nf-primary) !important; font-weight:750 !important;
+}
+
+/* §4 KPI 5개 — 큰 빈 흰 박스가 아니라 낮고 촘촘한 타일.
+   왼쪽에 아주 연한 아이콘 배경, 오른쪽에 제목 → 큰 숫자 → 작은 보조문구.
+   행 높이를 고정해서 보조문구가 없는 카드("전체 업체")도 숫자 위치가 같다. */
+.kpi-strip{ gap:14px !important; }
+.kpi-strip .kpi-item{
+  display:grid !important;
+  grid-template-columns:auto minmax(0,1fr) !important;
+  grid-template-rows:17px 31px 14px !important;
+  align-content:center !important; align-items:center !important;
+  justify-items:start !important; justify-content:start !important;
+  column-gap:12px !important; row-gap:0 !important;
+  text-align:left !important;
+  padding:12px 14px !important;
+  min-height:94px !important;
+  border-radius:16px !important;
+  border:1px solid #E8EDF4 !important;
+  box-shadow:0 4px 16px rgba(31,54,90,.035) !important;
+}
+.kpi-strip .kpi-item:hover{ box-shadow:0 8px 22px rgba(31,54,90,.08) !important; }
+.kpi-strip .kpi-item::before{
+  content:''; grid-column:1 !important; grid-row:1 / 4 !important;
+  width:38px; height:38px; border-radius:12px;
+  background-repeat:no-repeat; background-position:center; background-size:19px 19px;
+}
+.kpi-strip .kpi-item[data-kpi="all"]::before{ background-color:#E9F1FF; background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232563EB' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'><path d='M3 21h18M5 21V7l7-4 7 4v14M9 21v-5h6v5'/></svg>"); }
+.kpi-strip .kpi-item[data-kpi="mouDone"]::before{ background-color:#E4EDFB; background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231D4ED8' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'><path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/><path d='M14 2v6h6'/><path d='m9 15 2 2 4-4'/></svg>"); }
+.kpi-strip .kpi-item[data-kpi="trendUp"]::before{ background-color:#E6F4EC; background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23207F57' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'><path d='m3 17 6-6 4 4 8-8'/><path d='M14 7h7v7'/></svg>"); }
+.kpi-strip .kpi-item[data-kpi="l2l3Manage"]::before{ background-color:#EDEAFA; background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235B52C9' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'><path d='M3 7h13l-3-3M21 17H8l3 3'/><circle cx='18' cy='7' r='2.4'/><circle cx='6' cy='17' r='2.4'/></svg>"); }
+.kpi-strip .kpi-item[data-kpi="risingTop5"]::before{ background-color:#FAF2DF; background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23A1700B' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'><path d='m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z'/></svg>"); }
+.kpi-strip .kpi-item-label{
+  grid-column:2 !important; grid-row:1 !important;
+  min-height:0 !important; margin:0 !important;
+  justify-content:flex-start !important;
+  font-size:11.5px !important; font-weight:650 !important; color:#7C899D !important;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;
+}
+.kpi-strip .kpi-item-value,
+.kpi-strip .kpi-item.is-rising .kpi-item-value{
+  grid-column:2 !important; grid-row:2 !important;
+  min-height:0 !important; justify-content:flex-start !important;
+  font-size:25px !important; line-height:1 !important; font-weight:800 !important;
+}
+.kpi-strip .kpi-item-sub{
+  grid-column:2 !important; grid-row:3 !important;
+  min-height:0 !important; margin:0 !important;
+  font-size:10.5px !important; line-height:1.3 !important; color:#95A2B4 !important;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;
+}
+.kpi-item.is-rising::after{ top:10px !important; right:11px !important; }
+
+/* §5·§7 카드 분리 — 흰 카드 / 반투명 패널 / 연한 바탕, 세 겹이 구분되게. */
+.crm-panel.crm-list-col,
+.nf-side-right .nf-card{
+  background:#FFFFFF !important;
+  border:1px solid #E8EDF4 !important;
+  border-radius:16px !important;
+  box-shadow:0 4px 16px rgba(31,54,90,.045) !important;
+}
+/* 목록 카드 안쪽 계층 — 제목 → 상태 필터 → 검색/정렬 → 표 → 페이지네이션. */
+.crm-panel.crm-list-col .crm-panel-title{ margin-bottom:8px !important; }
+.crm-list-col #crmFilterRow{ margin-bottom:10px !important; }
+.crm-list-col .co-toolbar{ margin-bottom:10px !important; }
+/* 표 머리줄·페이지네이션에서 몇 px씩 돌려받아 업체가 한 줄 더 보이게 한다. */
+.crm-list-col .co-table-head{ padding-top:9px !important; padding-bottom:9px !important; }
+.crm-list-col .list-pagination{ min-height:38px !important; padding-top:4px !important; }
+
+/* §6 지도 — 목록 70 : 지도 30. 길쭉한 세로 박스 대신 4:3 미리보기 + 지역 요약. */
+.crm-main-grid{ grid-template-columns:minmax(0,1fr) minmax(340px,30%) !important; }
+.nf-side-right .nf-card-action{ padding:16px 16px 14px !important; }
+.nf-side-right .sa-map-block{ gap:12px; }
+.nf-side-right .sa-map-wrap{
+  /* 남는 세로 공간은 지도가 흡수한다 — 카드 아래가 비지 않으면서도 예전처럼
+     폭의 1.7배까지 길어지지는 않는다(지역 요약이 아래를 차지하기 때문). */
+  flex:1 1 auto !important; min-height:240px !important; max-height:520px !important;
+}
+.nf-side-right .sa-map-canvas{
+  min-height:0 !important; height:100%; border-radius:14px !important;
+  border:1px solid #E8EDF4 !important;
+}
+.nf-side-right .sa-map-hit{ border-radius:14px; }
+/* 지도 아래 지역 요약 — 새 통계가 아니라 지도에 이미 찍힌 업체의 지역값을 센 것. */
+.sa-region{ flex:0 0 auto; min-height:0; display:flex; flex-direction:column; gap:7px; overflow:hidden; }
+.sa-region-head{
+  display:flex; align-items:baseline; justify-content:space-between; gap:8px;
+  font-size:11.5px; font-weight:750; color:#5B6B82;
+}
+.sa-region-head span:last-child{ font-weight:600; color:#95A2B4; }
+.sa-region-list{ display:flex; flex-direction:column; gap:6px; min-height:0; overflow:hidden; }
+.sa-region-row{ display:grid; grid-template-columns:52px minmax(0,1fr) 30px; align-items:center; gap:8px; }
+.sa-region-name{ font-size:11.5px; font-weight:650; color:#3D4D64; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sa-region-bar{ height:6px; border-radius:999px; background:#EEF2F8; overflow:hidden; }
+.sa-region-bar > i{ display:block; height:100%; border-radius:999px; background:#9EC2F5; }
+.sa-region-row:nth-child(1) .sa-region-bar > i{ background:#2563EB; }
+.sa-region-row:nth-child(2) .sa-region-bar > i{ background:#4C84E8; }
+.sa-region-row:nth-child(3) .sa-region-bar > i{ background:#7AA6EF; }
+.sa-region-num{ font-size:11.5px; font-weight:750; color:#17324D; text-align:right; font-variant-numeric:tabular-nums; }
+.sa-region-empty{ font-size:11px; color:#95A2B4; }
+
+/* 낮은 노트북(≤880px) — 목록이 한두 줄이라도 더 보이게 카드 안쪽 여백만 한 단계 줄인다.
+   글자 크기와 행 높이는 그대로 둔다(촘촘해 보이지 않게). */
+@media(min-width:1101px) and (max-height:940px){
+  body.crm-fixed-view .crm-panel.crm-list-col{ padding:12px 14px 10px !important; }
+  body.crm-fixed-view .crm-panel.crm-list-col .crm-panel-title{ margin-bottom:6px !important; }
+  body.crm-fixed-view .crm-list-col #crmFilterRow{ margin-bottom:8px !important; }
+  body.crm-fixed-view .crm-list-col .co-toolbar{ margin-bottom:8px !important; }
+  body.crm-fixed-view .crm-list-col .co-table-head{ padding-top:7px !important; padding-bottom:7px !important; }
+  body.crm-fixed-view .crm-list-col .list-pagination{ min-height:32px !important; }
+  body.crm-fixed-view .nf-side-right .nf-card-action{ padding:12px 14px 12px !important; }
+  body.crm-fixed-view .kpi-strip .kpi-item{
+    min-height:74px !important; grid-template-rows:15px 26px 13px !important;
+  }
+  body.crm-fixed-view .kpi-strip .kpi-item::before{ width:32px; height:32px; border-radius:10px; background-size:17px 17px; }
+  body.crm-fixed-view .kpi-strip .kpi-item-value{ font-size:22px !important; }
+  body.crm-fixed-view .kpi-strip{ gap:10px !important; }
+  /* 상태 필터 pill이 두 줄로 접히는 폭에서는 pill 자체를 한 단계 작게 — 줄 수는 그대로
+     두고 높이만 줄여 목록이 한 줄 더 들어온다. */
+  body.crm-fixed-view .list-filter-row-wrap{ row-gap:6px !important; }
+  body.crm-fixed-view #crmFilterRow > *{ height:28px !important; }
+}
 </style>
 </head>
 <body>
@@ -15719,7 +15895,11 @@ window.SHIN2_CRM_APP_INIT = function(){
           });
           const colCs = getComputedStyle(col);
           const pad = (parseFloat(colCs.paddingTop) || 0) + (parseFloat(colCs.paddingBottom) || 0);
-          const avail = col.clientHeight - used - pad;
+          let avail = col.clientHeight - used - pad;
+          // 고정 레이아웃에서 목록 칸(.co-list)은 flex:1 1 auto + overflow:hidden이라
+          // 높이가 '남은 공간'으로 정해진다 — 줄 수에 따라 변하지 않으므로 순환이 없다.
+          // 형제를 빼서 구한 값보다 이게 더 정확해서(여백 몇 px이 덜 깎인다) 더 큰 쪽을 쓴다.
+          if(list.clientHeight > 40) avail = Math.max(avail, list.clientHeight);
           const sample = list.querySelector('.co-row');
           const rowH = sample ? sample.getBoundingClientRect().height : 63;
           if(avail > 60 && rowH > 20) size = Math.max(4, Math.min(20, Math.floor(avail / rowH)));
@@ -16537,6 +16717,7 @@ window.SHIN2_CRM_APP_INIT = function(){
           <button type="button" class="sa-map-hit" id="crmMiniMapHit"
             aria-label="시공사 지역 분포 전체 지도 열기"></button>
         </div>
+        <div class="sa-region" id="crmMiniMapRegions"></div>
       </div>`;
     // 지도·버튼 어디를 눌러도 기존 대형 지도 팝업을 연다(새 팝업을 만들지 않는다).
     const openBig = ()=>{
@@ -16556,6 +16737,37 @@ window.SHIN2_CRM_APP_INIT = function(){
   function miniMapSignature(entries){
     return entries.length + ':' + entries.map(e=> e.co.id).join(',');
   }
+  // 지도 아래 지역 요약 — 새 통계를 만들지 않는다. 지도에 이미 찍은 그 entries의
+  // region 값(buildMapCompanies()가 넣어 둔 기존 값)을 세어 많은 순으로 보여줄 뿐이라
+  // 지역 판정·좌표 계산 로직은 읽기만 하고 전혀 건드리지 않는다. 지역을 못 읽은 건은
+  // 사용자 요청대로 "지역 미확인"으로 묶지 않고 그냥 뺀다.
+  function renderCrmMiniMapRegions(entries){
+    const box = document.getElementById('crmMiniMapRegions');
+    if(!box) return;
+    const counts = new Map();
+    (entries || []).forEach(e=>{
+      const key = e && e.region;
+      if(!key) return;
+      counts.set(key, (counts.get(key) || 0) + 1);
+    });
+    const rows = Array.from(counts.entries()).sort((a,b)=> b[1]-a[1]);
+    if(!rows.length){
+      box.innerHTML = '<div class="sa-region-empty">지역 정보를 읽을 수 있는 업체가 없습니다.</div>';
+      return;
+    }
+    const top = rows.slice(0, 7);
+    const max = top[0][1] || 1;
+    const sum = rows.reduce((a, r)=> a + r[1], 0);
+    box.innerHTML = `
+      <div class="sa-region-head"><span>지역별 업체 수</span><span>상위 ${top.length}개 지역</span></div>
+      <div class="sa-region-list">${top.map(([name, n])=> `
+        <div class="sa-region-row">
+          <span class="sa-region-name">${esc(name)}</span>
+          <span class="sa-region-bar"><i style="width:${Math.max(6, Math.round(n / max * 100))}%"></i></span>
+          <span class="sa-region-num">${n.toLocaleString('ko-KR')}</span>
+        </div>`).join('')}</div>
+      <div class="sa-region-empty">지도 표시 ${sum.toLocaleString('ko-KR')}곳 기준</div>`;
+  }
   function renderCrmMiniMap(){
     const host = document.getElementById('crmMiniMap');
     if(!host) return;
@@ -16568,8 +16780,10 @@ window.SHIN2_CRM_APP_INIT = function(){
       if(!miniMapState || miniMapState.host !== host){
         host.innerHTML = '<div class="sa-map-loading">표시할 시공사 위치가 없습니다.</div>';
       }
+      renderCrmMiniMapRegions(entries);
       return;
     }
+    renderCrmMiniMapRegions(entries);
     loadKakaoMapSdk().then(kakao=>{
       const live = document.getElementById('crmMiniMap');
       if(!live || live !== host) return;
