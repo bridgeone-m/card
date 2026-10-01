@@ -22840,6 +22840,172 @@ window.SHIN2_CRM_APP_INIT = function(){
   window.SHIN2_CRM_DIAG = Object.assign(window.SHIN2_CRM_DIAG, {
     compareAgreementStageEngines, compareCompanyRegionSources
   });
+  /* ==========================================================================
+     §공종·지역 진단 라운드(신규) — 읽기 전용. 화면에는 노출하지 않고 콘솔에서만 쓴다.
+     아무것도 저장하지 않는다(업체 데이터·주소·지역을 고쳐 쓰지 않는다).
+       SHIN2_CRM_DIAG.mapCategoryAudit()      공종별 지도 후보/표시/제외 집계
+       SHIN2_CRM_DIAG.mapRegionUnknownAudit() 지역을 못 읽은 업체 전수 + 사유
+     ========================================================================== */
+  // 지도가 쓰는 것과 똑같은 entry를 만든다 — 별도 계산 경로를 만들지 않는다.
+  function diagMapEntries(){
+    return (typeof buildMapCompanies === 'function') ? buildMapCompanies() : [];
+  }
+  function mapCategoryAudit(){
+    const entries = diagMapEntries();
+    const rows = new Map();   // 정규화 키 → 집계
+    const touch = (label)=>{
+      const k = String(label).replace(/\s+/g,'').toLowerCase();
+      if(!rows.has(k)) rows.set(k, { 공종:String(label).trim(), 대표공종만:0, 전체공종:0, 주소있음:0, 좌표있음:0, 지역읽힘:0 });
+      return rows.get(k);
+    };
+    entries.forEach(e=>{
+      const list = (e.categories && e.categories.length) ? e.categories : (e.mainCategory ? [e.mainCategory] : []);
+      const seen = new Set();
+      list.forEach(c=>{
+        const k = String(c).replace(/\s+/g,'').toLowerCase();
+        if(!k || seen.has(k)) return;
+        seen.add(k);
+        const r = touch(c);
+        r.전체공종++;
+        if(e.co && e.co.address) r.주소있음++;
+        if(e.hasCoords) r.좌표있음++;
+        if(e.region) r.지역읽힘++;
+      });
+      if(e.mainCategory) touch(e.mainCategory).대표공종만++;
+    });
+    const list = Array.from(rows.values()).sort((a,b)=> b.전체공종 - a.전체공종);
+    list.forEach(r=>{
+      r.예전필터로누락 = r.전체공종 - r.대표공종만;   // 이번 수정으로 더 보이게 된 수
+      r.좌표없어서미표시 = r.전체공종 - r.좌표있음;
+    });
+    return { 활성업체수: entries.length, 공종수: list.length, rows: list };
+  }
+  // "지역을 못 읽은 업체" — 지도의 판정(parseMapRegion)을 그대로 쓴다.
+  //   region === null  → 주소 자체가 없음("지역 미확인")
+  //   region === '기타' → 주소는 있는데 시/도를 못 읽음(패턴 불일치)
+  function mapRegionUnknownAudit(){
+    const entries = diagMapEntries();
+    const out = [];
+    entries.forEach((e, i)=>{
+      const co = e.co || {};
+      const addr = String(co.address == null ? '' : co.address).trim();
+      if(e.region && e.region !== '기타') return;
+      let reason, fixable;
+      if(!addr){ reason = 'A. 주소 자체 없음'; fixable = false; }
+      else if(addr.length < 6){ reason = 'B. 주소가 너무 짧음'; fixable = false; }
+      else if(!e.region){ reason = 'A. 주소 자체 없음'; fixable = false; }
+      else { reason = 'C. 주소는 있으나 시/도 파싱 실패'; fixable = true; }
+      out.push({
+        순번: out.length + 1,
+        업체명: co.name || '(이름 없음)',
+        companyId: co.id || '',
+        주소: addr || '(없음)',
+        저장된지역: (co.partnerDashboard && co.partnerDashboard.region) || co.region || '',
+        위도: typeof co.latitude === 'number' ? co.latitude : null,
+        경도: typeof co.longitude === 'number' ? co.longitude : null,
+        좌표없음: !e.hasCoords,
+        지오코딩상태: e.geocodeStatus || '',
+        공종: ((e.categories && e.categories.length) ? e.categories : (e.mainCategory ? [e.mainCategory] : [])).join(' · ') || '—',
+        MOU: (typeof isConfirmedPartner === 'function' && isConfirmedPartner(co, e.progress)) ? 'MOU 체결' : '미체결',
+        현재판정: e.region ? '기타' : '지역 미확인',
+        사유: reason,
+        자동수정가능: fixable,
+        확인필요: fixable ? '주소 표기 확인(시/도가 맨 앞에 오는지)' : '주소 입력 필요'
+      });
+    });
+    const by = {};
+    out.forEach(r=>{ by[r.사유] = (by[r.사유] || 0) + 1; });
+    return {
+      활성업체수: entries.length,
+      지역미확인: out.filter(r=> r.현재판정 === '지역 미확인').length,
+      기타로빠짐: out.filter(r=> r.현재판정 === '기타').length,
+      좌표없음: out.filter(r=> r.좌표없음).length,
+      사유별: by,
+      자동수정가능: out.filter(r=> r.자동수정가능).length,
+      수동확인필요: out.filter(r=> !r.자동수정가능).length,
+      rows: out
+    };
+  }
+  // 지역을 못 읽은 업체 목록을 인쇄용 창으로 띄운다(내부 확인용). 읽기 전용이고
+  // 아무 데이터도 쓰지 않는다 — 브라우저의 "PDF로 저장"으로 내려받으면 된다.
+  //   SHIN2_CRM_DIAG.openRegionUnknownPdf()
+  function regionUnknownReportHtml(){
+    const a = mapRegionUnknownAudit();
+    const now = new Date();
+    const pad = n=> String(n).padStart(2,'0');
+    const ymd = now.getFullYear() + pad(now.getMonth()+1) + pad(now.getDate());
+    const dateText = now.getFullYear() + '-' + pad(now.getMonth()+1) + '-' + pad(now.getDate());
+    const box = (label, n)=> `<div class="sum"><span>${esc(label)}</span><b>${n}</b></div>`;
+    const reasons = a.사유별 || {};
+    const rows = a.rows.map(r=> `
+      <tr>
+        <td class="no">${r.순번}</td>
+        <td class="nm">${esc(r.업체명)}</td>
+        <td>${esc(r.주소)}</td>
+        <td>${esc(r.공종)}</td>
+        <td>${esc(r.현재판정)}</td>
+        <td>${esc(r.사유)}</td>
+        <td>${esc(r.확인필요)}</td>
+      </tr>`).join('');
+    const auto = a.rows.filter(r=> r.자동수정가능);
+    const manual = a.rows.filter(r=> !r.자동수정가능);
+    const nameList = list=> list.length ? list.map(r=> esc(r.업체명)).join(' · ') : '해당 없음';
+    return { ymd, html: `<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<title>지역미확인업체_${ymd}</title>
+<style>
+  @page{ size:A4 landscape; margin:12mm; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; font-family:Pretendard,"Noto Sans KR","Malgun Gothic",Arial,sans-serif; color:#17345F; font-size:10.5px; }
+  h1{ font-size:18px; margin:0 0 4px; letter-spacing:-.02em; }
+  .meta{ font-size:11px; color:#738198; margin-bottom:14px; }
+  .sums{ display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; }
+  .sum{ border:1px solid #E4EAF1; border-radius:8px; padding:8px 12px; min-width:132px; }
+  .sum span{ display:block; font-size:10px; color:#738198; margin-bottom:3px; }
+  .sum b{ font-size:16px; color:#163A70; }
+  table{ width:100%; border-collapse:collapse; }
+  th{ background:#163A70; color:#fff; font-size:10px; font-weight:650; text-align:left;
+      padding:7px 8px; border:1px solid #163A70; }
+  td{ background:#fff; border:1px solid #E4EAF1; padding:6px 8px; vertical-align:top; line-height:1.45; }
+  td.no{ text-align:right; color:#738198; width:34px; }
+  td.nm{ font-weight:650; }
+  tr{ page-break-inside:avoid; }
+  thead{ display:table-header-group; }
+  .foot{ margin-top:16px; }
+  .foot h2{ font-size:12px; margin:0 0 5px; color:#163A70; }
+  .foot p{ margin:0 0 10px; font-size:10.5px; line-height:1.6; color:#3D4D64; }
+  .empty{ padding:16px; border:1px solid #E4EAF1; border-radius:8px; color:#738198; }
+</style></head><body>
+  <h1>지역 미확인 업체 확인 목록</h1>
+  <div class="meta">생성일 ${dateText} · 활성 업체 ${a.활성업체수}곳 중 확인 대상 ${a.rows.length}곳</div>
+  <div class="sums">
+    ${box('지역 미확인(주소 없음)', a.지역미확인)}
+    ${box('기타로 분류(시/도 못 읽음)', a.기타로빠짐)}
+    ${box('좌표 없음', a.좌표없음)}
+    ${Object.keys(reasons).map(k=> box(k, reasons[k])).join('')}
+  </div>
+  ${a.rows.length ? `<table>
+    <thead><tr><th>NO</th><th>업체명</th><th>주소</th><th>공종</th><th>현재 판정</th><th>미확인 사유</th><th>확인 필요 사항</th></tr></thead>
+    <tbody>${rows}</tbody></table>` : `<div class="empty">지역을 못 읽은 업체가 없습니다.</div>`}
+  <div class="foot">
+    <h2>자동 수정 가능 (${auto.length}곳) — 주소는 있는데 코드가 시/도를 못 읽은 경우</h2>
+    <p>${nameList(auto)}</p>
+    <h2>수동 확인 필요 (${manual.length}곳) — 주소 자체가 없거나 너무 짧은 경우</h2>
+    <p>${nameList(manual)}</p>
+  </div>
+</body></html>` };
+  }
+  function openRegionUnknownPdf(){
+    const { ymd, html } = regionUnknownReportHtml();
+    const w = window.open('', '_blank');
+    if(!w){ console.warn('팝업이 막혀 있습니다. 팝업 허용 후 다시 실행해 주세요.'); return null; }
+    w.document.open(); w.document.write(html); w.document.close();
+    setTimeout(()=>{ try{ w.focus(); w.print(); }catch(err){} }, 400);
+    console.log('인쇄 창에서 "PDF로 저장"을 고르고 파일명을 지역미확인업체_' + ymd + '.pdf 로 저장하세요.');
+    return ymd;
+  }
+  window.SHIN2_CRM_DIAG = Object.assign(window.SHIN2_CRM_DIAG, {
+    mapCategoryAudit, mapRegionUnknownAudit, regionUnknownReportHtml, openRegionUnknownPdf
+  });
   window.SHIN2_CRM_RESOLVE = Object.assign(window.SHIN2_CRM_RESOLVE || {}, {
     agreementProgress: resolveAgreementProgress,
     companyRegion: resolveCompanyRegion
@@ -38884,10 +39050,22 @@ window.SHIN2_CRM_APP_INIT = function(){
     [/^경북|^경상?북/,'경북'], [/^경남|^경상?남/,'경남'], [/^제주/,'제주']
   ];
   const MAP_CAPITAL_REGIONS = new Set(['서울','경기','인천']);
+  // §지역 파싱 보완 라운드(신규) — 패턴이 전부 ^(맨 앞)에만 걸려 있어서, 시/도가 맨
+  // 앞에 오지 않는 주소는 전부 '기타'로 떨어졌다. 우편번호가 앞에 붙은 "(06236) 서울특별시…",
+  // "대한민국 서울특별시…" 같은 표기가 실제로 들어온다. 맨 앞 매칭을 먼저 그대로 해 보고,
+  // 거기서 못 찾았을 때만(= 지금까지 '기타'로 떨어지던 경우에만) 주소 앞부분에서 시/도
+  // 이름을 한 번 더 찾는다. 이미 제대로 읽히던 주소의 결과는 한 글자도 바뀌지 않는다.
   function parseMapRegion(address){
     if(!address) return null;
     const s = String(address).trim();
+    if(!s) return null;
     for(const [re, name] of MAP_REGION_PATTERNS){ if(re.test(s)) return name; }
+    // 앞 24자 안에서만 찾는다 — 뒤쪽 도로명("서울대로" 등)을 시/도로 오인하지 않게.
+    const head = s.slice(0, 24);
+    for(const [re, name] of MAP_REGION_PATTERNS){
+      const loose = new RegExp(re.source.replace(/\^/g, ''));
+      if(loose.test(head)) return name;
+    }
     return '기타';
   }
   // §지도분포6: 중간 줌 클러스터용 시·군·구 그룹핑 — parseMapRegion과 같은 원칙으로
@@ -38917,12 +39095,29 @@ window.SHIN2_CRM_APP_INIT = function(){
     const totalRevenueText = (revAll && !revAll.ambiguous && typeof revAll.total === 'number') ? fmtKrwCompact(revAll.total) : null;
     const topCat = buildTopCategoryBreakdown(co);
     const mainCategory = topCat.length ? topCat[0].category : null;
+    // §공종 필터 누락 수정 라운드(신규) — mainCategory는 "가장 건수가 많은 공종 하나"라
+    // 방수 120건 + 재도장 40건인 업체는 mainCategory가 '방수'뿐이고, 공종 드롭다운에서
+    // 재도장을 고르면 지도에서 통째로 빠졌다(실제 증상: 해당 공종 업체가 많은데 일부만
+    // 보임). buildTopCategoryBreakdown은 이미 그 업체의 모든 공종을 건수와 함께 돌려주므로,
+    // 판정 기준을 새로 만들지 않고 그 목록을 그대로 들고 다니다가 필터에서 "포함"으로
+    // 비교한다. mainCategory(표시용)는 그대로라 말풍선·목록 문구는 달라지지 않는다.
+    // 한 칸에 여러 공종이 쉼표로 묶여 들어온 값이 실제로 있다(원본 실적 스냅샷 확인:
+    // "싱글,슬라브" 5건 · "슬라브,재도장" 2건 · "금속기와,재도장" 1건). 쪼갠 조각이 전부
+    // 이미 존재하는 공종 이름이라 쉼표로 나누는 건 없던 공종을 만들어내지 않는다.
+    // 원본 데이터와 buildTopCategoryBreakdown(고객카드 "주요 시공" 등 다른 화면이 쓴다)은
+    // 그대로 두고, 지도 필터가 쓸 목록에서만 나눈다.
+    const categories = [];
+    topCat.forEach(x=>{
+      String(x.category == null ? '' : x.category).split(',').map(v=> v.trim()).filter(Boolean).forEach(v=>{
+        if(categories.indexOf(v) < 0) categories.push(v);
+      });
+    });
     const receivable = D.getCompanyReceivable(co);
     const mgmtNeed = findManagementNeedForCompany(co.id);
     const hasCoords = typeof co.latitude === 'number' && typeof co.longitude === 'number';
     const geocodeStatus = co.geocodeStatus || (co.address ? 'pending' : 'missing');
     return {
-      co, progress, region, sigungu, pourCount, totalRevenueText, mainCategory,
+      co, progress, region, sigungu, pourCount, totalRevenueText, mainCategory, categories,
       isPartner: co.partnerStatus === 'partner',
       isManagementNeeded: !!mgmtNeed,
       hasReceivable: !!(receivable && receivable.total > 0),
@@ -39006,7 +39201,8 @@ window.SHIN2_CRM_APP_INIT = function(){
     return entries.filter(e=>
       mapEntryMatchesSearch(e, mapFilterState.search) &&
       mapEntryMatchesFilter(e, mapFilterState.filterKey) &&
-      (mapFilterState.category === 'all' || e.mainCategory === mapFilterState.category) &&
+      // 대표 공종 하나가 아니라 그 업체가 실제로 시공한 공종 전체에서 찾는다.
+      (mapFilterState.category === 'all' || mapEntryHasCategory(e, mapFilterState.category)) &&
       // §지역 드롭다운 — 업체 entry가 이미 들고 있는 region을 그대로 비교만 한다(새 지역 판정 없음).
       (mapFilterState.region === 'all' || (e.region || '지역 미확인') === mapFilterState.region) &&
       (mapFilterState.pourRange === 'all' ||
@@ -39026,12 +39222,34 @@ window.SHIN2_CRM_APP_INIT = function(){
     return Array.from(by.entries()).sort((a,b)=> b[1] - a[1]);
   }
 
-  // §지도분포2: 카테고리 드롭다운 옵션 — 실제 데이터에 존재하는 mainCategory만
-  // 나열한다(새 목록을 지어내지 않음).
+  // §공종 필터 누락 수정 라운드 — 업체가 실제로 시공한 공종 전체에서 찾는다.
+  // 값 자체는 원본(POUR 실적의 category)을 그대로 쓰고, 비교할 때만 공백을 지우고
+  // 소문자로 맞춘다 — "방수 "와 "방수"처럼 공백/대소문자만 다른 값이 서로 다른 공종으로
+  // 갈라지는 것만 흡수한다. 서로 다른 이름(예: 방수 / 우레탄방수)을 임의로 합치지는
+  // 않는다 — 어떤 이름을 같은 공종으로 볼지는 데이터를 보고 정해야 할 일이라, 코드가
+  // 추측해서 묶으면 없던 집계가 생긴다.
+  function normMapCategory(v){ return String(v == null ? '' : v).replace(/\s+/g, '').toLowerCase(); }
+  function mapEntryHasCategory(entry, category){
+    if(!category || category === 'all') return true;
+    const want = normMapCategory(category);
+    const list = (entry && entry.categories && entry.categories.length)
+      ? entry.categories
+      : (entry && entry.mainCategory ? [entry.mainCategory] : []);
+    return list.some(c=> normMapCategory(c) === want);
+  }
+  // §지도분포2: 카테고리 드롭다운 옵션 — 실제 데이터에 존재하는 공종만 나열한다
+  // (새 목록을 지어내지 않음). 예전에는 mainCategory(업체당 하나)만 모아서, 어떤 업체의
+  // 두 번째·세 번째 공종은 드롭다운에 아예 뜨지 않았다.
   function buildMapCategoryOptions(entries){
-    const set = new Set();
-    entries.forEach(e=>{ if(e.mainCategory) set.add(e.mainCategory); });
-    return Array.from(set).sort((a,b)=> a.localeCompare(b, 'ko'));
+    const seen = new Map();   // 정규화 키 → 화면에 쓸 원본 표기(처음 만난 값)
+    entries.forEach(e=>{
+      const list = (e.categories && e.categories.length) ? e.categories : (e.mainCategory ? [e.mainCategory] : []);
+      list.forEach(c=>{
+        const k = normMapCategory(c);
+        if(k && !seen.has(k)) seen.set(k, String(c).trim());
+      });
+    });
+    return Array.from(seen.values()).sort((a,b)=> a.localeCompare(b, 'ko'));
   }
 
   /* ==========================================================================
