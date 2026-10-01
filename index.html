@@ -7664,6 +7664,35 @@ body{
     flex:1 1 auto; min-height:120px !important; max-height:none !important;
     overflow-y:auto !important;
   }
+  /* §본문 넓히기 라운드(신규) — 접은 첨부파일 줄. 접혀 있을 때 한 줄(30px)만
+     차지하고, 펼치면 그 안쪽만 스크롤해서 본문 칸을 잡아먹지 않는다. */
+  body.crm-page-shell #mailSettingsView .mailx-attach-fold{
+    flex:none; margin-bottom:10px;
+  }
+  body.crm-page-shell #mailSettingsView .mailx-attach-summary{
+    display:flex; align-items:center; gap:8px; cursor:pointer; list-style:none;
+    padding:4px 0; user-select:none;
+  }
+  body.crm-page-shell #mailSettingsView .mailx-attach-summary::-webkit-details-marker{ display:none; }
+  body.crm-page-shell #mailSettingsView .mailx-attach-summary::before{
+    content:'▸'; font-size:11px; color:var(--text-muted); transition:transform .12s;
+  }
+  body.crm-page-shell #mailSettingsView .mailx-attach-fold[open] > .mailx-attach-summary::before{
+    transform:rotate(90deg);
+  }
+  body.crm-page-shell #mailSettingsView .mailx-attach-summary > .mailx-label{ margin:0; }
+  body.crm-page-shell #mailSettingsView .mailx-attach-count{
+    font-size:11.5px; color:var(--text-muted); font-weight:600;
+  }
+  body.crm-page-shell #mailSettingsView .mailx-attach-fold[open] > .mailx-attach{
+    max-height:34vh; overflow-y:auto; margin-top:6px;
+  }
+  /* 칸 사이 여백을 줄여 그만큼을 본문이 가져간다 — 실측 합계 32px.
+     글자 크기·버튼 크기는 안 건드렸다. */
+  body.crm-page-shell #mailSettingsView .mail-tab-panel > .mailx-field{ margin-bottom:10px; }
+  body.crm-page-shell #mailSettingsView .mailx-attach-fold{ margin-bottom:6px; }
+  body.crm-page-shell #mailSettingsView .mail-tab-panel > .mailx-field-body{ margin-bottom:8px; }
+  body.crm-page-shell #mailSettingsView .mailx-actionbar{ margin-top:8px; }
   body.crm-page-shell .mail-body-editor::-webkit-scrollbar{ width:8px; }
   body.crm-page-shell .mail-body-editor::-webkit-scrollbar-thumb{
     background:#D7DFEA; border-radius:999px;
@@ -25365,6 +25394,7 @@ window.SHIN2_CRM_APP_INIT = function(){
         ${DOC_TYPES.map(([type,label])=> `<option value="${esc(type)}" ${tpl.attachmentDocType===type?'selected':''}>${esc(label)}</option>`).join('')}
       </select>`;
     const hiddenVideoInput = `<input type="text" id="mailSetVideo_${key}" style="display:none;" aria-hidden="true" value="${esc(tpl.videoUrl||'')}" />`;
+    const attachCount = (asset && asset.attachmentDoc ? 1 : 0) + (asset && asset.video ? 1 : 0);
     const updatedText = tpl.updatedAt ? `마지막 저장: ${esc(fmtDateTimeSmart(tpl.updatedAt))}` : '아직 저장한 적 없음(기본값 사용 중)';
     // §메일 설정 보기편한형태 라운드(신규) — 변수 칩이 제목 아래·본문 아래 두 번
     // 나와 "중복"처럼 보이던 문제. 실제로는 각각 다른 삽입 대상(data-ph-target)이라
@@ -25383,13 +25413,27 @@ window.SHIN2_CRM_APP_INIT = function(){
             <span>사용</span>
           </label>
         </div>
-        <div class="mailx-timing">${esc(MAIL_TEMPLATE_TIMING_TEXT[key])}</div>
-
         <div class="mailx-field">
           <label class="mailx-label" for="mailSetSubject_${key}">제목</label>
           <input type="text" id="mailSetSubject_${key}" value="${esc(tpl.subjectTemplate)}" />
           <div class="mailx-vars">${MAIL_PLACEHOLDER_BUTTONS.map(([ph,label])=> `<button type="button" class="mail-placeholder-btn" data-ph-target="mailSetSubject_${key}" data-ph-value="${esc(ph)}">${esc(label)}</button>`).join('')}</div>
         </div>
+
+        <!-- §본문 넓히기 라운드(신규) — 첨부파일 칸을 본문 아래에서 제목 아래로 올리고
+             접어 뒀다. 평소에는 한 줄만 차지하고, 펼치면 쓰던 화면이 그대로 나온다.
+             안쪽 내용(mailAssetListHtml·숨긴 select·숨긴 input)은 한 글자도 안 바꿨고
+             자리만 옮겼다 — 업로드/삭제/저장 핸들러는 전부 위임이라 그대로 동작한다. -->
+        <details class="mailx-field mailx-attach-fold">
+          <summary class="mailx-attach-summary">
+            <span class="mailx-label">첨부파일</span>
+            <span class="mailx-attach-count">${attachCount ? attachCount + '개' : '없음'}</span>
+          </summary>
+          <div class="mailx-attach">
+            ${mailAssetListHtml(key, asset, meta)}
+            ${attachSelectHtml}
+            ${hiddenVideoInput}
+          </div>
+        </details>
 
         <!-- §메일 본문만 스크롤 라운드 — 이 칸이 남는 높이를 가져가고 그 안의 편집기만
              스크롤한다. 구분용 클래스 하나만 덧붙였다(기존 .mailx-field 스타일 유지). -->
@@ -25412,15 +25456,6 @@ window.SHIN2_CRM_APP_INIT = function(){
           <div class="mail-body-editor" id="mailSetBody_${key}" contenteditable="true" data-mail-panel-key="${key}">${mailBodyToEditorHtml(tpl.bodyTemplate)}</div>
           <span id="mailBodyImgStatus_${key}" class="mail-asset-status"></span>
           ${key==='documentRequest' ? `<div class="mailx-note">본문의 {요청서류목록} 자리에 발송 시 선택한 미등록·재요청 서류명이 자동으로 들어갑니다.</div>` : ''}
-        </div>
-
-        <div class="mailx-field">
-          <label class="mailx-label">첨부파일</label>
-          <div class="mailx-attach">
-            ${mailAssetListHtml(key, asset, meta)}
-            ${attachSelectHtml}
-            ${hiddenVideoInput}
-          </div>
         </div>
 
         <div class="mailx-actionbar">
