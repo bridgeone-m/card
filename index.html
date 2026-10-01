@@ -7508,6 +7508,85 @@ body{
 .sa-region-num{ font-size:11.5px; font-weight:750; color:#17324D; text-align:right; font-variant-numeric:tabular-nums; }
 .sa-region-empty{ font-size:11px; color:#95A2B4; }
 
+/* ==========================================================================
+   §업체 목록 compact 라운드(신규) — 제목과 중복 버튼을 뺀 만큼 업체를 더 보여준다.
+   계산·검색·정렬·필터·클릭은 건드리지 않았고, 여기서 바뀌는 건 열 비율·간격·정렬·
+   행 패딩·페이지네이션 높이뿐이다. 전부 .crm-list-col 스코프라 같은 클래스를 쓰는
+   업무관리 탭 표는 영향을 받지 않는다.
+   ========================================================================== */
+/* §1·§7 카드 안쪽 리듬 — 제목을 없앴다고 필터가 천장에 붙으면 안 된다.
+   카드 위 16px → 필터 → 10px → 검색/정렬 → 10px → 표 머리줄. */
+.crm-panel.crm-list-col{ padding:16px 16px 10px !important; }
+.crm-list-col .list-filter-row-wrap{ margin-bottom:10px !important; }
+.crm-list-col .list-search-row{ margin-bottom:10px !important; }
+
+/* §4 열 비율 — "총매출"과 "최근 요청"이 붙어 보이던 걸 임시 margin이 아니라 실제
+   grid-template-columns로 푼다. 총매출을 16 → 19로 넓히면 그만큼 최근 요청의 시작점이
+   오른쪽으로 밀린다. 머리줄과 본문이 이 한 줄을 공유하므로 세로 축이 그대로 맞는다.
+   업체명 24 / 최근 실적 21 / 총매출 19 / 최근 요청 16 / 최근 흐름 10 / 실적-매출 10 */
+.crm-list-col .co-table-head, .crm-list-col .co-row{
+  grid-template-columns:
+    minmax(0,24fr) minmax(0,21fr) minmax(0,19fr)
+    minmax(0,16fr) minmax(0,10fr) minmax(0,10fr) !important;
+  gap:16px !important;
+}
+
+/* §4-b "최근 요청" — 총매출은 오른쪽 끝에 붙는 숫자라, 최근 요청까지 왼쪽에 붙어
+   있으면 두 열이 한 덩어리로 읽힌다. 최근 요청을 자기 열의 가운데로 보내 머리줄과
+   본문이 같은 축에서 시작하게 한다(폭 보정용 margin 없이 열 자체로 해결). */
+.crm-list-col .co-table-head > *:nth-child(4),
+.crm-list-col .co-row > .col-request{
+  display:flex !important; align-items:center !important; justify-content:center !important;
+  text-align:center !important;
+}
+
+/* §5 "최근 흐름" — 머리줄 글자와 본문 상태값의 중심축을 같은 자리에 둔다.
+   글자 길이(유지/상승세/하락세)가 달라도 가운데가 흔들리지 않게 묶음 전체를 중앙 정렬. */
+.crm-list-col .co-table-head > *:nth-child(5){
+  display:flex !important; align-items:center !important; justify-content:center !important;
+  text-align:center !important;
+}
+.crm-list-col .co-row > .col-trend{
+  display:flex !important; align-items:center !important; justify-content:center !important;
+}
+.crm-list-col .col-trend .trend-cell{ width:auto !important; text-align:center !important; }
+
+/* §6 "실적-매출" 배지 — width:100%(§2404) 때문에 열 전체를 채우는 긴 막대였다.
+   글자 길이에 맞게 끝나는 pill로 되돌린다. 색(상태 표시)은 그대로. */
+.crm-list-col .co-row > .col-contrib{
+  display:flex !important; align-items:center !important; justify-content:center !important;
+}
+.crm-list-col .co-table-head > *:nth-child(6){
+  display:flex !important; align-items:center !important; justify-content:center !important;
+}
+.crm-list-col .contrib-cell{
+  display:inline-flex !important; flex-direction:column; align-items:center;
+  width:auto !important; max-width:100% !important;
+  padding:3px 10px !important; white-space:nowrap;
+}
+
+/* §8 행 높이 — 현재 63px에서 패딩만 2px씩 깎아 59px. 글자 크기는 그대로라 가독성은
+   유지되고, 그만큼 한 줄이 더 들어온다. */
+.crm-list-col .co-row{ padding:7px 14px !important; min-height:54px !important; }
+.crm-list-col .co-table-head{ padding:9px 14px !important; }
+
+/* §3 페이지네이션 — 번호를 보여주는 것보다 업체 한 줄이 더 중요하다. 줄 높이를
+   44 → 28px로 줄이고 버튼도 한 단계 작게 한다. 페이지 상태·건수·렌더 함수는 그대로다. */
+.crm-list-col .list-pagination{
+  min-height:28px !important; padding:4px 2px 0 !important; gap:8px !important;
+}
+.crm-list-col .list-pagination .page-btn{
+  min-width:24px !important; height:24px !important; padding:0 6px !important;
+  font-size:11.5px !important; border-radius:7px !important;
+}
+.crm-list-col .list-pagination .page-total{ font-size:11px !important; }
+/* §3 표 영역 — 한 화면에 안 들어가는 상황에서는 목록 안에서 휠로 더 볼 수 있게 한다.
+   줄 수가 칸에 딱 맞을 때는 스크롤바가 생기지 않는다(auto라 필요할 때만). */
+body.crm-fixed-view .crm-list-col .co-list{ overflow-y:auto !important; overscroll-behavior:contain; }
+.crm-list-col .co-list::-webkit-scrollbar{ width:8px; }
+.crm-list-col .co-list::-webkit-scrollbar-thumb{ background:#D7DFEA; border-radius:999px; }
+.crm-list-col .co-list::-webkit-scrollbar-track{ background:transparent; }
+
 /* §화이트 + 딥 네이비 라운드 — MOU 진행상황 탭의 "지금 해야 할 업무" 카드 3장도
    고객관리의 KPI 카드와 같은 테두리·모서리·그림자를 쓰게 맞춘다(색은 그대로 둔다 —
    숫자의 주황/초록은 급한 일을 가리키는 상태색이라 남겨 뒀다). */
@@ -7713,7 +7792,10 @@ body{
       <!-- 좌: 업체 목록 카드 — 검색/정렬/필터 pill/표는 전부 기존 DOM·id·렌더 함수
            (renderFilterChips/renderList/applySort 등) 그대로, 카드 틀만 새로 씌운다. -->
       <div class="crm-panel crm-list-col">
-        <div class="crm-panel-title">업체 목록</div>
+        <!-- §목록 compact 라운드(신규) — "업체 목록" 제목은 뺐다. 바로 위 탭이 이미
+             "고객관리"라 같은 말이 두 번이고, 제목 한 줄(23px + 아래 여백 8px)이
+             업체 한 줄만큼의 세로 공간을 먹고 있었다. 제목만 없애고 카드 위쪽 여백
+             (padding-top 16px)은 그대로 둔다 — 필터가 카드 천장에 붙지 않게. -->
         <!-- §요청 5/6 — 지역/업종/고객상태 3개 드롭다운은 이 파일에 이미 없었다(전수
              검색 결과 없음). 대신 요청한 6개 pill 필터만 여기 남긴다(data-filter 값은
              기존 matchesFilter/renderList 분기와 100% 동일 — 아래 renderFilterChips 참고).
@@ -7730,12 +7812,10 @@ body{
         <div class="list-filter-row-wrap" id="crmFilterRowWrap">
           <div class="list-filter-row" id="crmFilterRow"></div>
           <button type="button" id="crmAddBtn" class="list-add-btn list-add-btn-inline">+ 고객 등록</button>
-          <!-- §지도 팝업 전환 라운드(신규) §1 — 고정 지도 패널을 대신하는 compact 버튼.
-               큰 카드가 아니라 칩 줄에 얹히는 한 줄짜리 버튼이다. 클릭하면 기존
-               openMapDistributionModal()을 그대로 연다(새 팝업/새 렌더 경로 없음). -->
-          <button type="button" id="crmMapOpenBtn" class="map-open-btn" title="시공사 지역 분포를 크게 보기">
-            <span class="map-open-btn-ico" aria-hidden="true">🗺</span><span>시공사 지역 분포</span>
-          </button>
+          <!-- §목록 compact 라운드(신규) — 칩 줄에 있던 "시공사 지역 분포" 버튼을 뺐다.
+               오른쪽에 진짜 지도 카드가 있고 그 카드와 그 안의 ↗ 버튼이 같은
+               openMapDistributionModal()을 열기 때문에 중복이었다. 지도 팝업·마커·
+               클러스터·탭은 전혀 건드리지 않았다(아래 리스너도 버튼이 없을 때만 건너뛴다). -->
           <!-- §쓰레기통 중복 정리 라운드(신규) — KPI 스트립 오른쪽에 있던 쓰레기통 아이콘
                버튼을 이 줄(= "+ 고객 등록" 줄) 맨 오른쪽으로 옮겼다. id/배지 id/클릭 동작
                (filterKey='trash' → renderList() → renderTrashTab())은 그대로라
@@ -15929,7 +16009,9 @@ window.SHIN2_CRM_APP_INIT = function(){
           // 형제를 빼서 구한 값보다 이게 더 정확해서(여백 몇 px이 덜 깎인다) 더 큰 쪽을 쓴다.
           if(list.clientHeight > 40) avail = Math.max(avail, list.clientHeight);
           const sample = list.querySelector('.co-row');
-          const rowH = sample ? sample.getBoundingClientRect().height : 63;
+          // 목록이 0건이면 잴 행이 없다 — 이때 쓰는 기본값은 실제 행 높이(57px)와
+          // 맞춰 둬야, 필터를 풀어 다시 전체로 돌아올 때 한 줄이 덜 보이지 않는다.
+          const rowH = sample ? sample.getBoundingClientRect().height : 57;
           if(avail > 60 && rowH > 20) size = Math.max(4, Math.min(20, Math.floor(avail / rowH)));
         }
       }
@@ -41928,7 +42010,11 @@ if(!window.__mapxRowDelegated){
   // ---------------- 진입 ----------------
   // §지도 팝업 전환 라운드(신규) — 지도를 다시 팝업으로만 연다(§요청 1/2). 고객목록 칩 줄의
   // compact 버튼 [시공사 지역 분포] 하나가 유일한 진입점이다.
-  document.getElementById('crmMapOpenBtn').addEventListener('click', openMapDistributionModal);
+  // §목록 compact 라운드 — 칩 줄의 "시공사 지역 분포" 버튼을 화면에서 뺐으므로 노드가
+  // 없을 수 있다. 여는 동작(openMapDistributionModal)은 그대로고, 버튼이 있으면
+  // 예전과 똑같이 바인딩한다 — 오른쪽 지도 카드/↗ 버튼 경로는 별도라 영향 없다.
+  const crmMapOpenBtnEl = document.getElementById('crmMapOpenBtn');
+  if(crmMapOpenBtnEl) crmMapOpenBtnEl.addEventListener('click', openMapDistributionModal);
   // §PDF 내보내기/목록 출력 통합 라운드(신규) — crmPdfExportBtn(중복 "목록 출력" 텍스트
   // 버튼)은 HTML에서 제거했으므로 그 바인딩도 함께 없앤다. 상단 "PDF 내보내기" 버튼
   // 하나만 openPdfExportModal을 연다(예전엔 openMouPdfMenuModal이었음).
