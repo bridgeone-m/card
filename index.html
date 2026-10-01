@@ -6510,6 +6510,8 @@ body{
 .crm-main-grid .kpi-strip-row.crm-kpi-cell{ grid-column:1 / -1 !important; grid-row:1 !important; }
 .crm-main-grid .crm-list-col{ grid-column:1 !important; grid-row:2 !important; min-width:0 !important; }
 .crm-main-grid .nf-side-right{ grid-column:2 !important; grid-row:2 !important; }
+/* 카드가 하나뿐이라 컬럼 높이를 지도가 전부 쓴다. */
+.nf-side-right > .nf-card-action{ flex:1 1 auto; min-height:0; }
 .nf-side-col{ display:flex; flex-direction:column; gap:14px; min-width:0; }
 
 /* #listView 자체도 캔버스(.app) 안쪽 여백에 맞춘다 — .app의 padding을 0으로 바꿨으므로. */
@@ -7510,8 +7512,11 @@ html.modal-scroll-lock, body.modal-scroll-lock{
            그대로 연다(§17 "지도 변경 금지" — 지도 코드는 호출만 한다). 최근 요청은 기존
            buildRequestListItems()가 만든 항목을 그대로 최신순으로 모은 것이다. -->
       <aside class="nf-side-col nf-side-right" aria-label="위젯">
+        <!-- §오른쪽 컬럼 — 시공사 지역 분포 지도 하나만. "최근 요청 업체" 카드는
+             사용자 요청으로 화면에서 뺐다. renderNfRecentReqCard와 buildRequestListItems는
+             그대로 두어(컨테이너가 없으면 함수 첫 줄에서 바로 빠져나간다) 나중에 되살릴 때
+             쓸 수 있고, 같은 요청 데이터를 쓰는 고객목록 "최근 요청" 열도 그대로 동작한다. -->
         <section class="nf-card nf-card-action" id="crmActionCard"></section>
-        <section class="nf-card nf-card-recentreq" id="crmRecentReqCard"></section>
       </aside>
     </div>
     <!-- §지도 팝업 전환 라운드(신규) — 지도를 메인 우측 고정 카드(.crm-map-col)에서 빼고
