@@ -7509,6 +7509,35 @@ body{
 .sa-region-empty{ font-size:11px; color:#95A2B4; }
 
 /* ==========================================================================
+   §MOU 진행 뱃지 라운드(신규) — 업체명 옆 작은 단계 뱃지. 전체 톤(화이트 + 딥 네이비)에
+   맞춰 navy/gray 중심으로만 쓰고, 해지(연한 red)와 확인필요(연한 amber)만 예외다.
+   행 높이가 커지지 않도록 뱃지 높이를 업체명 줄 안에 들어가는 20px로 묶는다.
+   ========================================================================== */
+.crm-list-col .co-name-badges{
+  display:flex !important; align-items:center; gap:6px; min-width:0;
+}
+.crm-list-col .co-name-badges .co-name-text{ min-width:0; }
+.co-stage-badge{
+  flex:none; display:inline-flex; align-items:center; justify-content:center;
+  height:20px; padding:0 8px; border-radius:999px;
+  font-size:11px; font-weight:600; line-height:1; letter-spacing:-.01em;
+  white-space:nowrap; border:1px solid transparent; box-shadow:none;
+}
+.co-stage-badge.is-mou{        background:var(--primary-navy); color:#fff; font-weight:700; }
+.co-stage-badge.is-m2{         background:var(--navy-100); color:var(--navy-700); border-color:var(--navy-200); }
+.co-stage-badge.is-m1{         background:var(--navy-100); color:var(--navy-500); }
+.co-stage-badge.is-q{          background:var(--bg-soft); color:var(--navy-500); }
+.co-stage-badge.is-case{       background:#FFFFFF; color:#5A6A80; border-color:#D5DCE6; }
+.co-stage-badge.is-unsigned{   background:#FFFFFF; color:#6B7A8F; border-color:var(--border-soft); }
+.co-stage-badge.is-none{       background:#F4F6F9; color:#97A2B2; }
+.co-stage-badge.is-terminated{ background:#FBF0F0; color:#A4514E; }
+.co-stage-badge.is-check{      background:#FBF5E8; color:#8A6A28; }
+/* 해지는 새 단계 뱃지가 이미 말해 주므로, 목록에서만 기존 "협약 종료" 배지를 숨긴다.
+   같은 말이 두 번 붙어 업체명이 밀렸다. agreementTerminatedBadgeHtml 함수와 다른
+   화면(고객 상세 등)의 표시는 그대로다 — 여기 한 줄의 표시 여부만 바뀐다. */
+.crm-list-col .co-name-badges .agreement-status-badge.is-terminated{ display:none; }
+
+/* ==========================================================================
    §페이지 shell 통일 라운드(신규) — 메인 탭 세 개(고객관리 / MOU 진행상황 / 메일 설정)가
    같은 높이·여백·스크롤 체계를 쓰게 한다. 예전에는 고객관리만 뷰포트 안에서 끝나고
    (body overflow:hidden) 나머지 둘은 길이에 따라 문서가 늘어나는 구조라, 탭을 옮길
@@ -14451,6 +14480,66 @@ window.SHIN2_CRM_APP_INIT = function(){
     }
     return '';
   }
+  /* ==========================================================================
+     §MOU 진행 뱃지 라운드(신규) — 고객관리 목록에서 업체명 옆에 진행단계를 한 칸으로
+     보여준다. 새 상태값을 저장하지 않는다. 이미 화면 곳곳이 쓰는 공식 판정만 읽어서
+     그릴 때마다 다시 계산하므로, MOU 진행상황 탭에서 단계를 바꾸면 고객관리로 돌아왔을
+     때 뱃지도 같이 바뀐다(renderList가 다시 돌면서 buildProgressStages를 새로 호출).
+
+     재사용하는 기존 판정 — 새로 만든 판정은 하나도 없다:
+       D.isAgreementTerminated(co)                      협약 종료("협약종료" 탭과 동일)
+       isConfirmedPartner(co, progress)                 MOU 체결("MOU 체결" 탭과 동일)
+       buildProgressStages(co).stages 의 q/m1/m2 state   질문서·1차·2차(업무관리와 동일)
+       matchesFilter(co, progress, 'revenueNoMou')       실적있음·MOU미체결 탭과 동일
+       D.loadCaseByCaseCompanies()의 convertedToCompanyId 건바이건 목록에서 전환된 업체
+
+     건바이건에 대한 한계(보고함): 건바이건(caseByCase)은 CRM 업체가 아니라 엑셀에만
+     있는 별도 목록이고, CRM 업체와 이어지는 유일한 기존 데이터가 "그 목록에서 전환된
+     업체"(convertedToCompanyId)다. 그래서 이 뱃지의 건바이건은 그 전환 이력 기준이다.
+     목록 상단 "건바이건" 칩의 숫자(아직 전환 안 된 건수)와는 모수가 다르다.
+     ========================================================================== */
+  const MOU_BADGE_DEFS = {
+    terminated: { label:'해지',     cls:'is-terminated', title:'협약 종료' },
+    mou:        { label:'MOU',      cls:'is-mou',        title:'MOU 체결 완료' },
+    m2:         { label:'2차',      cls:'is-m2',         title:'2차 미팅까지 완료 · MOU 미체결' },
+    m1:         { label:'1차',      cls:'is-m1',         title:'1차 미팅까지 완료 · 2차 미진행' },
+    q:          { label:'질문서',   cls:'is-q',          title:'질문서 단계 진행 중' },
+    casebycase: { label:'건바이건', cls:'is-case',       title:'건바이건 목록에서 전환된 업체' },
+    unsigned:   { label:'미체결',   cls:'is-unsigned',   title:'실적 있음 · MOU 미체결' },
+    none:       { label:'미진행',   cls:'is-none',       title:'진행 이력 없음' },
+    check:      { label:'확인필요', cls:'is-check',      title:'진행 이력은 있으나 단계를 판정할 수 없음' }
+  };
+  // caseByCaseIds는 renderList가 한 번만 만들어 넘기는 Set(업체 수만큼 다시 조회하지
+  // 않으려고). 없으면 건바이건만 건너뛰고 나머지는 그대로 판정한다.
+  function deriveMouBadgeState(co, progress, caseByCaseIds){
+    if(!co) return null;
+    try{
+      if(D.isAgreementTerminated(co)) return 'terminated';
+      if(isConfirmedPartner(co, progress)) return 'mou';
+      const stages = (progress && progress.stages) || [];
+      const stage = k => stages.find(st=> st.key === k);
+      const isDone = k => { const st = stage(k); return !!st && st.state === 'done'; };
+      if(isDone('m2')) return 'm2';
+      if(isDone('m1')) return 'm1';
+      // 질문서는 발송/회신을 목록에서 하나로 묶는다(§요청) — 발송만 돼 날짜가 잡힌
+      // 상태(waiting이지만 dateDisplay가 있음)도 "진행 이력 있음"으로 본다.
+      const q = stage('q');
+      if(q && (q.state === 'done' || q.state === 'scheduled' || (q.dateDisplay && q.dateDisplay !== '—'))) return 'q';
+      if(caseByCaseIds && caseByCaseIds.has(String(co.id))) return 'casebycase';
+      if(matchesFilter(co, progress, 'revenueNoMou')) return 'unsigned';
+      if(progress && progress.hasAny) return 'check';
+      return 'none';
+    }catch(err){
+      // 판정 중 어디서든 막히면 없는 상태를 지어내지 않고 "확인필요"로 둔다.
+      return 'check';
+    }
+  }
+  function mouBadgeHtml(co, progress, caseByCaseIds){
+    const key = deriveMouBadgeState(co, progress, caseByCaseIds);
+    const def = key && MOU_BADGE_DEFS[key];
+    if(!def) return '';
+    return `<span class="co-stage-badge ${def.cls}" title="${esc(def.title)}">${esc(def.label)}</span>`;
+  }
   // 협약 종료 배지 — 삭제처럼 보이지 않게 회색 계열로만(§요청), 붉은색은 쓰지 않는다.
   function agreementTerminatedBadgeHtml(co){
     if(!D.isAgreementTerminated(co)) return '';
@@ -17251,6 +17340,11 @@ window.SHIN2_CRM_APP_INIT = function(){
     const companies = D.loadActiveCompanies(); // §업체 삭제(휴지통) 라운드 — 소프트 삭제된 업체를 일반 목록/신규 협약사/협약 진행/MOU체결 탭에서 뺀다(§요청 10)
     const unregisteredClassification = D.classifyUnregisteredCompaniesByMouMaster(D.buildUnregisteredCompanies2026());
     // 기존 건바이건 컬렉션과 엑셀 분류 결과에 같은 업체가 있으면 한 번만 표시한다.
+    // §MOU 진행 뱃지 라운드 — 업체명 옆 "건바이건" 뱃지에 쓸 전환 이력. 행마다 다시
+    // 조회하지 않도록 여기서 한 번만 Set으로 만든다(읽기만 한다).
+    const caseByCaseConvertedIds = new Set(
+      D.loadCaseByCaseCompanies().filter(r=> r.convertedToCompanyId).map(r=> String(r.convertedToCompanyId))
+    );
     const activeCaseByCaseCompanies = D.loadCaseByCaseCompanies().filter(r=> !r.convertedToCompanyId);
     const activeCaseByCaseClassified = D.classifyUnregisteredCompaniesByMouMaster(activeCaseByCaseCompanies);
     const activeCaseByCaseNorms = new Set(activeCaseByCaseClassified.mou.concat(activeCaseByCaseClassified.caseByCase).map(r=> r.mouMasterNorm));
@@ -17744,7 +17838,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       <div class="co-row${rowOverdueClass}${receivablePenaltyClass}" data-id="${esc(co.id)}">
         <div class="col-name">
           <div class="col-name-top">
-            <span class="co-name-badges">${partnerGlyphHtml(co)}<span class="co-name-text">${esc(co.name)}</span>${agreementTerminatedBadgeHtml(co)}</span>
+            <span class="co-name-badges">${partnerGlyphHtml(co)}<span class="co-name-text">${esc(co.name)}</span>${mouBadgeHtml(co, r.progress, caseByCaseConvertedIds)}${agreementTerminatedBadgeHtml(co)}</span>
           </div>
           <!-- §고객관리 메인화면 재배치 라운드(신규, §요청 8) — 업체명 아래 B2B 코드(co.code).
                새 코드를 발급하지 않고, 이미 있는 값이 있을 때만 표시한다(없으면 빈 문자열). -->
