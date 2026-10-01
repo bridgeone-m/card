@@ -3089,37 +3089,54 @@ html,body{background:radial-gradient(circle at 75% -10%,rgba(11,91,211,.055),tra
 }
 .nf-card-action .open-map-modal-btn:hover{ background-color:#EDF3FF !important; border-color:#C2D8FB !important; }
 
-/* ---- 액션 타일 4개 ---- */
-.sa-tiles{ display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+/* ---- 액션 타일 5개 — 2 + 2 + 전체폭 1 ---- */
+.sa-tiles{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.sa-tiles > .sa-tile:nth-child(5){ grid-column:1 / -1; }
 .sa-tile{
   display:grid; grid-template-columns:26px 1fr 12px; grid-template-rows:auto auto;
-  align-items:center; gap:2px 8px; padding:11px 11px 10px; cursor:pointer;
-  border:1px solid transparent; border-radius:15px; font-family:inherit; text-align:left;
-  transition:box-shadow .15s, border-color .15s;
+  align-items:center; gap:2px 8px; padding:10px 11px; cursor:pointer;
+  background:#F7FAFF; border:1px solid #E4EAF2; border-radius:13px;
+  color:#17324D; font-family:inherit; text-align:left;
+  transition:background-color .15s, border-color .15s;
 }
-.sa-tile:hover{ box-shadow:0 4px 12px rgba(35,65,110,.08); }
-.sa-tile.is-active{ border-color:currentColor; }
+.sa-tile:hover{ background:#EFF5FF; border-color:#C2D8FB; }
+.sa-tile.is-active{ border-color:#2563EB; background:#EFF5FF; }
 .sa-tile-ico{
   grid-column:1; grid-row:1 / span 2;
   display:flex; align-items:center; justify-content:center;
 }
 .sa-tile-ico svg{ width:19px; height:19px; }
 .sa-tile-label{
+  /* "2차 미팅 회신 지연"처럼 긴 이름이 잘리지 않게 두 줄까지 접는다. */
   grid-column:2; grid-row:1; font-size:11.5px; font-weight:650; line-height:1.3;
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0;
+  color:#17324D; min-width:0; word-break:keep-all;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
 }
 .sa-tile-num{
   grid-column:2; grid-row:2; font-size:19px; font-weight:800; line-height:1.1;
   font-variant-numeric:tabular-nums; white-space:nowrap;
 }
 .sa-tile-unit{ font-size:11px; font-weight:600; margin-left:2px; opacity:.75; }
-.sa-tile-chev{ grid-column:3; grid-row:1 / span 2; display:flex; align-items:center; opacity:.45; }
+.sa-tile-chev{ grid-column:3; grid-row:1 / span 2; display:flex; align-items:center; color:#B6C2D4; }
 .sa-tile-chev svg{ width:12px; height:12px; }
-/* 네 묶음의 색 — 구분은 되지만 채도는 낮게 */
-.sa-tile.sa-requestedMaterials{ background:#FFF1F3; color:#D9465F; }
-.sa-tile.sa-followup{ background:#FFF5E9; color:#EA7A19; }
-.sa-tile.sa-secondMeeting{ background:#EEF5FF; color:#2563EB; }
-.sa-tile.sa-mouProgress{ background:#F5F0FF; color:#7C3AED; }
+/* 아이콘·숫자만 색을 갖는다. 카드 전체를 물들이지 않는다.
+   긴급 둘(요청자료 · 2차 미팅 회신 지연)만 빨강, 나머지 셋은 같은 블루 계열에서
+   명도만 다르게 — 보라·주황은 쓰지 않는다. */
+.sa-tile .sa-tile-ico{ color:#2563EB; }
+.sa-tile .sa-tile-num{ color:#1E3A8A; }
+.sa-tile.sa-followup .sa-tile-ico{ color:#6F95F5; }
+.sa-tile.sa-secondMeeting .sa-tile-ico{ color:#4F7EF3; }
+.sa-tile.sa-mouProgress .sa-tile-ico{ color:#2563EB; }
+.sa-tile.sa-requestedMaterials,
+.sa-tile.sa-m2NoReply{ background:#FFF7F8; border-color:#F6DEE2; }
+.sa-tile.sa-requestedMaterials:hover,
+.sa-tile.sa-m2NoReply:hover{ background:#FFEFF2; border-color:#EFC9CF; }
+.sa-tile.sa-requestedMaterials.is-active,
+.sa-tile.sa-m2NoReply.is-active{ border-color:#D94A5C; background:#FFEFF2; }
+.sa-tile.sa-requestedMaterials .sa-tile-ico,
+.sa-tile.sa-m2NoReply .sa-tile-ico{ color:#D94A5C; }
+.sa-tile.sa-requestedMaterials .sa-tile-num,
+.sa-tile.sa-m2NoReply .sa-tile-num{ color:#C92E42; }
 
 /* ---- 우선 확인 업체 ---- */
 .sa-list-block{ display:flex; flex-direction:column; gap:2px; }
@@ -3134,11 +3151,11 @@ html,body{background:radial-gradient(circle at 75% -10%,rgba(11,91,211,.055),tra
 }
 .sa-row:hover{ background:#F5F8FE; }
 .sa-row + .sa-row{ box-shadow:inset 0 1px 0 #EEF2F7; }
-.sa-row-dot{ width:8px; height:8px; border-radius:50%; background:currentColor; }
-.sa-row-dot.sa-requestedMaterials{ color:#D9465F; }
-.sa-row-dot.sa-followup{ color:#EA7A19; }
-.sa-row-dot.sa-secondMeeting{ color:#2563EB; }
-.sa-row-dot.sa-mouProgress{ color:#7C3AED; }
+.sa-row-dot{ width:8px; height:8px; border-radius:50%; background:currentColor; color:#2563EB; }
+.sa-row-dot.sa-requestedMaterials, .sa-row-dot.sa-m2NoReply{ color:#D94A5C; }
+.sa-row-dot.sa-followup{ color:#6F95F5; }
+.sa-row-dot.sa-secondMeeting{ color:#4F7EF3; }
+.sa-row-dot.sa-mouProgress{ color:#2563EB; }
 .sa-row-main{ display:flex; flex-direction:column; gap:3px; min-width:0; }
 .sa-row-name{
   font-size:13px; font-weight:650; color:#10233F;
@@ -3149,10 +3166,12 @@ html,body{background:radial-gradient(circle at 75% -10%,rgba(11,91,211,.055),tra
   display:inline-flex; align-items:center; height:18px; padding:0 7px; border-radius:999px;
   font-size:10.5px; font-weight:700; white-space:nowrap;
 }
-.sa-row-badge.sa-requestedMaterials{ background:#FFF1F3; color:#D9465F; }
-.sa-row-badge.sa-followup{ background:#FFF5E9; color:#EA7A19; }
-.sa-row-badge.sa-secondMeeting{ background:#EEF5FF; color:#2563EB; }
-.sa-row-badge.sa-mouProgress{ background:#F5F0FF; color:#7C3AED; }
+.sa-row-badge{ background:#EEF4FF; color:#2563EB; }
+.sa-row-badge.sa-requestedMaterials,
+.sa-row-badge.sa-m2NoReply{ background:#FFF1F3; color:#C92E42; }
+.sa-row-badge.sa-followup{ background:#F2F6FE; color:#5B7FD6; }
+.sa-row-badge.sa-secondMeeting{ background:#EEF4FF; color:#4F7EF3; }
+.sa-row-badge.sa-mouProgress{ background:#EEF4FF; color:#2563EB; }
 .sa-row-note{ font-size:11px; color:#7C899D; }
 .sa-row-chev{ display:flex; align-items:center; color:#B6C2D4; }
 .sa-row-chev svg{ width:12px; height:12px; }
@@ -3178,8 +3197,12 @@ html,body{background:radial-gradient(circle at 75% -10%,rgba(11,91,211,.055),tra
 @media(max-width:1100px){
   .nf-card.nf-card-action{ padding:18px; gap:14px; }
 }
+@media(max-width:1100px){
+  .sa-tiles{ grid-template-columns:1fr 1fr; }
+}
 @media(max-width:560px){
   .sa-tiles{ grid-template-columns:1fr; }
+  .sa-tiles > .sa-tile:nth-child(5){ grid-column:1; }
 }
 
 /* §S — 클러스터/히트맵은 지도 위 세그먼트 하나로만 보여준다. 기존 버튼은 전환 로직을
@@ -15959,13 +15982,16 @@ window.SHIN2_CRM_APP_INIT = function(){
   // 네 묶음과 우선 확인 업체까지 같이 만들어 같은 계산을 반복하지 않는다(§23).
   // ==========================================================================
   const SALES_ACTION_DEFS = [
-    ['requestedMaterials', '미팅 후 요청자료', 'questionnaire'],
-    ['followup',           '후속 연락 필요',   'activity'],
-    ['secondMeeting',      '2차 미팅 준비',    'agreement'],
-    ['mouProgress',        'MOU 진행 필요',    'agreement']
+    ['requestedMaterials', '미팅 후 요청자료',     'questionnaire'],
+    ['m2NoReply',          '2차 미팅 회신 지연',   'agreement'],
+    ['followup',           '후속 연락 필요',       'activity'],
+    ['secondMeeting',      '2차 미팅 준비',        'agreement'],
+    ['mouProgress',        'MOU 진행 필요',        'agreement']
   ];
-  // 우선 확인 업체에서 한 업체를 한 줄로만 보여줄 때 쓰는 순서(§13).
-  const SALES_ACTION_PRIORITY = ['requestedMaterials','secondMeeting','mouProgress','followup'];
+  // 우선 확인 업체에서 한 업체를 한 줄로만 보여줄 때 쓰는 순서.
+  const SALES_ACTION_PRIORITY = ['m2NoReply','requestedMaterials','secondMeeting','mouProgress','followup'];
+  // 회신이 없다고 보기까지 기다리는 날수.
+  const M2_NO_REPLY_DAYS = 7;
   let salesActionFocus = null;   // {key, ids:Set} — 타일을 누르면 고객목록을 그 묶음으로 좁힌다
 
   function salesDaysBetween(ts){
@@ -15986,7 +16012,7 @@ window.SHIN2_CRM_APP_INIT = function(){
   function buildSalesActionSummary(enriched, mgmt, relationIndex){
     const rows = enriched || [];
     const byId = new Map(rows.map(r=> [String(r.co.id), r]));
-    const out = { requestedMaterials:[], followup:[], secondMeeting:[], mouProgress:[], priorityCompanies:[] };
+    const out = { requestedMaterials:[], m2NoReply:[], followup:[], secondMeeting:[], mouProgress:[], priorityCompanies:[] };
 
     // ① 미팅 후 요청자료 — 질문지 상담의 pending 판정(D.pendingConsultReviewDocs)을 그대로 쓴다.
     let pendingDocs = [];
@@ -16032,6 +16058,18 @@ window.SHIN2_CRM_APP_INIT = function(){
         out.mouProgress.push({ co: r.co, ts: lastDone ? lastDone.ts : null,
           note: salesElapsedText(lastDone && lastDone.ts, '') || '협약 진행중' });
       }
+      // §2차 미팅 회신 지연 — 2차 미팅 일정 메일(secondMeetingRequest)을 보낸 지
+      // M2_NO_REPLY_DAYS일이 지났는데 아직 일정 회신(m2 예정일)도, 2차 미팅 완료도 없는 업체.
+      // 발송 기록은 기존 co.m1MailLog(mailType/sentAt/status)를 읽기만 한다.
+      if(m2.state !== 'done' && !m2.scheduledLabel && mou.state !== 'done'){
+        const sent = (Array.isArray(r.co.m1MailLog) ? r.co.m1MailLog : [])
+          .filter(l=> l && l.mailType === 'secondMeetingRequest' && l.status === 'sent' && l.sentAt);
+        const last = sent.length ? sent[sent.length - 1] : null;
+        const days = last ? salesDaysBetween(last.sentAt) : null;
+        if(days !== null && days >= M2_NO_REPLY_DAYS){
+          out.m2NoReply.push({ co: r.co, ts: last.sentAt, note: '메일 발송 후 ' + days + '일 경과' });
+        }
+      }
     });
 
     // 우선 확인 업체 — 한 업체가 여러 묶음에 걸려도 가장 앞선 묶음 하나로만 대표 표시한다(§13).
@@ -16049,11 +16087,19 @@ window.SHIN2_CRM_APP_INIT = function(){
     return out;
   }
 
+  const SALES_ACTION_HINT = {
+    requestedMaterials:'미팅 후 요청자료 메모가 있고 아직 발송 완료 처리되지 않은 업체',
+    m2NoReply:'2차 미팅 일정 메일 발송 후 ' + M2_NO_REPLY_DAYS + '일 이상 회신이 없는 업체',
+    followup:'최근 접촉 이후 관리가 필요한 것으로 분류된 업체',
+    secondMeeting:'1차 미팅은 끝났고 2차 미팅이 아직인 업체',
+    mouProgress:'협약 진행중이고 아직 MOU 체결 전인 업체'
+  };
   const SALES_ICO = {
     requestedMaterials:"<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true'><path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z'/><path d='M14 2v6h6M9 15l2 2 4-4'/></svg>",
     followup:"<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true'><path d='M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.7a2 2 0 0 1-.5 2.1L8.1 9.6a16 16 0 0 0 6 6l1.1-1.1a2 2 0 0 1 2.1-.5c.9.3 1.8.5 2.7.6a2 2 0 0 1 1.7 2Z'/></svg>",
     secondMeeting:"<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true'><rect x='3' y='4' width='18' height='18' rx='2'/><path d='M16 2v4M8 2v4M3 10h18M9 16l2 2 4-4'/></svg>",
     mouProgress:"<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true'><path d='M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2'/><rect x='8' y='2' width='8' height='4' rx='1'/><path d='M9 14l2 2 4-4'/></svg>",
+    m2NoReply:"<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true'><path d='M22 10.5V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10'/><path d='m2 7 10 6 10-6'/><path d='M19 14v3M19 21h.01'/></svg>",
     chevron:"<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true'><path d='m9 18 6-6-6-6'/></svg>"
   };
 
@@ -16067,8 +16113,9 @@ window.SHIN2_CRM_APP_INIT = function(){
     salesActionSummaryCache = sum;
     const tiles = SALES_ACTION_DEFS.map(([key,label])=> `
       <button type="button" class="sa-tile sa-${esc(key)}${salesActionFocus && salesActionFocus.key === key ? ' is-active' : ''}"
-        data-sales-action="${esc(key)}" aria-pressed="${salesActionFocus && salesActionFocus.key === key ? 'true' : 'false'}">
-        <span class="sa-tile-ico">${SALES_ICO[key]}</span>
+        data-sales-action="${esc(key)}" aria-pressed="${salesActionFocus && salesActionFocus.key === key ? 'true' : 'false'}"
+        title="${esc(SALES_ACTION_HINT[key] || label)}">
+        <span class="sa-tile-ico">${SALES_ICO[key] || SALES_ICO.mouProgress}</span>
         <span class="sa-tile-label">${esc(label)}</span>
         <span class="sa-tile-num">${sum[key].length}<span class="sa-tile-unit">건</span></span>
         <span class="sa-tile-chev">${SALES_ICO.chevron}</span>
