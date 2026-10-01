@@ -3110,6 +3110,86 @@ html,body{background:radial-gradient(circle at 75% -10%,rgba(11,91,211,.055),tra
   font-size:11.5px; color:#7C899D;
 }
 
+/* ==========================================================================
+   §한 화면 고정형 CRM 레이아웃 — 고객관리 "목록" 화면에서만(body.crm-fixed-view)
+   데스크톱에 한해 적용한다. 모바일·태블릿은 지금처럼 자연스럽게 세로로 스크롤되고,
+   다른 탭(MOU 진행상황·메일 설정)과 고객 상세 전체화면도 영향을 받지 않는다.
+   목록이 길어져 페이지가 늘어나는 일은 페이지네이션이 막는다 — 목록 안쪽에
+   별도 스크롤바를 만들지 않아 스크롤바가 두 개 생기지 않는다.
+   ========================================================================== */
+@media(min-width:1101px){
+  body.crm-fixed-view{ height:100vh; overflow:hidden; margin:0 !important; }
+  body.crm-fixed-view .app{
+    height:100vh; max-height:100vh; overflow:hidden;
+    display:flex; flex-direction:column;
+    /* 바깥 여백이 남아 있으면 100vh에 그만큼이 더해져 페이지가 스크롤된다. */
+    margin:0 auto !important;
+    padding-bottom:14px !important;
+  }
+  body.crm-fixed-view #listView{
+    flex:1 1 auto; min-height:0; display:flex; flex-direction:column;
+  }
+  body.crm-fixed-view .crm-main-grid{
+    flex:1 1 auto; min-height:0;
+    grid-template-rows:auto minmax(0,1fr) !important;
+    align-items:stretch !important;
+    margin-bottom:0;
+  }
+  /* 중앙 목록 카드: 머리줄 + 목록(가변) + 페이지네이션(하단 고정) */
+  body.crm-fixed-view .crm-main-grid .crm-list-col{
+    min-height:0; display:flex; flex-direction:column; overflow:hidden;
+  }
+  body.crm-fixed-view .crm-list-col .co-list{
+    flex:1 1 auto; min-height:0; overflow:hidden;
+  }
+  /* 건수가 적어도 페이지네이션 줄이 위로 올라오지 않게 바닥에 붙인다. */
+  body.crm-fixed-view .crm-list-col .list-pagination{ flex:none; margin-top:auto; }
+  body.crm-fixed-view .nf-side-right{ min-height:0; }
+  /* 낮은 노트북(1366×768)에서는 여백·KPI 높이를 한 단계 줄여 한 화면에 들어오게 한다.
+     전체를 transform:scale로 줄이지 않는다 — 글자가 흐려지기 때문이다. */
+  @media(max-height:880px){
+    body.crm-fixed-view .app{ padding-top:12px !important; padding-bottom:8px !important; }
+    body.crm-fixed-view .crm-main-grid{ margin-top:8px; gap:10px; }
+    body.crm-fixed-view .kpi-strip .kpi-item{ min-height:84px; padding:10px 12px !important; }
+    body.crm-fixed-view .kpi-strip .kpi-item-value{ min-height:26px; }
+    body.crm-fixed-view .kpi-strip .kpi-item-label{ min-height:24px; }
+    body.crm-fixed-view .kpi-strip .kpi-item-sub{ min-height:22px; }
+    body.crm-fixed-view .crm-list-col .co-row{ min-height:52px !important; padding-top:6px !important; padding-bottom:6px !important; }
+    body.crm-fixed-view .crm-list-col .list-pagination{ min-height:38px; }
+  }
+}
+
+/* §16 — 페이지네이션: 작은 버튼 + 현재 페이지만 연한 파랑. 좌측 번호 묶음,
+   우측 총 건수. 목록이 0건이어도 이 줄의 높이는 그대로 유지된다. */
+.crm-list-col .list-pagination{
+  display:flex !important; align-items:center; justify-content:space-between;
+  gap:10px; min-height:44px; padding:6px 2px 0;
+}
+.crm-list-col .list-pagination .page-btns{ display:flex; align-items:center; gap:4px; }
+.crm-list-col .list-pagination .page-btn{
+  min-width:30px; height:30px; padding:0 8px; border-radius:9px;
+  border:1px solid transparent !important; background:transparent !important;
+  color:#7C899D !important; font-size:12.5px; font-weight:650; box-shadow:none !important;
+}
+.crm-list-col .list-pagination .page-btn:hover:not(:disabled){ background:#F2F6FD !important; color:#17324D !important; }
+.crm-list-col .list-pagination .page-btn.active{
+  background:#EAF1FF !important; color:#2563EB !important; font-weight:800;
+  border-color:#C2D8FB !important;
+}
+.crm-list-col .list-pagination .page-btn:disabled{ color:#C4CDDA !important; }
+.crm-list-col .list-pagination .page-ellipsis{ color:#B6C2D4; padding:0 2px; font-size:12.5px; }
+.page-total{ font-size:11.5px; font-weight:600; color:#7C899D; white-space:nowrap; }
+
+/* §13 — 행 높이를 고정해 화면마다 보이는 줄 수가 들쭉날쭉하지 않게 한다. */
+.crm-list-col .co-row{ min-height:58px !important; }
+
+/* §17 — 결과가 0건이어도 목록 칸 높이를 유지하고 안내를 가운데 둔다. */
+.crm-list-col .co-list:empty::before,
+.crm-list-col .list-empty{
+  display:flex; align-items:center; justify-content:center; min-height:200px;
+  font-size:13px; color:#7C899D;
+}
+
 /* §18 — 고객목록 제목 옆 "지도 보기". 기존 지도 팝업으로 가는 작은 입구 하나. */
 .crm-map-btn{
   margin-left:10px; height:26px; padding:0 11px; border-radius:999px;
@@ -15446,7 +15526,70 @@ window.SHIN2_CRM_APP_INIT = function(){
   // 매번 받는 enriched 인자를 그대로 저장해 둔다(§성능 — renderList() 전체 재계산 없이
   // 정렬만 바꿈).
   let lastNewPartnerEnriched = null;
-  const PAGE_SIZE = 15;
+  // §한 화면 고정 라운드 — 한 페이지에 몇 줄을 보여줄지는 화면 높이로 정한다.
+  // 목록이 세로로 늘어나 페이지 전체가 길어지지 않게 하려는 값이라, 데이터·검색·필터·
+  // 정렬에는 전혀 관여하지 않는다(거른 결과를 몇 개씩 끊어 보여줄지만 바뀐다).
+  // crmPageSize()는 "지금 목록 칸에 남은 높이"를 재는데, 그 높이는 화면이 실제로
+  // 그려진 뒤에야 확정된다(부팅 직후에는 0이다). 그래서 렌더가 끝난 뒤 한 박자 쉬고
+  // 다시 재서, 줄이 넘치면 딱 한 번만 다시 그린다. 아직 레이아웃 전이면 몇 번 더
+  // 기다렸다 본다. 데이터·검색·필터·정렬에는 손대지 않고 보여줄 줄 수만 바꾼다.
+  let crmPageFitPass = false;
+  let crmPageFitTries = 0;
+  function crmSchedulePageFit(){
+    if(crmPageFitPass || crmPageFitTries > 8) return;
+    crmPageFitTries++;
+    setTimeout(()=>{
+      if(!document.body.classList.contains('crm-fixed-view')){ crmPageFitTries = 0; return; }
+      const list = document.getElementById('crmList');
+      if(!list) { crmPageFitTries = 0; return; }
+      if(list.clientHeight < 40){ crmSchedulePageFit(); return; }   // 아직 안 그려졌다
+      if(list.scrollHeight <= list.clientHeight + 4){ crmPageFitTries = 0; return; }
+      crmPageFitPass = true;
+      try{ renderList(); } finally { crmPageFitPass = false; crmPageFitTries = 0; }
+    }, 80);
+  }
+  // 창 크기가 바뀌면 들어가는 줄 수도 달라진다 — 보고 있던 페이지는 그대로 두고 다시 그린다.
+  if(typeof window !== 'undefined'){
+    let crmResizeTimer = null;
+    window.addEventListener('resize', ()=>{
+      clearTimeout(crmResizeTimer);
+      crmResizeTimer = setTimeout(()=>{
+        if(document.body.classList.contains('crm-fixed-view')) renderList();
+      }, 180);
+    });
+  }
+  function crmPageSize(){
+    const h = (typeof window !== 'undefined' && window.innerHeight) ? window.innerHeight : 900;
+    // 고정 레이아웃이 아닐 때(모바일·태블릿)는 예전처럼 넉넉히 보여준다.
+    let size = h < 720 ? 8 : h < 840 ? 10 : h < 960 ? 12 : 15;
+    try{
+      // 고정 레이아웃에서는 추정하지 않고 실제 남은 높이를 잰다.
+      // 목록(#crmList) 자신의 높이를 재면 "내용이 줄면 칸도 줄고, 칸이 줄면 내용이 더
+      // 줄어드는" 순환이 생긴다. 그래서 목록 칸 전체 높이에서 형제들(머리줄·필터·검색·
+      // 페이지네이션)이 쓰는 높이를 빼서 구한다 — 이 값들은 줄 수와 무관하게 일정하다.
+      if(document.body.classList.contains('crm-fixed-view')){
+        const col = document.querySelector('.crm-list-col');
+        const list = document.getElementById('crmList');
+        if(col && list && col.clientHeight > 120){
+          let used = 0;
+          Array.prototype.forEach.call(col.children, ch=>{
+            if(ch === list) return;
+            const cs = getComputedStyle(ch);
+            if(cs.display === 'none') return;
+            used += ch.getBoundingClientRect().height
+                  + (parseFloat(cs.marginTop) || 0) + (parseFloat(cs.marginBottom) || 0);
+          });
+          const colCs = getComputedStyle(col);
+          const pad = (parseFloat(colCs.paddingTop) || 0) + (parseFloat(colCs.paddingBottom) || 0);
+          const avail = col.clientHeight - used - pad;
+          const sample = list.querySelector('.co-row');
+          const rowH = sample ? sample.getBoundingClientRect().height : 63;
+          if(avail > 60 && rowH > 20) size = Math.max(4, Math.min(20, Math.floor(avail / rowH)));
+        }
+      }
+    }catch(err){ /* 못 재면 위 기본값을 그대로 쓴다 */ }
+    return size;
+  }
   // §고객 성향 미니 팝업 라운드 — 목록 [고객 성향] 클릭 시 뜨는 작은 popover 상태.
   // DISPLAY ONLY(§10) — 여기엔 co.customerInsight 등 실제 데이터를 절대 담지 않고, 지금
   // 어떤 업체의 popover가 열려 있는지(companyId)만 기억한다. 페이지 이동/큰 모달이 아니라
@@ -16394,10 +16537,22 @@ window.SHIN2_CRM_APP_INIT = function(){
     else if(sortMode === 'totalRevAsc') el.textContent = '▲';
     else el.textContent = '';
   }
-  function renderPagination(totalPages){
+  // §한 화면 고정 — 고객관리 "목록" 화면이 실제로 보이는 동안에만 body에 클래스를 건다.
+  // 다른 탭·고객 상세 전체화면·모바일은 지금처럼 자연스럽게 스크롤된다. 화면이 바뀌는
+  // 길목(renderList / openCard / 탭 전환)에서 모두 이 함수 하나만 부른다.
+  function syncCrmFixedViewClass(){
+    try{
+      const lv = document.getElementById('listView');
+      const on = !!lv && getComputedStyle(lv).display !== 'none';
+      document.body.classList.toggle('crm-fixed-view', on);
+    }catch(err){ /* 레이아웃 보조 클래스라 실패해도 화면 동작에는 영향 없음 */ }
+  }
+  function renderPagination(totalPages, totalRows){
     const wrap = document.getElementById('crmPagination');
     if(!wrap) return;
-    if(totalPages <= 1){ wrap.innerHTML = ''; return; }
+    const totalText = (typeof totalRows === 'number')
+      ? `<span class="page-total">총 ${totalRows.toLocaleString('ko-KR')}개 업체</span>` : '';
+    if(totalPages <= 1){ wrap.innerHTML = totalText; return; }
     const windowSize = 5;
     let start = Math.max(1, currentPage - 2);
     let end = Math.min(totalPages, start + windowSize - 1);
@@ -16409,7 +16564,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     html += pages.map(p=> `<button type="button" class="page-btn${p===currentPage?' active':''}" data-page="${p}">${p}</button>`).join('');
     if(end < totalPages){ if(end < totalPages - 1) html += `<span class="page-ellipsis">…</span>`; html += `<button type="button" class="page-btn" data-page="${totalPages}">${totalPages}</button>`; }
     html += `<button type="button" class="page-btn" data-page="${currentPage+1}" ${currentPage>=totalPages?'disabled':''}>&gt;</button>`;
-    wrap.innerHTML = html;
+    wrap.innerHTML = `<div class="page-btns">${html}</div>${totalText}`;
     wrap.querySelectorAll('[data-page]').forEach(btn=> btn.addEventListener('click', ()=>{
       const p = parseInt(btn.getAttribute('data-page'), 10);
       if(!p || p < 1 || p > totalPages || p === currentPage) return;
@@ -16740,9 +16895,11 @@ window.SHIN2_CRM_APP_INIT = function(){
       ? classifiedCaseByCaseRows.filter(x=> !searchQuery || [x.name, x.latestSite, x.latestDate].join(' ').toLowerCase().includes(searchQuery.toLowerCase()))
       : [];
 
-    const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+    syncCrmFixedViewClass();   // crmPageSize()가 고정 레이아웃 여부를 먼저 알아야 한다
+    const pageSize = crmPageSize();
+    const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
     if(currentPage > totalPages) currentPage = totalPages;
-    const pageRows = rows.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+    const pageRows = rows.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
     if(!rows.length && !classifiedMouRows.length && !classifiedRevenueNoMouRows.length){
       // §고객관리카드 단일 원본 전환 라운드(신규) — companies가 아직 0건일 때, 정말로
@@ -17175,7 +17332,9 @@ window.SHIN2_CRM_APP_INIT = function(){
         handleConfirmMouFromNonPartnerTab(btn.getAttribute('data-revenue-no-mou-confirm'));
       });
     });
-    renderPagination(totalPages);
+    renderPagination(totalPages, rows.length);
+    syncCrmFixedViewClass();
+    crmSchedulePageFit();
     listEl.querySelectorAll('.co-row').forEach(row=>{
       row.addEventListener('click', ()=> openCard(row.getAttribute('data-id')));
     });
@@ -19030,6 +19189,8 @@ window.SHIN2_CRM_APP_INIT = function(){
   function openCard(id, opts){
     const co = D.findCompany(id);
     if(!co){ return; }
+    // 고객 상세 전체화면은 세로로 길어질 수 있으므로 고정 레이아웃을 푼다.
+    setTimeout(syncCrmFixedViewClass, 0);
     const wasClosed = cardView.style.display !== 'block';
     const sameCompany = currentCompanyId === id && !wasClosed;
     currentCompanyId = id;
@@ -25913,6 +26074,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     requestAnimationFrame(()=> requestAnimationFrame(renderMailSettingsView));
   }
   function updateTopTabsUI(tab){
+    syncCrmFixedViewClass();
     const custBtn = document.getElementById('crmTabCustomer');
     const wqBtn = document.getElementById('crmTabWorkQueue');
     const mailBtn = document.getElementById('crmTabMailSettings');
