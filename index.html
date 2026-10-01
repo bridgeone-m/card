@@ -13505,6 +13505,114 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
     };
   }
 
+  /* ==========================================================================
+     §2단계 안전정비 라운드(신규) — P0-1 진단: companies 문서 실제 크기 측정.
+
+     Firestore는 이 CRM에서 "컬렉션"이 아니라 "localStorage 키 1개 = 문서 1개"로 쓰인다.
+         users/{uid}/shin2/shin2-companies-staging  =  { value: <업체 배열 전체>, updatedAt, localRev }
+     즉 업체가 몇 건이든 단일 문서 하나에 들어가고, Firestore 문서 상한은 1 MiB다.
+     여기에 가까워지면 push가 실패하고 로컬만 갱신된 채 기기 간 동기화가 멈춘다.
+
+     이 함수는 **읽기만** 한다 — setDoc/updateDoc/localStorage.setItem을 호출하지 않는다.
+     크기는 실제 저장 경로가 쓰는 것과 같은 방식(JSON 직렬화 후 UTF-8 바이트)으로 센다.
+     Firestore의 내부 인코딩은 JSON과 완전히 같지 않으므로 이 값은 "정확한 하한에 가까운
+     근사"다 — 필드 이름 오버헤드가 더 붙을 수 있어 실제는 이보다 조금 크다. 그래서
+     임계값 판단은 보수적으로 한다.
+     ========================================================================== */
+  const FIRESTORE_DOC_LIMIT_BYTES = 1048576;        // 1 MiB
+  // 큰 레코드에서 자리를 많이 차지하는 것으로 1단계 진단에서 지목된 필드들(§10).
+  const COMPANY_HEAVY_FIELDS = ['m1MailLog', 'pourTrackRecords', 'requestedMaterials',
+    'partnerDashboard', 'customerInsight', 'memo', 'distributionLists',
+    'relatedCompanies', 'currentSituation', 'needs', 'reactions', 'docChecks'];
+  function utf8Bytes(str){
+    try{ return new TextEncoder().encode(str).length; }
+    catch(e){ return unescape(encodeURIComponent(String(str))).length; }  // 구형 폴백
+  }
+  function jsonBytes(value){
+    let str;
+    try{ str = JSON.stringify(value); }catch(e){ return 0; }
+    return str == null ? 0 : utf8Bytes(str);
+  }
+  function measureCompaniesDocSize(){
+    const list = loadCompanies();                   // 읽기만 — 저장 경로를 호출하지 않는다
+    // 실제 push가 보내는 모양 그대로 재현한다(§8476 부근 setDoc의 payload).
+    // updatedAt은 serverTimestamp()라 클라이언트에서 크기를 알 수 없어 제외한다
+    // (몇 바이트 수준이라 판단에 영향 없음 — 빠졌다는 사실을 함께 보고한다).
+    const payloadBytes = jsonBytes({ value: list, localRev: Date.now() });
+    const perCompany = list.map(co=>{
+      const total = jsonBytes(co);
+      const byField = {};
+      COMPANY_HEAVY_FIELDS.forEach(f=>{
+        if(co[f] === undefined) return;
+        byField[f] = jsonBytes(co[f]);
+      });
+      // 위 목록에 없는 필드 중 큰 것도 놓치지 않는다
+      Object.keys(co).forEach(k=>{
+        if(byField[k] !== undefined) return;
+        const b = jsonBytes(co[k]);
+        if(b >= 512) byField[k] = b;                // 0.5KiB 이상만 기록
+      });
+      return { companyId: co.id, companyName: co.name, bytes: total, byField,
+        deleted: !!co.deletedAt };
+    });
+    const sorted = perCompany.slice().sort((a,b)=> b.bytes - a.bytes);
+    const sumBytes = perCompany.reduce((s,x)=> s + x.bytes, 0);
+    const pct = (payloadBytes / FIRESTORE_DOC_LIMIT_BYTES) * 100;
+    // §11 임계값
+    let threshold, action;
+    if(pct < 50){ threshold = '여유'; action = '구조 변경 불필요'; }
+    else if(pct < 75){ threshold = '관찰 필요'; action = '증가 추이만 주기적으로 확인'; }
+    else if(pct < 90){ threshold = '구조분할 준비 필요'; action = '분할 설계를 시작해 둘 시점'; }
+    else { threshold = '구조분할 우선 검토'; action = '신규 기능 추가 전에 분할을 먼저 검토'; }
+    // 필드별 전체 합계 — 어떤 필드가 문서를 키우는지
+    const fieldTotals = {};
+    perCompany.forEach(x=> Object.keys(x.byField).forEach(f=>{
+      fieldTotals[f] = (fieldTotals[f] || 0) + x.byField[f];
+    }));
+    const fieldRank = Object.keys(fieldTotals)
+      .map(f=> ({ field:f, bytes:fieldTotals[f], kib:+(fieldTotals[f]/1024).toFixed(1),
+        pctOfPayload:+((fieldTotals[f]/payloadBytes)*100).toFixed(1) }))
+      .sort((a,b)=> b.bytes - a.bytes);
+    return {
+      path: 'users/{uid}/shin2/shin2-companies-staging',
+      note: 'JSON+UTF-8 기준 근사. Firestore 내부 인코딩 오버헤드와 serverTimestamp는 미포함이라 실제는 이보다 조금 큽니다.',
+      writeAttempted: false,                         // 이 함수는 절대 write하지 않는다
+      totalBytes: payloadBytes,
+      kib: +(payloadBytes/1024).toFixed(1),
+      limitBytes: FIRESTORE_DOC_LIMIT_BYTES,
+      usagePercent: +pct.toFixed(2),
+      threshold, action,
+      valueArrayLength: list.length,
+      companyCount: list.length,
+      activeCompanyCount: list.filter(c=> !c.deletedAt).length,
+      deletedCompanyCount: list.filter(c=> !!c.deletedAt).length,
+      sumOfCompanyBytes: sumBytes,
+      avgCompanyBytes: list.length ? Math.round(sumBytes / list.length) : 0,
+      maxCompanyBytes: sorted.length ? sorted[0].bytes : 0,
+      top10: sorted.slice(0, 10).map(x=> ({
+        companyId:x.companyId, companyName:x.companyName, bytes:x.bytes,
+        kib:+(x.bytes/1024).toFixed(1), deleted:x.deleted,
+        topFields: Object.keys(x.byField).map(f=> ({ field:f, bytes:x.byField[f] }))
+          .sort((a,b)=> b.bytes - a.bytes).slice(0, 5)
+      })),
+      fieldRank
+    };
+  }
+  // 다른 동기화 키들도 같은 방식으로 함께 본다 — companies만 큰 게 아닐 수 있다.
+  const SYNC_DOC_KEYS_FOR_DIAG = [
+    ['companies', CO_KEY], ['customerActivities', ACT_KEY], ['memos', MEMO_KEY],
+    ['customerDocuments', DOC_KEY], ['mailAssets', MAIL_ASSETS_KEY], ['salesLedger', SALES_LEDGER_KEY]
+  ];
+  function measureAllSyncDocSizes(){
+    return SYNC_DOC_KEYS_FOR_DIAG.map(([name, key])=>{
+      const arr = readArr(key);
+      const bytes = jsonBytes({ value: arr, localRev: Date.now() });
+      return { name, storageKey: key, path: 'users/{uid}/shin2/' + key,
+        length: arr.length, totalBytes: bytes, kib:+(bytes/1024).toFixed(1),
+        usagePercent:+((bytes/FIRESTORE_DOC_LIMIT_BYTES)*100).toFixed(2) };
+    }).sort((a,b)=> b.totalBytes - a.totalBytes);
+  }
+
   window.SHIN2_CRM_DATA = {
     loadCompanies, findCompany, addCompany, updateCompany, updateCompanyReturningAll, normalizeCorpSuffix,
     loadCompanyCodeCounters, bumpCompanyCodeCounter,
@@ -13582,6 +13690,14 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
     REQUESTED_MATERIAL_SOURCES, buildRequestedMaterialViewModel,
     buildCompanyDataContext
   };
+  // §2단계 안전정비 라운드 — 문서 크기 진단(읽기 전용). 운영 UI는 호출하지 않는다.
+  //   SHIN2_CRM_DIAG.measureCompaniesDocSize()   // companies 단일 문서
+  //   SHIN2_CRM_DIAG.measureAllSyncDocSizes()    // 동기화 키 전체
+  // readArr / CO_KEY 등이 이 블록의 지역 변수라서 여기(데이터 레이어)에 둔다 —
+  // 앱 레이어에 두면 ReferenceError가 난다(1단계에서 실제로 겪은 경계).
+  window.SHIN2_CRM_DIAG = Object.assign(window.SHIN2_CRM_DIAG || {}, {
+    measureCompaniesDocSize, measureAllSyncDocSizes, FIRESTORE_DOC_LIMIT_BYTES
+  });
 
 })();
 </script>
@@ -21694,6 +21810,16 @@ window.SHIN2_CRM_APP_INIT = function(){
   window.SHIN2_CRM_DIAG = Object.assign(window.SHIN2_CRM_DIAG || {}, {
     compareCompanyNormalization, compareCompanyNormalizationAll
   });
+  // §2단계 안전정비 라운드 — 앱 레이어 진단/resolver 등록. 둘 다 읽기 전용이고
+  // 운영 UI에는 노출하지 않는다. resolveAgreementProgress / resolveCompanyRegion은
+  // 새 기능이 쓸 단일 진입점이라 DIAG가 아니라 APP 네임스페이스로도 함께 둔다.
+  window.SHIN2_CRM_DIAG = Object.assign(window.SHIN2_CRM_DIAG, {
+    compareAgreementStageEngines, compareCompanyRegionSources
+  });
+  window.SHIN2_CRM_RESOLVE = Object.assign(window.SHIN2_CRM_RESOLVE || {}, {
+    agreementProgress: resolveAgreementProgress,
+    companyRegion: resolveCompanyRegion
+  });
 
   let _partnerNameIndexCache = null;
   function getPartnerNameIndex(){
@@ -26185,6 +26311,195 @@ window.SHIN2_CRM_APP_INIT = function(){
       });
     });
   }
+  /* ==========================================================================
+     §2단계 안전정비 라운드(신규) — 협약 진행상태 단일 진입점.
+
+     [1단계 진단 정정] 1단계 보고서에 "진행단계 엔진 2개가 같은 상태를 각자 계산"이라고
+     적었는데 정확하지 않았다. 실제 구조는 이렇다.
+       · buildProgressStages(co)      — 4단계(q/m1/m2/mou) 판정 엔진. 유일한 판정이다.
+       · buildAgreementStageRows(co)  — 그 결과를 8행으로 펼치는 뷰. m1/m2/mou는
+                                        byKey로 위임하고, 질문서만 독립 계산한다.
+     즉 "엔진 2개"가 아니라 "엔진 1개 + 세분화 뷰"이고, 실제로 값이 갈릴 수 있는 곳은
+     질문서(qSend/qReply) 하나뿐이다. 갈리는 이유 3가지:
+       ① buildProgressStages는 progressSyncedAt이 있을 때 nm.qReplyDone /
+          qReplySkipped 플래그로도 q를 done으로 올리는데, stageRows의 질문서 행은
+          날짜 라벨(qSentLabel/qReplyLabel)만 본다.
+       ② buildProgressStages의 applyMouDoneException은 MOU가 완료면 q도 done으로
+          간주하는데, stageRows의 질문서 행은 이 예외를 받지 않는다.
+       ③ 정정 적용 범위가 다르다. buildProgressStages는 findStageCorrection(co,
+          ['qReply','qSend'])로 둘 중 먼저 찾은 하나를 q 전체에 적용하고, stageRows는
+          각 행이 자기 정정만 적용한다. qSend만 정정하면 q 전체가 그 값을 따른다.
+       ④ MOU 행만 예외다. stageRows의 mouDone은 byStage.mou가 아니라
+          isConfirmedPartner()를 쓰고, 그 함수는 ①순위로 co.mouManualConfirm을 본다.
+          buildProgressStages의 mou 단계는 그 값을 보지 않는다 — 그래서 수동 확정
+          업체는 "진행단계 mou = waiting, MOU 체결 = YES"가 된다. 이건 기존 요구사항
+          ("진행단계 = 온보딩, MOU 체결 = YES가 가능해야 한다")에 따른 의도된 동작이다.
+          아래 진단은 이 경우를 mouManualConfirm 유형으로 따로 분류해, 고쳐야 할
+          불일치와 섞지 않는다.
+
+     이번 라운드는 그 불일치를 "한쪽으로 덮어써서" 없애지 않는다(§1 지시). 대신
+       · 불일치를 측정하는 진단(compareAgreementStageEngines)을 추가하고,
+       · 두 결과를 한 객체로 합성하는 단일 진입점(resolveAgreementProgress)을 만들어
+         앞으로 추가되는 코드가 원시 필드(nm.qSentLabel, partnerDashboard.mouDate …)를
+         직접 읽지 않게 한다.
+     새 판정 로직은 한 줄도 만들지 않는다 — 전부 기존 함수의 결과를 읽어 옮기기만 한다.
+     그래서 화면 결과는 구조적으로 바뀔 수 없다.
+     ========================================================================== */
+  function resolveAgreementProgress(co){
+    if(!co) return null;
+    const progress = buildProgressStages(co);              // 4단계 판정(유일한 판정)
+    const rows = buildAgreementStageRows(co);              // 8행 세분화 뷰(정정 최우선 반영)
+    const byStage = {}; progress.stages.forEach(s=> byStage[s.key] = s);
+    const byRow = {};   rows.forEach(r=> byRow[r.key] = r);
+    const nm = resolveNewMouForCompany(co) || {};
+    const corrections = getStageCorrections(co);
+
+    // 각 단계는 "4단계 판정 결과 + 그 단계에 해당하는 세분 행"을 함께 들고 다닌다.
+    // 어느 쪽도 가공하지 않는다 — 호출부가 필요한 쪽을 골라 쓸 수 있게 둘 다 준다.
+    const stageOf = (stageKey, rowKeys)=> ({
+      state: byStage[stageKey] ? byStage[stageKey].state : 'waiting',
+      dateDisplay: byStage[stageKey] ? byStage[stageKey].dateDisplay : '—',
+      ts: byStage[stageKey] ? byStage[stageKey].ts : null,
+      scheduledLabel: (byStage[stageKey] && byStage[stageKey].scheduledLabel) || null,
+      scheduledTime: (byStage[stageKey] && byStage[stageKey].scheduledTime) || null,
+      owner: (byStage[stageKey] && byStage[stageKey].owner) || null,
+      corrected: !!(byStage[stageKey] && byStage[stageKey].corrected),
+      rows: rowKeys.map(k=> byRow[k]).filter(Boolean)
+    });
+
+    return {
+      questionnaire: stageOf('q',   ['qSend', 'qReply']),
+      firstMeeting:  stageOf('m1',  ['m1Scheduled', 'm1Done']),
+      secondMeeting: stageOf('m2',  ['m2Scheduled', 'm2Done']),
+      mou:           stageOf('mou', ['mouDone']),
+      // MOU 체결 판정은 기존 공식 함수 하나만 쓴다 — mouManualConfirm이 ①순위이고,
+      // partnerStatus 단독으로는 절대 체결로 보지 않는다(기존 동작 그대로).
+      isConfirmed: isConfirmedPartner(co, progress),
+      isTerminated: !!(D.isAgreementTerminated && D.isAgreementTerminated(co)),
+      // 파싱 실패 시 now로 채우지 않고 null을 돌려주는 기존 함수를 그대로 쓴다.
+      effectiveMouDate: resolveEffectiveMouDate(co),
+      currentIdx: progress.currentIdx,
+      hasAny: progress.hasAny,
+      // 어떤 값이 어디서 왔는지 — 새 기능이 "이 값을 믿어도 되는가"를 판단할 수 있게.
+      sourceFlags: {
+        // 진행정보 출처: 업체 레코드에 저장된 스냅샷인지, 업체명 매칭으로 찾은 것인지
+        newMouFrom: (co.partnerDashboard && co.partnerDashboard.newMou) ? 'companyRecord'
+                  : (findPartnerRecordForCompany(co) ? 'partnerSnapshotByName' : 'none'),
+        progressSyncedAt: (co.partnerDashboard && co.partnerDashboard.progressSyncedAt) || null,
+        agreementDateLabel: resolvePartnerAgreementDate(co),
+        mouManualConfirm: !!(D.isMouManuallyConfirmed && D.isMouManuallyConfirmed(co)),
+        partnerStatusListed: co.partnerStatus === 'partner',   // 등재 여부일 뿐, 체결 근거 아님
+        correctedKeys: Object.keys(corrections),
+        // 질문서 단계가 두 경로에서 갈릴 수 있는 입력들(위 ①②③)
+        qSentLabel: nm.qSentLabel || null,
+        qReplyLabel: nm.qReplyLabel || null,
+        qReplyDone: !!nm.qReplyDone,
+        qReplySkipped: !!nm.qReplySkipped,
+        // 진행정보가 업체명 매칭으로 왔다면 이름이 바뀌면 끊길 수 있다는 뜻
+        matchMode: (co.partnerDashboard && co.partnerDashboard.newMou) ? 'companyRecord' : 'normalizedName'
+      }
+    };
+  }
+
+  /* ---- 두 경로 비교 진단(개발 전용) ----
+     운영 UI에는 노출하지 않는다. window.SHIN2_CRM_DIAG로만 쓴다.
+         SHIN2_CRM_DIAG.compareAgreementStageEngines()        // 전체
+         SHIN2_CRM_DIAG.compareAgreementStageEngines(co.id)   // 한 업체
+     불일치를 자동으로 고치지 않는다 — 유형만 분류해서 돌려준다. */
+  const AGREEMENT_ENGINE_MISMATCH_KINDS = {
+    qSyncFlag:   'progressSyncedAt + qReplyDone/qReplySkipped 로 4단계만 done',
+    qMouDoneEx:  'MOU 완료 예외로 4단계 질문서만 done',
+    qCorrection: '질문서 정정 적용 범위 차이(qSend/qReply)',
+    qOther:      '질문서 상태 불일치(원인 미분류)',
+    // ④ 의도된 차이 — 아래 mouManualConfirm 주석 참고. "불일치"로 세지만 버그가 아니다.
+    mouManualConfirm: '수동 MOU 확정 — 체결은 YES인데 진행단계 mou는 waiting(의도된 동작)',
+    mouOther:    'MOU 상태 불일치(원인 미분류)',
+    m1Other:     '1차 미팅 상태 불일치(원인 미분류)',
+    m2Other:     '2차 미팅 상태 불일치(원인 미분류)'
+  };
+  // 의도된 차이로 분류되는 유형 — 보고할 때 "고쳐야 하는 불일치"와 구분한다.
+  const AGREEMENT_ENGINE_INTENDED_KINDS = new Set(['mouManualConfirm']);
+  function compareAgreementStageEnginesFor(co){
+    const progress = buildProgressStages(co);
+    const rows = buildAgreementStageRows(co);
+    const byStage = {}; progress.stages.forEach(s=> byStage[s.key] = s);
+    const byRow = {};   rows.forEach(r=> byRow[r.key] = r);
+    const nm = resolveNewMouForCompany(co) || {};
+    const corrections = getStageCorrections(co);
+    const mismatchFields = [];
+    const kinds = [];
+
+    // 질문서: 4단계 q.state(done/scheduled/waiting) vs 세분 qReply.status
+    const qStage = byStage.q ? byStage.q.state : 'waiting';
+    const qRowDone = !!(byRow.qReply && byRow.qReply.done);
+    if((qStage === 'done') !== qRowDone){
+      mismatchFields.push({ field:'questionnaire', progressStages:qStage, agreementStageRows:(byRow.qReply||{}).status || 'none' });
+      const synced = !!(co.partnerDashboard && co.partnerDashboard.progressSyncedAt);
+      if(synced && (nm.qReplyDone || nm.qReplySkipped)) kinds.push('qSyncFlag');
+      else if(byStage.mou && byStage.mou.state === 'done') kinds.push('qMouDoneEx');
+      else if(corrections.qSend || corrections.qReply) kinds.push('qCorrection');
+      else kinds.push('qOther');
+    }
+    // 1차/2차: stageRows가 byKey로 위임하므로 구조적으로 같아야 한다 — 그래도 검증한다.
+    [['m1','firstMeeting','m1Done'], ['m2','secondMeeting','m2Done']].forEach(([sk, name, rk])=>{
+      const st = byStage[sk] ? byStage[sk].state : 'waiting';
+      const rowDone = !!(byRow[rk] && byRow[rk].done);
+      if((st === 'done') !== rowDone){
+        mismatchFields.push({ field:name, progressStages:st, agreementStageRows:(byRow[rk]||{}).status || 'none' });
+        kinds.push(sk + 'Other');
+      }
+    });
+    // MOU: stageRows의 mouDone 행은 byStage.mou가 아니라 isConfirmedPartner()를 쓴다.
+    // isConfirmedPartner는 ①순위로 co.mouManualConfirm을 보는데 buildProgressStages의
+    // mou 단계는 그 값을 보지 않는다 — 그래서 수동 확정 업체는 "진행단계 mou = waiting,
+    // MOU 체결 = YES"가 된다. 이건 기존 요구사항("진행단계 = 온보딩, MOU 체결 = YES가
+    // 가능해야 한다")에 따른 의도된 동작이라 고치지 않는다. 다만 원인을 알 수 있게
+    // 별도 유형으로 분류한다.
+    (()=>{
+      const st = byStage.mou ? byStage.mou.state : 'waiting';
+      const rowDone = !!(byRow.mouDone && byRow.mouDone.done);
+      if((st === 'done') === rowDone) return;
+      mismatchFields.push({ field:'mou', progressStages:st, agreementStageRows:(byRow.mouDone||{}).status || 'none' });
+      const manual = !!(D.isMouManuallyConfirmed && D.isMouManuallyConfirmed(co));
+      kinds.push(manual && rowDone && st !== 'done' ? 'mouManualConfirm' : 'mouOther');
+    })();
+    return {
+      companyId: co.id, companyName: co.name,
+      progressStages: progress.stages.map(x=> ({ key:x.key, state:x.state, dateDisplay:x.dateDisplay, corrected:!!x.corrected })),
+      agreementStageRows: rows.map(r=> ({ key:r.key, status:r.status, done:r.done, dateText:r.dateText, corrected:!!r.corrected })),
+      mismatchFields,
+      mismatchKinds: kinds,
+      hasMismatch: mismatchFields.length > 0
+    };
+  }
+  function compareAgreementStageEngines(companyId){
+    if(companyId){
+      const one = D.findCompany(companyId);
+      return one ? compareAgreementStageEnginesFor(one) : null;
+    }
+    const rows = [];
+    D.loadCompanies().forEach(co=>{
+      try{ rows.push(compareAgreementStageEnginesFor(co)); }
+      catch(err){ rows.push({ companyId:co.id, companyName:co.name, error:String(err && err.message || err) }); }
+    });
+    const mism = rows.filter(r=> r.hasMismatch);
+    const byKind = {};
+    mism.forEach(r=> r.mismatchKinds.forEach(k=>{ byKind[k] = (byKind[k] || 0) + 1; }));
+    // 의도된 차이(수동 MOU 확정)만 가진 업체는 "검토 대상"에서 뺀다 — 고칠 것과
+    // 설계대로 다른 것을 섞어 보고하지 않는다.
+    const intendedOnly = mism.filter(r=> r.mismatchKinds.every(k=> AGREEMENT_ENGINE_INTENDED_KINDS.has(k)));
+    return {
+      total: rows.length,
+      mismatchCount: mism.length,
+      intendedOnlyCount: intendedOnly.length,
+      needsReviewCount: mism.length - intendedOnly.length,
+      errorCount: rows.filter(r=> r.error).length,
+      byKind, kindLabels: AGREEMENT_ENGINE_MISMATCH_KINDS,
+      intendedKinds: Array.from(AGREEMENT_ENGINE_INTENDED_KINDS),
+      mismatches: mism
+    };
+  }
+
   const AGREEMENT_STAGE_BADGE_CLASS = { done:'is-mou', waiting:'is-hurdle', scheduled:'is-progress', none:'is-none' };
   const AGREEMENT_STAGE_BADGE_LABEL = { done:'완료', waiting:'대기', scheduled:'예정', none:'미진행' };
   // §협약 진행단계 행 병합 라운드(신규) — "질문서 발송/질문서 회신 합쳐, 1차미팅 예정/완료
@@ -39816,6 +40131,85 @@ if(!window.__mapxRowDelegated){
   // 다른 화면에서도 그대로 표시해 온 값)을 쓴다. 둘 다 없을 때만 주소에서 안전하게
   // 파생한다(OCR 모듈의 REGION_MAP 재사용 — 새 매핑표를 만들지 않음). 어떤 경우에도
   // 원본 고객 레코드에 다시 저장하지 않는다(조회 전용).
+  /* ==========================================================================
+     §2단계 안전정비 라운드(신규) — 지역 단일 resolver(읽기 전용 진단).
+
+     [조사 결과] 지역 출처가 3개이고, 두 화면이 서로 다른 우선순위를 쓰고 있다.
+       · 저장값 ①  co.region            — 배열. 새 등록폼에서 복수 선택으로 저장
+       · 저장값 ②  partnerDashboard.region — 단일 문자열. partner-dashboard 임포트 당시 값
+       · 파생값 ③  주소 파싱            — 저장하지 않고 매번 계산
+     그런데 쓰는 쪽이 갈린다.
+       · 외부 발송용 PDF / 명단       → resolveCompanyRegionList: ① → ② → ③(OCR REGION_MAP)
+       · 지도 분포 / 마커 / 지역 필터 → parseMapRegion(co.address) 하나만. ①②를 아예 안 본다.
+     그래서 ①이나 ②가 주소와 다른 업체는 PDF와 지도에 서로 다른 지역으로 나온다.
+
+     이 resolver는 그 둘 중 어느 쪽도 바꾸지 않는다. 두 기준의 결과를 나란히 돌려주고
+     서로 다를 때 conflict:true만 표시한다 — 주소 파싱값으로 전부 덮어쓰지 않는다(§7).
+     운영 데이터는 읽기만 한다.
+     ========================================================================== */
+  function resolveCompanyRegion(co){
+    if(!co) return null;
+    const stored = Array.isArray(co.region) ? co.region.filter(Boolean).map(String) : [];
+    const pdRegion = (co.partnerDashboard && co.partnerDashboard.region) ? String(co.partnerDashboard.region).trim() : '';
+    const address = co.address || (co.partnerDashboard && co.partnerDashboard.address) || '';
+    // 지도가 쓰는 기준(주소 파싱) — 같은 함수를 그대로 호출한다
+    const mapRegion = address ? parseMapRegion(address) : null;
+    const sigungu = address ? parseSigunguRegion(address) : null;
+    // 표시(PDF·명단)가 쓰는 기준 — 같은 함수를 그대로 호출한다
+    const displayList = resolveCompanyRegionList(co);
+
+    // source: 표시 기준이 어느 저장값에서 나왔는지
+    let source = 'none';
+    if(stored.length) source = 'companyRegion';
+    else if(pdRegion) source = 'partnerDashboardRegion';
+    else if(displayList.length) source = 'addressDerived';
+
+    // conflict: 저장된 지역이 있는데 주소 파싱 결과와 다르면 true.
+    // 저장값이 없거나 주소가 없으면 비교할 수 없으므로 conflict가 아니다
+    // (없음과 불일치를 섞지 않는다).
+    const storedPrimary = stored.length ? stored[0] : (pdRegion || '');
+    const comparable = !!(storedPrimary && mapRegion && mapRegion !== '기타');
+    const conflict = comparable && stored.concat(pdRegion ? [pdRegion] : []).indexOf(mapRegion) < 0;
+
+    return {
+      // 기본 region은 "표시 기준"의 첫 값이다 — 기존 PDF/명단과 같은 값이다
+      region: displayList.length ? displayList[0] : null,
+      regionList: displayList,
+      sigungu,
+      source,
+      address: address || null,
+      conflict,
+      // 두 기준을 나란히 — 호출부가 어느 쪽을 쓰는지 의식하게 한다
+      byCriteria: {
+        display: displayList.length ? displayList[0] : null,   // PDF·명단
+        map: mapRegion                                         // 지도 분포·마커·필터
+      },
+      sources: { companyRegion: stored, partnerDashboardRegion: pdRegion || null, addressParsed: mapRegion },
+      // 지도 쪽 "지역 미확인"과 "주소 미확인"은 서로 다른 의미다(1단계 진단 §12).
+      hasAddress: !!address,
+      geocodeStatus: co.geocodeStatus || (co.address ? 'pending' : 'missing'),
+      hasCoords: typeof co.latitude === 'number' && typeof co.longitude === 'number'
+    };
+  }
+  // 전체 업체의 지역 출처 충돌을 세어 본다(개발 진단 전용, 읽기만 함).
+  function compareCompanyRegionSources(){
+    const rows = D.loadCompanies().map(co=>{
+      try{ return resolveCompanyRegion(co); }
+      catch(err){ return { conflict:false, error:String(err && err.message || err), companyId:co.id }; }
+    });
+    const bySource = {};
+    rows.forEach(r=> { if(r) bySource[r.source || 'error'] = (bySource[r.source || 'error'] || 0) + 1; });
+    const conflicts = D.loadCompanies()
+      .map(co=> ({ co, r: resolveCompanyRegion(co) }))
+      .filter(x=> x.r && x.r.conflict)
+      .map(x=> ({ companyId:x.co.id, companyName:x.co.name,
+        companyRegion:x.r.sources.companyRegion, partnerDashboardRegion:x.r.sources.partnerDashboardRegion,
+        addressParsed:x.r.sources.addressParsed, address:x.r.address }));
+    return { total: rows.length, bySource, conflictCount: conflicts.length, conflicts,
+      noAddress: rows.filter(r=> r && !r.hasAddress).length,
+      mapUnknown: rows.filter(r=> r && r.hasAddress && r.byCriteria.map === '기타').length };
+  }
+
   function resolveCompanyRegionList(co){
     if(Array.isArray(co.region) && co.region.length) return co.region;
     const pdRegion = co.partnerDashboard && co.partnerDashboard.region;
