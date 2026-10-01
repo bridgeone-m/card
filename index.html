@@ -15965,9 +15965,13 @@ window.SHIN2_CRM_APP_INIT = function(){
       entries = buildMapCompanies();
     }
     catch(err){ console.warn('지역 분포 집계 실패:', err); entries = []; }
+    // 지역이 비어 있는 업체는 이 카드에서 빼고 센다 — "지역 미확인" 조각이 상위권을
+    // 차지해 정작 보고 싶은 지역 분포를 가리기 때문이다. 업체 자체를 지우는 게 아니라
+    // 이 요약 카드에서만 제외하는 것이고, 지도 상세에서는 그대로 다 보인다.
     const byRegion = new Map();
     entries.forEach(e=>{
-      const k = e.region || '지역 미확인';
+      const k = String(e.region || '').trim();
+      if(!k) return;
       byRegion.set(k, (byRegion.get(k) || 0) + 1);
     });
     let list = Array.from(byRegion.entries()).map(([name,count])=> ({ name, count }))
