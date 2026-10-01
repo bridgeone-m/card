@@ -6980,6 +6980,158 @@ body{
   .crv-card-head{ flex-wrap:wrap; }
   .crv-rate{ margin-left:0; }
 }
+
+/* ===========================================================================
+   §디자인 전면 적용 라운드(신규) — 메인 화면에 쓴 디자인 언어(--nf-* 토큰)를
+   모든 팝업과 공용 컨트롤에 똑같이 입힌다.
+
+   원칙: 레이아웃·구조·동작은 건드리지 않고 색/모서리/테두리/그림자/타이포만 맞춘다.
+   선택자는 전부 기존 클래스를 그대로 쓰고, 이 블록이 스타일시트 맨 끝이라 앞선
+   중복 선언을 덮는다.
+
+   지도 모달(.map-modal-*)의 카드·레이아웃은 지금 다른 세션이 손보고 있어서 건드리지
+   않는다 — 대신 아래 공용 컨트롤(버튼/입력/배지)은 그 안에서도 그대로 적용된다.
+   오버레이 dim(.28)은 사용자가 직접 정한 값이라 이번에도 바꾸지 않는다.
+   =========================================================================== */
+
+/* ---- 공통 팝업 껍데기 (.pi-* : 질문지 상담·요청자료·접촉기록·인사이트 등 대부분) ---- */
+.pi-overlay{ padding:20px; }
+.pi-panel{
+  background:var(--nf-surface) !important;
+  border:1px solid var(--nf-border) !important;
+  border-radius:var(--nf-radius-card) !important;
+  box-shadow:0 24px 60px rgba(16,35,63,.16), 0 4px 14px rgba(16,35,63,.06) !important;
+  overflow:hidden;
+}
+.pi-head{
+  padding:15px 18px !important;
+  border-bottom:1px solid var(--nf-border-soft) !important;
+  background:var(--nf-surface);
+}
+.pi-title{
+  font-size:var(--nf-fs-section) !important; font-weight:750 !important;
+  color:var(--nf-text) !important; letter-spacing:-.02em;
+}
+.pi-body{ background:var(--nf-surface); }
+
+/* ---- 고객 상세 팝업 헤더 — 남색 바를 메인 화면과 같은 밝은 톤으로 ---- */
+.cdash2-header{
+  background:var(--nf-surface) !important;
+  border-bottom:1px solid var(--nf-border-soft) !important;
+  border-radius:var(--nf-radius-card) var(--nf-radius-card) 0 0 !important;
+  box-shadow:none !important;
+  color:var(--nf-text) !important;
+}
+.cdash2-header .cdash2-title,
+.cdash2-header .cdash2-company-name{ color:var(--nf-text) !important; }
+/* 부제(진행단계 요약)·담당자 연락처 줄도 남색 배경 전제라 흰 계열이었다. */
+.cdash2-header .cdash2-deal-summary,
+.cdash2-header .cdet-head-contacts,
+.cdash2-header .cdet-head-contact,
+.cdash2-header .cdash2-sub,
+.cdash2-header .cdash2-meta,
+.cdash2-header .cdash2-header-meta{ color:var(--nf-text-muted) !important; opacity:1 !important; }
+.cdash2-header .cdet-head-contact b,
+.cdash2-header .cdet-head-contact strong{ color:var(--nf-text) !important; }
+.cdash2-header .cdash2-map-back-btn{
+  border:1px solid var(--nf-border) !important; background:var(--nf-surface) !important;
+  color:var(--nf-text-muted) !important; border-radius:var(--nf-radius-pill) !important;
+}
+/* 헤더 안의 보조 버튼(인사이트/서류 업로드/닫기)은 남색 배경 전제였다 — 밝은 배경에서
+   보이도록 되돌린다. */
+.cdash2-header .co-text-action,
+.cdash2-header .cdash2-head-btn{
+  border:1px solid var(--nf-border) !important;
+  background:var(--nf-surface) !important;
+  color:var(--nf-text-muted) !important;
+  border-radius:var(--nf-radius-pill) !important;
+}
+.cdash2-header .co-text-action:hover,
+.cdash2-header .cdash2-head-btn:hover{ background:var(--nf-soft-gray) !important; color:var(--nf-text) !important; }
+/* 실제 클래스는 .cdash2-header-insight-btn / .cdash2-header-close 다 — 둘 다 남색
+   배경 전제로 흰 글씨·반투명 테두리였어서 밝은 헤더에서 안 보였다. */
+.cdash2-header-insight-btn{
+  border:1px solid var(--nf-border) !important;
+  background:var(--nf-surface) !important;
+  color:var(--nf-text-muted) !important;
+  border-radius:var(--nf-radius-pill) !important;
+  font-weight:700 !important;
+}
+.cdash2-header-insight-btn:hover{
+  background:var(--nf-primary-soft) !important; border-color:#C9DAF8 !important;
+  color:var(--nf-primary-strong) !important;
+}
+.cdash2-header-insight-dot{ color:var(--nf-primary) !important; }
+.cdash2-header-close{ color:var(--nf-text-muted) !important; background:transparent !important; }
+.cdash2-header-close:hover{ background:var(--nf-soft-gray) !important; color:var(--nf-text) !important; border-radius:var(--nf-radius-ctrl) !important; }
+.cdash2-header .chart-close-btn,
+.cdash2-header .cdash2-close{ color:var(--nf-text-muted) !important; }
+.cdash2-header .cdash2-tag{
+  background:var(--nf-soft-gray) !important; color:var(--nf-text-muted) !important;
+  border:1px solid var(--nf-border) !important;
+}
+.cdash2-header .cdash2-tag.is-done{ background:var(--nf-soft-green) !important; color:var(--nf-on-green) !important; border-color:#CBEBD8 !important; }
+
+/* 상세 팝업 본문/탭/카드 */
+.cdash2-body{ background:var(--nf-soft-gray) !important; }
+.cdash2-card{
+  background:var(--nf-surface) !important;
+  border:1px solid var(--nf-border) !important;
+  border-radius:var(--nf-radius-card) !important;
+  box-shadow:var(--nf-shadow-card) !important;
+}
+.cdash2-card-title{ font-size:13.5px !important; font-weight:750 !important; color:var(--nf-text) !important; }
+#chartTabBar{ background:var(--nf-surface) !important; border-bottom:1px solid var(--nf-border-soft) !important; }
+#chartTabBar .cdash2-tab{
+  color:var(--nf-text-muted) !important; font-weight:700 !important;
+  border-radius:var(--nf-radius-ctrl) var(--nf-radius-ctrl) 0 0 !important;
+}
+#chartTabBar .cdash2-tab:hover{ background:var(--nf-soft-gray) !important; }
+#chartTabBar .cdash2-tab.is-active{
+  color:var(--nf-primary-strong) !important; background:var(--nf-primary-soft) !important;
+}
+
+/* ---- 공용 컨트롤 — 팝업 안쪽까지 같은 톤으로 ---- */
+.btn-primary-action, .co-text-action.primary{
+  background:var(--nf-primary) !important; border:0 !important; color:#fff !important;
+  border-radius:var(--nf-radius-ctrl) !important;
+  box-shadow:var(--nf-shadow-btn) !important; font-weight:700 !important;
+}
+.btn-primary-action:hover, .co-text-action.primary:hover{ background:var(--nf-primary-strong) !important; }
+.co-text-action{
+  border:1px solid var(--nf-border) !important; background:var(--nf-surface) !important;
+  color:var(--nf-text-muted) !important; border-radius:var(--nf-radius-ctrl) !important;
+  font-weight:700 !important;
+}
+.co-text-action:hover{ background:var(--nf-soft-gray) !important; color:var(--nf-text) !important; }
+.pi-body input[type="text"], .pi-body input[type="date"], .pi-body input[type="email"],
+.pi-body input[type="number"], .pi-body select, .pi-body textarea,
+.cdash2-body input[type="text"], .cdash2-body input[type="date"], .cdash2-body input[type="email"],
+.cdash2-body input[type="number"], .cdash2-body select, .cdash2-body textarea{
+  border:1px solid #DDE4EE !important; border-radius:9px !important;
+  background:#FBFCFE !important; color:var(--nf-text) !important;
+}
+.pi-body input:focus, .pi-body select:focus, .pi-body textarea:focus,
+.cdash2-body input:focus, .cdash2-body select:focus, .cdash2-body textarea:focus{
+  outline:none !important; border-color:var(--nf-primary) !important; background:#fff !important;
+}
+/* 상태 배지 — 메인 목록의 pastel pill과 같은 색 쌍을 쓴다 */
+.status-badge{ border-radius:var(--nf-radius-pill) !important; font-weight:750 !important; border:0 !important; }
+.status-badge.is-done, .status-badge.is-ok{ background:var(--nf-soft-green) !important; color:var(--nf-on-green) !important; }
+.status-badge.is-progress{ background:var(--nf-soft-blue) !important; color:var(--nf-on-blue) !important; }
+.status-badge.is-warn, .status-badge.is-danger{ background:var(--nf-soft-red) !important; color:var(--nf-on-red) !important; }
+.status-badge.is-none, .status-badge.is-idle{ background:var(--nf-soft-gray) !important; color:var(--nf-text-muted) !important; }
+
+/* ---- 모바일 drawer도 같은 톤 ---- */
+.gnav-drawer{
+  background:var(--nf-surface) !important;
+  border-radius:var(--nf-radius-card) 0 0 var(--nf-radius-card) !important;
+}
+.gnav-drawer-title{ color:var(--nf-text) !important; font-weight:750 !important; }
+.gnav-drawer-item{
+  border-radius:var(--nf-radius-ctrl) !important; color:var(--nf-text-muted) !important; font-weight:700 !important;
+}
+.gnav-drawer-item.is-active{ background:var(--nf-primary-soft) !important; color:var(--nf-primary-strong) !important; }
 </style>
 </head>
 <body>
@@ -27101,7 +27253,27 @@ window.SHIN2_CRM_APP_INIT = function(){
       const doneBadge = document.getElementById('crvReqDoneBadge');
       if(doneBadge) doneBadge.hidden = !done;
     }
-    saveBtn.addEventListener('click', ()=> queueSave(true));
+    // §저장 후 팝업 닫힘 라운드(신규) — [저장]은 저장만 하고 팝업을 그대로 뒀었다.
+    // 사용자 보고: "저장은 됐는데 팝업이 닫히지 않는다." 저장이 끝나면 닫는다.
+    // 저장에 실패하면(클라우드 확인 실패 등) 닫지 않고 그대로 둔다 — 적어둔 내용을
+    // 눈앞에서 치워 버리면 뭘 잃었는지 알 수 없다. 실패 문구는 그대로 보인다.
+    const saveAndClose = async ()=>{
+      if(saveBtn.disabled) return;
+      saveBtn.disabled = true;
+      try{
+        queueSave(true);                      // 화면의 최신 입력을 저장 큐에 올린다
+        let r = await persistLatest();
+        // 저장이 나가는 동안 추가 입력이 있었으면 한 번 더 내보낸다.
+        if(pendingSignature !== lastSavedSignature) r = await persistLatest();
+        if(r && r.ok === false){ saveBtn.disabled = false; return; }
+      }catch(err){
+        saveBtn.disabled = false;
+        return;
+      }
+      closeQuestionnaireSession();
+      refreshSummaryCard();
+    };
+    saveBtn.addEventListener('click', saveAndClose);
     noteScroll.addEventListener('keydown', e=>{
       if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's'){ e.preventDefault(); queueSave(true); }
     });
