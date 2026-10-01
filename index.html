@@ -3061,108 +3061,95 @@ html,body{background:radial-gradient(circle at 75% -10%,rgba(11,91,211,.055),tra
 }
 .mapx-seg-btn:hover{ color:#142033; }
 .mapx-seg-btn.is-on{ background:#2563EB; color:#fff; }
-/* §B — 메인 "지역업체 분포" 요약 카드 */
+/* ==========================================================================
+   §지역업체 분포 카드 — "큰 도넛 + 정돈된 지역 ranking + 부드러운 CTA" 구조의
+   summary card. 색은 블루 한 계열 + 중성 회색만 쓴다. 규칙은 전부
+   .nf-card-region(= 이 카드) 안으로만 걸어 옆의 "최근 요청" 카드는 안 건드린다.
+   ========================================================================== */
 .region-summary-card{ cursor:pointer; }
 .region-summary-head{ align-items:flex-start !important; }
-.nf-card-title-group{ display:flex; align-items:center; gap:9px; min-width:0; }
-.nf-card-icon{
-  flex:none; width:32px; height:32px; border-radius:11px; background:#EFF5FF;
-  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232563EB' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z'/><circle cx='12' cy='10' r='3'/></svg>"); background-repeat:no-repeat;
-  background-position:center; background-size:17px 17px;
-}
-.nf-card-sub{ margin-top:1px; font-size:11px; color:var(--map-muted); font-weight:500; }
-.open-map-modal-btn{
-  flex:none; width:30px; height:30px; padding:0 !important; border-radius:10px;
-  background:#fff url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232563EB' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M7 17 17 7M7 7h10v10'/></svg>") center/15px 15px no-repeat !important;
-  border:1px solid var(--map-border) !important; font-size:0 !important; cursor:pointer;
-}
-.open-map-modal-btn:hover{ background-color:#EFF5FF !important; border-color:#BBD4F7 !important; }
-.nf-card-foot{ margin-top:10px; padding-top:9px; border-top:1px solid #EFF3F8; }
-.region-map-detail-btn{
-  width:100%; height:34px; border-radius:11px; border:1px solid var(--map-border);
-  background:#fff; color:var(--map-primary); font-size:12px; font-weight:700;
-  font-family:inherit; cursor:pointer;
-}
-.region-map-detail-btn:hover{ background:#EFF5FF; border-color:#BBD4F7; }
-.map-modal-overlay:not(.map-embedded) .map-modal-toggle-group{
-  position:absolute !important; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); clip-path:inset(50%);
-  margin:-1px; padding:0; border:0;
-}
-.mapx-seg-view{ top:58px !important; }
-.mapx-zoom-btn svg{ width:16px; height:16px; display:block; }
-.mapx-zoom{
-  position:absolute; top:14px; left:14px; display:flex; flex-direction:column; gap:5px;
-}
-.mapx-zoom-btn{
-  width:34px; height:34px; border-radius:11px; cursor:pointer; font-family:inherit;
-  font-size:16px; font-weight:700; line-height:1; color:#142033;
-  background:rgba(255,255,255,.96); border:1px solid #E6ECF3;
-  box-shadow:0 8px 18px rgba(15,23,42,.08);
-  display:flex; align-items:center; justify-content:center;
-}
-.mapx-zoom-btn:hover{ background:#fff; border-color:#C7D7EE; }
-.mapx-zoom-btn:focus-visible{ outline:2px solid #2563EB; outline-offset:2px; }
-.mapx-zoom-btn.is-home{ font-size:14px; }
-.mapx-legend{
-  position:absolute; right:14px; bottom:14px; min-width:132px;
-  background:rgba(255,255,255,.95); border:1px solid #E6ECF3; border-radius:16px;
-  padding:11px 13px; box-shadow:0 8px 18px rgba(15,23,42,.08);
-}
-.mapx-legend-title{ font-size:11px; font-weight:800; color:#142033; margin-bottom:6px; }
-.mapx-legend-row{ display:flex; align-items:center; gap:7px; font-size:11px; color:#6B778C; line-height:1.9; }
-.mapx-legend-dot{ width:10px; height:10px; border-radius:50%; flex:none; border:1px solid rgba(15,23,42,.08); }
-/* ---- 반응형 ---- */
-/* ==========================================================================
-   §지역업체 분포 카드 — 보조 위젯 톤으로 정리. 색은 블루 한 계열 + 중성 회색만
-   쓰고, 테두리·구분선·그림자를 모두 한 단계씩 낮춘다. 여기 규칙은 전부
-   .nf-card-region(= 이 카드) 안으로만 걸어서 옆의 "최근 요청" 카드는 안 건드린다.
-   ========================================================================== */
 .nf-card.nf-card-region{
-  background:#F8FBFF; border:1px solid #E3EAF4; border-radius:22px;
-  box-shadow:0 2px 8px rgba(15,23,42,.04);
+  background:#FFFFFF; border:1px solid #E6ECF4; border-radius:24px;
+  box-shadow:0 14px 34px rgba(35,65,110,.07);
+  padding:20px 22px; display:flex; flex-direction:column; gap:18px;
+  transition:box-shadow .18s ease, transform .18s ease;
 }
-.nf-card-region .nf-card-title{ font-size:14px; font-weight:750; color:#142033; }
-.nf-card-region .nf-card-sub{ color:#8794A6; }
-.nf-card-region .nf-card-icon{ background-color:#EDF3FF; }
+.nf-card.nf-card-region:hover{ box-shadow:0 18px 38px rgba(35,65,110,.10); transform:translateY(-1px); }
 
-/* 도넛 — 중앙 숫자는 진한 남색, 아래 라벨은 중간 회색. 조각 사이는 카드 배경색으로
-   아주 얇게 끊어 색을 더 쓰지 않고도 구분이 된다. */
-.nf-card-region .nf-donut-seg{ stroke-linecap:butt; }
-.nf-card-region .nf-donut-center-num{
-  font-size:21px; font-weight:800; color:#16284A; letter-spacing:-.03em;
-  font-variant-numeric:tabular-nums;
+/* ---- 머리글 ---- */
+.nf-card-region .nf-card-head{ margin-bottom:0; }
+.nf-card-title-group{ display:flex; align-items:center; gap:11px; min-width:0; }
+.nf-card-icon{
+  flex:none; width:40px; height:40px; border-radius:13px; background-color:#EDF3FF;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232563EB' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z'/><circle cx='12' cy='10' r='3'/></svg>"); background-repeat:no-repeat;
+  background-position:center; background-size:20px 20px;
 }
-.nf-card-region .nf-donut-center-label{
-  font-size:10.5px; font-weight:650; color:#8794A6; margin-top:4px; letter-spacing:.01em;
-}
-
-/* 범례 — 구분선은 거의 안 보이게, 숫자는 자릿수가 흔들리지 않게 정렬. */
-.nf-card-region .nf-legend-row{ padding:6px 2px; }
-.nf-card-region .nf-legend-row + .nf-legend-row{ border-top:1px solid #EDF2F8; }
-.nf-card-region .nf-legend-dot{
-  width:8px; height:8px; box-shadow:inset 0 0 0 1px rgba(15,23,42,.07);
-}
-.nf-card-region .nf-legend-name{ color:#56637A; font-weight:600; }
-.nf-card-region .nf-legend-val{
-  font-weight:700; color:#16284A; font-variant-numeric:tabular-nums; min-width:34px; text-align:right;
-}
-.nf-card-region .nf-legend-pct{
-  font-weight:600; color:#9AA7B8; font-variant-numeric:tabular-nums; min-width:34px;
-}
-.nf-card-region .nf-card-empty{ color:#9AA7B8; }
-
-/* CTA — 연한 배경 + 진한 블루 글자. 평소엔 가라앉아 있고 hover에서만 올라온다. */
-.nf-card-region .nf-card-foot{ margin-top:11px; padding-top:10px; border-top:1px solid #EDF2F8; }
-.nf-card-region .region-map-detail-btn{
-  height:34px; border:1px solid transparent; border-radius:11px;
-  background:#EDF3FF; color:#1D4ED8; font-size:12px; font-weight:700;
-  transition:background .15s, border-color .15s;
-}
-.nf-card-region .region-map-detail-btn:hover{ background:#DEEAFF; border-color:#C2D8FB; }
+.nf-card-region .nf-card-title{ font-size:16.5px; font-weight:700; color:#102A56; letter-spacing:-.02em; }
+.nf-card-region .nf-card-sub{ margin-top:2px; font-size:11.5px; font-weight:500; color:#8494AC; }
 .nf-card-region .open-map-modal-btn{
-  background-color:#FFFFFF !important; border-color:#E3EAF4 !important;
+  flex:none; width:34px; height:34px; padding:0 !important; border-radius:50%;
+  background-color:#FFFFFF !important;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231D5FD3' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M7 17 17 7M7 7h10v10'/></svg>") !important;
+  background-repeat:no-repeat !important; background-position:center !important; background-size:16px 16px !important;
+  border:1px solid #E6ECF4 !important; font-size:0 !important; cursor:pointer;
+  transition:background-color .15s, border-color .15s;
 }
 .nf-card-region .open-map-modal-btn:hover{ background-color:#EDF3FF !important; border-color:#C2D8FB !important; }
+
+/* ---- 도넛 ---- */
+.nf-card-region .nf-donut-wrap{ width:176px; height:176px; margin:2px auto 0; }
+.nf-card-region .nf-donut{ width:176px; height:176px; }
+.nf-card-region .nf-donut-seg{ stroke-linecap:butt; }
+.nf-card-region .nf-donut-center-num{
+  font-size:29px; font-weight:700; color:#102A56; letter-spacing:-.03em;
+  font-variant-numeric:tabular-nums; line-height:1;
+}
+.nf-card-region .nf-donut-center-label{
+  font-size:13px; font-weight:600; color:#8494AC; margin-top:6px; letter-spacing:.01em;
+}
+
+/* ---- 지역 ranking ---- */
+.nf-card-region .nf-legend{ display:flex; flex-direction:column; gap:1px; }
+.nf-card-region .nf-legend-row{
+  display:grid; grid-template-columns:9px 1fr auto 44px; align-items:center;
+  gap:11px; min-height:40px; padding:0 11px; border-radius:11px;
+  font-size:13px; border-top:1px solid transparent;
+}
+/* §7 — 상위 3개만 아주 연한 tint. 나머지는 흰 배경에 가는 구분선만 둔다. */
+.nf-card-region .nf-legend-row.is-top{ background:#F4F8FF; }
+.nf-card-region .nf-legend-row:not(.is-top) + .nf-legend-row:not(.is-top){ border-top-color:#EEF2F7; }
+.nf-card-region .nf-legend-dot{
+  width:9px; height:9px; border-radius:50%;
+  box-shadow:inset 0 0 0 1px rgba(16,42,86,.07);
+}
+.nf-card-region .nf-legend-name{ color:#3C4A63; font-weight:600; }
+.nf-card-region .nf-legend-val{
+  font-weight:700; color:#102A56; font-variant-numeric:tabular-nums; text-align:right;
+}
+.nf-card-region .nf-legend-pct{
+  font-size:12px; font-weight:500; color:#8FA0B8;
+  font-variant-numeric:tabular-nums; text-align:right; min-width:0;
+}
+.nf-card-region .nf-card-empty{ color:#8FA0B8; }
+
+/* ---- CTA ---- */
+.nf-card-region .nf-card-foot{ margin-top:0; padding-top:0; border-top:none; }
+.nf-card-region .region-map-detail-btn{
+  width:100%; height:44px; border:none; border-radius:13px;
+  background:#F1F6FF; color:#1D5FD3; font-size:13px; font-weight:600;
+  font-family:inherit; cursor:pointer;
+  transition:background-color .15s, transform .15s;
+}
+.nf-card-region .region-map-detail-btn:hover{ background:#E7F0FF; transform:translateY(-1px); }
+
+@media (prefers-reduced-motion: reduce){
+  .nf-card.nf-card-region, .nf-card.nf-card-region:hover,
+  .nf-card-region .region-map-detail-btn:hover{ transition:none; transform:none; }
+}
+@media(max-width:1100px){
+  .nf-card.nf-card-region{ padding:18px; gap:15px; }
+  .nf-card-region .nf-donut-wrap, .nf-card-region .nf-donut{ width:156px; height:156px; }
+}
 
 /* §질문지 상담 확장 — 상단 요약 배지, 선택지 칩, 권장 대응 줄. 기존 .crv-rate-btn
    모양을 그대로 쓰고 선택지용(.is-choice)만 폭을 글자에 맞춘다. */
@@ -3195,6 +3182,16 @@ html,body{background:radial-gradient(circle at 75% -10%,rgba(11,91,211,.055),tra
   display:flex !important; flex-wrap:wrap; gap:5px; width:100%;
   margin:0 0 8px; position:relative; z-index:1;
 }
+
+/* §S — 클러스터/히트맵은 지도 위 세그먼트 하나로만 보여준다. 기존 버튼은 전환 로직을
+   그대로 쥐고 있으므로 지우지 않고 화면에서만 감춘다(프록시가 눌러 쓴다). */
+.map-modal-overlay:not(.map-embedded) .map-modal-toggle-group{
+  position:absolute !important; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); clip-path:inset(50%);
+  margin:-1px; padding:0; border:0;
+}
+/* 지도 위 두 번째 세그먼트(클러스터/히트맵)는 첫 줄 아래로 */
+.mapx-seg-view{ top:58px !important; }
+.mapx-zoom-btn svg{ width:16px; height:16px; display:block; }
 
 /* 근처 찾기 반경 — 칩 줄 대신 드롭다운 하나. 옆 검색칸을 밀지 않게 폭을 고정한다. */
 .map-near-radius-select{ flex:none !important; width:84px !important; min-width:84px !important; }
@@ -15953,7 +15950,7 @@ window.SHIN2_CRM_APP_INIT = function(){
   // §지역 분포 카드 톤 정리 — 원색 7개 대신 같은 블루 계열의 명도 차이로만 구분한다.
   // 목록은 건수 내림차순이라 맨 앞(가장 큰 지역)이 가장 진한 포인트 컬러를 쓰고,
   // 뒤로 갈수록 옅어지며 마지막 두 단계는 중성 회색으로 빠진다.
-  const NF_DONUT_COLORS = ['#2563EB','#4F83FF','#7BA6FF','#A8C6FF','#C7DBFF','#D9E4F2','#E9EEF5'];
+  const NF_DONUT_COLORS = ['#2563EB','#4F7FF3','#72A0FF','#9DBBFA','#B7CDF5','#CEDCF2','#E5EBF3'];
   function renderNfRegionCard(){
     const wrap = document.getElementById('crmRegionCard');
     if(!wrap) return;
@@ -15982,16 +15979,17 @@ window.SHIN2_CRM_APP_INIT = function(){
       const restCount = list.slice(6).reduce((s,r)=> s + r.count, 0);
       list = head.concat([{ name:'기타', count: restCount }]);
     }
-    const R = 42, CIRC = 2 * Math.PI * R;
+    // §4 — 도넛을 키운다. viewBox 176 기준 반지름 66, 두께 22(바깥 지름 176px).
+    const R = 66, CIRC = 2 * Math.PI * R;
     let offset = 0;
     // 같은 계열 색만 쓰므로 조각 사이에 얇은 틈을 둬서 경계가 보이게 한다(색 추가 없음).
-    const SEG_GAP = list.length > 1 ? 1.8 : 0;
+    const SEG_GAP = list.length > 1 ? 2.6 : 0;
     const segs = total > 0 ? list.map((r,i)=>{
       const len = CIRC * (r.count / total);
       const drawn = Math.max(0.6, len - SEG_GAP);
       const dash = `${drawn} ${CIRC - drawn}`;
-      const seg = `<circle class="nf-donut-seg" r="${R}" cx="56" cy="56" fill="none"
-        stroke="${NF_DONUT_COLORS[i % NF_DONUT_COLORS.length]}" stroke-width="15"
+      const seg = `<circle class="nf-donut-seg" r="${R}" cx="88" cy="88" fill="none"
+        stroke="${NF_DONUT_COLORS[i % NF_DONUT_COLORS.length]}" stroke-width="22"
         stroke-dasharray="${dash}" stroke-dashoffset="${-offset}" />`;
       offset += len;
       return seg;
@@ -16009,8 +16007,8 @@ window.SHIN2_CRM_APP_INIT = function(){
       </div>
       ${total > 0 ? `
         <div class="nf-donut-wrap">
-          <svg class="nf-donut" viewBox="0 0 112 112" role="img" aria-label="지역 분포 도넛">
-            <g transform="rotate(-90 56 56)">${segs}</g>
+          <svg class="nf-donut" viewBox="0 0 176 176" role="img" aria-label="지역 분포 도넛">
+            <g transform="rotate(-90 88 88)">${segs}</g>
           </svg>
           <div class="nf-donut-center">
             <div class="nf-donut-center-num">${esc(total.toLocaleString('ko-KR'))}</div>
@@ -16019,7 +16017,7 @@ window.SHIN2_CRM_APP_INIT = function(){
         </div>
         <div class="nf-legend">
           ${list.map((r,i)=> `
-            <div class="nf-legend-row">
+            <div class="nf-legend-row${i < 3 ? ' is-top' : ''}">
               <span class="nf-legend-dot" style="background:${NF_DONUT_COLORS[i % NF_DONUT_COLORS.length]}"></span>
               <span class="nf-legend-name">${esc(r.name)}</span>
               <span class="nf-legend-val">${esc(r.count.toLocaleString('ko-KR'))}</span>
