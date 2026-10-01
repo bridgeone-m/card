@@ -6544,6 +6544,22 @@ body{
 #listView > .list-filter-row,
 #listView > .map-open-row{ margin-left:24px !important; margin-right:24px !important; }
 
+/* §화면별 좌우 여백 통일 라운드(신규) — 상단 탭 3개(고객관리 / MOU 진행상황 / 메일 설정)의
+   본문 시작선이 서로 달랐다. 실측(1600px, 캔버스 28~1572):
+     고객관리   53~1547  (캔버스 안쪽 24px — 로고 왼쪽선과 같다)
+     MOU 진행상황 140~1460  (max-width:1320px + margin:auto 때문에 87px 더 안쪽)
+     메일 설정   29~1571  (여백 0, 캔버스에 딱 붙음)
+   고객관리를 기준으로 셋을 같은 선에 맞춘다. 가운데 정렬용 max-width를 풀고 좌우
+   padding만 준다 — 각 화면 안쪽 레이아웃/내용은 건드리지 않는다.
+   위쪽 여백도 같이 맞춘다 — 고객관리는 내비 아래 16px(.crm-main-grid margin-top)인데
+   나머지 둘은 0이라 제목이 내비에 붙어 보였다. */
+#workQueueView, #mailSettingsView{
+  width:100% !important; max-width:none !important; margin:0 !important;
+  padding-left:24px !important; padding-right:24px !important;
+  padding-top:16px !important;
+  box-sizing:border-box;
+}
+
 /* ---- §14 카드 공통 ---- */
 .nf-card{
   background:var(--nf-surface);
@@ -6779,6 +6795,7 @@ body{
 @media(max-width:1100px){
   /* 우 위젯이 목록 아래로 내려가 가로로 나란히 선다. */
   .crm-main-grid{ grid-template-columns: minmax(0,1fr) !important; padding:0 16px !important; }
+  #workQueueView, #mailSettingsView{ padding-left:16px !important; padding-right:16px !important; }
   .crm-main-grid .kpi-strip-row.crm-kpi-cell{ grid-column:1 !important; grid-row:1 !important; }
   .crm-main-grid .crm-list-col{ grid-column:1 !important; grid-row:2 !important; }
   .crm-main-grid .nf-side-right{ grid-column:1 !important; grid-row:3 !important; }
@@ -6791,6 +6808,7 @@ body{
 @media(max-width:760px){
   .nf-side-right{ flex-direction:column !important; }
   .crm-main-grid{ padding:0 10px !important; gap:12px !important; }
+  #workQueueView, #mailSettingsView{ padding-left:10px !important; padding-right:10px !important; }
   #listView > .list-search-row, #listView > .list-filter-row, #listView > .map-open-row{
     margin-left:10px !important; margin-right:10px !important;
   }
