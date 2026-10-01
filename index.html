@@ -8004,6 +8004,95 @@ body.crm-page-shell #mailSettingsView .mail-settings-panel,
 body.crm-page-shell #mailSettingsView .mail-settings-header-wrap{
   max-width:none !important; margin-left:0 !important; margin-right:0 !important;
 }
+
+/* ==========================================================================
+   §KPI 4장 · compact 라운드(신규) — 상단 KPI를 "전체 업체 / MOU 체결 / L2→L3 전환율 /
+   실적 상승 TOP 5" 네 장으로 줄이고, 아이콘 타일 대신 카드 배경에 아주 약한 장식만
+   둔다. 숫자가 가장 먼저 보여야 하므로 장식은 거의 보이지 않을 만큼 옅게 깐다.
+   계산·클릭 동작은 건드리지 않았다 — 여기서 바뀌는 건 격자·높이·정렬·장식뿐이다.
+   이 파일 맨 끝이라 앞의 .kpi-strip 규칙들을 전부 이긴다.
+   ========================================================================== */
+.kpi-strip{
+  display:grid !important;
+  /* 설명이 긴 두 장(전환율·TOP 5)을 조금 더 넓게. */
+  grid-template-columns:1fr 1fr 1.25fr 1.35fr !important;
+  gap:14px !important;
+}
+.kpi-strip .kpi-item{
+  position:relative; overflow:hidden;
+  display:grid !important;
+  grid-template-columns:minmax(0,1fr) !important;
+  grid-template-rows:15px 28px 13px !important;
+  row-gap:2px !important; column-gap:0 !important;
+  align-content:center !important; justify-items:start !important;
+  text-align:left !important;
+  min-height:78px !important; padding:10px 16px !important;
+  background:#FFFFFF !important;
+  border:1px solid #E4EAF1 !important;
+  border-radius:13px !important;
+  box-shadow:0 4px 16px rgba(31,54,90,.03) !important;
+}
+.kpi-strip .kpi-item:hover{ box-shadow:0 6px 18px rgba(31,54,90,.07) !important; }
+/* 장식 — 네 장 모두 같은 모양 하나. 예전 아이콘 타일이 쓰던 ::before를 그대로 쓰되
+   레이아웃에서 빼내(absolute) 카드 오른쪽에 아주 연한 곡선 덩어리로 깐다.
+   (::after는 TOP 5 카드의 ▾ 표시가 이미 쓰고 있어 건드리지 않는다.) */
+.kpi-strip .kpi-item::before{
+  content:''; position:absolute; right:-46px; top:-52px;
+  width:150px; height:150px; border-radius:50%;
+  /* 앞 라운드의 카드별 아이콘 규칙(.kpi-item[data-kpi="…"]::before)이 더 구체적이라
+     !important 없이는 이 배경이 그 SVG에 밀린다(실측). */
+  /* 원의 테두리가 보이면 장식이 먼저 읽힌다 — 원 안쪽에서 이미 투명해지게 둔다. */
+  background-image:radial-gradient(circle at 34% 66%,
+    rgba(238,243,250,.9) 0%, rgba(238,243,250,.45) 38%, rgba(238,243,250,0) 66%) !important;
+  background-color:transparent !important; background-size:auto !important;
+  background-repeat:no-repeat !important; background-position:center !important;
+  pointer-events:none; z-index:0;
+  /* grid 자동 배치에 끼어들지 않게 — 아이콘 자리로 쓰던 지정을 지운다. */
+  grid-column:auto !important; grid-row:auto !important;
+}
+.kpi-strip .kpi-item > *{
+  position:relative; z-index:1;
+  justify-self:start !important;      /* 칸 폭만큼 늘어나면 안쪽 가운데 정렬이 살아난다 */
+  display:block !important;           /* 앞 라운드의 flex+center를 푼다 */
+  text-align:left !important;
+}
+/* 앞 라운드의 아이콘 레이아웃이 세 줄을 2열에 넣어 뒀다(grid-column:2 !important).
+   아이콘을 없앴으니 1열로 되돌린다 — 안 그러면 빈 1열이 311px을 먹어 글자가 오른쪽
+   끝으로 밀린다(실측). */
+.kpi-strip .kpi-item-label,
+.kpi-strip .kpi-item-value,
+.kpi-strip .kpi-item-sub{ grid-column:1 !important; }
+.kpi-strip .kpi-item-label{
+  grid-row:1 !important; justify-content:flex-start !important;
+  font-size:11.5px !important; font-weight:650 !important; color:#17345F !important;
+  min-height:0 !important; margin:0 !important;
+  max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.kpi-strip .kpi-item-value,
+.kpi-strip .kpi-item.is-rising .kpi-item-value{
+  grid-column:1 !important;   /* TOP 5 카드만 더 구체적인 옛 규칙이 2열을 고집한다 */
+  grid-row:2 !important; justify-content:flex-start !important;
+  font-size:24px !important; line-height:1 !important; font-weight:800 !important;
+  color:#163A70 !important; min-height:0 !important;
+}
+.kpi-strip .kpi-item-sub{
+  grid-row:3 !important; margin:0 !important; min-height:0 !important;
+  font-size:10.5px !important; line-height:1.25 !important; color:#738198 !important;
+  max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+/* TOP 5 카드의 ▾만 위치를 새 높이에 맞춘다(클릭 동작은 그대로). */
+.kpi-strip .kpi-item.is-rising::after{ top:11px !important; right:12px !important; z-index:1; }
+/* 낮은 화면 — 앞 라운드의 body.crm-fixed-view 규칙이 더 구체적이라(0,3,0) 같은
+   형태로 맞춰야 이긴다. 그대로 두면 1440×900에서 오히려 76 → 80px로 커졌다(실측). */
+@media(min-width:1101px) and (max-height:940px){
+  .kpi-strip .kpi-item,
+  body.crm-fixed-view .kpi-strip .kpi-item{
+    min-height:70px !important; padding:8px 14px !important;
+    grid-template-rows:14px 23px 11px !important;
+  }
+  .kpi-strip .kpi-item-value,
+  body.crm-fixed-view .kpi-strip .kpi-item-value{ font-size:20px !important; }
+}
 </style>
 </head>
 <body>
@@ -17132,7 +17221,11 @@ window.SHIN2_CRM_APP_INIT = function(){
       // 새로 추가하거나 없는 카드를 삭제하지 않는다(§요청 3 "새 KPI 발명 금지").
       { key:'all', label:'전체 업체', value: counts.all || 0, cls:'', sub:'' },
       { key:'mouDone', label:'MOU 체결', value: counts.mouDone || 0, cls:'', sub: counts.all ? `전체 ${counts.all}곳 중` : '' },
-      { key:'trendUp', label:'상승 업체', value: counts.trendUp || 0, cls:'is-up', sub: counts.all ? `전체 ${counts.all}곳 중` : '' },
+      // §KPI 4장 라운드(신규) — "상승 업체" 카드만 상단에서 뺐다(사용자 요청). counts.trendUp
+      // 집계와 matchesFilter의 'trendUp' 분기는 그대로 두었다 — 숫자를 만드는 쪽은 한 줄도
+      // 안 건드렸고, 이 카드가 유일한 진입점이었던 터라 목록에서 그 필터로 들어가는 길만
+      // 없어진다(다른 pill/탭에는 원래 없던 키다).
+      // { key:'trendUp', label:'상승 업체', value: counts.trendUp || 0, cls:'is-up', sub: counts.all ? `전체 ${counts.all}곳 중` : '' },
       { key:'l2l3Manage', label:'L2→L3 전환율', value: `${l2l3.rate}%`, cls: l2l3.rate < 50 ? 'is-warn' : '', sub: `${l2l3.total}곳 중 ${l2l3.converted.length}곳 · 5/20 이후 협약 기준` },
       // §TOP5 KPI 카드 이동 라운드(신규) — 5번째 카드. 앞 4개와 달리 목록 필터를 바꾸지
       // 않고 팝오버만 여는 카드다(아래 클릭 핸들러의 risingTop5 분기 참고).
