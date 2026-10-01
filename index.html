@@ -6763,6 +6763,141 @@ body{
   }
   .nf-nav-search{ display:none !important; }
 }
+
+/* ===========================================================================
+   §질문지 상담 기록 재구성 라운드(신규) — 평가/메모 정리 화면.
+   복잡한 질문지가 아니라 "미팅 후 정리 기록"처럼 보이게 섹션 카드 세로 구조로 둔다.
+   상=초록 / 중=주황 / 하=빨강, 요청자료는 빨강 강조, 인사이트는 연한 파랑 summary box.
+   =========================================================================== */
+.crv-card{
+  border:1px solid var(--nf-border, #E4EAF2); border-radius:12px;
+  background:#fff; padding:13px 14px; margin-bottom:11px;
+}
+.crv-card-head{ display:flex; align-items:flex-start; gap:10px; margin-bottom:9px; }
+.crv-card-titles{ min-width:0; }
+.crv-card-title{ font-size:13.5px; font-weight:750; color:var(--nf-text, #10233F); letter-spacing:-.01em; }
+.crv-card-desc{ margin-top:3px; font-size:11px; color:var(--nf-text-faint, #93A1B5); line-height:1.45; }
+.crv-rate{ margin-left:auto; flex:none; display:inline-flex; gap:5px; }
+.crv-rate-btn{
+  width:38px; height:28px; border-radius:999px; cursor:pointer;
+  border:1px solid #DDE4EE; background:#fff; color:#7A879B;
+  font-size:12px; font-weight:750; line-height:1;
+}
+.crv-rate-btn:hover{ background:#F4F7FB; }
+.crv-rate-btn.is-on.is-high{ background:#EAF8EF; border-color:#8FD6AC; color:#15803D; }
+.crv-rate-btn.is-on.is-mid{  background:#FFF4E2; border-color:#F0C27B; color:#B26A00; }
+.crv-rate-btn.is-on.is-low{  background:#FFF0F0; border-color:#F0A8A4; color:#C2403A; }
+.crv-rate-btn:focus-visible{ outline:2px solid #2563EB; outline-offset:2px; }
+.crv-memo{
+  width:100%; min-height:76px; resize:vertical; box-sizing:border-box;
+  border:1px solid #DDE4EE; border-radius:9px; padding:9px 11px;
+  font-size:12.5px; line-height:1.55; color:var(--nf-text, #10233F); background:#FBFCFE;
+}
+.crv-memo:focus{ outline:none; border-color:#2563EB; background:#fff; }
+/* 미팅 후 요청 자료 — 내용이 있으면 빨강으로 강조한다(알림이 떠 있다는 신호). */
+.crv-card.is-request.is-pending{ border-color:#F0A8A4; background:#FFFAFA; }
+.crv-req-badge{
+  flex:none; display:inline-flex; align-items:center; height:21px; padding:0 9px;
+  border-radius:999px; background:#FFF0F0; color:#C2403A;
+  font-size:10.5px; font-weight:800; letter-spacing:-.01em;
+}
+.crv-req-callout{
+  border:1px solid #F0C2BF; background:#FFF6F5; border-radius:9px;
+  padding:9px 11px; margin:8px 0;
+}
+.crv-req-callout-head{ display:flex; align-items:center; gap:7px; font-size:11.5px; font-weight:800; color:#C2403A; margin-bottom:4px; }
+.crv-req-callout-text{ font-size:12px; color:#6B3A38; line-height:1.5; white-space:pre-wrap; word-break:break-word; }
+/* 고객 인사이트 — 연한 파랑 summary box, 읽기 전용 */
+.crv-card.is-insight{ background:#F7FAFF; border-color:#D5E3F7; }
+.crv-insight-btn{
+  margin-left:auto; flex:none; height:27px; padding:0 11px; border-radius:999px;
+  border:1px solid #BFD5F2; background:#fff; color:#1D4ED8;
+  font-size:11px; font-weight:750; cursor:pointer;
+}
+.crv-insight-btn:hover{ background:#EFF5FF; }
+.crv-insight-box{ border-radius:9px; }
+.crv-insight-empty{ font-size:11.5px; color:#93A1B5; padding:6px 2px; }
+.crv-insight-list{ display:flex; flex-direction:column; gap:9px; }
+.crv-insight-sec-label{ font-size:11px; font-weight:800; color:#1D4ED8; margin-bottom:3px; letter-spacing:-.01em; }
+.crv-insight-sec-text{ font-size:12.5px; color:#23364F; line-height:1.6; white-space:pre-wrap; word-break:break-word; }
+.crv-insight-sec.is-verdict{ border-top:1px solid #D5E3F7; padding-top:9px; }
+.crv-insight-sec.is-verdict .crv-insight-sec-label{ color:#15803D; }
+.crv-insight-meta{ margin-top:9px; font-size:10.5px; color:#93A1B5; }
+.crv-insight-box.is-compact .crv-insight-list{ gap:7px; }
+.crv-insight-box.is-compact .crv-insight-sec-text{ font-size:12px; }
+/* 이전 기록(기존 Q1~Q8 답변·상담 메모·요청자료) — 읽기 전용 접기 */
+.crv-legacy{ border:1px solid #E4EAF2; border-radius:10px; background:#FAFBFD; padding:0 12px; margin-bottom:11px; }
+.crv-legacy > summary{ cursor:pointer; padding:10px 0; font-size:12px; font-weight:700; color:#6F7C91; }
+.crv-legacy-item{ padding:8px 0; border-top:1px solid #EDF1F7; }
+.crv-legacy-label{ font-size:10.5px; font-weight:800; color:#93A1B5; margin-bottom:3px; }
+.crv-legacy-text{ font-size:12px; color:#3E506A; line-height:1.55; white-space:pre-wrap; word-break:break-word; }
+/* 평가 3개 한 줄 요약 */
+.crv-sum{ display:flex; flex-wrap:wrap; gap:7px; margin:7px 0; }
+.crv-sum-item{ display:inline-flex; align-items:center; gap:5px; }
+.crv-sum-name{ font-size:11px; font-weight:650; color:#6F7C91; }
+.crv-sum-badge{ display:inline-flex; align-items:center; height:19px; padding:0 8px; border-radius:999px; font-size:10.5px; font-weight:800; }
+.crv-sum-badge.is-high{ background:#EAF8EF; color:#15803D; }
+.crv-sum-badge.is-mid{  background:#FFF4E2; color:#B26A00; }
+.crv-sum-badge.is-low{  background:#FFF0F0; color:#C2403A; }
+.crv-verdict-line{
+  margin-top:7px; padding:8px 10px; border-radius:8px;
+  background:#F7FAFF; border:1px solid #D5E3F7;
+  font-size:11.5px; color:#23364F; line-height:1.5;
+}
+/* 고객 상세 기본정보 — 수동/자동 인사이트 구분 */
+.insight-manual-label, .insight-auto-label{
+  font-size:10.5px; font-weight:800; color:#93A1B5; margin-bottom:4px; letter-spacing:-.01em;
+}
+.insight-auto-block{ margin-top:10px; padding-top:10px; border-top:1px solid #EDF1F7; }
+.insight-auto-label{ color:#1D4ED8; display:flex; align-items:center; gap:6px; }
+.insight-auto-src{ font-weight:650; color:#93A1B5; }
+.insight-auto-lead{ font-size:12.5px; color:#23364F; line-height:1.6; margin-top:5px; }
+.insight-auto-chips{ display:flex; flex-wrap:wrap; gap:5px; margin-top:7px; }
+.insight-auto-chip{
+  display:inline-flex; align-items:center; height:19px; padding:0 8px; border-radius:999px;
+  background:#EFF5FF; color:#1D4ED8; font-size:10px; font-weight:750;
+}
+.insight-auto-more{
+  margin-top:8px; padding:0; border:0; background:none; cursor:pointer;
+  color:#1D4ED8; font-size:11px; font-weight:700; text-decoration:underline;
+}
+
+/* §요청자료 알림 — MOU 진행상황 화면 우측 하단 floating */
+.consult-req-alert{
+  position:fixed; right:22px; bottom:22px; z-index:9000;
+  width:min(330px, calc(100vw - 32px));
+  border-radius:14px; overflow:hidden;
+  box-shadow:0 12px 32px rgba(120,30,30,.22);
+}
+.consult-req-alert-main{
+  width:100%; display:flex; align-items:center; gap:10px; text-align:left;
+  padding:12px 14px; border:0; cursor:pointer;
+  background:#D93B37; color:#fff;
+}
+.consult-req-alert-main:hover{ background:#C62F2B; }
+.consult-req-alert-dot{
+  flex:none; width:9px; height:9px; border-radius:50%; background:#fff;
+  box-shadow:0 0 0 4px rgba(255,255,255,.25);
+}
+.consult-req-alert-texts{ display:flex; flex-direction:column; gap:2px; min-width:0; }
+.consult-req-alert-title{ font-size:13px; font-weight:800; letter-spacing:-.01em; }
+.consult-req-alert-sub{ font-size:11px; opacity:.88; }
+.consult-req-alert-list{ background:#fff; max-height:260px; overflow-y:auto; border:1px solid #F0C2BF; border-top:0; }
+.consult-req-alert-row{
+  width:100%; display:flex; flex-direction:column; gap:3px; text-align:left;
+  padding:9px 13px; border:0; background:transparent; cursor:pointer;
+}
+.consult-req-alert-row + .consult-req-alert-row{ border-top:1px solid #FBEDEC; }
+.consult-req-alert-row:hover{ background:#FFF6F5; }
+.consult-req-alert-row-name{ font-size:12px; font-weight:750; color:#23364F; display:flex; align-items:center; gap:6px; }
+.consult-req-alert-flag{ font-size:9.5px; font-weight:800; color:#C2403A; background:#FFF0F0; border-radius:999px; padding:1px 6px; }
+.consult-req-alert-row-memo{ font-size:11px; color:#6F7C91; line-height:1.45; }
+.consult-req-alert-more{ padding:8px 13px; font-size:11px; color:#93A1B5; border-top:1px solid #FBEDEC; }
+@media(max-width:760px){
+  .consult-req-alert{ right:10px; left:10px; bottom:10px; width:auto; }
+  .crv-card-head{ flex-wrap:wrap; }
+  .crv-rate{ margin-left:0; }
+}
 </style>
 </head>
 <body>
@@ -9897,6 +10032,118 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
       && d.requestMaterialStatus !== 'sent'
     );
   }
+  // ==========================================================================
+  // §질문지 상담 기록 재구성 라운드(신규) — 질문(Q1~Q8) 답변 구조 대신
+  // "평가 + 메모 + 후속 요청자료 + 자동 고객인사이트" 구조.
+  //
+  // 저장 위치는 기존 질문지 문서 레코드(documents 컬렉션) 안의 새 필드 consultReview
+  // 하나뿐이다 — 새 컬렉션·새 저장소를 만들지 않는다. 기존 필드(qaAnswers / memo /
+  // consultRatings / requestMaterials / requestMaterialStatus / requestMaterialLog)는
+  // 하나도 지우지 않고 그대로 둔다(§3 "기존 기록 삭제 금지"). 마이그레이션도 강제하지
+  // 않는다 — consultReview가 없는 기존 문서는 readConsultReview가 빈 기본값으로 읽는다.
+  // ==========================================================================
+  // 상/중/하를 받는 3개 섹션. 라벨은 화면에서도 이 상수를 그대로 읽어 쓴다.
+  const CONSULT_REVIEW_RATED = [
+    ['marketUnderstanding', '시장이해도',      '아파트 시장·절차·입찰을 얼마나 알고 있는가'],
+    ['sincerity',           '진정성',          '협약 의지와 후속 협의 의사가 실제로 있는가'],
+    ['conversionPotential', '전환 가능성 확인', 'POUR로 전환·병행할 수 있는 건이 있는가']
+  ];
+  function emptyConsultReview(){
+    return {
+      marketUnderstanding:{ rating:'', memo:'' },
+      sincerity:{ rating:'', memo:'' },
+      conversionPotential:{ rating:'', memo:'' },
+      secondMeetingPreparation:{ memo:'' },
+      requestedMaterialsAfterMeeting:{ memo:'', pending:false, notifiedAt:'', completedAt:'' },
+      // verdict는 종합 인사이트 한 줄만 따로 들고 있는 값이다(MOU 진행관리 compact 표시용).
+      // summary 안에도 같은 문장이 들어 있어 없어도 복구되지만, 한 줄만 쓰는 화면이
+      // summary 전체를 다시 파싱하지 않도록 함께 저장한다.
+      autoInsight:{ summary:'', verdict:'', updatedAt:'' }
+    };
+  }
+  // 레코드가 없거나 일부만 있어도 절대 예외를 내지 않고 기본값으로 채워 돌려준다.
+  function readConsultReview(doc){
+    const out = emptyConsultReview();
+    const src = (doc && doc.consultReview) || {};
+    CONSULT_REVIEW_RATED.forEach(([key])=>{
+      const node = src[key] || {};
+      out[key].rating = normalizeQuestionnaireRating(node.rating);
+      out[key].memo = String(node.memo || '');
+    });
+    out.secondMeetingPreparation.memo = String((src.secondMeetingPreparation || {}).memo || '');
+    const rm = src.requestedMaterialsAfterMeeting || {};
+    out.requestedMaterialsAfterMeeting.memo = String(rm.memo || '');
+    // pending은 저장값을 믿지 않고 메모 유무로 항상 다시 판정한다(§8 규칙) — 저장이
+    // 중간에 끊겨 플래그만 남는 일이 없다.
+    out.requestedMaterialsAfterMeeting.pending = !!String(rm.memo || '').trim();
+    out.requestedMaterialsAfterMeeting.notifiedAt = String(rm.notifiedAt || '');
+    out.requestedMaterialsAfterMeeting.completedAt = String(rm.completedAt || '');
+    const ai = src.autoInsight || {};
+    out.autoInsight.summary = String(ai.summary || '');
+    out.autoInsight.verdict = String(ai.verdict || '');
+    out.autoInsight.updatedAt = String(ai.updatedAt || '');
+    return out;
+  }
+  function sameConsultReview(a, b){
+    const flat = r=> JSON.stringify([
+      CONSULT_REVIEW_RATED.map(([k])=> [r[k].rating, r[k].memo]),
+      r.secondMeetingPreparation.memo,
+      r.requestedMaterialsAfterMeeting.memo,
+      r.autoInsight.summary
+    ]);
+    return flat(a) === flat(b);
+  }
+  // patch는 readConsultReview와 같은 모양의 부분 객체. 넘기지 않은 키는 그대로 둔다.
+  function setDocumentConsultReview(id, patch){
+    const list = loadDocuments();
+    const rec = list.find(d=> d.id === id);
+    if(!rec) return { ok:false, changed:false, reason:'NOT_FOUND' };
+    const prev = readConsultReview(rec);
+    const next = readConsultReview(rec);          // prev의 복사본에서 시작
+    const p = patch || {};
+    CONSULT_REVIEW_RATED.forEach(([key])=>{
+      const node = p[key];
+      if(!node) return;
+      if(node.rating !== undefined) next[key].rating = normalizeQuestionnaireRating(node.rating);
+      if(node.memo !== undefined) next[key].memo = String(node.memo || '');
+    });
+    if(p.secondMeetingPreparation && p.secondMeetingPreparation.memo !== undefined){
+      next.secondMeetingPreparation.memo = String(p.secondMeetingPreparation.memo || '');
+    }
+    if(p.requestedMaterialsAfterMeeting && p.requestedMaterialsAfterMeeting.memo !== undefined){
+      next.requestedMaterialsAfterMeeting.memo = String(p.requestedMaterialsAfterMeeting.memo || '');
+    }
+    if(p.autoInsight && p.autoInsight.summary !== undefined){
+      next.autoInsight.summary = String(p.autoInsight.summary || '');
+    }
+    if(p.autoInsight && p.autoInsight.verdict !== undefined){
+      next.autoInsight.verdict = String(p.autoInsight.verdict || '');
+    }
+    if(sameConsultReview(prev, next)) return { ok:true, changed:false, rec, list };
+    // §8 — 메모가 비어있지 않으면 pending=true, 비어있으면 false. 알림은 이 값만 본다.
+    const memoNow = next.requestedMaterialsAfterMeeting.memo.trim();
+    next.requestedMaterialsAfterMeeting.pending = !!memoNow;
+    if(memoNow && !prev.requestedMaterialsAfterMeeting.memo.trim()){
+      // 알림이 처음 생긴 시점. 이후 "완료 처리" 기능을 붙일 때 그대로 쓸 수 있게 남겨둔다.
+      next.requestedMaterialsAfterMeeting.notifiedAt = nowIso();
+      next.requestedMaterialsAfterMeeting.completedAt = '';
+    } else if(!memoNow){
+      next.requestedMaterialsAfterMeeting.notifiedAt = '';
+      next.requestedMaterialsAfterMeeting.completedAt = '';
+    }
+    if(next.autoInsight.summary !== prev.autoInsight.summary) next.autoInsight.updatedAt = nowIso();
+    rec.consultReview = next;
+    rec.updatedAt = nowIso();
+    saveDocuments(list);
+    return { ok:true, changed:true, rec, list };
+  }
+  // MOU 진행상황 알림이 읽는 목록. "메모가 들어오면 알림" 구조라 완료 체크는 보지 않는다.
+  function pendingConsultReviewDocs(){
+    return loadDocuments().filter(d=>
+      d.documentType === 'questionnaire'
+      && String(((d.consultReview || {}).requestedMaterialsAfterMeeting || {}).memo || '').trim()
+    );
+  }
   function setDocumentVerification(id, patch){
     const list = loadDocuments(); const rec = list.find(d=> d.id===id); if(!rec) return null;
     if(patch.verificationStatus) rec.verificationStatus = patch.verificationStatus;
@@ -12544,7 +12791,8 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
     loadActivities, addActivity, updateActivityText, deleteActivity, activitiesForCompany, classifyActivity, buildActivitiesIndex,
     loadSheetRequests, buildSheetRequestsIndex, latestSheetRequestForCompany,
     loadCaseByCaseCompanies, loadExclusionAudit, caseByCaseIdForNormName, exclusionIdForNormName, findCaseByCaseByNormName, findCaseByCaseById, isUserExcludedNormName,
-    loadDocuments, documentsForCompany, buildDocumentsIndex, addDocument, updateDocumentExtracted, getBlob, getLocalDocFile, renameDocument, setDocumentMemo, setDocumentQaAnswers, setDocumentConsultation, normalizeQuestionnaireRating, QUESTIONNAIRE_RATINGS, markDocumentMaterialsSent, pendingRequestMaterialDocs, setDocumentVerification, deleteDocument, findDocument, migrateDocumentToCloud,
+    loadDocuments, documentsForCompany, buildDocumentsIndex, addDocument, updateDocumentExtracted, getBlob, getLocalDocFile, renameDocument, setDocumentMemo, setDocumentQaAnswers, setDocumentConsultation, normalizeQuestionnaireRating, QUESTIONNAIRE_RATINGS, markDocumentMaterialsSent, pendingRequestMaterialDocs,
+    readConsultReview, setDocumentConsultReview, pendingConsultReviewDocs, CONSULT_REVIEW_RATED, setDocumentVerification, deleteDocument, findDocument, migrateDocumentToCloud,
     loadMemos, memosFor, addMemo, updateMemo, deleteMemo, buildMemosIndex,
     pendingActivitiesForCompany, tasksForCompany, calendarEventsForCompany, upcomingCalendarEventsForCompany,
     DEAL_STAGES, setDealStage, setAssigneeUserId, addNeed, removeNeed, dismissNeedSuggestion, addSpecialNote, removeSpecialNote, setImportant, suggestNeedFor,
@@ -19707,15 +19955,37 @@ window.SHIN2_CRM_APP_INIT = function(){
     input.addEventListener('input', ()=>{ clearTimeout(timer); timer = setTimeout(save, 600); });
     input.addEventListener('blur', ()=>{ clearTimeout(timer); save(); });
   }
+  // §질문지 상담 기록 재구성 라운드 — 자동 인사이트는 사람이 직접 쓴 인사이트와 저장
+  // 위치가 다르다(자동: 질문지 문서의 consultReview.autoInsight / 수동: 업체 레코드의
+  // customerInsight.note). 둘을 구분해 보여주고, 자동값이 수동값을 덮어쓰지 않는다(§12).
+  // 기본정보 탭은 "요약"만 보여준다(§15-2) — 종합 인사이트 한 줄 + 어떤 항목이 정리돼
+  // 있는지 알려주는 라벨 칩. 전체 항목은 질문지 상담 탭의 요약 카드에서 본다(§15-1).
+  function autoInsightBlockHtml(co){
+    const doc = D.documentsForCompany(co.id, 'questionnaire')[0];
+    if(!doc) return '';
+    const r = D.readConsultReview(doc);
+    const parsed = parseConsultInsightSummary(r.autoInsight.summary);
+    if(!parsed.sections.length) return '';
+    const lead = parsed.verdict || (parsed.sections[0] || {}).text || '';
+    const chips = parsed.sections.filter(sec=> sec.key !== 'verdict').map(sec=> sec.label);
+    return `
+      <div class="insight-auto-block">
+        <div class="insight-auto-label">자동 인사이트 <span class="insight-auto-src">질문지 상담 기준</span></div>
+        <div class="insight-auto-lead">${esc(lead)}</div>
+        ${chips.length ? `<div class="insight-auto-chips">${chips.map(c=> `<span class="insight-auto-chip">${esc(c)}</span>`).join('')}</div>` : ''}
+        <button type="button" class="insight-auto-more" id="cdashAutoInsightMore">질문지 상담에서 전체 보기</button>
+      </div>`;
+  }
   function renderInsightNoteSummary(co){
     const wrap = document.getElementById('cdashInsightNoteSummary');
     if(!wrap) return;
     const note = customerInsightNote(co);
+    const autoHtml = autoInsightBlockHtml(co);
     if(!note){
       wrap.innerHTML = `
         <div class="cdash2-card insight-note-card">
           <div class="cdash2-card-title">고객 인사이트</div>
-          <div class="chart-empty">아직 기록된 인사이트가 없습니다 — 질문지 상담 탭에서 작성할 수 있습니다.</div>
+          ${autoHtml || '<div class="chart-empty">아직 기록된 인사이트가 없습니다 — 질문지 상담 탭에서 작성할 수 있습니다.</div>'}
         </div>`;
       return;
     }
@@ -19727,8 +19997,10 @@ window.SHIN2_CRM_APP_INIT = function(){
           <span>고객 인사이트</span>
           <button type="button" class="co-text-action" id="cdashInsightNoteEditBtn" style="font-size:11px;padding:2px 8px;white-space:nowrap;">질문지 상담에서 수정</button>
         </div>
+        <div class="insight-manual-label">직접 작성</div>
         <div class="insight-note-view${isLong ? ' is-clamped' : ''}" id="cdashInsightNoteView">${esc(note)}</div>
         ${isLong ? `<button type="button" class="insight-note-more" id="cdashInsightNoteMore">더보기</button>` : ''}
+        ${autoHtml}
       </div>`;
     const more = document.getElementById('cdashInsightNoteMore');
     if(more) more.addEventListener('click', ()=>{
@@ -19742,43 +20014,33 @@ window.SHIN2_CRM_APP_INIT = function(){
       const el = document.getElementById('cdashInsightNoteInput');
       if(el) el.focus();
     });
+    const autoMore = document.getElementById('cdashAutoInsightMore');
+    if(autoMore) autoMore.addEventListener('click', ()=> setCustomerDetailTab('questionnaire'));
   }
   function renderQuestionnaireSummaryCard(co, questionnaireDoc){
     const wrap = document.getElementById('cdashQuestionnaireCard');
     if(!wrap) return;
     const doc = questionnaireDoc || D.documentsForCompany(co.id, 'questionnaire')[0];
-    const qa = (doc && doc.qaAnswers) || {};
-    const answered = QUESTIONNAIRE_SESSION_QUESTIONS.filter(q=> String(qa[q.key] || '').trim());
     const openBtnHtml = doc ? `<button type="button" class="co-text-action" id="cdashQuestionnaireOpenBtn" style="font-size:11px;padding:2px 8px;white-space:nowrap;">질문지 상담 기록 열기</button>` : '';
-    // §정답 시안 정밀 반영 라운드 §9: 시안의 "답변 미등록" 배지 — 실제 qaAnswers 존재
-    // 여부(answered.length)만 반영한다. 새 상태를 만들지 않고 이미 계산된 answered 배열을
-    // 그대로 읽어 "답변 미등록"/"답변 등록됨"만 표시한다(§ 가짜 상태 금지).
-    const qaBadgeHtml = `<span class="cdash2-tag${answered.length ? ' is-done' : ''} cdash2-qa-badge">${answered.length ? '답변 등록됨' : '답변 미등록'}</span>`;
-    // §질문지 섹션별 평가 + 요청자료 라운드 — 단일 배지 대신 섹션별 평가 줄과
-    // 요청자료 상태를 보여준다. 요청자료는 메모 안에 묻히지 않게 별도 구획이다.
-    const secSummaryHtml = doc ? qsectionSummaryHtml(doc) : '';
-    const reqBadge = doc ? reqMatBadgeHtml(doc) : '';
-    const reqText = String((doc && doc.requestMaterials) || '').trim();
-    const memoText = String((doc && doc.memo) || '').trim();
+    // §질문지 상담 기록 재구성 라운드 — Q1~Q8 답변 나열 대신 평가 3개 + 요청자료 +
+    // 자동 인사이트를 보여준다. 기존 답변(qaAnswers)은 지우지 않았고 상담 기록 팝업의
+    // "이전 기록 보기"에서 그대로 읽을 수 있다.
+    const r = doc ? D.readConsultReview(doc) : null;
+    const ratedCount = r ? D.CONSULT_REVIEW_RATED.filter(([k])=> r[k].rating).length : 0;
+    const reqText = r ? r.requestedMaterialsAfterMeeting.memo.trim() : '';
+    const insight = r ? parseConsultInsightSummary(r.autoInsight.summary) : { sections:[] };
+    const stateBadge = `<span class="cdash2-tag${ratedCount ? ' is-done' : ''} cdash2-qa-badge">${ratedCount ? `평가 ${ratedCount}/3` : '상담 기록 없음'}</span>`;
     wrap.innerHTML = `
       <div class="cdash2-card">
         <div class="cdash2-card-title" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
           <span><span aria-hidden="true">📄</span> 질문지 상담 요약</span>
-          <div style="display:flex;align-items:center;gap:6px;">${reqBadge}${qaBadgeHtml}${openBtnHtml}</div>
+          <div style="display:flex;align-items:center;gap:6px;">${reqText ? '<span class="crv-req-badge">요청자료</span>' : ''}${stateBadge}${openBtnHtml}</div>
         </div>
-        ${reqText ? `<div class="reqmat-callout"><div class="reqmat-callout-head">요청자료 ${reqBadge}</div><div class="reqmat-callout-text">${esc(reqText)}</div></div>` : ''}
-        ${secSummaryHtml}
-        ${memoText ? `<div class="qrating-memo"><span class="qrating-memo-label">메모</span>${esc(memoText)}</div>` : ''}
-        ${answered.length ? `
-          <div class="cdash-qa-summary-list">
-            ${answered.map(q=> `
-              <div class="cdash-qa-summary-item">
-                <div class="cdash-qa-summary-label">${esc(q.num)} · ${esc(q.type)}</div>
-                <div class="cdash-qa-summary-text">${esc(String(qa[q.key] || '').trim())}</div>
-              </div>
-            `).join('')}
-          </div>
-        ` : `<div class="chart-empty">아직 등록된 질문지 상담 답변이 없습니다</div>`}
+        ${reqText ? `<div class="crv-req-callout"><div class="crv-req-callout-head">미팅 후 요청 자료</div><div class="crv-req-callout-text">${esc(reqText)}</div></div>` : ''}
+        ${r ? consultRatingSummaryHtml(doc) : ''}
+        ${insight.sections.length ? `
+          <div class="crv-insight-box is-compact">${consultInsightInnerHtml(insight, r.autoInsight.updatedAt)}</div>
+        ` : `<div class="chart-empty">아직 등록된 질문지 상담 기록이 없습니다</div>`}
       </div>
     `;
     const openBtn = document.getElementById('cdashQuestionnaireOpenBtn');
@@ -24783,6 +25045,7 @@ window.SHIN2_CRM_APP_INIT = function(){
   // 변경 금지").
   function showCustomerTab(){
     document.getElementById('workQueueView').style.display = 'none';
+    renderConsultRequestAlert();   // MOU 진행상황 화면에서만 뜨는 알림이라 여기서 치운다
     document.getElementById('mailSettingsView').style.display = 'none';
     if(currentCompanyId && D.findCompany(currentCompanyId)){
       cardView.style.display = 'block';
@@ -24810,7 +25073,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     document.getElementById('mailSettingsView').style.display = 'none';
     document.getElementById('workQueueView').style.display = 'block';
     updateTopTabsUI('workqueue');
-    requestAnimationFrame(()=> requestAnimationFrame(renderWorkQueueView));
+    requestAnimationFrame(()=> requestAnimationFrame(()=>{ renderWorkQueueView(); renderConsultRequestAlert(); }));
   }
   // §1차미팅 메일 자동발송 라운드(신규): 나머지 세 view와 완전히 같은 전환 패턴.
   // §업무관리 탭 속도 개선 라운드(신규) — renderMailSettingsView 자체는 업체 반복 계산이
@@ -24820,6 +25083,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     listView.style.display = 'none';
     cardView.style.display = 'none';
     document.getElementById('workQueueView').style.display = 'none';
+    renderConsultRequestAlert();   // MOU 진행상황 화면에서만 뜨는 알림이라 여기서 치운다
     document.getElementById('mailSettingsView').style.display = 'block';
     updateTopTabsUI('mailsettings');
     requestAnimationFrame(()=> requestAnimationFrame(renderMailSettingsView));
@@ -24846,6 +25110,7 @@ window.SHIN2_CRM_APP_INIT = function(){
   // 호출한다(openCard 자체는 전혀 수정하지 않음).
   function openCardFromWorkQueue(id){
     document.getElementById('workQueueView').style.display = 'none';
+    renderConsultRequestAlert();   // MOU 진행상황 화면에서만 뜨는 알림이라 여기서 치운다
     updateTopTabsUI('customer');
     openCustomerDetail(id, 'overview');
   }
@@ -25800,6 +26065,9 @@ window.SHIN2_CRM_APP_INIT = function(){
     { section:'E', sectionLabel:'마무리', num:'Q8', key:'q8', type:'리스크 파악',
       text:'혹시 POUR와 관련해 궁금하신 점이나 걱정되는 부분이 있다면 편하게 말씀해주세요.' }
   ];
+  // §질문지 상담 기록 재구성 라운드 — 이 렌더러는 더 이상 화면에 연결돼 있지 않다.
+  // (Q1~Q8 답변칸을 평가/메모 구조로 교체했다.) 상수 QUESTIONNAIRE_SESSION_QUESTIONS는
+  // "이전 기록 보기"(legacyQuestionnaireFoldHtml)가 기존 답변을 읽을 때 계속 쓴다.
   function questionnaireQaFieldsHtml(doc){
     const qa = doc.qaAnswers || {};
     let html = '';
@@ -25824,6 +26092,285 @@ window.SHIN2_CRM_APP_INIT = function(){
         </div>`;
     });
     return html;
+  }
+  // ==========================================================================
+  // §질문지 상담 기록 재구성 라운드(신규) — 입력 UI.
+  //
+  // 질문(Q1~Q8) 답변칸·체크형 요청자료 칩은 화면에서 전부 뺐다. 대신 섹션 5개
+  // (시장이해도 / 진정성 / 전환 가능성 확인 / 2차 미팅 준비확인 / 미팅 후 요청 자료)와
+  // 자동 고객 인사이트만 남는다. 질문지 문서 뷰어(왼쪽)는 그대로라 질문 문항은 원본
+  // 문서에서 계속 볼 수 있다(§1 "질문지는 참고용 문서만 보여준다").
+  //
+  // 기존 데이터는 지우지 않는다 — qaAnswers·memo·consultRatings·requestMaterials는
+  // 레코드에 그대로 남아 있고(아래 "이전 기록" 접기 구획에서 읽기 전용으로 볼 수 있다),
+  // 새 입력은 전부 consultReview에만 쌓인다.
+  // ==========================================================================
+  const CRATING_DEFS = [['high','상'],['mid','중'],['low','하']];
+  function cratingLabel(v){ const h = CRATING_DEFS.find(d=> d[0]===v); return h ? h[1] : '미평가'; }
+  function cratingChipsHtml(sectionKey, cur){
+    return `<span class="crv-rate" role="radiogroup" aria-label="${esc(sectionKey)} 평가">
+      ${CRATING_DEFS.map(([val,label])=> `<button type="button" class="crv-rate-btn is-${esc(val)}${cur===val?' is-on':''}"
+        data-crv-rate="${esc(sectionKey)}" data-crv-val="${esc(val)}" role="radio" aria-checked="${cur===val?'true':'false'}"
+        title="${esc(label)} (다시 누르면 미평가)">${esc(label)}</button>`).join('')}
+    </span>`;
+  }
+  function consultReviewFormHtml(doc){
+    const r = D.readConsultReview(doc);
+    const ratedHtml = D.CONSULT_REVIEW_RATED.map(([key,label,desc])=> `
+      <section class="crv-card" data-crv-section="${esc(key)}">
+        <div class="crv-card-head">
+          <div class="crv-card-titles">
+            <div class="crv-card-title">${esc(label)}</div>
+            <div class="crv-card-desc">${esc(desc)}</div>
+          </div>
+          ${cratingChipsHtml(key, r[key].rating)}
+        </div>
+        <textarea class="crv-memo" data-crv-memo="${esc(key)}" placeholder="${esc(label)} 관련 상담 내용을 적어주세요.">${esc(r[key].memo)}</textarea>
+      </section>`).join('');
+    const reqMemo = r.requestedMaterialsAfterMeeting.memo;
+    return `
+      ${ratedHtml}
+      <section class="crv-card" data-crv-section="secondMeetingPreparation">
+        <div class="crv-card-head">
+          <div class="crv-card-titles">
+            <div class="crv-card-title">2차 미팅 준비확인</div>
+            <div class="crv-card-desc">다음 미팅 참석자·준비할 자료 등 (평가 없음)</div>
+          </div>
+        </div>
+        <textarea class="crv-memo" data-crv-memo="secondMeetingPreparation" placeholder="2차 미팅 전에 준비할 내용을 적어주세요.">${esc(r.secondMeetingPreparation.memo)}</textarea>
+      </section>
+      <section class="crv-card is-request${reqMemo.trim() ? ' is-pending' : ''}" data-crv-section="requestedMaterialsAfterMeeting">
+        <div class="crv-card-head">
+          <div class="crv-card-titles">
+            <div class="crv-card-title">미팅 후 요청 자료</div>
+            <div class="crv-card-desc">여기에 내용을 적으면 MOU 진행상황 화면에 빨간 알림이 뜹니다.</div>
+          </div>
+          <span class="crv-req-badge" id="crvReqBadge"${reqMemo.trim() ? '' : ' hidden'}>알림 발생</span>
+        </div>
+        <textarea class="crv-memo" data-crv-memo="requestedMaterialsAfterMeeting" placeholder="예: 협약서, 시방서, 최근 실적자료 발송 요청">${esc(reqMemo)}</textarea>
+      </section>
+      <section class="crv-card is-insight">
+        <div class="crv-card-head">
+          <div class="crv-card-titles">
+            <div class="crv-card-title">고객 인사이트</div>
+            <div class="crv-card-desc">위 입력값으로 자동 정리됩니다 (읽기 전용)</div>
+          </div>
+          <button type="button" class="crv-insight-btn" id="crvInsightRebuild">자동 정리</button>
+        </div>
+        <div class="crv-insight-box" id="crvInsightBox">${consultInsightInnerHtml(parseConsultInsightSummary(r.autoInsight.summary), r.autoInsight.updatedAt)}</div>
+      </section>
+      ${legacyQuestionnaireFoldHtml(doc)}`;
+  }
+  // 항목(최대 6개)을 "제목 + 본문"으로 그린다. built를 넘기면 그대로 쓰고, 안 넘기면
+  // 저장돼 있던 summary 평문을 두 줄 묶음으로 되살려 그린다.
+  function consultInsightInnerHtml(built, updatedAt){
+    const sections = (built && built.sections) || [];
+    if(!sections.length) return `<div class="crv-insight-empty">아직 정리된 내용이 없습니다 — 평가·메모를 입력하면 자동으로 채워집니다.</div>`;
+    return `<div class="crv-insight-list">${sections.map(sec=> `
+      <div class="crv-insight-sec${sec.key === 'verdict' ? ' is-verdict' : ''}">
+        <div class="crv-insight-sec-label">${esc(sec.label)}</div>
+        <div class="crv-insight-sec-text">${esc(sec.text)}</div>
+      </div>`).join('')}</div>${updatedAt ? `<div class="crv-insight-meta">${esc(fmtDate(updatedAt))} 정리</div>` : ''}`;
+  }
+  // 저장된 summary 평문("제목\n본문" 묶음을 빈 줄로 이은 것)을 다시 항목으로 쪼갠다.
+  function parseConsultInsightSummary(summary){
+    const txt = String(summary || '').trim();
+    if(!txt) return { sections:[], summary:'', verdict:'' };
+    const sections = txt.split(/\n{2,}/).map(block=>{
+      const lines = block.split('\n');
+      const label = (lines.shift() || '').trim();
+      const text = lines.join(' ').trim();
+      const key = Object.keys(CONSULT_INSIGHT_LABELS).find(k=> CONSULT_INSIGHT_LABELS[k] === label) || '';
+      return { key, label, text };
+    }).filter(sec=> sec.label && sec.text);
+    const v = sections.find(sec=> sec.key === 'verdict');
+    return { sections, summary:txt, verdict: v ? v.text : '' };
+  }
+  // 예전 Q1~Q8 답변/상담 메모는 지우지 않았으므로, 값이 있는 문서에서는 읽기 전용으로
+  // 그대로 볼 수 있게 접어 둔다(§11 "기존 기록 보존").
+  function legacyQuestionnaireFoldHtml(doc){
+    const qa = (doc && doc.qaAnswers) || {};
+    const answered = QUESTIONNAIRE_SESSION_QUESTIONS.filter(q=> String(qa[q.key] || '').trim());
+    const oldMemo = String((doc && doc.memo) || '').trim();
+    const oldMat = String((doc && doc.requestMaterials) || '').trim();
+    if(!answered.length && !oldMemo && !oldMat) return '';
+    return `
+      <details class="crv-legacy">
+        <summary>이전 기록 보기 (질문 답변 · 상담 메모 · 요청자료)</summary>
+        ${oldMat ? `<div class="crv-legacy-item"><div class="crv-legacy-label">이전 요청자료</div><div class="crv-legacy-text">${esc(oldMat)}</div></div>` : ''}
+        ${oldMemo ? `<div class="crv-legacy-item"><div class="crv-legacy-label">이전 상담 메모</div><div class="crv-legacy-text">${esc(oldMemo)}</div></div>` : ''}
+        ${answered.map(q=> `<div class="crv-legacy-item"><div class="crv-legacy-label">${esc(q.num)} · ${esc(q.type)}</div><div class="crv-legacy-text">${esc(String(qa[q.key]).trim())}</div></div>`).join('')}
+      </details>`;
+  }
+  // ==========================================================================
+  // 자동 고객 인사이트 — 고정 규칙형 문장 생성 (외부 AI API 호출 없음).
+  //
+  // 평가(상/중/하)마다 쓸 문장이 아래 표에 전부 고정돼 있다. 코드가 문장을 "지어내는"
+  // 경우는 없고, 표에서 고르거나 사람이 쓴 메모를 그대로 인용하는 두 가지뿐이다
+  // (§17 "AI가 새로운 사실을 만들어내는 것 금지").
+  //
+  // 메모는 뜻을 바꾸지 않는다 — 공백 정리 + 1~2문장으로 자르기 + 마침표 보정만 한다.
+  // 맞춤법 교정은 사전 없이 규칙만으로는 원문 뜻을 바꿀 위험이 있어 하지 않는다.
+  // ==========================================================================
+  const CONSULT_INSIGHT_SENTENCES = {
+    marketUnderstanding: {
+      high:'관련 시장 및 영업 구조에 대한 이해도가 높으며, 제안 내용을 빠르게 이해하는 편입니다.',
+      mid: '기본적인 시장 이해도는 있으나 일부 내용은 추가 설명이 필요합니다.',
+      low: '시장 및 제안 구조에 대한 이해가 아직 낮아 충분한 설명과 안내가 필요합니다.'
+    },
+    sincerity: {
+      high:'협력 및 후속 진행에 대한 의지가 높게 확인됩니다.',
+      mid: '관심은 확인되나 실제 후속 진행 여부는 추가 확인이 필요합니다.',
+      low: '현재 단계에서는 적극적인 협력 의지가 높지 않은 것으로 판단됩니다.'
+    },
+    conversionPotential: {
+      high:'실제 협력 및 다음 단계로 전환될 가능성이 높은 업체입니다.',
+      mid: '전환 가능성은 있으나 추가 협의 및 확인 과정이 필요합니다.',
+      low: '현재 단계에서는 단기간 내 전환 가능성이 낮아 지속적인 관리가 필요합니다.'
+    }
+  };
+  // 고객 인사이트에 쓰는 항목 제목(§1의 6개). 입력 카드 제목과 조금 다르다("전환 가능성
+  // 확인" → "전환 가능성") — 명세의 표기를 그대로 따른다.
+  const CONSULT_INSIGHT_LABELS = {
+    marketUnderstanding:'시장 이해도',
+    sincerity:'진정성',
+    conversionPotential:'전환 가능성',
+    secondMeetingPreparation:'2차 미팅 준비',
+    requestedMaterialsAfterMeeting:'요청자료',
+    verdict:'종합 인사이트'
+  };
+  // 메모 정리 — 뜻은 그대로 두고 모양만 다듬는다.
+  function consultMemoClean(memo){
+    let t = String(memo || '').replace(/\s+/g, ' ').trim();
+    if(!t) return '';
+    // 문장이 3개 이상이면 앞의 2문장만 쓴다(§5 "너무 긴 메모는 1~2문장으로 축약").
+    const parts = t.split(/(?<=[.!?。])\s+/).filter(Boolean);
+    if(parts.length > 2) t = parts.slice(0, 2).join(' ');
+    // 그래도 길면 글자 수로 한 번 더 자른다. 자른 건 …로 표시해 원문이 더 있음을 알린다.
+    if(t.length > 120) t = t.slice(0, 120).replace(/\s+\S*$/, '') + '…';
+    if(!/[.!?。…]$/.test(t)) t += '.';
+    return t;
+  }
+  // 종합 인사이트 — 판정 순서는 §9에 적힌 그대로다(중복 조건이 걸려도 위가 이긴다).
+  const CONSULT_VERDICT_RULES = [
+    { id:'allHigh',   test:c=> c.high === 3,                 text:'전반적으로 이해도와 협력 의지가 높아 후속 진행 우선도가 높은 업체입니다.' },
+    { id:'lowMany',   test:c=> c.low >= 2,                   text:'현재는 적극적인 전환보다 관계 유지와 추가 안내 중심의 관리가 필요한 업체입니다.' },
+    { id:'highMany',  test:c=> c.high >= 2,                  text:'전반적인 이해도와 관심도가 높은 편으로, 후속 협의를 적극적으로 진행할 가치가 있는 업체입니다.' },
+    { id:'allMid',    test:c=> c.mid === 3,                  text:'전반적인 관심은 확인되나 후속 진행을 위해 추가 확인이 필요한 업체입니다.' },
+    { id:'highOneMid',test:c=> c.high === 1 && c.mid >= 2,   text:'시장 이해도 또는 관심도는 확인되나 실제 전환을 위해 추가 협의가 필요한 업체입니다.' },
+    { id:'mixed',     test:()=> true,                        text:'일부 긍정적인 요소는 확인되지만 실제 전환 가능성을 판단하기 위해 추가 확인이 필요합니다.' }
+  ];
+  function consultVerdictText(review){
+    const r = review || {};
+    const vals = ['marketUnderstanding','sincerity','conversionPotential']
+      .map(k=> (r[k] || {}).rating).filter(Boolean);
+    if(!vals.length) return '';   // 평가가 하나도 없으면 종합도 만들지 않는다
+    const c = {
+      high: vals.filter(v=> v==='high').length,
+      mid:  vals.filter(v=> v==='mid').length,
+      low:  vals.filter(v=> v==='low').length
+    };
+    const hit = CONSULT_VERDICT_RULES.find(rule=> rule.test(c));
+    return hit ? hit.text : '';
+  }
+  // 최대 6개 항목을 만든다. 반환값: { sections:[{key,label,text}], summary, verdict }
+  // summary는 저장·표시에 쓰는 평문(제목 줄 + 본문 줄).
+  function buildConsultAutoInsight(review){
+    const r = review || {};
+    const sections = [];
+    ['marketUnderstanding','sincerity','conversionPotential'].forEach(key=>{
+      const node = r[key] || { rating:'', memo:'' };
+      const base = node.rating ? (CONSULT_INSIGHT_SENTENCES[key] || {})[node.rating] : '';
+      const memo = consultMemoClean(node.memo);
+      // rating이 없으면 고정 문장은 만들지 않는다(§2~4). 메모만 있으면 사람이 쓴 그 문장만
+      // 인용해 남긴다 — 입력한 내용이 요약에서 통째로 사라지지 않게 하기 위해서다.
+      const text = [base, memo].filter(Boolean).join(' ');
+      if(text) sections.push({ key, label:CONSULT_INSIGHT_LABELS[key], text });
+    });
+    const prep = consultMemoClean((r.secondMeetingPreparation || {}).memo);
+    if(prep) sections.push({ key:'secondMeetingPreparation', label:CONSULT_INSIGHT_LABELS.secondMeetingPreparation, text:prep });
+    const req = consultMemoClean((r.requestedMaterialsAfterMeeting || {}).memo);
+    if(req) sections.push({ key:'requestedMaterialsAfterMeeting', label:CONSULT_INSIGHT_LABELS.requestedMaterialsAfterMeeting, text:req });
+    const verdict = consultVerdictText(r);
+    if(verdict) sections.push({ key:'verdict', label:CONSULT_INSIGHT_LABELS.verdict, text:verdict });
+    const summary = sections.map(sec=> sec.label + '\n' + sec.text).join('\n\n');
+    return { sections, summary, verdict };
+  }
+  // 요약·배지용 — 평가 3개를 한 줄로.
+  function consultRatingSummaryHtml(doc){
+    const r = D.readConsultReview(doc);
+    const rows = D.CONSULT_REVIEW_RATED.filter(([k])=> r[k].rating);
+    if(!rows.length) return '';
+    return `<div class="crv-sum">${rows.map(([k,label])=>
+      `<span class="crv-sum-item"><span class="crv-sum-name">${esc(label)}</span><span class="crv-sum-badge is-${esc(r[k].rating)}">${esc(cratingLabel(r[k].rating))}</span></span>`).join('')}</div>`;
+  }
+  // ==========================================================================
+  // §미팅 후 요청 자료 알림 — MOU 진행상황 화면에서만 뜬다(§5).
+  //
+  // "발송완료 체크" 방식이 아니라 "메모가 들어오면 알림" 구조다
+  // (consultReview.requestedMaterialsAfterMeeting.pending). 나중에 완료 처리를 붙일 때
+  // completedAt 필드와 아래 isDone 분기만 쓰면 되도록 자리를 비워 뒀다.
+  // ==========================================================================
+  function consultRequestAlertItems(){
+    const docs = (D.pendingConsultReviewDocs && D.pendingConsultReviewDocs()) || [];
+    const items = [];
+    docs.forEach(d=>{
+      const co = D.findCompany(d.companyId);
+      if(!co) return;                      // 삭제된 업체는 알리지 않는다
+      const r = D.readConsultReview(d);
+      // 1차 미팅이 끝난 업체를 위로 올린다(§5 "1차 미팅 이후 단계라면 더 우선"). 새 판정을
+      // 만들지 않고 이미 있는 buildProgressStages의 m1 단계 상태를 그대로 읽는다.
+      let afterM1 = false;
+      try{
+        const st = buildProgressStages(co).find(x=> x.key === 'm1');
+        afterM1 = !!(st && st.state === 'done');
+      }catch(err){ /* 단계 조회 실패는 우선순위에만 영향 — 알림 자체는 그대로 뜬다 */ }
+      items.push({ co, doc:d, memo:r.requestedMaterialsAfterMeeting.memo.trim(), afterM1,
+        notifiedAt:r.requestedMaterialsAfterMeeting.notifiedAt });
+    });
+    items.sort((a,b)=> (b.afterM1 ? 1 : 0) - (a.afterM1 ? 1 : 0)
+      || String(b.notifiedAt || '').localeCompare(String(a.notifiedAt || '')));
+    return items;
+  }
+  function renderConsultRequestAlert(){
+    const host = document.getElementById('workQueueView');
+    let el = document.getElementById('consultReqAlert');
+    // MOU 진행상황 화면이 아니면 알림을 띄우지 않는다(§5 "MOU 진행상황 화면에서만").
+    const visible = !!host && host.style.display !== 'none';
+    const items = visible ? consultRequestAlertItems() : [];
+    if(!items.length){ if(el) el.remove(); return; }
+    if(!el){
+      el = document.createElement('div');
+      el.id = 'consultReqAlert';
+      el.className = 'consult-req-alert';
+      document.body.appendChild(el);
+    }
+    const afterM1Count = items.filter(it=> it.afterM1).length;
+    el.innerHTML = `
+      <button type="button" class="consult-req-alert-main" id="consultReqAlertMain">
+        <span class="consult-req-alert-dot" aria-hidden="true"></span>
+        <span class="consult-req-alert-texts">
+          <span class="consult-req-alert-title">요청자료 발송 필요 ${esc(items.length)}건</span>
+          <span class="consult-req-alert-sub">${afterM1Count ? `1차 미팅 후 요청자료 발생 ${esc(afterM1Count)}건` : '질문지 상담에서 등록됨'}</span>
+        </span>
+      </button>
+      <div class="consult-req-alert-list" id="consultReqAlertList" hidden>
+        ${items.slice(0, 8).map(it=> `
+          <button type="button" class="consult-req-alert-row" data-consult-req-co="${esc(it.co.id)}">
+            <span class="consult-req-alert-row-name">${esc(it.co.name)}${it.afterM1 ? '<span class="consult-req-alert-flag">1차 미팅 후</span>' : ''}</span>
+            <span class="consult-req-alert-row-memo">${esc(it.memo.length > 60 ? it.memo.slice(0,60) + '…' : it.memo)}</span>
+          </button>`).join('')}
+        ${items.length > 8 ? `<div class="consult-req-alert-more">외 ${esc(items.length - 8)}건</div>` : ''}
+      </div>`;
+    const list = document.getElementById('consultReqAlertList');
+    document.getElementById('consultReqAlertMain').addEventListener('click', ()=>{
+      list.hidden = !list.hidden;
+      el.classList.toggle('is-open', !list.hidden);
+    });
+    el.querySelectorAll('[data-consult-req-co]').forEach(b=> b.addEventListener('click', ()=>{
+      // 기존 통합 고객 상세 팝업을 "질문지 상담" 탭으로 연다(새 화면 없음).
+      openCustomerDetail(b.getAttribute('data-consult-req-co'), 'questionnaire');
+    }));
   }
   function closeQuestionnaireSession(){
     const root = document.getElementById('questionnaireSessionRoot');
@@ -25877,6 +26424,8 @@ window.SHIN2_CRM_APP_INIT = function(){
     return `<span class="qrating-badge is-${esc(v || 'none')}">${esc(qratingLabel(v))}</span>`;
   }
   // 고객카드·협약 진행관리에 쓰는 "섹션명 [상]" 줄 목록. 평가가 하나도 없으면 빈 문자열.
+  // §질문지 상담 기록 재구성 라운드 — 구 섹션(A~E) 평가 요약. 새 화면은
+  // consultRatingSummaryHtml을 쓴다. 기존 consultRatings 값은 지우지 않았다.
   function qsectionSummaryHtml(doc){
     const map = qsectionRatingsOf(doc);
     const rows = questionnaireSections().filter(sec=> map[sec.id]);
@@ -25904,6 +26453,9 @@ window.SHIN2_CRM_APP_INIT = function(){
       ? '<span class="reqmat-badge is-sent">발송완료</span>'
       : '<span class="reqmat-badge is-pending">발송대기</span>';
   }
+  // §질문지 상담 기록 재구성 라운드 — 체크형 칩이 있던 구 요청자료 블록. 화면에서는
+  // 빠졌지만 구 필드(requestMaterials)를 쓰는 관리 도구 > 발송대기 모달은 그대로라
+  // reqMatBadgeHtml/reqMatMetaText는 계속 쓰인다.
   function requestMaterialsBlockHtml(doc){
     const txt = String((doc && doc.requestMaterials) || '').trim();
     const st = reqMatStatusOf(doc);
@@ -25953,12 +26505,7 @@ window.SHIN2_CRM_APP_INIT = function(){
             <section class="questionnaire-viewer" id="questionnaireViewer"><div class="doc-preview-loading">질문서를 불러오는 중…</div></section>
             <section class="questionnaire-note-pane">
               <div class="questionnaire-note-scroll" id="questionnaireNoteScroll">
-                ${questionnaireQaFieldsHtml(doc)}
-                <div class="questionnaire-qa-item questionnaire-qa-etc">
-                  <label for="questionnaireConsultationMemo">상담 메모</label>
-                  <textarea id="questionnaireConsultationMemo" placeholder="상담 내용이나 특이사항을 입력하세요.">${esc(doc.memo || '')}</textarea>
-                </div>
-                ${requestMaterialsBlockHtml(doc)}
+                ${consultReviewFormHtml(doc)}
               </div>
               <div class="questionnaire-note-footer"><span class="questionnaire-save-status" id="questionnaireSaveStatus">이 질문지에 함께 저장됩니다</span><button type="button" class="btn-primary-action" id="questionnaireMemoSave" style="height:34px;padding:0 16px;">저장</button></div>
             </section>
@@ -25972,6 +26519,11 @@ window.SHIN2_CRM_APP_INIT = function(){
     const refreshSummaryCard = (questionnaireDoc)=>{
       if(currentCompanyId === companyId){
         renderQuestionnaireSummaryCard(co, questionnaireDoc);
+        // §질문지 상담 기록 재구성 라운드 — 기본정보 탭의 "고객 인사이트" 카드도 자동
+        // 인사이트를 읽으므로 같이 갱신한다(안 하면 팝업을 닫고 기본정보로 가도 이전
+        // 내용이 남는다). 사람이 쓴 메모는 이 함수가 건드리지 않는다.
+        try{ renderInsightNoteSummary(D.findCompany(companyId) || co); }
+        catch(err){ /* 기본정보 탭이 아직 안 그려졌으면 무시 */ }
       }
       // §질문서 상담 평가 라운드 — 협약 진행관리 팝업이 열려 있으면 그쪽의 "질문지 상담"
       // 줄(상/중/하 배지·메모)도 같이 갱신한다. 팝업 전체를 다시 그리면 사용자가 열어 둔
@@ -26000,44 +26552,43 @@ window.SHIN2_CRM_APP_INIT = function(){
     const saveBtn = document.getElementById('questionnaireMemoSave');
     const noteScroll = document.getElementById('questionnaireNoteScroll');
     const saveStatus = document.getElementById('questionnaireSaveStatus');
-    const normalizeQaAnswers = (source)=>{
-      const qaAnswers = {};
-      QUESTIONNAIRE_SESSION_QUESTIONS.forEach(q=>{
-        qaAnswers[q.key] = String((source && source[q.key]) || '').trim();
-      });
-      return qaAnswers;
-    };
+    // §질문지 상담 기록 재구성 라운드 — 초안은 consultReview 한 덩어리다.
+    // 자동 인사이트(autoInsight.summary)는 저장할 때마다 현재 입력값으로 다시 만든다
+    // (§8 "저장 시 자동 갱신"). 사람이 직접 쓰는 고객 인사이트 메모(회사 레코드의
+    // customerInsightNote)는 저장 위치가 달라 여기서 절대 덮어쓰지 않는다.
     const readDraft = ()=>{
-      const qaAnswers = {};
-      noteScroll.querySelectorAll('.questionnaire-qa-answer').forEach(ta=>{
-        qaAnswers[ta.getAttribute('data-qa-key')] = ta.value.trim();
+      const out = {};
+      D.CONSULT_REVIEW_RATED.forEach(([key])=>{ out[key] = { rating:'', memo:'' }; });
+      out.secondMeetingPreparation = { memo:'' };
+      out.requestedMaterialsAfterMeeting = { memo:'' };
+      noteScroll.querySelectorAll('[data-crv-memo]').forEach(ta=>{
+        const key = ta.getAttribute('data-crv-memo');
+        if(out[key]) out[key].memo = ta.value.trim();
       });
-      return {
-        memo: document.getElementById('questionnaireConsultationMemo').value.trim(),
-        qaAnswers: normalizeQaAnswers(qaAnswers),
-        // §섹션별 평가 — 눌린 칩에서 섹션 id별로 읽는다.
-        sectionRatings: (()=>{
-          const out = {};
-          noteScroll.querySelectorAll('[data-qsec].is-on').forEach(b=>{ out[b.getAttribute('data-qsec')] = b.getAttribute('data-qsec-val'); });
-          return out;
-        })(),
-        // §미팅 후 요청자료
-        requestMaterials: (()=>{ const el = document.getElementById('reqMatInput'); return el ? el.value.trim() : ''; })()
-      };
+      noteScroll.querySelectorAll('[data-crv-rate].is-on').forEach(b=>{
+        const key = b.getAttribute('data-crv-rate');
+        if(out[key]) out[key].rating = b.getAttribute('data-crv-val');
+      });
+      const built = buildConsultAutoInsight(out);
+      out.autoInsight = { summary: built.summary, verdict: built.verdict };
+      out._builtInsight = built;        // 화면 갱신용(저장 대상 아님)
+      return out;
     };
-    const sectionSig = map=> questionnaireSections().map(sec=> sec.id + ':' + (map[sec.id] || '')).join('|');
     const draftSignature = draft=> JSON.stringify([
-      draft.memo,
-      QUESTIONNAIRE_SESSION_QUESTIONS.map(q=> draft.qaAnswers[q.key] || ''),
-      sectionSig(draft.sectionRatings || {}),
-      draft.requestMaterials || ''
+      D.CONSULT_REVIEW_RATED.map(([k])=> [draft[k].rating, draft[k].memo]),
+      draft.secondMeetingPreparation.memo,
+      draft.requestedMaterialsAfterMeeting.memo,
+      (draft.autoInsight || {}).summary || ''
     ]);
-    const initialDraft = {
-      memo:(doc.memo || '').trim(),
-      qaAnswers:normalizeQaAnswers(doc.qaAnswers || {}),
-      sectionRatings: qsectionRatingsOf(doc),
-      requestMaterials: String(doc.requestMaterials || '').trim()
-    };
+    const initialDraft = (()=>{
+      const r = D.readConsultReview(doc);
+      const out = {};
+      D.CONSULT_REVIEW_RATED.forEach(([k])=>{ out[k] = { rating:r[k].rating, memo:r[k].memo.trim() }; });
+      out.secondMeetingPreparation = { memo:r.secondMeetingPreparation.memo.trim() };
+      out.requestedMaterialsAfterMeeting = { memo:r.requestedMaterialsAfterMeeting.memo.trim() };
+      out.autoInsight = { summary:r.autoInsight.summary, verdict:r.autoInsight.verdict };
+      return out;
+    })();
     let lastSavedSignature = draftSignature(initialDraft);
     let pendingDraft = initialDraft;
     let pendingSignature = lastSavedSignature;
@@ -26075,19 +26626,16 @@ window.SHIN2_CRM_APP_INIT = function(){
       console.info('[MEMO-SAVE] request start');
       inFlight = (async ()=>{
         const localStarted = performance.now();
-        const localResult = D.setDocumentConsultation(doc.id, draft.memo, draft.qaAnswers, undefined, {
-          sectionRatings: draft.sectionRatings,
-          requestMaterials: draft.requestMaterials,
-          actorLabel: crmCurrentUserLabel()
-        });
+        const localResult = D.setDocumentConsultReview(doc.id, draft);
         if(!localResult || !localResult.ok) throw new Error((localResult && localResult.reason) || 'LOCAL_SAVE_FAILED');
         console.info(`[MEMO-SAVE] local complete: ${Math.round(performance.now() - localStarted)}ms`);
         const renderStarted = performance.now();
         refreshSummaryCard(localResult.rec);
-        // 발송대기 건수는 로컬 저장 시점에 이미 확정된다 — 클라우드 확인을 기다리지 않는다
+        // 알림 건수는 로컬 저장 시점에 이미 확정된다 — 클라우드 확인을 기다리지 않는다
         // (네트워크가 잠깐 끊겨도 담당자 화면의 알림 건수는 맞아야 한다).
         renderRequestMaterialBadge();
-        syncRequestMaterialChrome(localResult.rec);
+        syncConsultReviewChrome(localResult.rec);
+        renderConsultRequestAlert();
         console.info(`[MEMO-SAVE] render: ${Math.round(performance.now() - renderStarted)}ms`);
         const cloudResult = await confirmDocsCloudSave(localResult.list);
         if(!cloudResult.ok) throw cloudResult.err || new Error('CLOUD_SAVE_FAILED');
@@ -26137,87 +26685,52 @@ window.SHIN2_CRM_APP_INIT = function(){
     flushPendingSave = ()=> queueSave(true);
     const handleDraftChange = e=>{
       // §미팅 후 요청자료 — 이 입력칸도 같은 저장 큐를 탄다(빠뜨리면 직접 입력이 저장되지 않는다).
-      if(e.target.matches('.questionnaire-qa-answer, #questionnaireConsultationMemo, #reqMatInput')) queueSave(false);
+      if(e.target.matches('[data-crv-memo]')){ refreshInsightBox(); queueSave(false); }
     };
     noteScroll.addEventListener('input', handleDraftChange);
     noteScroll.addEventListener('change', handleDraftChange);
-    // §질문서 상담 평가 라운드 — 평가 칩은 입력칸이 아니라 버튼이라 위 handleDraftChange가
-    // 잡지 못한다. 클릭에서 선택 상태만 바꾸고, 저장은 기존 큐(queueSave)에 그대로 태운다
-    // — 새 저장 경로를 만들지 않아 메모 저장과 충돌하지 않는다(같은 스냅샷 한 번에 나간다).
+    // 평가 칩·[자동 정리]는 입력칸이 아니라 버튼이라 위 handleDraftChange가 잡지 못한다.
+    // 선택 상태만 바꾸고 저장은 기존 큐(queueSave)에 그대로 태운다 — 새 저장 경로를 만들지
+    // 않아 메모 저장과 충돌하지 않는다(같은 스냅샷 한 번에 나간다).
     noteScroll.addEventListener('click', e=>{
-      // §섹션별 평가 — 같은 섹션 안에서만 하나가 켜진다. 켜진 걸 다시 누르면 미평가.
-      const secBtn = e.target.closest('[data-qsec]');
-      if(secBtn && noteScroll.contains(secBtn)){
-        const sec = secBtn.getAttribute('data-qsec');
-        const turnOff = secBtn.classList.contains('is-on');
-        noteScroll.querySelectorAll(`[data-qsec="${sec}"]`).forEach(b=>{
-          const on = !turnOff && b === secBtn;
+      // 상/중/하 — 같은 섹션 안에서만 하나가 켜진다. 켜진 걸 다시 누르면 미평가.
+      const rateBtn = e.target.closest('[data-crv-rate]');
+      if(rateBtn && noteScroll.contains(rateBtn)){
+        const key = rateBtn.getAttribute('data-crv-rate');
+        const turnOff = rateBtn.classList.contains('is-on');
+        noteScroll.querySelectorAll(`[data-crv-rate="${key}"]`).forEach(b=>{
+          const on = !turnOff && b === rateBtn;
           b.classList.toggle('is-on', on);
           b.setAttribute('aria-checked', on ? 'true' : 'false');
         });
+        refreshInsightBox();
         queueSave(true);   // 평가는 타이핑이 아니므로 바로 저장
         return;
       }
-      // §요청자료 빠른 선택 칩 — 입력칸 끝에 덧붙인다(직접 입력도 그대로 가능).
-      const chip = e.target.closest('[data-reqmat-chip]');
-      if(chip && noteScroll.contains(chip)){
-        const input = document.getElementById('reqMatInput');
-        if(input){
-          const val = chip.getAttribute('data-reqmat-chip');
-          const cur = input.value.trim();
-          const parts = cur ? cur.split(/\s*,\s*/).filter(Boolean) : [];
-          if(parts.indexOf(val) < 0) parts.push(val);
-          input.value = parts.join(', ');
-          input.focus();
-          queueSave(false);
-        }
+      // §14 [자동 정리] — 저장값이 아니라 "지금 화면의 입력값"으로 다시 만든다.
+      const rebuild = e.target.closest('#crvInsightRebuild');
+      if(rebuild && noteScroll.contains(rebuild)){
+        refreshInsightBox();
+        queueSave(true);
         return;
       }
     });
-    // §요청자료 발송완료 — 요청 내용은 지우지 않고 상태만 바꾼다. 이 버튼은 블록을
-    // 다시 그릴 때마다 사라졌다 나타나므로 위임으로 잡는다.
-    noteScroll.addEventListener('click', async e=>{
-      const btn = e.target.closest('#reqMatSentBtn');
-      if(!btn || !noteScroll.contains(btn)) return;
-      // 먼저 입력칸의 최신 내용을 저장해 두고(발송완료가 이전 내용에 찍히지 않게) 처리한다.
-      flushPendingSave();
-      const r = D.markDocumentMaterialsSent(doc.id, crmCurrentUserLabel());
-      if(!r || !r.ok){ setSaveStatus('발송완료 처리 실패', true); return; }
-      rerenderRequestMaterials(r.rec);
-      refreshSummaryCard(r.rec);
-      renderRequestMaterialBadge();
-      const cloud = await confirmDocsCloudSave(r.list);
-      if(!cloud.ok) setSaveStatus('발송완료 저장 확인 실패 - 다시 시도', true);
-      else showMiniSaveToast('발송완료로 저장됨');
-    });
-    // 요청자료 블록만 제자리에서 다시 그린다(입력 중인 답변·메모를 건드리지 않게).
-    function rerenderRequestMaterials(freshDoc){
-      const block = document.getElementById('reqMatBlock');
-      if(!block) return;
-      const tmp = document.createElement('div');
-      tmp.innerHTML = requestMaterialsBlockHtml(freshDoc || doc);
-      const fresh = tmp.firstElementChild;
-      if(fresh) block.replaceWith(fresh);
+    // 인사이트 박스만 다시 그린다 — 입력칸(textarea)은 절대 건드리지 않는다(커서 보존).
+    function refreshInsightBox(){
+      const box = document.getElementById('crvInsightBox');
+      if(!box) return;
+      box.innerHTML = consultInsightInnerHtml(buildConsultAutoInsight(readDraft()), nowIsoSafe());
     }
-    // 저장 직후 상태 표시만 맞춘다 — 입력칸(textarea)은 절대 건드리지 않는다.
-    // 블록을 통째로 다시 그리면 타이핑 중인 커서가 날아가므로 배지·안내줄·[발송완료]만 바꾼다.
-    function syncRequestMaterialChrome(freshDoc){
-      const block = document.getElementById('reqMatBlock');
-      if(!block || !freshDoc) return;
-      const head = block.querySelector('.reqmat-head');
-      if(head){
-        const old = head.querySelector('.reqmat-badge');
-        const html = reqMatBadgeHtml(freshDoc);
-        if(old) old.remove();
-        if(html) head.insertAdjacentHTML('beforeend', html);
-      }
-      const meta = block.querySelector('#reqMatMeta');
-      if(meta) meta.textContent = reqMatMetaText(freshDoc);
-      const foot = block.querySelector('.reqmat-foot');
-      const btn = block.querySelector('#reqMatSentBtn');
-      const wantBtn = reqMatStatusOf(freshDoc) === 'pending';
-      if(wantBtn && !btn && foot) foot.insertAdjacentHTML('beforeend', '<button type="button" class="reqmat-send-btn" id="reqMatSentBtn">발송완료</button>');
-      if(!wantBtn && btn) btn.remove();
+    function nowIsoSafe(){ try{ return new Date().toISOString(); }catch(err){ return ''; } }
+    // 저장 직후 상태 표시만 맞춘다 — 입력칸은 그대로 두고 요청자료 배지·강조만 바꾼다.
+    function syncConsultReviewChrome(freshDoc){
+      if(!freshDoc) return;
+      const r = D.readConsultReview(freshDoc);
+      const pending = !!r.requestedMaterialsAfterMeeting.memo.trim();
+      const card = noteScroll.querySelector('[data-crv-section="requestedMaterialsAfterMeeting"]');
+      if(card) card.classList.toggle('is-pending', pending);
+      const badge = document.getElementById('crvReqBadge');
+      if(badge) badge.hidden = !pending;
     }
     saveBtn.addEventListener('click', ()=> queueSave(true));
     noteScroll.addEventListener('keydown', e=>{
@@ -26265,7 +26778,17 @@ window.SHIN2_CRM_APP_INIT = function(){
     const accepted = '.pdf,.jpg,.jpeg,.png,.gif,.webp';
     const inputHtml = `<input type="file" id="agreementQuestionnaireInput" class="questionnaire-file-input" accept="${accepted}" />`;
     if(!doc) return `<div class="questionnaire-work-card"><div class="questionnaire-work-head"><span class="questionnaire-work-title">질문지 상담</span></div><div class="questionnaire-work-meta">질문서를 등록하면, 문서를 보면서 상담 메모를 바로 저장할 수 있습니다.</div><div class="questionnaire-work-actions">${inputHtml}<label for="agreementQuestionnaireInput" class="co-text-action primary questionnaire-file-label">질문지 등록</label></div></div>`;
-    return `<div class="questionnaire-work-card"><div class="questionnaire-work-head"><span class="questionnaire-work-title">질문지 상담</span><span class="questionnaire-work-head-right">${reqMatBadgeHtml(doc)}<span class="status-badge is-progress">등록됨</span></span></div><div class="questionnaire-work-meta">${esc(doc.fileName || doc.originalFileName || '질문서')} · ${esc(fmtDate(doc.createdAt))} 등록${doc.localOnly ? ' · 이 브라우저에만 저장됨' : ''}</div>${String(doc.requestMaterials || '').trim() ? `<div class="reqmat-callout"><div class="reqmat-callout-head">요청자료 ${reqMatBadgeHtml(doc)}</div><div class="reqmat-callout-text">${esc(String(doc.requestMaterials).trim())}</div></div>` : ''}${qsectionSummaryHtml(doc)}${String(doc.memo || '').trim() ? `<div class="qrating-memo"><span class="qrating-memo-label">메모</span>${esc(String(doc.memo).trim())}</div>` : ''}<div class="questionnaire-work-actions">${inputHtml}<button type="button" class="co-text-action primary" data-questionnaire-session="${esc(doc.id)}">질문지 열고 상담 메모</button><label for="agreementQuestionnaireInput" class="co-text-action questionnaire-file-label">질문지 교체</label></div></div>`;
+    return `<div class="questionnaire-work-card"><div class="questionnaire-work-head"><span class="questionnaire-work-title">질문지 상담</span><span class="questionnaire-work-head-right">${reqMatBadgeHtml(doc)}<span class="status-badge is-progress">등록됨</span></span></div><div class="questionnaire-work-meta">${esc(doc.fileName || doc.originalFileName || '질문서')} · ${esc(fmtDate(doc.createdAt))} 등록${doc.localOnly ? ' · 이 브라우저에만 저장됨' : ''}</div>${consultWorkCardHtml(doc)}<div class="questionnaire-work-actions">${inputHtml}<button type="button" class="co-text-action primary" data-questionnaire-session="${esc(doc.id)}">질문지 열고 상담 메모</button><label for="agreementQuestionnaireInput" class="co-text-action questionnaire-file-label">질문지 교체</label></div></div>`;
+  }
+  // §질문지 상담 기록 재구성 라운드 — 협약 진행관리 카드 안의 요약. 요청자료가 있으면
+  // 빨간 경고를, 평가가 있으면 상/중/하 줄과 종합 인사이트 한 줄을 compact하게 보여준다(§15-3).
+  function consultWorkCardHtml(doc){
+    const r = D.readConsultReview(doc);
+    const req = r.requestedMaterialsAfterMeeting.memo.trim();
+    const verdict = r.autoInsight.verdict || parseConsultInsightSummary(r.autoInsight.summary).verdict;
+    return `${req ? `<div class="crv-req-callout"><div class="crv-req-callout-head">미팅 후 요청 자료 <span class="crv-req-badge">발송 필요</span></div><div class="crv-req-callout-text">${esc(req)}</div></div>` : ''}`
+      + consultRatingSummaryHtml(doc)
+      + `${verdict ? `<div class="crv-verdict-line">${esc(verdict)}</div>` : ''}`;
   }
   function bindQuestionnaireWork(companyId){
     const input = document.getElementById('agreementQuestionnaireInput');
