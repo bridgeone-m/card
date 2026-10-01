@@ -2950,6 +2950,248 @@ html,body{background:radial-gradient(circle at 75% -10%,rgba(11,91,211,.055),tra
 .map-modal-overlay .map-modal-infocol{ overflow:hidden; gap:12px; }
 .map-modal-overlay .map-sidelist-block{ flex:1 1 auto; min-height:0; display:flex; flex-direction:column; }
 .map-modal-overlay .map-sidelist-body{ flex:1 1 auto; min-height:0; overflow-y:auto; }
+
+/* ==========================================================================
+   §지도 모달 전면 리디자인 라운드(신규)
+   "구식 관리자 지도 팝업" → "최신 SaaS 대시보드의 지도 모듈".
+   가장 큰 변화는 정보 구조다 — 위에 필터 줄 / 아래 지도+목록 이던 걸,
+   [좌: 검색·필터·목록] + [우: 큰 지도] 2열로 뒤집는다.
+
+   마크업을 다시 짜지 않고 그리드 배치로 뒤집는 이유: 검색/필터 줄(.map-modal-filters),
+   목록(.map-modal-infocol), 지도(.map-modal-mapcol)가 이미 각자 컨테이너로 나뉘어 있어서
+   배치만 바꾸면 되고, 그래야 id 기준으로 걸려 있는 기존 이벤트 배선이 하나도 안 끊긴다.
+   .map-modal-body-main은 display:contents로 녹여 그 자식들이 바로 그리드 칸이 되게 한다.
+
+   데이터·집계·필터·마커 계산은 전혀 건드리지 않았다.
+   ========================================================================== */
+.map-modal-overlay{
+  background:rgba(15,23,42,.38) !important;
+  backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+  padding:24px !important;
+}
+.map-modal-panel{
+  width:min(1360px, 94vw) !important; max-width:1360px !important;
+  height:min(820px, 88vh) !important;
+  border-radius:28px !important;
+  box-shadow:0 28px 80px rgba(15,23,42,.18) !important;
+  background:#fff !important;
+}
+/* ---- 헤더: 핀 아이콘 + 제목/부제 | 둥근 닫기 버튼 ---- */
+.map-modal-overlay .map-modal-head{
+  padding:20px 24px 14px !important; border-bottom:1px solid #E6ECF3 !important;
+  display:flex; align-items:flex-start; gap:12px;
+}
+.map-modal-overlay .map-modal-title-wrap{ display:flex; align-items:flex-start; gap:11px; min-width:0; }
+.map-modal-overlay .map-modal-title-wrap::before{
+  content:''; flex:none; width:36px; height:36px; border-radius:12px;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232563EB' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z'/><circle cx='12' cy='10' r='3'/></svg>"); background-repeat:no-repeat; background-position:center; background-size:19px 19px;
+  background-color:#EFF5FF; display:flex; align-items:center; justify-content:center;
+}
+.map-modal-overlay .map-modal-title{ font-size:17px !important; font-weight:800 !important; color:#142033 !important; line-height:1.3; }
+.map-modal-overlay .map-modal-subtitle{ font-size:12.5px !important; color:#6B778C !important; margin-top:2px; }
+.map-modal-overlay .map-modal-close{
+  margin-left:auto; flex:none; width:34px; height:34px; border-radius:50% !important;
+  border:1px solid #E6ECF3 !important; background:#fff !important; color:#6B778C !important;
+  font-size:18px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center;
+}
+.map-modal-overlay .map-modal-close:hover{ background:#F4F7FC !important; color:#142033 !important; }
+/* ---- 탭 ---- */
+.map-modal-overlay .map-modal-tabs{ padding:0 24px !important; border-bottom:1px solid #E6ECF3 !important; }
+.map-modal-overlay .map-modal-tab-btn{ font-size:13px !important; padding:11px 2px !important; margin-right:20px !important; }
+/* ---- 본문: 좌 탐색(380px) / 우 지도 ---- */
+.map-modal-panel > #mapModalBody{
+  display:grid !important;
+  grid-template-columns:380px minmax(0,1fr);
+  grid-template-rows:auto auto minmax(0,1fr);
+  gap:0 18px; padding:16px 20px 20px; background:#F7F9FD;
+}
+.map-modal-panel > #mapModalBody > .map-modal-body-main{ display:contents; }
+.map-modal-overlay .map-modal-filters{
+  grid-column:1; grid-row:1; flex-wrap:wrap; gap:8px !important;
+  padding:0 0 10px !important; border:none !important; background:transparent !important;
+}
+.map-modal-overlay .map-apt-summary{ grid-column:1; grid-row:2; margin:0 0 8px !important; }
+.map-modal-overlay .map-modal-infocol{
+  grid-column:1; grid-row:3; min-height:0; background:#fff;
+  border:1px solid #E6ECF3; border-radius:20px; padding:14px 14px 10px !important;
+  box-shadow:0 10px 24px rgba(15,23,42,.06);
+}
+.map-modal-overlay .map-modal-mapcol{
+  grid-column:2; grid-row:1 / span 3; min-height:0; position:relative;
+  border-radius:20px; overflow:hidden; border:1px solid #E6ECF3;
+  box-shadow:0 10px 24px rgba(15,23,42,.06); background:#EDF2F9;
+}
+.map-modal-overlay .map-modal-canvas{ width:100%; height:100%; }
+/* ---- 좌측 검색/필터 ---- */
+.map-modal-overlay .map-search-field{ flex:1 1 100% !important; min-width:0 !important; }
+.map-modal-overlay .map-modal-search{
+  height:42px !important; border-radius:14px !important; border:1px solid #E6ECF3 !important;
+  background:#fff !important; font-size:13px !important;
+}
+.map-modal-overlay .map-modal-search:focus{ border-color:#2563EB !important; box-shadow:0 0 0 3px rgba(37,99,235,.12) !important; }
+.map-modal-overlay .map-modal-select{
+  flex:1 1 calc(50% - 4px); min-width:0;
+  height:36px !important; border-radius:12px !important; border:1px solid #E6ECF3 !important;
+  background-color:#fff !important; font-size:12.5px !important;
+}
+.map-modal-overlay .map-modal-select:hover{ border-color:#C7D7EE !important; }
+.map-modal-overlay .map-modal-toggle-group{ flex:1 1 100%; }
+.map-modal-overlay .map-modal-retry-btn{ border-radius:12px !important; }
+/* ---- 좌측 목록 ---- */
+.map-modal-overlay .map-sidelist-head{ padding:0 2px 9px !important; border-bottom:1px solid #EFF3F8 !important; }
+.map-modal-overlay .map-sidelist-title{ font-size:13px !important; font-weight:800 !important; color:#142033 !important; }
+.map-modal-overlay .map-sidelist-body{ padding-top:6px; }
+/* ---- 지도 위 플로팅 UI ---- */
+:root{
+  --map-primary:#2563EB; --map-primary-strong:#1D4ED8; --map-bg:#F5F8FD; --map-surface:#FFFFFF;
+  --map-border:#E4EBF4; --map-text:#142033; --map-muted:#6F7D91;
+  --map-radius-modal:28px; --map-radius-card:16px;
+  --map-shadow-modal:0 28px 80px rgba(15,23,42,.18); --map-shadow-card:0 8px 24px rgba(15,23,42,.06);
+}
+.mapx-overlayui{ position:absolute; inset:0; pointer-events:none; z-index:5; }
+.mapx-overlayui > *{ pointer-events:auto; }
+.mapx-seg{
+  position:absolute; top:14px; right:14px; display:inline-flex; gap:2px; padding:3px;
+  background:rgba(255,255,255,.96); border:1px solid #E6ECF3; border-radius:12px;
+  box-shadow:0 8px 18px rgba(15,23,42,.08);
+}
+.mapx-seg-btn{
+  height:28px; padding:0 13px; border:none; border-radius:9px; cursor:pointer; font-family:inherit;
+  font-size:12px; font-weight:700; color:#6B778C; background:transparent;
+}
+.mapx-seg-btn:hover{ color:#142033; }
+.mapx-seg-btn.is-on{ background:#2563EB; color:#fff; }
+/* §B — 메인 "지역업체 분포" 요약 카드 */
+.region-summary-card{ cursor:pointer; }
+.region-summary-head{ align-items:flex-start !important; }
+.nf-card-title-group{ display:flex; align-items:center; gap:9px; min-width:0; }
+.nf-card-icon{
+  flex:none; width:32px; height:32px; border-radius:11px; background:#EFF5FF;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232563EB' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z'/><circle cx='12' cy='10' r='3'/></svg>"); background-repeat:no-repeat;
+  background-position:center; background-size:17px 17px;
+}
+.nf-card-sub{ margin-top:1px; font-size:11px; color:var(--map-muted); font-weight:500; }
+.open-map-modal-btn{
+  flex:none; width:30px; height:30px; padding:0 !important; border-radius:10px;
+  background:#fff url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232563EB' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M7 17 17 7M7 7h10v10'/></svg>") center/15px 15px no-repeat !important;
+  border:1px solid var(--map-border) !important; font-size:0 !important; cursor:pointer;
+}
+.open-map-modal-btn:hover{ background-color:#EFF5FF !important; border-color:#BBD4F7 !important; }
+.nf-card-foot{ margin-top:10px; padding-top:9px; border-top:1px solid #EFF3F8; }
+.region-map-detail-btn{
+  width:100%; height:34px; border-radius:11px; border:1px solid var(--map-border);
+  background:#fff; color:var(--map-primary); font-size:12px; font-weight:700;
+  font-family:inherit; cursor:pointer;
+}
+.region-map-detail-btn:hover{ background:#EFF5FF; border-color:#BBD4F7; }
+.map-modal-overlay:not(.map-embedded) .map-modal-toggle-group{
+  position:absolute !important; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); clip-path:inset(50%);
+  margin:-1px; padding:0; border:0;
+}
+.mapx-seg-view{ top:58px !important; }
+.mapx-zoom-btn svg{ width:16px; height:16px; display:block; }
+.mapx-zoom{
+  position:absolute; top:14px; left:14px; display:flex; flex-direction:column; gap:5px;
+}
+.mapx-zoom-btn{
+  width:34px; height:34px; border-radius:11px; cursor:pointer; font-family:inherit;
+  font-size:16px; font-weight:700; line-height:1; color:#142033;
+  background:rgba(255,255,255,.96); border:1px solid #E6ECF3;
+  box-shadow:0 8px 18px rgba(15,23,42,.08);
+  display:flex; align-items:center; justify-content:center;
+}
+.mapx-zoom-btn:hover{ background:#fff; border-color:#C7D7EE; }
+.mapx-zoom-btn:focus-visible{ outline:2px solid #2563EB; outline-offset:2px; }
+.mapx-zoom-btn.is-home{ font-size:14px; }
+.mapx-legend{
+  position:absolute; right:14px; bottom:14px; min-width:132px;
+  background:rgba(255,255,255,.95); border:1px solid #E6ECF3; border-radius:16px;
+  padding:11px 13px; box-shadow:0 8px 18px rgba(15,23,42,.08);
+}
+.mapx-legend-title{ font-size:11px; font-weight:800; color:#142033; margin-bottom:6px; }
+.mapx-legend-row{ display:flex; align-items:center; gap:7px; font-size:11px; color:#6B778C; line-height:1.9; }
+.mapx-legend-dot{ width:10px; height:10px; border-radius:50%; flex:none; border:1px solid rgba(15,23,42,.08); }
+/* ---- 반응형 ---- */
+/* §W — 긴 "지역 요약 / 지역별 업체 수" 세로 표를 좌측에서 걷어낸다. 남은 숫자는 목록
+   헤더 바로 아래의 한 줄 summary line으로, 지역별 집계는 가로로 한 줄 흐르는 칩 스트립으로
+   옮겼다. 지역 칩을 눌러 드릴다운하는 기존 동작(data-map-region)은 그대로다 — 모양만 바꿨다. */
+.map-modal-overlay .map-modal-infocol{ display:flex; flex-direction:column; gap:9px; }
+.map-modal-overlay .mapx-chipstrip{
+  flex:none; display:flex; gap:5px; align-items:center; overflow-x:auto; overflow-y:hidden;
+  padding-bottom:2px; scrollbar-width:thin;
+}
+.map-modal-overlay .mapx-chipstrip-label{
+  flex:none; font-size:11px; font-weight:700; color:var(--map-muted); padding-right:2px;
+}
+.map-modal-overlay .map-region-row{
+  display:inline-flex !important; align-items:center; gap:5px; width:auto; flex:none;
+  padding:4px 10px !important; border:1px solid var(--map-border) !important; border-radius:999px;
+  background:#fff; font-size:11.5px !important; white-space:nowrap; cursor:pointer;
+}
+.map-modal-overlay .map-region-row:hover{ border-color:var(--map-primary) !important; background:#EFF5FF; }
+.map-modal-overlay .map-region-count{ font-weight:800; color:var(--map-primary); }
+.map-modal-overlay .mapx-summaryline{
+  display:flex; flex-wrap:wrap; gap:3px 10px; padding:7px 9px; margin:6px 0 2px;
+  background:var(--map-bg); border-radius:11px; font-size:11px; color:var(--map-muted);
+}
+.map-modal-overlay .mapx-summaryline b{ color:var(--map-text); font-weight:800; }
+.map-modal-overlay .mapx-nocoord-badge{
+  display:inline-block; margin-left:4px; padding:1px 6px; border-radius:999px;
+  background:#EDF1F6; color:#8794A6; font-size:10px; font-weight:700;
+}
+.map-modal-overlay .map-company-row.is-nocoord{ opacity:.78; }
+.phone-req-toast{ z-index:2147483000 !important; }
+.map-modal-overlay .map-sidelist-block{ flex:1 1 auto; min-height:0; display:flex; flex-direction:column; }
+
+/* §N/O/P/Q — 좌측 목록 행. 실제 행 클래스는 .map-company-row / .map-apt-row 다. */
+.map-modal-overlay .map-company-row,
+.map-modal-overlay .map-apt-row{
+  position:relative; border-radius:14px !important; border:1px solid transparent !important;
+  border-bottom:none !important; margin-bottom:4px;
+  padding:10px 11px 10px 34px !important;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236F7D91' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'><path d='M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z'/><path d='M10 6h4M10 10h4M10 14h4M10 18h4'/></svg>"); background-repeat:no-repeat;
+  background-position:11px 11px; background-size:15px 15px;
+}
+.map-modal-overlay .map-company-row:hover,
+.map-modal-overlay .map-apt-row:hover{ background-color:#F5F8FE !important; border-color:#DCE8FA !important; }
+.map-modal-overlay .map-company-row.is-active,
+.map-modal-overlay .map-apt-row.is-active{ background-color:#EEF4FF !important; border-color:#BBD4F7 !important; }
+.map-modal-overlay .map-company-row.is-active::before,
+.map-modal-overlay .map-apt-row.is-active::before{
+  content:''; position:absolute; left:0; top:9px; bottom:9px; width:3px; border-radius:3px; background:var(--map-primary);
+}
+/* §K — 검색창 안에 Search 아이콘 */
+.map-modal-overlay .map-modal-search{
+  padding-left:36px !important;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239AA7B8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='11' cy='11' r='8'/><path d='m21 21-4.3-4.3'/></svg>") !important;
+  background-repeat:no-repeat !important; background-position:12px center !important; background-size:16px 16px !important;
+}
+/* §AF — 모달 등장 애니메이션(과한 bounce 없이) */
+@keyframes mapxOverlayIn{ from{ opacity:0; } to{ opacity:1; } }
+@keyframes mapxPanelIn{ from{ opacity:0; transform:translateY(12px) scale(.985); } to{ opacity:1; transform:none; } }
+.map-modal-overlay:not(.map-embedded){ animation:mapxOverlayIn .18s ease-out both; }
+.map-modal-overlay:not(.map-embedded) > .map-modal-panel{ animation:mapxPanelIn .2s cubic-bezier(.2,.7,.3,1) both; }
+@media (prefers-reduced-motion: reduce){
+  .map-modal-overlay:not(.map-embedded),
+  .map-modal-overlay:not(.map-embedded) > .map-modal-panel{ animation:none !important; }
+}
+@media(max-width:1400px){ .map-modal-panel > #mapModalBody{ grid-template-columns:330px minmax(0,1fr); } }
+@media(max-width:1100px){
+  .map-modal-panel > #mapModalBody{
+    grid-template-columns:minmax(0,1fr); grid-template-rows:auto auto auto minmax(320px,1fr);
+    overflow-y:auto;
+  }
+  .map-modal-overlay .map-modal-mapcol{ grid-column:1; grid-row:3; min-height:340px; }
+  .map-modal-overlay .map-modal-infocol{ grid-column:1; grid-row:4; }
+  .map-modal-panel{ height:min(860px, 92vh) !important; }
+}
+@media(max-width:600px){
+  .map-modal-overlay{ padding:10px !important; }
+  .map-modal-panel{ border-radius:20px !important; height:94vh !important; }
+  .map-modal-overlay .map-modal-head{ padding:14px 16px 10px !important; }
+  .map-modal-overlay .map-modal-tabs{ padding:0 16px !important; }
+  .map-modal-panel > #mapModalBody{ padding:12px 14px 14px; }
+}
 .map-sidelist-head{ display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
 .map-sidelist-head-right{ display:inline-flex; align-items:baseline; gap:8px; font-weight:600; }
 .map-sidelist-count{ font-size:11.5px; color:var(--text-muted); font-weight:700; }
@@ -15110,9 +15352,15 @@ window.SHIN2_CRM_APP_INIT = function(){
       return seg;
     }).join('') : '';
     wrap.innerHTML = `
-      <div class="nf-card-head">
-        <div class="nf-card-title">시공사 지역 분포</div>
-        <button type="button" class="nf-card-more" id="crmRegionCardMore">지도 열기</button>
+      <div class="nf-card-head region-summary-head">
+        <div class="nf-card-title-group">
+          <span class="nf-card-icon" aria-hidden="true"></span>
+          <div>
+            <div class="nf-card-title">지역업체 분포</div>
+            <div class="nf-card-sub">전국 등록 업체 위치 및 분포 현황</div>
+          </div>
+        </div>
+        <button type="button" class="nf-card-more open-map-modal-btn" id="crmRegionCardMore" aria-label="지도에서 자세히 보기"></button>
       </div>
       ${total > 0 ? `
         <div class="nf-donut-wrap">
@@ -15133,13 +15381,23 @@ window.SHIN2_CRM_APP_INIT = function(){
               <span class="nf-legend-pct">${total ? Math.round((r.count/total)*100) : 0}%</span>
             </div>`).join('')}
         </div>
-      ` : `<div class="nf-card-empty">표시할 지역 데이터가 없습니다.</div>`}`;
-    const more = document.getElementById('crmRegionCardMore');
-    if(more) more.addEventListener('click', ()=>{
-      // 기존 지도 팝업을 그대로 연다 — 지도 코드는 호출만 한다(§17).
+      ` : `<div class="nf-card-empty">표시할 지역 데이터가 없습니다.</div>`}
+      <div class="nf-card-foot">
+        <button type="button" class="region-map-detail-btn" id="crmRegionCardDetail">지도에서 자세히 보기 →</button>
+      </div>`;
+    // §C — 카드 전체 / 우상단 버튼 / 바닥 버튼이 모두 같은 함수를 부른다. 지도 팝업은
+    //      새로 만들지 않고 기존 openMapDistributionModal()을 그대로 호출만 한다(§17).
+    const openMap = (ev)=>{
+      if(ev) ev.stopPropagation();
       try{ openMapDistributionModal(); }
       catch(err){ console.warn('지도 팝업 열기 실패:', err); }
-    });
+    };
+    const more = document.getElementById('crmRegionCardMore');
+    if(more) more.addEventListener('click', openMap);
+    const detail = document.getElementById('crmRegionCardDetail');
+    if(detail) detail.addEventListener('click', openMap);
+    wrap.classList.add('region-summary-card');
+    wrap.addEventListener('click', openMap);
   }
   // 우측 "최근 요청" — buildRequestListItems() 결과를 업체 구분 없이 최신순으로 모은다.
   function renderNfRecentReqCard(companyList, idx){
@@ -35820,6 +36078,151 @@ window.SHIN2_CRM_APP_INIT = function(){
   let focusAptItem = null;
   let focusAptNearCenter = null; // §근처 아파트 검색 라운드: 주소 검색 성공 시 그 지점으로 지도를 이동+반경 표시
 
+  // ==========================================================================
+  // §지도 모달 전면 리디자인 라운드(신규) — "좌측 탐색 + 우측 지도" 구조로.
+  //
+  // 레이아웃 자체는 CSS 그리드로 뒤집는다(아래 #mapModalBody 규칙) — 검색/필터 줄,
+  // 목록 칼럼, 지도 칼럼이 이미 각자 컨테이너로 나뉘어 있어서 마크업을 다시 짜지 않고
+  // 배치만 바꾸면 되고, 그래야 기존 이벤트 배선(id 기준)이 한 줄도 안 끊긴다.
+  //
+  // 여기서 만드는 건 지도 "위에 떠 있는" 것들뿐이다 — 지도/위성·클러스터/히트맵
+  // 세그먼트, 확대/축소/전체보기 버튼, 범례. 둘 다 탭이 바뀌어도 같은 컨테이너
+  // (#mapModalMapCol)에 붙으므로 함수 하나로 처리한다.
+  // ==========================================================================
+  let mapxCurrentMap = null;
+let mapxFitBoundsFn = null;   // §T — 현재 탭의 지도 빌더가 채워 넣는 "전체 보기" 함수
+
+// §U — 클러스터 원의 건수 구간. 색/지름만 정하는 표시용 테이블이다(집계와 무관).
+function mapxClusterTier(count){
+  const n = Number(count) || 0;
+  if(n >= 100) return { color:'#5B3FD6', size:60 };
+  if(n >= 50)  return { color:'#4F6EF7', size:52 };
+  if(n >= 10)  return { color:'#6F93FF', size:42 };
+  return { color:'#9BB8FF', size:34 };
+}
+
+// §P/Q — 좌측 목록과 지도의 선택 상태를 맞춘다. 데이터는 전혀 건드리지 않고,
+// 행에 is-active 클래스만 붙였다 떼고 보이는 위치로 스크롤할 뿐이다.
+function mapxRowKeyOf(entry){
+  if(!entry) return '';
+  if(entry.co && entry.co.id) return String(entry.co.id);
+  if(entry.key) return String(entry.key);
+  return '';
+}
+function mapxHighlightRow(key){
+  const scope = document.querySelector('.map-modal-overlay');
+  if(!scope) return null;
+  let hit = null;
+  scope.querySelectorAll('.map-company-row, .map-apt-row').forEach(row=>{
+    const rk = row.getAttribute('data-map-company') || row.getAttribute('data-apt-key') || '';
+    const on = !!key && rk === key;
+    row.classList.toggle('is-active', on);
+    if(on) hit = row;
+  });
+  return hit;
+}
+function mapxSelectListRow(entry){
+  const row = mapxHighlightRow(mapxRowKeyOf(entry));
+  if(row && typeof row.scrollIntoView === 'function'){
+    try{ row.scrollIntoView({ block:'nearest' }); }catch(err){ /* 구형 브라우저 무시 */ }
+  }
+}
+// 목록 쪽 클릭도 같은 선택 표시를 쓴다. 기존 행 핸들러(focusMapCompany 등)는 그대로 두고
+// 문서 레벨에서 한 번만 위임해 듣는다 — 목록이 다시 그려져도 다시 바인딩할 필요가 없다.
+if(!window.__mapxRowDelegated){
+  window.__mapxRowDelegated = true;
+  document.addEventListener('click', (ev)=>{
+    const t = ev.target;
+    if(!t || typeof t.closest !== 'function') return;
+    if(!t.closest('.map-modal-overlay')) return;
+    const row = t.closest('.map-company-row, .map-apt-row');
+    if(!row) return;
+    if(row.getAttribute('data-map-nocoord') === '1'){
+      // §X — 좌표가 없으면 지도를 옮길 수 없다. 목록에는 그대로 남기고 안내만 한다.
+      ev.preventDefault(); ev.stopPropagation();
+      try{ showPhoneReqToast('등록된 위치 정보가 없습니다.'); }catch(err){ /* 토스트 없으면 조용히 */ }
+    }
+    mapxHighlightRow(row.getAttribute('data-map-company') || row.getAttribute('data-apt-key') || '');
+  }, true);
+}
+  const MAPX_HOME = { lat:36.2, lng:127.9, level:13 };   // 지도 초기 시점과 같은 값
+  function mapxLegendRows(){
+    const isApt = mapActiveTab === 'apartment';
+    return {
+      title: isApt ? '시공 아파트 수' : '업체 수',
+      rows: [['#1D4ED8','100개 이상'], ['#3B82F6','50 ~ 100개'], ['#93C5FD','10 ~ 50개'], ['#DBEAFE','10개 미만']]
+    };
+  }
+  function mapxDecorateMapCol(){
+    const col = document.getElementById('mapModalMapCol');
+    if(!col) return;
+    const old = col.querySelector('.mapx-overlayui');
+    if(old) old.remove();
+    const lg = mapxLegendRows();
+    const isSat = !!(mapxCurrentMap && window.kakao && kakao.maps && kakao.maps.MapTypeId
+      && mapxCurrentMap.getMapTypeId && mapxCurrentMap.getMapTypeId() === kakao.maps.MapTypeId.HYBRID);
+    const ui = document.createElement('div');
+    ui.className = 'mapx-overlayui';
+    ui.innerHTML = `
+      <div class="mapx-seg" role="group" aria-label="지도 표시 방식">
+        <button type="button" class="mapx-seg-btn${isSat ? '' : ' is-on'}" data-mapx-type="roadmap">지도</button>
+        <button type="button" class="mapx-seg-btn${isSat ? ' is-on' : ''}" data-mapx-type="hybrid">위성</button>
+      </div>
+      <div class="mapx-zoom" role="group" aria-label="지도 확대 축소">
+        <button type="button" class="mapx-zoom-btn" data-mapx-zoom="in" aria-label="확대"><svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' aria-hidden='true'><path d='M12 5v14M5 12h14'/></svg></button>
+        <button type="button" class="mapx-zoom-btn" data-mapx-zoom="out" aria-label="축소"><svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' aria-hidden='true'><path d='M5 12h14'/></svg></button>
+        <button type="button" class="mapx-zoom-btn is-home" data-mapx-zoom="home" aria-label="전체 보기" title="전체 보기"><svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true'><path d='M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M3 16v3a2 2 0 0 0 2 2h3'/></svg></button>
+      </div>
+      <div class="mapx-seg mapx-seg-view" role="group" aria-label="지도 레이어">
+        <button type="button" class="mapx-seg-btn" data-mapx-view="cluster">클러스터</button>
+        <button type="button" class="mapx-seg-btn" data-mapx-view="heatmap">히트맵</button>
+      </div>
+      <div class="mapx-legend">
+        <div class="mapx-legend-title">${esc(lg.title)}</div>
+        ${lg.rows.map(([c,label])=> `<div class="mapx-legend-row"><span class="mapx-legend-dot" style="background:${c}"></span>${esc(label)}</div>`).join('')}
+      </div>`;
+    col.appendChild(ui);
+    ui.querySelectorAll('[data-mapx-type]').forEach(btn=> btn.addEventListener('click', ()=>{
+      if(!mapxCurrentMap || !window.kakao || !kakao.maps || !kakao.maps.MapTypeId) return;
+      const want = btn.getAttribute('data-mapx-type') === 'hybrid' ? kakao.maps.MapTypeId.HYBRID : kakao.maps.MapTypeId.ROADMAP;
+      try{ mapxCurrentMap.setMapTypeId(want); }catch(e){ return; }
+      ui.querySelectorAll('[data-mapx-type]').forEach(b=> b.classList.toggle('is-on', b === btn));
+    }));
+    // §S — 레이어 세그먼트: 기존 버튼이 있을 때만 보여주고, 클릭은 그 버튼에 위임한다.
+    const viewSeg = ui.querySelector('.mapx-seg-view');
+    if(viewSeg){
+      const srcFor = (mode)=> document.querySelector('.map-modal-overlay [data-map-viewmode="' + mode + '"]');
+      if(!srcFor('cluster') || !srcFor('heatmap')) viewSeg.remove();
+      else {
+        viewSeg.querySelectorAll('[data-mapx-view]').forEach(btn=>{
+          const mode = btn.getAttribute('data-mapx-view');
+          const src = srcFor(mode);
+          btn.classList.toggle('is-on', !!src && src.classList.contains('is-active'));
+          btn.addEventListener('click', ()=>{
+            const target = srcFor(mode);
+            if(!target) return;
+            target.click();   // 뷰모드 전환 로직은 기존 버튼 핸들러 그대로 쓴다
+            viewSeg.querySelectorAll('[data-mapx-view]').forEach(b=> b.classList.toggle('is-on', b === btn));
+          });
+        });
+      }
+    }
+    ui.querySelectorAll('[data-mapx-zoom]').forEach(btn=> btn.addEventListener('click', ()=>{
+      if(!mapxCurrentMap) return;
+      const kind = btn.getAttribute('data-mapx-zoom');
+      try{
+        if(kind === 'in') mapxCurrentMap.setLevel(mapxCurrentMap.getLevel() - 1, { animate:true });
+        else if(kind === 'out') mapxCurrentMap.setLevel(mapxCurrentMap.getLevel() + 1, { animate:true });
+        else {
+          const fitted = (typeof mapxFitBoundsFn === 'function') ? mapxFitBoundsFn() : false;
+          if(!fitted){
+            mapxCurrentMap.setLevel(MAPX_HOME.level);
+            mapxCurrentMap.setCenter(new kakao.maps.LatLng(MAPX_HOME.lat, MAPX_HOME.lng));
+          }
+        }
+      }catch(e){ /* SDK가 없거나 지도가 아직 안 뜬 상태면 조용히 넘어간다 */ }
+    }));
+  }
   function renderMapModalMain(kakao){
     const wrap = document.getElementById('mapModalBody');
     if(mapActiveTab === 'apartment'){
@@ -36001,20 +36404,13 @@ window.SHIN2_CRM_APP_INIT = function(){
     const listCountText = `총 ${listEntries.length.toLocaleString('ko-KR')}개`;
     infoCol.innerHTML = `
       <button type="button" class="map-embed-panel-close-btn" id="mapEmbedPanelCloseBtn" aria-label="지역 요약 패널 닫기">&times;</button>
-      <div>
-        <div class="map-info-block-title">지역 요약</div>
-        <div class="map-info-stat-row"><span>수도권</span><b>${capital.length}개 (${Math.round(capital.length/total*100)}%)</b></div>
-        <div class="map-info-stat-row"><span>비수도권</span><b>${nonCapital.length}개 (${Math.round(nonCapital.length/total*100)}%)</b></div>
-        <div class="map-info-stat-row"><span>위치 확인</span><b>${located.length}개</b></div>
-        <div class="map-info-stat-row"><span>위치 미확인</span><b>${unlocated.length}개</b></div>
-      </div>
-      <div>
-        <div class="map-info-block-title">지역별 업체 수</div>
+      <div class="mapx-chipstrip">
+        <span class="mapx-chipstrip-label">지역</span>
         ${regionRows.length ? regionRows.map(([name,count])=> `
           <div class="map-region-row" data-map-region="${esc(name)}">
-            <span>${esc(name)}</span><span class="map-region-count">${count}개</span>
+            <span>${esc(name)}</span><span class="map-region-count">${count}</span>
           </div>
-        `).join('') : '<div class="map-modal-empty" style="padding:8px 0;">표시할 업체가 없습니다.</div>'}
+        `).join('') : '<span class="mapx-chipstrip-label">표시할 업체가 없습니다.</span>'}
       </div>
       <div id="mapCompanyListBlock" class="map-sidelist-block">
         <div class="map-info-block-title map-sidelist-head">
@@ -36024,14 +36420,22 @@ window.SHIN2_CRM_APP_INIT = function(){
             ${mapFilterState.listView === 'unlocated' || mapFocusedCompanyList ? '<a href="#" id="mapBackToInBounds">전체 보기</a>' : ''}
           </span>
         </div>
+        <!-- §W/Z — 걷어낸 "지역 요약" 표의 숫자는 여기 한 줄로만 남긴다. 목록 총 건수와
+             지도에 실제로 찍히는 건수(위치 확인)가 다를 수 있다는 걸 이 줄이 보여준다. -->
+        <div class="mapx-summaryline">
+          <span>수도권 <b>${capital.length}</b></span>
+          <span>비수도권 <b>${nonCapital.length}</b></span>
+          <span>지도 표시 <b>${located.length}</b></span>
+          <span>위치 미확인 <b>${unlocated.length}</b></span>
+        </div>
         <div class="map-sidelist-body">
         ${listEntries.length ? listEntries.slice(0, 200).map(e=> `
-          <div class="map-company-row" data-map-company="${esc(e.co.id)}">
+          <div class="map-company-row${e.hasCoords ? '' : ' is-nocoord'}" data-map-company="${esc(e.co.id)}"${e.hasCoords ? '' : ' data-map-nocoord="1"'}>
             <div class="map-company-row-name">${esc(e.co.name)}</div>
             <!-- §7 시공사 행: 지역 · 공종 · 최근 실적. mapCompanyRowSubText가 지역(sigungu)·
                  공종(mainCategory)·최근 실적 연도를 만들고, 그 뒤에 실적 건수를 덧붙인다 —
                  전부 이미 계산된 값이거나 기존 조회 함수 결과다(새 판정 없음). -->
-            <div class="map-company-row-sub">${esc(mapCompanyRowSubText(e))} · ${e.pourCount ? '실적 ' + e.pourCount + '건' : '실적 없음'}</div>
+            <div class="map-company-row-sub">${esc(mapCompanyRowSubText(e))} · ${e.pourCount ? '실적 ' + e.pourCount + '건' : '실적 없음'}${e.hasCoords ? '' : ' <span class="mapx-nocoord-badge">위치 미확인</span>'}</div>
           </div>
         `).join('') : '<div class="map-modal-empty" style="padding:8px 0;">표시할 업체가 없습니다.</div>'}
         </div>
@@ -36145,11 +36549,13 @@ window.SHIN2_CRM_APP_INIT = function(){
     mapPerfMark('map init start');
     const center = new kakao.maps.LatLng(36.2, 127.9); // 대한민국 대략 중앙
     const map = new kakao.maps.Map(container, { center, level: 13 });
+    mapxCurrentMap = map;   // §지도 모달 리디자인 — 플로팅 컨트롤(확대/축소/지도·위성/전체보기)이 쓸 참조
     if(kakao.maps.ZoomControl){
       map.addControl(new kakao.maps.ZoomControl(), kakao.maps.ControlPosition.RIGHT);
     }
     const clusterer = new kakao.maps.MarkerClusterer({ map, averageCenter:true, minLevel:6 });
     mapPerfMark('map init done');
+    mapxDecorateMapCol();   // §지도 모달 리디자인 — 지도 위 플로팅 컨트롤·범례
     // §지역 요약 패널 라운드(신규) — 지도 "배경"을 클릭하면 좌측 플로팅 패널을 열고,
     // 열려 있을 때 다시 클릭하면 닫는다(§요청 2/6). kakao.maps.event의 map 'click'은
     // 카카오 SDK가 지도 배경(타일)에서만 발생시키는 이벤트로, 마커 자체의 'click'
@@ -36164,6 +36570,16 @@ window.SHIN2_CRM_APP_INIT = function(){
     const infoWindow = new kakao.maps.InfoWindow({ removable:true });
     let markerByCompanyId = new Map();
     let currentEntries = allEntries; // 마지막으로 그린 필터 결과 — idle(팬/줌)마다 다시 쓴다
+    // §T — 지도 위 "전체 보기" 버튼이 쓸 fitBounds. 좌표는 읽기만 하고 시점만 옮긴다.
+    mapxFitBoundsFn = ()=>{
+      const pts = (currentEntries || []).filter(e=> e && e.hasCoords && e.co);
+      if(!pts.length) return false;
+      try{
+        const b = new kakao.maps.LatLngBounds();
+        pts.forEach(e=> b.extend(new kakao.maps.LatLng(e.co.latitude, e.co.longitude)));
+        map.setBounds(b); return true;
+      }catch(err){ return false; }
+    };
     let selectedClusterKey = null;   // 지역/시군구 패널에서 방금 선택한 그룹(강조 표시용)
 
     function openInfoWindow(entry, marker){
@@ -36204,7 +36620,7 @@ window.SHIN2_CRM_APP_INIT = function(){
         if(!e.hasCoords) return;
         const pos = new kakao.maps.LatLng(e.co.latitude, e.co.longitude);
         const marker = new kakao.maps.Marker({ position: pos, title: e.co.name });
-        kakao.maps.event.addListener(marker, 'click', ()=> openInfoWindow(e, marker));
+        kakao.maps.event.addListener(marker, 'click', ()=>{ mapxSelectListRow(e); openInfoWindow(e, marker); });
         markers.push(marker);
         markerByCompanyId.set(e.co.id, marker);
       });
@@ -36220,9 +36636,10 @@ window.SHIN2_CRM_APP_INIT = function(){
       clusterOverlays.forEach(o=>{ try{ o.setMap(null); } catch(err){ /* 무시 */ } });
       clusterOverlays = [];
     }
-    function clusterLightness(ratio){ return 78 - Math.max(0, Math.min(1, ratio)) * 50; } // 78%(옅음)~28%(짙음)
-    function clusterColor(ratio){ return `hsl(215,65%,${Math.round(clusterLightness(ratio))}%)`; }
-    function clusterTextColor(ratio){ return clusterLightness(ratio) >= 55 ? '#0B1F3A' : '#fff'; }
+    // §U — 클러스터 원의 색/크기를 "비율"이 아니라 "건수 구간"으로 정한다
+    //      (1~9 / 10~49 / 50~99 / 100+). 그룹 집계 기준은 그대로고 보이는 색·지름만 바뀐다.
+    function clusterColor(count){ return mapxClusterTier(count).color; }
+    function clusterTextColor(){ return '#fff'; }
     function buildClusterOverlaysFor(entries, tier){
       clearClusterOverlays();
       const groups = new Map();
@@ -36239,7 +36656,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       const proj = (typeof map.getProjection === 'function') ? map.getProjection() : null;
       const items = list.map(g=>{
         const ratio = g.count / maxCount;
-        const size = 32 + Math.sqrt(ratio) * (64 - 32); // 최소 32px~최대 64px, 면적 비례라 sqrt
+        const size = mapxClusterTier(g.count).size; // §U 건수 구간별 지름(34/42/52/60)
         const latlng = new kakao.maps.LatLng(g.sumLat / g.count, g.sumLng / g.count);
         let px = null;
         if(proj && typeof proj.pointFromCoords === 'function'){
@@ -36278,8 +36695,8 @@ window.SHIN2_CRM_APP_INIT = function(){
         const el = document.createElement('div');
         el.className = 'map-cluster-bubble' + (it.key === selectedClusterKey ? ' is-selected' : '');
         el.style.width = it.size + 'px'; el.style.height = it.size + 'px';
-        el.style.background = clusterColor(it.ratio);
-        el.style.color = clusterTextColor(it.ratio);
+        el.style.background = clusterColor(it.count);
+        el.style.color = clusterTextColor();
         el.style.fontSize = Math.max(10, Math.min(13, it.size * 0.24)) + 'px';
         el.innerHTML = `<span>${esc(it.key)}</span><b>${it.count}</b>`;
         el.addEventListener('click', (event)=>{
@@ -36673,7 +37090,9 @@ window.SHIN2_CRM_APP_INIT = function(){
     if(!container) return;
     const center = new kakao.maps.LatLng(36.2, 127.9);
     const map = new kakao.maps.Map(container, { center, level: 13 });
+    mapxCurrentMap = map;   // §지도 모달 리디자인 — 플로팅 컨트롤(확대/축소/지도·위성/전체보기)이 쓸 참조
     if(kakao.maps.ZoomControl){ map.addControl(new kakao.maps.ZoomControl(), kakao.maps.ControlPosition.RIGHT); }
+    mapxDecorateMapCol();   // §지도 모달 리디자인 — 지도 위 플로팅 컨트롤·범례(시공 아파트 탭)
     // 확대(개별 마커) 단계에서만 쓰는 네이티브 클러스터러 — 시공사 탭과 동일 패턴.
     const clusterer = new kakao.maps.MarkerClusterer({
       map, averageCenter:true, minLevel:6,
@@ -36687,6 +37106,16 @@ window.SHIN2_CRM_APP_INIT = function(){
     const markerImage = buildAptMarkerImage(kakao);
     let markerByKey = new Map();
     let currentEntries = allEntries;
+    // §T — 시공 아파트 탭의 "전체 보기". 이 탭의 entry는 lat/lng를 직접 들고 있다.
+    mapxFitBoundsFn = ()=>{
+      const pts = (currentEntries || []).filter(e=> e && Number.isFinite(e.lat) && Number.isFinite(e.lng));
+      if(!pts.length) return false;
+      try{
+        const b = new kakao.maps.LatLngBounds();
+        pts.forEach(e=> b.extend(new kakao.maps.LatLng(e.lat, e.lng)));
+        map.setBounds(b); return true;
+      }catch(err){ return false; }
+    };
     let selectedClusterKey = null;
 
     function openInfoWindow(entry, marker){
@@ -36725,7 +37154,7 @@ window.SHIN2_CRM_APP_INIT = function(){
         if(!e.hasCoords) return;
         const pos = new kakao.maps.LatLng(e.lat, e.lng);
         const marker = new kakao.maps.Marker({ position: pos, title: e.name, image: markerImage });
-        kakao.maps.event.addListener(marker, 'click', ()=> openInfoWindow(e, marker));
+        kakao.maps.event.addListener(marker, 'click', ()=>{ mapxSelectListRow(e); openInfoWindow(e, marker); });
         markers.push(marker);
         markerByKey.set(e.key, marker);
       });
@@ -36739,9 +37168,10 @@ window.SHIN2_CRM_APP_INIT = function(){
       clusterOverlays.forEach(o=>{ try{ o.setMap(null); } catch(err){ /* 무시 */ } });
       clusterOverlays = [];
     }
-    function clusterLightness(ratio){ return 78 - Math.max(0, Math.min(1, ratio)) * 50; }
-    function clusterColor(ratio){ return `hsl(215,65%,${Math.round(clusterLightness(ratio))}%)`; }
-    function clusterTextColor(ratio){ return clusterLightness(ratio) >= 55 ? '#0B1F3A' : '#fff'; }
+    // §U — 클러스터 원의 색/크기를 "비율"이 아니라 "건수 구간"으로 정한다
+    //      (1~9 / 10~49 / 50~99 / 100+). 그룹 집계 기준은 그대로고 보이는 색·지름만 바뀐다.
+    function clusterColor(count){ return mapxClusterTier(count).color; }
+    function clusterTextColor(){ return '#fff'; }
     function buildClusterOverlaysFor(entries, tier){
       clearClusterOverlays();
       const groups = new Map();
@@ -36758,7 +37188,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       const proj = (typeof map.getProjection === 'function') ? map.getProjection() : null;
       const items = list.map(g=>{
         const ratio = g.count / maxCount;
-        const size = 32 + Math.sqrt(ratio) * (64 - 32);
+        const size = mapxClusterTier(g.count).size; // §U 건수 구간별 지름(34/42/52/60)
         const latlng = new kakao.maps.LatLng(g.sumLat / g.count, g.sumLng / g.count);
         let px = null;
         if(proj && typeof proj.pointFromCoords === 'function'){
@@ -36795,8 +37225,8 @@ window.SHIN2_CRM_APP_INIT = function(){
         const el = document.createElement('div');
         el.className = 'map-cluster-bubble' + (it.key === selectedClusterKey ? ' is-selected' : '');
         el.style.width = it.size + 'px'; el.style.height = it.size + 'px';
-        el.style.background = clusterColor(it.ratio);
-        el.style.color = clusterTextColor(it.ratio);
+        el.style.background = clusterColor(it.count);
+        el.style.color = clusterTextColor();
         el.style.fontSize = Math.max(10, Math.min(13, it.size * 0.24)) + 'px';
         el.innerHTML = `<span>${esc(it.key)}</span><b>${it.count}</b>`;
         el.addEventListener('click', ()=> focusClusterGroup(it.key, tier));
