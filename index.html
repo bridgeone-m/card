@@ -7153,6 +7153,48 @@ body{
   border-radius:var(--nf-radius-ctrl) !important; color:var(--nf-text-muted) !important; font-weight:700 !important;
 }
 .gnav-drawer-item.is-active{ background:var(--nf-primary-soft) !important; color:var(--nf-primary-strong) !important; }
+
+/* ===========================================================================
+   §ModalManager 라운드(신규) — z-index 체계와 스크롤 잠금.
+
+   실제 모달의 z-index는 ModalManager가 "스택 위치"로 매번 계산해 인라인으로 넣는다
+   (5000 + 스택index*20). 아래 토큰은 모달이 아닌 레이어(드롭다운/토스트/시스템 경고)와,
+   JS가 어떤 이유로든 못 뜰 때의 안전망용이다.
+   =========================================================================== */
+:root{
+  --z-base: 1;
+  --z-dropdown: 1000;
+  --z-modal-base: 5000;
+  --z-modal-top: 5000;    /* ModalManager가 스택이 바뀔 때마다 갱신 */
+  --z-modal-child: 5005;  /* 위와 같음 — 팝오버/날짜 선택이 쓰는 값 */
+  --z-toast: 9000;
+  --z-system-alert: 9500;
+}
+/* 스크롤 잠금 — 열린 모달 수(스택 길이)만 보고 ModalManager가 켜고 끈다.
+   예전에는 chart-lock / map-modal-lock 두 클래스가 따로 붙어서, 둘이 겹쳤다가 하나가
+   먼저 풀리면 배경이 다시 스크롤됐다. 좌우 튐 방지용 padding 보정은 JS가 넣는다. */
+html.modal-scroll-lock, body.modal-scroll-lock{
+  overflow:hidden !important;
+  overscroll-behavior:none;
+  touch-action:none;        /* 모바일에서 배경이 따라 움직이지 않게 */
+}
+
+/* 토스트는 어떤 모달 위에서도 보여야 한다 — 모달 최대치보다 확실히 위. */
+.mini-save-toast{ z-index:var(--z-toast) !important; }
+
+/* §19 중첩 스크롤 정리 — 모달 안에서 스크롤되는 영역은 .pi-body 하나로 둔다.
+   메일 작성은 본문 편집기(.mail-body-editor)가 자기 max-height + overflow를 또 갖고
+   있어서, 모달 본문과 편집기가 각각 스크롤되는 2중 스크롤이 됐다(휠이 어디서 먹히는지
+   예측이 안 됨). 편집기는 내용만큼 늘어나게 두고, 넘치면 모달 본문이 스크롤한다.
+   PDF 미리보기(.pdf-preview-wrap)도 같은 이유로 자체 스크롤을 뗀다. */
+.mail-body-editor{ max-height:none !important; overflow:visible !important; }
+.pdf-preview-wrap{ max-height:none !important; overflow:visible !important; }
+
+/* 매출 ⓘ 등 모달 위에 뜨는 설명 팝오버 — 고정 2000이라 고객 상세(5000+) 뒤로 숨었다.
+   ModalManager가 갱신하는 "현재 맨 위 모달 + 5"를 쓴다(모달이 없으면 5005). */
+.revenue-info-pop,
+#revenueInfoPopover,
+.col-help-pop{ z-index:var(--z-modal-child) !important; }
 </style>
 </head>
 <body>
@@ -13413,6 +13455,16 @@ window.SHIN2_CRM_APP_INIT = function(){
       const selection = window.getSelection && window.getSelection();
       return !!(selection && String(selection).length > 0);
     };
+    // §ModalManager 라운드 §16 — 팝업별 닫기 정책. closeOnBackdrop:false로 등록된
+    // 팝업은 배경을 눌러도 닫지 않는다(작성 중인 내용을 실수로 날리지 않게).
+    const backdropBlocked = ()=>{
+      try{
+        const MM = window.ModalManager;
+        if(!MM) return false;
+        const top = MM.getTopModal();
+        return !!(top && top.el === overlay && top.opts && top.opts.closeOnBackdrop === false);
+      }catch(e){ return false; }
+    };
     overlay.addEventListener('pointerdown', (e)=>{
       startedOnBackdrop = (e.target === overlay);
       startX = e.clientX; startY = e.clientY;
@@ -13428,7 +13480,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     overlay.addEventListener('pointerup', (e)=>{
       const endedOnBackdrop = (e.target === overlay);
       const moved = Math.abs(e.clientX - startX) > 5 || Math.abs(e.clientY - startY) > 5;
-      if(startedOnBackdrop && endedOnBackdrop && !moved && !hasInputSelection()) closeFn();
+      if(startedOnBackdrop && endedOnBackdrop && !moved && !hasInputSelection() && !backdropBlocked()) closeFn();
       startedOnBackdrop = false;
     });
     overlay.addEventListener('pointercancel', ()=>{ startedOnBackdrop = false; });
@@ -24852,6 +24904,16 @@ window.SHIN2_CRM_APP_INIT = function(){
     document.getElementById('mailComposeCloseBtn').addEventListener('click', closeMailComposeModal);
     document.getElementById('mailComposeCancelBtn').addEventListener('click', closeMailComposeModal);
     bindSafeBackdropClose(document.getElementById('mailComposeOverlay'), closeMailComposeModal);
+    // §ModalManager 라운드 §16 — 메일 작성은 배경 클릭으로 닫지 않는다. 본문을 건드렸으면
+    // ESC에도 확인을 받는다(§5). 처음 열렸을 때의 본문을 기준으로 비교한다.
+    if(window.ModalManager){
+      const bodyEl0 = document.getElementById('mailComposeBody');
+      const initialBodyHtml = bodyEl0 ? bodyEl0.innerHTML : '';
+      window.ModalManager.setOptions('mailComposeOverlay', {
+        closeOnBackdrop: false,
+        isDirty: ()=>{ const el = document.getElementById('mailComposeBody'); return !!el && el.innerHTML !== initialBodyHtml; }
+      });
+    }
     const goSettingsBtn = document.getElementById('mailComposeGoSettings');
     if(goSettingsBtn) goSettingsBtn.addEventListener('click', ()=>{ closeMailComposeModal(); showMailSettingsTab(); });
     document.getElementById('mailComposeOptOut').addEventListener('change', async (e)=>{
@@ -25168,11 +25230,16 @@ window.SHIN2_CRM_APP_INIT = function(){
           })
           .catch(e=> console.warn('[EMAIL-SEND] 발송 이력 저장 확인 중 오류', e));
         if(typeof renderWorkQueueView === 'function' && document.getElementById('workQueueView') && document.getElementById('workQueueView').style.display === 'block') renderWorkQueueView();
-        if(currentCompanyId === co.id && cardView.style.display === 'block' && typeof refreshChart === 'function') refreshChart();
         if(typeof opts.onSent === 'function') opts.onSent();
         perf.mark('ui');
         perf.dump();
-        setTimeout(closeMailComposeModal, 1200);
+        // §ModalManager 라운드 §12 — 순서를 바꿨다. 예전에는 완료 문구를 띄운 "직후"에
+        // 고객 상세를 다시 그려서(refreshChart) 그 문구가 뒤로 가려졌다. 이제는
+        // 완료 문구를 잠깐 보여주고 → 메일 창을 닫고 → 그 다음에 고객 상세를 갱신한다.
+        setTimeout(()=>{
+          closeMailComposeModal();
+          if(currentCompanyId === co.id && cardView.style.display === 'block' && typeof refreshChart === 'function') refreshChart();
+        }, 1200);
         return { ok:true, response:res };
       }catch(err){
         // §요청 8 — 어느 단계에서 실패했는지 구분해서 남긴다.
@@ -27237,6 +27304,15 @@ window.SHIN2_CRM_APP_INIT = function(){
       return true;
     };
     flushPendingSave = ()=> queueSave(true);
+    // §ModalManager 라운드 — 입력 중이면 ESC로 바로 닫지 않고 확인을 받는다(§5).
+    // 배경 클릭으로도 닫히지 않게 한다(§16 "질문지/메일: backdrop close 금지") —
+    // 아래 bindSafeBackdropClose는 그대로 두되, ESC 경로는 ModalManager가 본다.
+    if(window.ModalManager){
+      window.ModalManager.setOptions('questionnaireSessionOverlay', {
+        closeOnBackdrop: false,
+        isDirty: ()=> pendingSignature !== lastSavedSignature
+      });
+    }
     const handleDraftChange = e=>{
       // §미팅 후 요청자료 — 이 입력칸도 같은 저장 큐를 탄다(빠뜨리면 직접 입력이 저장되지 않는다).
       if(e.target.matches('[data-crv-memo]')){ refreshInsightBox(); queueSave(false); }
@@ -31713,6 +31789,7 @@ window.SHIN2_CRM_APP_INIT = function(){
 
   function closeLocalCloudDiagModal(){
     localCloudDiagState = null;
+    localCloudDiagToken = null;   // 진행 중인 비동기 결과가 닫힌 팝업을 되살리지 못하게(BUG-10)
     const root = document.getElementById('localCloudDiagModalRoot');
     if(root) root.innerHTML = '';
   }
@@ -31740,17 +31817,30 @@ window.SHIN2_CRM_APP_INIT = function(){
     });
     return { localOnly, cloudOnly, idConflicts, nameDupes, localTotal: local.length, cloudTotal: cloud.length };
   }
+  // §ModalManager 라운드 §15(BUG-10) — 비동기로 내용을 채우는 팝업은 열 때 토큰을
+  // 하나 발급하고, 비동기가 끝났을 때 그 토큰이 아직 "현재 세션"인지 확인한 뒤에만
+  // 다시 그린다. 열자마자 닫으면 토큰이 바뀌므로, 뒤늦게 끝난 요청이 닫힌 팝업을
+  // 되살리지 못한다.
+  let localCloudDiagToken = null;
   async function openLocalCloudDiagModal(){
+    const token = {};                       // 이 열기 한 번만의 고유 식별자
+    localCloudDiagToken = token;
     localCloudDiagState = { loading:true, error:null, report:null, selected:new Set() };
     renderLocalCloudDiagModal();
+    let next;
     try{
       if(!window.SHIN2_CRM_SHARED_SYNC || !window.SHIN2_CRM_SHARED_SYNC.getOnce) throw new Error('로그인 상태를 확인할 수 없습니다.');
       const local = D.loadCompanies();
       const cloud = (await window.SHIN2_CRM_SHARED_SYNC.getOnce('companies')) || [];
-      localCloudDiagState = { loading:false, error:null, report: buildLocalCloudDiagReport(local, cloud), selected:new Set() };
+      next = { loading:false, error:null, report: buildLocalCloudDiagReport(local, cloud), selected:new Set() };
     }catch(err){
-      localCloudDiagState = { loading:false, error: (err && err.message) ? err.message : '비교 중 오류가 발생했습니다.', report:null, selected:new Set() };
+      next = { loading:false, error: (err && err.message) ? err.message : '비교 중 오류가 발생했습니다.', report:null, selected:new Set() };
     }
+    // 그 사이에 닫혔거나 다시 열렸으면 아무 것도 그리지 않는다.
+    if(localCloudDiagToken !== token) return;
+    const root = document.getElementById('localCloudDiagModalRoot');
+    if(!root || !root.firstElementChild) return;
+    localCloudDiagState = next;
     renderLocalCloudDiagModal();
   }
   // §요청 2 "사용자가 확인한 업체만 기존 ID 그대로 Firestore에 저장" — 클라우드 원본을
@@ -35593,8 +35683,20 @@ window.SHIN2_CRM_APP_INIT = function(){
         const r = await confirmCloudSave('memos');
         btn.disabled = false;
         if(!r.ok){ alert(cloudSaveErrorMessage(r.err)); return; } // §요청 3 — draftInput 값은 그대로 남아 다시 누르면 재시도된다
-        memoPanelState.drafting = false;
+        // §ModalManager 라운드(BUG-13) — 저장은 됐는데 뒤의 고객 상세 "최근 접촉기록"이
+        // 옛 데이터를 그대로 들고 있었다. 패널 상태를 정리하고, 상세의 접촉기록 카드도
+        // 바로 다시 그린다(팝업은 기존 UX대로 열어 둔 채 — 연속 입력을 막지 않는다).
+        memoPanelState = { editingId: null, drafting: false, deleteConfirmId: null };
+        draftInput.value = '';
         renderMemoPanel(co);
+        try{
+          const fresh = D.findCompany(co.id) || co;
+          if(typeof renderContactTimelineCard === 'function') renderContactTimelineCard(fresh);
+          if(typeof renderQuestionnaireSummaryCard === 'function' && currentCompanyId === co.id){
+            // 최근 요청(메모 기반) 요약도 같은 데이터를 읽는다.
+            renderQuestionnaireSummaryCard(fresh);
+          }
+        }catch(err){ /* 상세가 안 열려 있으면 무시 */ }
       });
     }
     root.querySelectorAll('[data-memo-edit]').forEach(btn=> btn.addEventListener('click', ()=>{
@@ -40920,6 +41022,67 @@ if(!window.__mapxRowDelegated){
     renderList();
   }
 };
+/* ==========================================================================
+   §ModalManager 라운드(신규) — "모달보다 먼저 닫아야 하는 자식 레이어" 등록.
+
+   ModalManager는 이 스크립트 바깥(별도 블록)에 있어서 여기 함수들을 직접 못 본다.
+   ESC가 눌렸을 때 "고객 상세 위에 떠 있는 팝오버/인라인 편집"을 먼저 닫아야
+   고객 상세가 통째로 닫히는 일이 없으므로(BUG-01/04/05), 그 판정·닫기 함수만
+   여기서 넘겨준다. 목록 순서가 곧 우선순위다(뒤에 있을수록 더 위에 떠 있는 것).
+   ========================================================================== */
+window.ModalManager && window.ModalManager.registerChildLayers([
+  { id:'crmFilterPopover',
+    isOpen:()=>{ const p=document.getElementById('crmFilterPopover'); return !!p && !p.hasAttribute('hidden'); },
+    close:()=> closeCrmFilterPopover() },
+  { id:'columnHelp',
+    isOpen:()=>{ try{ return !!(columnHelpPopover && columnHelpPopover.isOpen()); }catch(e){ return false; } },
+    close:()=>{ try{ columnHelpPopover.close(); }catch(e){} } },
+  { id:'risingTop5',
+    isOpen:()=> !!document.getElementById('risingTop5Pop'),
+    close:()=> closeRisingTop5Popover() },
+  { id:'contribPopover',
+    isOpen:()=> !!document.getElementById('contribPopover'),
+    close:()=> closeContribPopover() },
+  { id:'trendPopover',
+    isOpen:()=> !!document.getElementById('trendPopover'),
+    close:()=> closeTrendPopover() },
+  { id:'requestPopover',
+    isOpen:()=> !!document.getElementById('requestPopover'),
+    close:()=> closeRequestPopover() },
+  // 매출 ⓘ — 고객 상세 위에 떠도 ESC가 이것만 닫는다(BUG-05와 같은 팝오버).
+  { id:'totalRevenuePopover',
+    isOpen:()=> !!document.getElementById('revenueInfoPopover'),
+    close:()=> closeTotalRevenuePopover() },
+  { id:'insightPopover',
+    isOpen:()=> !!document.querySelector('#insightPopoverRoot .insight-pop'),  // 팝오버 루트 안 패널
+    close:()=> closeInsightPopover() },
+  // 고객 인사이트 "수정" 중(헤더 팝오버 안 편집 폼) — ESC로 고객 상세까지 닫히던 것을
+  // 막는다(BUG-04). 입력 중이면 확인을 먼저 받는다.
+  { id:'cdashHeaderPopover',
+    isOpen:()=>{ const p=document.getElementById('cdashHeaderPopover'); return !!p && p.classList.contains('is-open'); },
+    isDirty:()=>{
+      try{
+        if(!cardState.sectionEdit.insight) return false;
+        const d = cardState.insightDraft;
+        if(!d) return false;
+        return ['keyQuote','nextAction','evidence','oneLiner','methodNote','backgroundNote','businessNote','rawMeetingNote']
+          .some(k=> String(d[k] || '').trim());
+      }catch(e){ return false; }
+    },
+    close:()=>{
+      try{
+        cardState.sectionEdit.insight = false;
+        cardState.insightDraft = null;
+        cardState.insightQuickStep = 'note';
+        cardState.insightParsedPreview = null;
+      }catch(e){}
+      closeHeaderSection();
+    } }
+]);
+/* 입력 중인 모달은 ESC/배경클릭으로 바로 닫지 않고 확인을 받는다(§5).
+   질문지 상담은 자기 자신이 저장 상태를 들고 있으므로, 그 팝업이 열릴 때
+   setOptions로 dirty 검사기를 넘긴다(openQuestionnaireSession 안 참고). */
+
 // 게이트가 이 스크립트보다 먼저 통과되어 있었을 수도(세션 복원) 있고, 아직 안 됐을 수도
 // 있다 — 두 경우 모두 정확히 한 번만 초기화되도록 플래그를 먼저 확인하고, 없으면 이벤트를 기다린다.
 if(window.SHIN2_CRM_GATE_PASSED){ window.SHIN2_CRM_APP_INIT(); }
@@ -40958,51 +41121,257 @@ else { window.addEventListener('shin2-crm-gate-passed', window.SHIN2_CRM_APP_INI
    ========================================================================== */
 (function(){
   'use strict';
-  if(typeof MutationObserver === 'undefined') return; // 아주 오래된 브라우저 방어 — 없으면 기존 정적 z-index로 동작(완전히 깨지지 않음)
+  /* ==========================================================================
+     ModalManager — 팝업 열기/닫기/ESC/z-index/스크롤잠금을 한 곳에서 관리한다.
+
+     이 파일의 모달은 20개가 넘고 전부 "root.innerHTML = '<div class=...-overlay>'"
+     형태로 각자 열린다. 그 코드를 전부 뜯어고치는 대신, 오버레이가 DOM에 들어오고
+     나가는 것을 MutationObserver로 감지해 스택에 올리고 내린다 — 기존 열기/닫기
+     코드는 한 줄도 바꾸지 않아도 스택에 참여한다.
+
+     [스택] 열린 순서대로 쌓이고, z-index는 "스택 위치"로 매번 다시 계산한다.
+     예전에는 열 때마다 topZ를 +1씩 올려서, 오래 쓰면 숫자가 끝없이 커지고
+     고객 상세가 다시 그려질 때마다 하위 팝업보다 앞으로 튀어나왔다(BUG-07).
+     이제 숫자는 스택 길이에만 달려 있어 누적되지 않는다.
+
+     [같은 모달의 재렌더] 오버레이를 키(루트 컨테이너 id 또는 오버레이 id)로 식별한다.
+     고객 상세가 refreshChart()로 통째로 다시 그려져도 같은 키라 스택의 "그 자리"에
+     그대로 머문다 — 위에 떠 있던 하위 팝업을 가리지 않는다(BUG-07).
+
+     [ESC] 전역 리스너는 window의 capture 단계 하나뿐이다. 스택에 뭔가 있으면
+     여기서 처리하고 stopImmediatePropagation으로 끝낸다 — 각 팝업이 document에
+     따로 달아둔 ESC 리스너(once:true로 죽어 있거나, 닫힌 뒤에도 남아있는 것들)가
+     아예 실행되지 않는다(BUG-01/02/03). 스택이 비어 있으면 그대로 흘려보내서
+     드로어·필터 팝오버 같은 비모달 ESC 동작은 전과 똑같이 남는다.
+     ========================================================================== */
+  if(typeof MutationObserver === 'undefined') return; // 아주 오래된 브라우저 방어
+
   const OVERLAY_SELECTOR = '.pi-overlay, .chart-overlay, .map-modal-overlay, .side-drawer-overlay, .gnav-drawer-overlay, .chart-memo-overlay';
-  let topZ = 10050; // 기존에 하드코딩된 가장 높은 값(10020, docPreviewOverlay 등)보다 위에서 시작.
+  // 닫기 버튼으로 쓰이는 클래스/ id 들 — closeTopModal이 "그 팝업 자신의 닫기 경로"를
+  // 그대로 타도록, 직접 DOM을 지우지 않고 이 버튼을 누른다(각자의 정리 코드가 돈다).
+  const CLOSE_BTN_SELECTOR = [
+    '[data-modal-close]', '.chart-close-btn', '.map-modal-close', '.gnav-drawer-close',
+    '.cdash2-header-close', '.side-drawer-close', '.chart-memo-close'
+  ].join(',');
+
+  const Z_MODAL_BASE = 5000;
+  const Z_MODAL_STEP = 20;
+
+  const stack = [];          // [{ key, el, opts }]
+  const pendingOpts = {};    // 스택에 올라오기 전에 들어온 setOptions 보관함
+  const childLayers = [];    // [{ id, isOpen, close, isDirty }]
+  let lastFocus = null;
+
+  function keyOf(el){
+    if(el.id) return 'el:' + el.id;
+    const root = el.parentElement;
+    if(root && root.id) return 'root:' + root.id;
+    return 'cls:' + (el.className || '') + ':' + Array.prototype.indexOf.call((root && root.children) || [], el);
+  }
+  function indexOfKey(key){
+    for(let i = 0; i < stack.length; i++) if(stack[i].key === key) return i;
+    return -1;
+  }
+  function indexOfEl(el){
+    for(let i = 0; i < stack.length; i++) if(stack[i].el === el) return i;
+    return -1;
+  }
+
+  // z-index를 스택 위치로 다시 계산한다. backdrop은 오버레이 자신이 겸하므로
+  // 오버레이에 z를 주고, 그 위에 뜨는 자식 레이어(팝오버/날짜 선택)는 +5를 쓴다.
+  function recalcZIndex(){
+    for(let i = 0; i < stack.length; i++){
+      const z = Z_MODAL_BASE + i * Z_MODAL_STEP;
+      try{ stack[i].el.style.zIndex = String(z); }catch(e){}
+    }
+    try{
+      document.documentElement.style.setProperty('--z-modal-top', String(topZIndex()));
+      document.documentElement.style.setProperty('--z-modal-child', String(topZIndex() + 5));
+    }catch(e){}
+  }
+  function topZIndex(){
+    return stack.length ? (Z_MODAL_BASE + (stack.length - 1) * Z_MODAL_STEP) : Z_MODAL_BASE;
+  }
+
+  // ---- 스크롤 잠금: 스택 길이만 본다(클래스 여러 개가 서로를 지우던 문제 제거) ----
+  let lockedPadding = false;
+  function syncScrollLock(){
+    const want = stack.length > 0;
+    const html = document.documentElement;
+    const body = document.body;
+    if(want){
+      if(!body.classList.contains('modal-scroll-lock')){
+        // 스크롤바가 사라지면서 화면이 좌우로 튀지 않게 그 폭만큼 padding으로 보정한다.
+        const sbw = window.innerWidth - html.clientWidth;
+        if(sbw > 0){ body.style.paddingRight = sbw + 'px'; lockedPadding = true; }
+        html.classList.add('modal-scroll-lock');
+        body.classList.add('modal-scroll-lock');
+      }
+    } else {
+      html.classList.remove('modal-scroll-lock');
+      body.classList.remove('modal-scroll-lock');
+      if(lockedPadding){ body.style.paddingRight = ''; lockedPadding = false; }
+      // 예전 클래스가 어딘가에 남아 배경이 계속 잠기는 일이 없게 같이 치운다.
+      body.classList.remove('chart-lock');
+      body.classList.remove('map-modal-lock');
+    }
+  }
+
   function focusIntoOverlay(overlay){
-    // §요청 2 "포커스를 준다" — 닫기 버튼이 있으면 가장 예측 가능한 지점(이미 대부분의
-    // 모달이 쓰는 클래스, 새 마크업 추가 없음). 없으면 패널 안 첫 포커스 가능 요소로,
-    // 그것도 없으면 오버레이 자신에 tabindex를 주고 포커스한다(Esc/Tab이 배경으로
-    // 새지 않게).
     const target = overlay.querySelector('.chart-close-btn')
       || overlay.querySelector('button, [href], input, select, textarea, [tabindex]');
     if(target){ try{ target.focus({ preventScroll:true }); }catch(e){ try{ target.focus(); }catch(e2){} } return; }
     if(!overlay.hasAttribute('tabindex')) overlay.setAttribute('tabindex', '-1');
     try{ overlay.focus({ preventScroll:true }); }catch(e){}
   }
-  function bringOverlayToFront(overlay){
-    topZ += 1;
-    overlay.style.zIndex = String(topZ);
-    // 방금 innerHTML로 막 삽입된 요소는 같은 프레임 안에서는 레이아웃이 아직 안 잡혀
-    // focus()가 씹히는 경우가 있다(이 파일의 openCard/chartCloseBtn.focus() 패턴과 같은
-    // 이유로 이미 여러 곳에서 requestAnimationFrame을 쓰고 있음 — 새 관례 아님).
-    requestAnimationFrame(()=> focusIntoOverlay(overlay));
+  function restoreFocus(){
+    if(!lastFocus) return;
+    try{ if(lastFocus.isConnected) lastFocus.focus({ preventScroll:true }); }catch(e){}
+    lastFocus = null;
   }
-  // §성능 수정(렉 제보) — 처음엔 addedNodes가 오버레이 자체가 아닐 드문 경우까지
-  // 방어하려고 querySelectorAll로 각 노드의 자손까지 훑었는데, 이게 완전히 틀린 가정이었다
-  // — querySelectorAll은 "일치하는 게 있을 때만" 비용이 드는 게 아니라 일치 여부를 알기
-  // 위해 매번 그 노드의 자손 전체를 훑어야 한다. subtree:true라 renderList()가 목록 행을
-  // 다시 그릴 때마다(검색어 입력 등 포함, 앱에서 가장 자주 도는 렌더) 그 많은 행 하나하나의
-  // 자손까지 매번 훑고 있었던 것 — 이게 "느리고 버벅거림" 제보의 실제 원인이었다.
-  // 실제로 이 코드베이스의 모든 오버레이는 예외 없이 root.innerHTML = '<div class="..
-  // -overlay">...' 형태로, 오버레이 div 자체가 항상 해당 root의 "바로 그 자리에 새로
-  // 삽입되는 노드"다(자손으로 숨어서 들어오는 경우가 없음, §코드 전수 확인) — 그래서
-  // node.matches()만으로 충분하고, 비용이 큰 자손 훑기는 필요 자체가 없었다.
+
+  function pushOverlay(el){
+    const key = keyOf(el);
+    const at = indexOfKey(key);
+    if(at >= 0){
+      // 같은 모달이 다시 그려진 것 — 스택 자리를 유지한 채 노드만 교체한다(BUG-07).
+      stack[at].el = el;
+      const bare2 = key.indexOf(':') >= 0 ? key.slice(key.indexOf(':') + 1) : key;
+      if(pendingOpts[bare2]){ stack[at].opts = Object.assign({}, stack[at].opts, pendingOpts[bare2]); delete pendingOpts[bare2]; }
+      recalcZIndex();
+      return;
+    }
+    if(!stack.length) lastFocus = document.activeElement;
+    // 열기 코드가 innerHTML 직후에 미리 넘겨둔 정책(dirty 검사기 등)을 여기서 붙인다.
+    const bare = key.indexOf(':') >= 0 ? key.slice(key.indexOf(':') + 1) : key;
+    const opts = Object.assign({}, pendingOpts[bare] || pendingOpts[key] || {});
+    delete pendingOpts[bare]; delete pendingOpts[key];
+    stack.push({ key, el, opts });
+    recalcZIndex();
+    syncScrollLock();
+    requestAnimationFrame(()=> focusIntoOverlay(el));
+  }
+  function dropOverlay(el){
+    const at = indexOfEl(el);
+    if(at < 0) return;                 // 재렌더로 이미 새 노드로 바뀐 경우 — 스택 유지
+    stack.splice(at, 1);
+    recalcZIndex();
+    syncScrollLock();
+    if(!stack.length) restoreFocus();
+  }
+
+  // ---- 공개 API ----
+  const ModalManager = {
+    get stack(){ return stack.slice(); },
+    isOpen(key){
+      if(!key) return stack.length > 0;
+      return stack.some(e=> e.key === key || e.key === 'el:' + key || e.key === 'root:' + key);
+    },
+    getTopModal(){ return stack.length ? stack[stack.length - 1] : null; },
+    topZIndex,
+    recalcZIndex,
+    lockScroll: syncScrollLock,
+    unlockScroll: syncScrollLock,
+    restoreFocus,
+    /* 모달보다 먼저 닫아야 하는 레이어(팝오버·날짜 선택·인라인 편집)를 등록한다.
+       ESC는 항상 "가장 위"부터 닫으므로, 자식 레이어가 열려 있으면 그것부터 닫는다. */
+    registerChildLayers(list){
+      childLayers.length = 0;
+      (list || []).forEach(x=> childLayers.push(x));
+    },
+    openChildLayerZIndex(){ return topZIndex() + 5; },
+    closeTopModal(){
+      // 1) 자식 레이어가 열려 있으면 그것부터
+      for(let i = childLayers.length - 1; i >= 0; i--){
+        const L = childLayers[i];
+        let open = false;
+        try{ open = !!L.isOpen(); }catch(e){ open = false; }
+        if(!open) continue;
+        if(L.isDirty && !confirmDiscard(L)) return true;
+        try{ L.close(); }catch(e){}
+        return true;
+      }
+      // 2) 스택 맨 위 모달
+      const top = stack[stack.length - 1];
+      if(!top) return false;
+      if(top.opts && top.opts.closeOnEscape === false) return true;  // ESC로 못 닫는 팝업
+      if(top.opts && top.opts.isDirty && !confirmDiscard(top.opts)) return true;
+      const btn = top.el.querySelector(CLOSE_BTN_SELECTOR);
+      if(btn){ btn.click(); return true; }
+      // 닫기 버튼이 없는 팝업은 마지막 수단으로 컨테이너를 비운다.
+      const root = top.el.parentElement;
+      if(root) root.innerHTML = '';
+      else top.el.remove();
+      return true;
+    },
+    closeModal(key){
+      const at = indexOfKey(key) >= 0 ? indexOfKey(key) : indexOfKey('el:' + key);
+      if(at < 0) return false;
+      const el = stack[at].el;
+      const btn = el.querySelector(CLOSE_BTN_SELECTOR);
+      if(btn){ btn.click(); return true; }
+      const root = el.parentElement;
+      if(root) root.innerHTML = ''; else el.remove();
+      return true;
+    },
+    /* 팝업별 닫기 정책·dirty 검사기를 붙인다(열린 뒤 아무 때나 호출 가능).
+       key는 오버레이 id 또는 그 루트 컨테이너 id. */
+    setOptions(key, opts){
+      // MutationObserver 콜백은 비동기라, 팝업을 여는 코드가 innerHTML 직후에 이걸
+      // 부르면 아직 스택에 없다. 그 경우 보류해 뒀다가 스택에 올라올 때 붙인다.
+      let at = indexOfKey('el:' + key);
+      if(at < 0) at = indexOfKey('root:' + key);
+      if(at < 0) at = indexOfKey(key);
+      if(at < 0){ pendingOpts[key] = Object.assign({}, pendingOpts[key], opts || {}); return false; }
+      stack[at].opts = Object.assign({}, stack[at].opts, opts || {});
+      return true;
+    }
+  };
+  function confirmDiscard(holder){
+    let dirty = false;
+    try{ dirty = !!holder.isDirty(); }catch(e){ dirty = false; }
+    if(!dirty) return true;
+    return window.confirm('작성 중인 내용이 있습니다.\n저장하지 않고 닫으시겠습니까?');
+  }
+
+  // ---- 전역 ESC: window capture 하나만 ----
+  window.addEventListener('keydown', function(e){
+    if(e.key !== 'Escape') return;
+    let hasChild = false;
+    for(let i = 0; i < childLayers.length; i++){
+      try{ if(childLayers[i].isOpen()){ hasChild = true; break; } }catch(err){}
+    }
+    if(!stack.length && !hasChild) return;    // 모달이 없으면 기존 ESC 동작 그대로
+    e.preventDefault();
+    e.stopImmediatePropagation();             // 팝업별로 흩어진 ESC 리스너를 막는다
+    ModalManager.closeTopModal();
+  }, true);
+
+  // ---- 오버레이 감지 ----
   const observer = new MutationObserver((mutations)=>{
+    const added = [], removed = [];
     for(let i = 0; i < mutations.length; i++){
-      const added = mutations[i].addedNodes;
-      for(let j = 0; j < added.length; j++){
-        const node = added[j];
-        if(node.nodeType !== 1) continue;
-        if(node.matches && node.matches(OVERLAY_SELECTOR)) bringOverlayToFront(node);
+      const a = mutations[i].addedNodes;
+      for(let j = 0; j < a.length; j++){
+        const n = a[j];
+        if(n.nodeType === 1 && n.matches && n.matches(OVERLAY_SELECTOR)) added.push(n);
+      }
+      const r = mutations[i].removedNodes;
+      for(let j = 0; j < r.length; j++){
+        const n = r[j];
+        if(n.nodeType === 1 && n.matches && n.matches(OVERLAY_SELECTOR)) removed.push(n);
       }
     }
+    // 추가를 먼저 처리해야 "같은 키로 다시 그려진" 경우 스택이 새 노드를 가리키게 되고,
+    // 뒤이어 오는 옛 노드 제거가 스택을 건드리지 않는다(재렌더로 팝업이 사라지지 않게).
+    for(let i = 0; i < added.length; i++) pushOverlay(added[i]);
+    for(let i = 0; i < removed.length; i++) dropOverlay(removed[i]);
   });
   observer.observe(document.body, { childList: true, subtree: true });
-  // 드문 예외(직접 만든 오버레이를 리렌더 없이 재사용하는 코드가 나중에 생기는 경우) 대비 export.
-  window.SHIN2_BRING_OVERLAY_TO_FRONT = bringOverlayToFront;
+
+  window.ModalManager = ModalManager;
+  // 예전 이름으로 부르던 곳이 있으면 그대로 동작하게 둔다(이제는 스택 재계산만 한다).
+  window.SHIN2_BRING_OVERLAY_TO_FRONT = function(){ recalcZIndex(); };
 })();
 
 /* §팝업 겹침 순서 수정 라운드(신규) §요청 4 — "별도 브라우저 창"(window.open)에 대한
