@@ -5594,13 +5594,16 @@ table.pdf-doc-table thead{ background:var(--bg); }
    업체명 533px = 표 폭의 47.8%, 업체명 텍스트 끝과 "최근 실적" 사이 빈칸 449px).
    그래서 가운데가 텅 비고 오른쪽 정보 묶음이 화면 끝으로 밀려 보였다.
    6열 전부에 fr를 주어 남는 폭을 비율대로 나눈다 — 열 순서·개수·내용·클릭 핸들러는
-   그대로이고 grid-template-columns 한 줄만 바뀐다. fr 합 6.0 기준 목표 비율:
-   업체명 26% / 최근 실적 15% / 총매출 17% / 최근 요청 15% / 최근 흐름 11% / 실적-매출 11%.
-   minmax 첫 값(최소폭)은 좁은 화면에서 글자가 뭉개지지 않을 하한선이다. */
+   그대로이고 grid-template-columns 한 줄만 바뀐다. 목표 비율(§요청):
+   업체명 26% / 최근 실적 22% / 총매출 16% / 최근 요청 16% / 최근 흐름 10% / 실적-매출 10%.
+   fr 값을 목표 퍼센트 그대로 적어 두면 나중에 비율을 고칠 때 바로 읽힌다.
+   minmax 첫 값(최소폭)은 좁은 화면에서 글자가 뭉개지지 않을 하한선인데, 이 값이 fr보다
+   크면 그 열이 비율을 넘겨 가져가므로 목표 비율이 흐트러진다. 그래서 하한선은 실제로
+   글자가 깨지는 지점까지만 낮춰 두고, 그보다 좁아지면 아래 가로 스크롤이 받는다. */
 .crm-list-col .co-table-head, .crm-list-col .co-row{
   grid-template-columns:
-    minmax(160px,1.60fr) minmax(120px,1.10fr) minmax(128px,1.08fr)
-    minmax(96px,0.86fr) minmax(88px,0.68fr) minmax(92px,0.68fr) !important;
+    minmax(0,26fr) minmax(0,22fr) minmax(0,16fr)
+    minmax(0,16fr) minmax(0,10fr) minmax(0,10fr) !important;
   /* 열 사이가 붙어 보이지 않게 — 8px는 6열이 한 덩어리처럼 뭉쳐 보였다(§요청 3/7). */
   gap:18px !important;
 }
@@ -6759,11 +6762,15 @@ body{
 .list-filter-chip .chip-count{ background:var(--nf-soft-gray) !important; color:var(--nf-text-muted) !important; }
 /* 중앙 열이 좁아졌으므로(3열) 표의 6개 열을 고정 최소폭 대신 전부 가변으로 돌린다 —
    열 구성/순서/정렬/데이터는 그대로고, 넘쳐서 잘리던 마지막 열(실적-매출)까지 카드
-   안에 들어온다. minmax(0,…)이라 어떤 폭에서도 가로로 넘치지 않는다. */
+   안에 들어온다. minmax(0,…)이라 어떤 폭에서도 가로로 넘치지 않는다.
+   §컬럼 비율 재지정 — 이 규칙이 위쪽 .crm-list-col 규칙보다 뒤에 있어 실제로 적용되는
+   값이다. 두 곳을 다르게 두면 어느 쪽이 보이는지 헷갈리므로 같은 비율로 맞춰 둔다.
+   머리줄과 본문이 이 한 줄을 공유하므로 여섯 칸의 시작·끝이 세로로 정확히 맞는다.
+   업체명 26 / 최근 실적 22 / 총매출 16 / 최근 요청 16 / 최근 흐름 10 / 실적-매출 10 */
 .crm-list-col .co-table-head, .crm-list-col .co-row{
   grid-template-columns:
-    minmax(0,1.65fr) minmax(0,1.00fr) minmax(0,1.05fr)
-    minmax(0,0.92fr) minmax(0,0.70fr) minmax(0,0.74fr) !important;
+    minmax(0,26fr) minmax(0,22fr) minmax(0,16fr)
+    minmax(0,16fr) minmax(0,10fr) minmax(0,10fr) !important;
   gap:10px !important;
   min-width:0 !important;
 }
