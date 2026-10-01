@@ -3062,31 +3062,24 @@ html,body{background:radial-gradient(circle at 75% -10%,rgba(11,91,211,.055),tra
 .mapx-seg-btn:hover{ color:#142033; }
 .mapx-seg-btn.is-on{ background:#2563EB; color:#fff; }
 /* ==========================================================================
-   §지역업체 분포 카드 — "큰 도넛 + 정돈된 지역 ranking + 부드러운 CTA" 구조의
-   summary card. 색은 블루 한 계열 + 중성 회색만 쓴다. 규칙은 전부
-   .nf-card-region(= 이 카드) 안으로만 걸어 옆의 "최근 요청" 카드는 안 건드린다.
+   §오늘의 영업 액션 카드 — 메인 우측. 액션 타일 4개 + 우선 확인 업체 + CTA.
+   규칙은 .nf-card-action 안으로만 걸어 옆의 "최근 요청" 카드는 안 건드린다.
    ========================================================================== */
-.region-summary-card{ cursor:pointer; }
-.region-summary-head{ align-items:flex-start !important; }
-.nf-card.nf-card-region{
+.nf-card.nf-card-action{
   background:#FFFFFF; border:1px solid #E6ECF4; border-radius:24px;
   box-shadow:0 14px 34px rgba(35,65,110,.07);
-  padding:20px 22px; display:flex; flex-direction:column; gap:18px;
-  transition:box-shadow .18s ease, transform .18s ease;
+  padding:20px 22px; display:flex; flex-direction:column; gap:16px;
 }
-.nf-card.nf-card-region:hover{ box-shadow:0 18px 38px rgba(35,65,110,.10); transform:translateY(-1px); }
-
-/* ---- 머리글 ---- */
-.nf-card-region .nf-card-head{ margin-bottom:0; }
+.nf-card-action .nf-card-head{ margin-bottom:0; }
 .nf-card-title-group{ display:flex; align-items:center; gap:11px; min-width:0; }
-.nf-card-icon{
+.sa-card-ico{
   flex:none; width:40px; height:40px; border-radius:13px; background-color:#EDF3FF;
-  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232563EB' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z'/><circle cx='12' cy='10' r='3'/></svg>"); background-repeat:no-repeat;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232563EB' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='3' width='18' height='18' rx='2'/><path d='m9 12 2 2 4-4'/></svg>"); background-repeat:no-repeat;
   background-position:center; background-size:20px 20px;
 }
-.nf-card-region .nf-card-title{ font-size:16.5px; font-weight:700; color:#102A56; letter-spacing:-.02em; }
-.nf-card-region .nf-card-sub{ margin-top:2px; font-size:11.5px; font-weight:500; color:#8494AC; }
-.nf-card-region .open-map-modal-btn{
+.nf-card-action .nf-card-title{ font-size:16.5px; font-weight:700; color:#10233F; letter-spacing:-.02em; }
+.nf-card-action .nf-card-sub{ margin-top:2px; font-size:11.5px; font-weight:500; color:#7C899D; }
+.nf-card-action .open-map-modal-btn{
   flex:none; width:34px; height:34px; padding:0 !important; border-radius:50%;
   background-color:#FFFFFF !important;
   background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231D5FD3' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M7 17 17 7M7 7h10v10'/></svg>") !important;
@@ -3094,93 +3087,99 @@ html,body{background:radial-gradient(circle at 75% -10%,rgba(11,91,211,.055),tra
   border:1px solid #E6ECF4 !important; font-size:0 !important; cursor:pointer;
   transition:background-color .15s, border-color .15s;
 }
-.nf-card-region .open-map-modal-btn:hover{ background-color:#EDF3FF !important; border-color:#C2D8FB !important; }
+.nf-card-action .open-map-modal-btn:hover{ background-color:#EDF3FF !important; border-color:#C2D8FB !important; }
 
-/* ---- 도넛 ---- */
-.nf-card-region .nf-donut-wrap{ width:176px; height:176px; margin:2px auto 0; }
-.nf-card-region .nf-donut{ width:176px; height:176px; }
-.nf-card-region .nf-donut-seg{ stroke-linecap:butt; }
-.nf-card-region .nf-donut-center-num{
-  font-size:29px; font-weight:700; color:#102A56; letter-spacing:-.03em;
-  font-variant-numeric:tabular-nums; line-height:1;
+/* ---- 액션 타일 4개 ---- */
+.sa-tiles{ display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+.sa-tile{
+  display:grid; grid-template-columns:26px 1fr 12px; grid-template-rows:auto auto;
+  align-items:center; gap:2px 8px; padding:11px 11px 10px; cursor:pointer;
+  border:1px solid transparent; border-radius:15px; font-family:inherit; text-align:left;
+  transition:box-shadow .15s, border-color .15s;
 }
-.nf-card-region .nf-donut-center-label{
-  font-size:13px; font-weight:600; color:#8494AC; margin-top:6px; letter-spacing:.01em;
+.sa-tile:hover{ box-shadow:0 4px 12px rgba(35,65,110,.08); }
+.sa-tile.is-active{ border-color:currentColor; }
+.sa-tile-ico{
+  grid-column:1; grid-row:1 / span 2;
+  display:flex; align-items:center; justify-content:center;
 }
+.sa-tile-ico svg{ width:19px; height:19px; }
+.sa-tile-label{
+  grid-column:2; grid-row:1; font-size:11.5px; font-weight:650; line-height:1.3;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0;
+}
+.sa-tile-num{
+  grid-column:2; grid-row:2; font-size:19px; font-weight:800; line-height:1.1;
+  font-variant-numeric:tabular-nums; white-space:nowrap;
+}
+.sa-tile-unit{ font-size:11px; font-weight:600; margin-left:2px; opacity:.75; }
+.sa-tile-chev{ grid-column:3; grid-row:1 / span 2; display:flex; align-items:center; opacity:.45; }
+.sa-tile-chev svg{ width:12px; height:12px; }
+/* 네 묶음의 색 — 구분은 되지만 채도는 낮게 */
+.sa-tile.sa-requestedMaterials{ background:#FFF1F3; color:#D9465F; }
+.sa-tile.sa-followup{ background:#FFF5E9; color:#EA7A19; }
+.sa-tile.sa-secondMeeting{ background:#EEF5FF; color:#2563EB; }
+.sa-tile.sa-mouProgress{ background:#F5F0FF; color:#7C3AED; }
 
-/* ---- 지역 ranking ---- */
-.nf-card-region .nf-legend{ display:flex; flex-direction:column; gap:1px; }
-.nf-card-region .nf-legend-row{
-  display:grid; grid-template-columns:9px 1fr auto 44px; align-items:center;
-  gap:11px; min-height:40px; padding:0 11px; border-radius:11px;
-  font-size:13px; border-top:1px solid transparent;
+/* ---- 우선 확인 업체 ---- */
+.sa-list-block{ display:flex; flex-direction:column; gap:2px; }
+.sa-list-head{ display:flex; flex-direction:column; gap:1px; padding:0 2px 7px; }
+.sa-list-title{ font-size:13px; font-weight:700; color:#10233F; }
+.sa-list-sub{ font-size:11px; font-weight:500; color:#7C899D; }
+.sa-row{
+  display:grid; grid-template-columns:8px 1fr 12px; align-items:center; gap:10px;
+  width:100%; min-height:46px; padding:7px 10px; border:none; border-radius:12px;
+  background:transparent; cursor:pointer; font-family:inherit; text-align:left;
+  transition:background-color .15s;
 }
-/* §7 — 상위 3개만 아주 연한 tint. 나머지는 흰 배경에 가는 구분선만 둔다. */
-.nf-card-region .nf-legend-row.is-top{ background:#F4F8FF; }
-.nf-card-region .nf-legend-row:not(.is-top) + .nf-legend-row:not(.is-top){ border-top-color:#EEF2F7; }
-.nf-card-region .nf-legend-dot{
-  width:9px; height:9px; border-radius:50%;
-  box-shadow:inset 0 0 0 1px rgba(16,42,86,.07);
+.sa-row:hover{ background:#F5F8FE; }
+.sa-row + .sa-row{ box-shadow:inset 0 1px 0 #EEF2F7; }
+.sa-row-dot{ width:8px; height:8px; border-radius:50%; background:currentColor; }
+.sa-row-dot.sa-requestedMaterials{ color:#D9465F; }
+.sa-row-dot.sa-followup{ color:#EA7A19; }
+.sa-row-dot.sa-secondMeeting{ color:#2563EB; }
+.sa-row-dot.sa-mouProgress{ color:#7C3AED; }
+.sa-row-main{ display:flex; flex-direction:column; gap:3px; min-width:0; }
+.sa-row-name{
+  font-size:13px; font-weight:650; color:#10233F;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
-.nf-card-region .nf-legend-name{ color:#3C4A63; font-weight:600; }
-.nf-card-region .nf-legend-val{
-  font-weight:700; color:#102A56; font-variant-numeric:tabular-nums; text-align:right;
+.sa-row-meta{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.sa-row-badge{
+  display:inline-flex; align-items:center; height:18px; padding:0 7px; border-radius:999px;
+  font-size:10.5px; font-weight:700; white-space:nowrap;
 }
-.nf-card-region .nf-legend-pct{
-  font-size:12px; font-weight:500; color:#8FA0B8;
-  font-variant-numeric:tabular-nums; text-align:right; min-width:0;
-}
-.nf-card-region .nf-card-empty{ color:#8FA0B8; }
+.sa-row-badge.sa-requestedMaterials{ background:#FFF1F3; color:#D9465F; }
+.sa-row-badge.sa-followup{ background:#FFF5E9; color:#EA7A19; }
+.sa-row-badge.sa-secondMeeting{ background:#EEF5FF; color:#2563EB; }
+.sa-row-badge.sa-mouProgress{ background:#F5F0FF; color:#7C3AED; }
+.sa-row-note{ font-size:11px; color:#7C899D; }
+.sa-row-chev{ display:flex; align-items:center; color:#B6C2D4; }
+.sa-row-chev svg{ width:12px; height:12px; }
+.nf-card-action .nf-card-empty{ color:#7C899D; }
 
 /* ---- CTA ---- */
-.nf-card-region .nf-card-foot{ margin-top:0; padding-top:0; border-top:none; }
-.nf-card-region .region-map-detail-btn{
+.nf-card-action .nf-card-foot{ margin-top:0; padding-top:0; border-top:none; }
+.nf-card-action .region-map-detail-btn{
   width:100%; height:44px; border:none; border-radius:13px;
-  background:#F1F6FF; color:#1D5FD3; font-size:13px; font-weight:600;
-  font-family:inherit; cursor:pointer;
-  transition:background-color .15s, transform .15s;
+  background:#EFF5FF; color:#2563EB; font-size:13px; font-weight:600;
+  font-family:inherit; cursor:pointer; transition:background-color .15s;
 }
-.nf-card-region .region-map-detail-btn:hover{ background:#E7F0FF; transform:translateY(-1px); }
+.nf-card-action .region-map-detail-btn:hover{ background:#E2EDFF; }
 
-@media (prefers-reduced-motion: reduce){
-  .nf-card.nf-card-region, .nf-card.nf-card-region:hover,
-  .nf-card-region .region-map-detail-btn:hover{ transition:none; transform:none; }
+/* §18 — 고객목록 제목 옆 "지도 보기". 기존 지도 팝업으로 가는 작은 입구 하나. */
+.crm-map-btn{
+  margin-left:10px; height:26px; padding:0 11px; border-radius:999px;
+  border:1px solid #E6ECF4; background:#fff; color:#2563EB;
+  font-size:11.5px; font-weight:650; font-family:inherit; cursor:pointer; flex:none;
 }
+.crm-map-btn:hover{ background:#EDF3FF; border-color:#C2D8FB; }
+
 @media(max-width:1100px){
-  .nf-card.nf-card-region{ padding:18px; gap:15px; }
-  .nf-card-region .nf-donut-wrap, .nf-card-region .nf-donut{ width:156px; height:156px; }
+  .nf-card.nf-card-action{ padding:18px; gap:14px; }
 }
-
-/* §질문지 상담 확장 — 상단 요약 배지, 선택지 칩, 권장 대응 줄. 기존 .crv-rate-btn
-   모양을 그대로 쓰고 선택지용(.is-choice)만 폭을 글자에 맞춘다. */
-.crv-insight-tags{ display:flex; flex-wrap:wrap; gap:5px; margin-bottom:9px; }
-/* 종합 고객 인사이트는 한 문단으로 읽히게 넉넉한 행간을, 그 아래 2차 미팅 준비·요청자료는
-   실제 업무 Action이라 가는 선으로 끊어 따로 보이게 한다(§6, §7). */
-.crv-insight-sec.is-verdict .crv-insight-sec-text{ line-height:1.75; }
-.crv-insight-sec.is-verdict + .crv-insight-sec{
-  margin-top:10px; padding-top:10px; border-top:1px solid #EDF2F8;
-}
-.crv-insight-tag{
-  display:inline-flex; align-items:center; height:21px; padding:0 9px; border-radius:999px;
-  background:#EDF3FF; color:#1D4ED8; font-size:11px; font-weight:700; white-space:nowrap;
-}
-.crv-rate-btn.is-choice{ width:auto; min-width:0; padding:0 10px; flex:none; }
-/* 고른 칩의 색. 상/중/하와 선택지·관심 포인트 모두 같은 파란 채움을 쓴다 — 예전에는
-   .is-high/.is-mid/.is-low별로 초록·주황·빨강이 따로였지만, "고른 것"의 표시는 하나로
-   통일했다. 아래 규칙은 선택지·관심
-   포인트 칩에는 그 짝이 없어서, 눌러도 저장만 되고 화면에는 표시가 안 됐다.
-   세 클래스를 겹쳐 써서 뒤에 오는 .crv-rate-btn:hover보다 우선한다. */
-.crv-rate-btn.is-choice.is-on{
-  background:#2563EB; border-color:#2563EB; color:#fff; font-weight:700;
-}
-.crv-rate-btn.is-choice.is-on:hover{ background:#1D4ED8; border-color:#1D4ED8; }
-.crv-rate-btn.is-choice:not(.is-on):hover{ background:#EDF3FF; border-color:#BBD4F7; color:#1D4ED8; }
-/* 선택 칩은 제목 줄(.crv-card-head) 안에서 자리를 다투지 않고 제목 아래 독립된 줄을 쓴다.
-   상/중/하 3칩과 달리 선택지는 4개에 글자도 길어("확인 필요") 좁은 폭에서 밀려날 수 있다.
-   position/z-index를 명시해 떠 있는 다른 요소가 위를 덮지 못하게 한다. */
-.crv-choice{
-  display:flex !important; flex-wrap:wrap; gap:5px; width:100%;
-  margin:0 0 8px; position:relative; z-index:1;
+@media(max-width:560px){
+  .sa-tiles{ grid-template-columns:1fr; }
 }
 
 /* §S — 클러스터/히트맵은 지도 위 세그먼트 하나로만 보여준다. 기존 버튼은 전환 로직을
@@ -7336,6 +7335,7 @@ html.modal-scroll-lock, body.modal-scroll-lock{
     <div class="list-toolbar visually-hidden">
       <div class="list-title-row">
         <div class="list-title" id="crmListTitle">고객</div>
+        <button type="button" class="crm-map-btn" id="crmOpenMapBtn" title="지역 지도 열기">지도 보기</button>
       </div>
     </div>
     <!-- §고객관리 메인화면 재배치 라운드(신규) — 사이드바 없이 상단 KPI 스트립(기존
@@ -7471,7 +7471,7 @@ html.modal-scroll-lock, body.modal-scroll-lock{
            그대로 연다(§17 "지도 변경 금지" — 지도 코드는 호출만 한다). 최근 요청은 기존
            buildRequestListItems()가 만든 항목을 그대로 최신순으로 모은 것이다. -->
       <aside class="nf-side-col nf-side-right" aria-label="위젯">
-        <section class="nf-card nf-card-region" id="crmRegionCard"></section>
+        <section class="nf-card nf-card-action" id="crmActionCard"></section>
         <section class="nf-card nf-card-recentreq" id="crmRecentReqCard"></section>
       </aside>
     </div>
@@ -15937,7 +15937,7 @@ window.SHIN2_CRM_APP_INIT = function(){
   /* ==========================================================================
      §전면 리디자인 라운드(신규) — 참고 이미지의 우측 위젯(도넛 + 최근 요청) 렌더.
      두 함수 모두 "이미 계산된 값을 다시 보여주기"만 한다:
-       · renderNfRegionCard()          — 지도 팝업과 완전히 같은
+       · renderNfSalesActionCard()     — 이미 계산된 enriched/managementNeedCache를
                                           applyMapFilters(buildMapCompanies()) 결과를
                                           지역별로 세기만 한다. 클릭 → 기존
                                           openMapDistributionModal() 호출.
@@ -15950,102 +15950,197 @@ window.SHIN2_CRM_APP_INIT = function(){
   // §지역 분포 카드 톤 정리 — 원색 7개 대신 같은 블루 계열의 명도 차이로만 구분한다.
   // 목록은 건수 내림차순이라 맨 앞(가장 큰 지역)이 가장 진한 포인트 컬러를 쓰고,
   // 뒤로 갈수록 옅어지며 마지막 두 단계는 중성 회색으로 빠진다.
-  const NF_DONUT_COLORS = ['#2563EB','#4F7FF3','#72A0FF','#9DBBFA','#B7CDF5','#CEDCF2','#E5EBF3'];
-  function renderNfRegionCard(){
-    const wrap = document.getElementById('crmRegionCard');
-    if(!wrap) return;
-    let entries = [];
-    // 지도 팝업의 임시 필터(mapFilterState)는 일부러 적용하지 않는다 — 그 상태는 팝업이
-    // 열려 있는 동안만 쓰는 값이라, 메인 대시보드 숫자가 "마지막에 팝업에서 뭘 눌렀는지"에
-    // 따라 몰래 달라지면 안 된다. 메인 카드는 항상 활성 업체 전체(= 팝업을 '전체'로 열었을
-    // 때와 같은 집합)를 보여준다. 캐시는 목록을 다시 그릴 때마다 비워서 방금 추가·삭제된
-    // 업체가 바로 반영되게 한다(팝업이 열 때 하는 것과 같은 처리).
-    try{
-      invalidateMapCompaniesCache();
-      entries = buildMapCompanies();
-    }
-    catch(err){ console.warn('지역 분포 집계 실패:', err); entries = []; }
-    // 지역이 비어 있는 업체는 이 카드에서 빼고 센다 — "지역 미확인" 조각이 상위권을
-    // 차지해 정작 보고 싶은 지역 분포를 가리기 때문이다. 업체 자체를 지우는 게 아니라
-    // 이 요약 카드에서만 제외하는 것이고, 지도 상세에서는 그대로 다 보인다.
-    const byRegion = new Map();
-    entries.forEach(e=>{
-      const k = String(e.region || '').trim();
-      if(!k) return;
-      byRegion.set(k, (byRegion.get(k) || 0) + 1);
-    });
-    let list = Array.from(byRegion.entries()).map(([name,count])=> ({ name, count }))
-      .sort((a,b)=> b.count - a.count);
-    const total = list.reduce((s,r)=> s + r.count, 0);
-    // 상위 6개 + 나머지 합계 한 줄(조각이 너무 얇아지지 않게). 숫자는 그대로 보존된다.
-    if(list.length > 7){
-      const head = list.slice(0, 6);
-      const restCount = list.slice(6).reduce((s,r)=> s + r.count, 0);
-      list = head.concat([{ name:'기타', count: restCount }]);
-    }
-    // §4 — 도넛을 키운다. viewBox 176 기준 반지름 66, 두께 22(바깥 지름 176px).
-    const R = 66, CIRC = 2 * Math.PI * R;
-    let offset = 0;
-    // 같은 계열 색만 쓰므로 조각 사이에 얇은 틈을 둬서 경계가 보이게 한다(색 추가 없음).
-    const SEG_GAP = list.length > 1 ? 2.6 : 0;
-    const segs = total > 0 ? list.map((r,i)=>{
-      const len = CIRC * (r.count / total);
-      const drawn = Math.max(0.6, len - SEG_GAP);
-      const dash = `${drawn} ${CIRC - drawn}`;
-      const seg = `<circle class="nf-donut-seg" r="${R}" cx="88" cy="88" fill="none"
-        stroke="${NF_DONUT_COLORS[i % NF_DONUT_COLORS.length]}" stroke-width="22"
-        stroke-dasharray="${dash}" stroke-dashoffset="${-offset}" />`;
-      offset += len;
-      return seg;
-    }).join('') : '';
-    wrap.innerHTML = `
-      <div class="nf-card-head region-summary-head">
-        <div class="nf-card-title-group">
-          <span class="nf-card-icon" aria-hidden="true"></span>
-          <div>
-            <div class="nf-card-title">지역업체 분포</div>
-            <div class="nf-card-sub">전국 등록 업체 위치 및 분포 현황</div>
-          </div>
-        </div>
-        <button type="button" class="nf-card-more open-map-modal-btn" id="crmRegionCardMore" aria-label="지도에서 자세히 보기"></button>
-      </div>
-      ${total > 0 ? `
-        <div class="nf-donut-wrap">
-          <svg class="nf-donut" viewBox="0 0 176 176" role="img" aria-label="지역 분포 도넛">
-            <g transform="rotate(-90 88 88)">${segs}</g>
-          </svg>
-          <div class="nf-donut-center">
-            <div class="nf-donut-center-num">${esc(total.toLocaleString('ko-KR'))}</div>
-            <div class="nf-donut-center-label">시공사</div>
-          </div>
-        </div>
-        <div class="nf-legend">
-          ${list.map((r,i)=> `
-            <div class="nf-legend-row${i < 3 ? ' is-top' : ''}">
-              <span class="nf-legend-dot" style="background:${NF_DONUT_COLORS[i % NF_DONUT_COLORS.length]}"></span>
-              <span class="nf-legend-name">${esc(r.name)}</span>
-              <span class="nf-legend-val">${esc(r.count.toLocaleString('ko-KR'))}</span>
-              <span class="nf-legend-pct">${total ? Math.round((r.count/total)*100) : 0}%</span>
-            </div>`).join('')}
-        </div>
-      ` : `<div class="nf-card-empty">표시할 지역 데이터가 없습니다.</div>`}
-      <div class="nf-card-foot">
-        <button type="button" class="region-map-detail-btn" id="crmRegionCardDetail">지도에서 자세히 보기 →</button>
-      </div>`;
-    // §C — 카드 전체 / 우상단 버튼 / 바닥 버튼이 모두 같은 함수를 부른다. 지도 팝업은
-    //      새로 만들지 않고 기존 openMapDistributionModal()을 그대로 호출만 한다(§17).
-    const openMap = (ev)=>{
-      if(ev) ev.stopPropagation();
-      try{ openMapDistributionModal(); }
-      catch(err){ console.warn('지도 팝업 열기 실패:', err); }
-    };
-    const more = document.getElementById('crmRegionCardMore');
-    if(more) more.addEventListener('click', openMap);
-    const detail = document.getElementById('crmRegionCardDetail');
-    if(detail) detail.addEventListener('click', openMap);
-    wrap.classList.add('region-summary-card');
-    wrap.addEventListener('click', openMap);
+  // ==========================================================================
+  // §오늘의 영업 액션 카드 — 메인 우측의 "지역업체 분포" 자리를 대신한다.
+  //
+  // 여기서 새로 판정하는 것은 하나도 없다. 이미 renderList가 계산해 둔 enriched
+  // (co/acts/progress)와 managementNeedCache, 그리고 기존 D.pendingConsultReviewDocs()·
+  // matchesFilter를 그대로 읽어 "지금 처리할 일"로 묶어 보여줄 뿐이다. 한 번의 호출로
+  // 네 묶음과 우선 확인 업체까지 같이 만들어 같은 계산을 반복하지 않는다(§23).
+  // ==========================================================================
+  const SALES_ACTION_DEFS = [
+    ['requestedMaterials', '미팅 후 요청자료', 'questionnaire'],
+    ['followup',           '후속 연락 필요',   'activity'],
+    ['secondMeeting',      '2차 미팅 준비',    'agreement'],
+    ['mouProgress',        'MOU 진행 필요',    'agreement']
+  ];
+  // 우선 확인 업체에서 한 업체를 한 줄로만 보여줄 때 쓰는 순서(§13).
+  const SALES_ACTION_PRIORITY = ['requestedMaterials','secondMeeting','mouProgress','followup'];
+  let salesActionFocus = null;   // {key, ids:Set} — 타일을 누르면 고객목록을 그 묶음으로 좁힌다
+
+  function salesDaysBetween(ts){
+    const t = typeof ts === 'number' ? ts : Date.parse(ts || '');
+    if(!Number.isFinite(t)) return null;
+    const day = 24 * 60 * 60 * 1000;
+    const a = new Date(t); a.setHours(0,0,0,0);
+    const b = new Date();  b.setHours(0,0,0,0);
+    return Math.max(0, Math.round((b - a) / day));
   }
+  // 날짜를 지어내지 않는다 — 실제로 저장된 값이 없으면 빈 문자열을 돌려준다.
+  function salesElapsedText(ts, prefix){
+    const d = salesDaysBetween(ts);
+    if(d === null) return '';
+    const core = d === 0 ? '오늘' : d + '일 경과';
+    return prefix ? prefix + ' ' + core : core;
+  }
+  function buildSalesActionSummary(enriched, mgmt, relationIndex){
+    const rows = enriched || [];
+    const byId = new Map(rows.map(r=> [String(r.co.id), r]));
+    const out = { requestedMaterials:[], followup:[], secondMeeting:[], mouProgress:[], priorityCompanies:[] };
+
+    // ① 미팅 후 요청자료 — 질문지 상담의 pending 판정(D.pendingConsultReviewDocs)을 그대로 쓴다.
+    let pendingDocs = [];
+    try{ pendingDocs = D.pendingConsultReviewDocs() || []; }
+    catch(err){ pendingDocs = []; }
+    const seenReq = new Set();
+    pendingDocs.forEach(doc=>{
+      const id = String(doc.companyId || '');
+      const row = byId.get(id);
+      if(!row || seenReq.has(id)) return;
+      seenReq.add(id);
+      const rm = (doc.consultReview || {}).requestedMaterialsAfterMeeting || {};
+      out.requestedMaterials.push({ co: row.co, ts: rm.notifiedAt || doc.updatedAt || '',
+        note: salesElapsedText(rm.notifiedAt || doc.updatedAt, '') });
+    });
+
+    // ② 후속 연락 필요 — 이미 계산된 관리필요 목록(classifyManagementNeed)을 그대로 쓴다.
+    ((mgmt && mgmt.list) || []).forEach(m=>{
+      const row = byId.get(String(m.co.id));
+      if(!row) return;
+      const last = (row.acts && row.acts[0]) ? row.acts[0].ts : null;
+      out.followup.push({ co: row.co, ts: last,
+        note: salesElapsedText(last, '최근 접촉') || (m.label || '관리 필요') });
+    });
+
+    // ③ 2차 미팅 준비 — 1차 미팅은 끝났는데 2차가 아직인 업체. 단계값은 buildProgressStages
+    //    결과를 읽기만 한다(새 단계 판정 없음).
+    // ④ MOU 진행 필요 — 기존 'agreementInProgress' 필터 판정을 그대로 재사용한다.
+    rows.forEach(r=>{
+      const st = {};
+      ((r.progress && r.progress.stages) || []).forEach(x=> { st[x.key] = x; });
+      const m1 = st.m1 || {}, m2 = st.m2 || {}, mou = st.mou || {};
+      if(m1.state === 'done' && m2.state !== 'done' && mou.state !== 'done'){
+        out.secondMeeting.push({ co: r.co, ts: m1.ts || null,
+          note: salesElapsedText(m1.ts, '1차 미팅 완료') || '1차 미팅 완료' });
+      }
+      let inProgress = false;
+      try{ inProgress = matchesFilter(r.co, r.progress, 'agreementInProgress', relationIndex); }
+      catch(err){ inProgress = false; }
+      if(inProgress){
+        const lastDone = [st.q, st.m1, st.m2].filter(x=> x && x.state === 'done' && x.ts)
+          .sort((a,b)=> b.ts - a.ts)[0];
+        out.mouProgress.push({ co: r.co, ts: lastDone ? lastDone.ts : null,
+          note: salesElapsedText(lastDone && lastDone.ts, '') || '협약 진행중' });
+      }
+    });
+
+    // 우선 확인 업체 — 한 업체가 여러 묶음에 걸려도 가장 앞선 묶음 하나로만 대표 표시한다(§13).
+    const used = new Set();
+    SALES_ACTION_PRIORITY.forEach(key=>{
+      out[key].slice().sort((a,b)=> (b.ts ? Date.parse(b.ts) || b.ts : 0) - (a.ts ? Date.parse(a.ts) || a.ts : 0))
+        .forEach(item=>{
+          const id = String(item.co.id);
+          if(used.has(id) || out.priorityCompanies.length >= 5) return;
+          used.add(id);
+          const def = SALES_ACTION_DEFS.find(d=> d[0] === key);
+          out.priorityCompanies.push({ co:item.co, key, label:def ? def[1] : key, tab:def ? def[2] : 'overview', note:item.note });
+        });
+    });
+    return out;
+  }
+
+  const SALES_ICO = {
+    requestedMaterials:"<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true'><path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z'/><path d='M14 2v6h6M9 15l2 2 4-4'/></svg>",
+    followup:"<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true'><path d='M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.7a2 2 0 0 1-.5 2.1L8.1 9.6a16 16 0 0 0 6 6l1.1-1.1a2 2 0 0 1 2.1-.5c.9.3 1.8.5 2.7.6a2 2 0 0 1 1.7 2Z'/></svg>",
+    secondMeeting:"<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true'><rect x='3' y='4' width='18' height='18' rx='2'/><path d='M16 2v4M8 2v4M3 10h18M9 16l2 2 4-4'/></svg>",
+    mouProgress:"<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true'><path d='M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2'/><rect x='8' y='2' width='8' height='4' rx='1'/><path d='M9 14l2 2 4-4'/></svg>",
+    chevron:"<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true'><path d='m9 18 6-6-6-6'/></svg>"
+  };
+
+  function renderNfSalesActionCard(enriched, mgmt, relationIndex){
+    const wrap = document.getElementById('crmActionCard');
+    if(!wrap) return;
+    let sum;
+    try{ sum = buildSalesActionSummary(enriched, mgmt, relationIndex); }
+    catch(err){ console.warn('영업 액션 집계 실패:', err);
+      sum = { requestedMaterials:[], followup:[], secondMeeting:[], mouProgress:[], priorityCompanies:[] }; }
+    salesActionSummaryCache = sum;
+    const tiles = SALES_ACTION_DEFS.map(([key,label])=> `
+      <button type="button" class="sa-tile sa-${esc(key)}${salesActionFocus && salesActionFocus.key === key ? ' is-active' : ''}"
+        data-sales-action="${esc(key)}" aria-pressed="${salesActionFocus && salesActionFocus.key === key ? 'true' : 'false'}">
+        <span class="sa-tile-ico">${SALES_ICO[key]}</span>
+        <span class="sa-tile-label">${esc(label)}</span>
+        <span class="sa-tile-num">${sum[key].length}<span class="sa-tile-unit">건</span></span>
+        <span class="sa-tile-chev">${SALES_ICO.chevron}</span>
+      </button>`).join('');
+    const rows = sum.priorityCompanies;
+    wrap.innerHTML = `
+      <div class="nf-card-head sa-head">
+        <div class="nf-card-title-group">
+          <span class="sa-card-ico" aria-hidden="true"></span>
+          <div>
+            <div class="nf-card-title">오늘의 영업 액션</div>
+            <div class="nf-card-sub">지금 확인이 필요한 업무를 모았습니다.</div>
+          </div>
+        </div>
+        <button type="button" class="open-map-modal-btn sa-open-btn" id="crmActionCardMore" aria-label="전체 업무 보기"></button>
+      </div>
+      <div class="sa-tiles">${tiles}</div>
+      <div class="sa-list-block">
+        <div class="sa-list-head">
+          <span class="sa-list-title">우선 확인 업체</span>
+          <span class="sa-list-sub">지금 확인이 필요한 주요 업체입니다.</span>
+        </div>
+        ${rows.length ? rows.map(r=> `
+          <button type="button" class="sa-row" data-sales-co="${esc(r.co.id)}" data-sales-tab="${esc(r.tab)}">
+            <span class="sa-row-dot sa-${esc(r.key)}"></span>
+            <span class="sa-row-main">
+              <span class="sa-row-name">${esc(r.co.name)}</span>
+              <span class="sa-row-meta"><span class="sa-row-badge sa-${esc(r.key)}">${esc(r.label)}</span>${r.note ? `<span class="sa-row-note">${esc(r.note)}</span>` : ''}</span>
+            </span>
+            <span class="sa-row-chev">${SALES_ICO.chevron}</span>
+          </button>`).join('')
+          : '<div class="nf-card-empty">지금 확인이 필요한 업체가 없습니다.</div>'}
+      </div>
+      <div class="nf-card-foot">
+        <button type="button" class="region-map-detail-btn" id="crmActionCardAll">전체 업무 보기 →</button>
+      </div>`;
+
+    // 타일 — 누르면 고객목록을 그 묶음으로 좁히고, 다시 누르면 푼다. 새 판정 없이
+    // 방금 계산한 id 집합으로 거르기만 한다.
+    wrap.querySelectorAll('[data-sales-action]').forEach(btn=> btn.addEventListener('click', ()=>{
+      const key = btn.getAttribute('data-sales-action');
+      if(salesActionFocus && salesActionFocus.key === key) salesActionFocus = null;
+      else {
+        const ids = new Set((sum[key] || []).map(x=> String(x.co.id)));
+        if(!ids.size) return;   // 0건이면 빈 목록으로 만들지 않는다
+        salesActionFocus = { key, ids };
+        filterKey = 'all';
+      }
+      currentPage = 1;
+      renderList();
+    }));
+    // 업체 행 — 기존 통합 고객 상세 팝업을 업무에 맞는 탭으로 연다(§16).
+    wrap.querySelectorAll('[data-sales-co]').forEach(btn=> btn.addEventListener('click', ()=>{
+      const id = btn.getAttribute('data-sales-co');
+      const tab = btn.getAttribute('data-sales-tab') || 'overview';
+      try{ openCustomerDetail(id, tab); }
+      catch(err){ console.warn('고객 상세 열기 실패:', err); }
+    }));
+    // 전체 업무 보기 / 우상단 버튼 — 기존 "관리 필요" 모집단으로 이동(새 화면을 만들지 않는다).
+    const goAll = ()=>{
+      salesActionFocus = null;
+      filterKey = 'manageNeeded';
+      currentPage = 1;
+      renderList();
+    };
+    const allBtn = document.getElementById('crmActionCardAll');
+    if(allBtn) allBtn.addEventListener('click', goAll);
+    const moreBtn = document.getElementById('crmActionCardMore');
+    if(moreBtn) moreBtn.addEventListener('click', goAll);
+  }
+  let salesActionSummaryCache = null;
+
   // 우측 "최근 요청" — buildRequestListItems() 결과를 업체 구분 없이 최신순으로 모은다.
   function renderNfRecentReqCard(companyList, idx){
     const wrap = document.getElementById('crmRecentReqCard');
@@ -16359,8 +16454,18 @@ window.SHIN2_CRM_APP_INIT = function(){
     // §전면 리디자인 라운드(신규) — 좌측 요약 / 우측 위젯. 위에서 이미 계산된
     // filterCounts·companies·requestItemsIndex를 그대로 넘겨 다시 보여줄 뿐이다.
     renderNfRecentReqCard(companies, requestItemsIndex);
-    renderNfRegionCard();
+    renderNfSalesActionCard(enriched, managementNeedCache, relationIndex);
     bindNfNavSearch();
+    // §18 — 지역 분포 카드가 없어져도 지도 상세는 그대로 연다. 새 함수를 만들지 않고
+    // 기존 openMapDistributionModal()만 호출한다.
+    const mapBtn = document.getElementById('crmOpenMapBtn');
+    if(mapBtn && !mapBtn.dataset.bound){
+      mapBtn.dataset.bound = '1';
+      mapBtn.addEventListener('click', ()=>{
+        try{ openMapDistributionModal(); }
+        catch(err){ console.warn('지도 팝업 열기 실패:', err); }
+      });
+    }
     // §지도 팝업 전환 라운드(신규) — 지도는 더 이상 메인에 상시 마운트하지 않는다.
     // "[시공사 지역 분포]" 버튼을 눌렀을 때만 openMapDistributionModal()이 연다(§요청 1/2).
     // 목록을 다시 그려도 카카오맵을 건드리지 않으므로 renderList()가 더 가벼워진다.
@@ -16420,6 +16525,9 @@ window.SHIN2_CRM_APP_INIT = function(){
     // 없앰).
     const rows = enriched
       .filter(r=> matchesFilter(r.co, r.progress, filterKey, relationIndex))
+      // §오늘의 영업 액션 — 타일을 누르면 그 묶음의 업체만 남긴다. 새 판정이 아니라
+      // buildSalesActionSummary가 방금 만든 id 집합으로 거르기만 한다.
+      .filter(r=> !salesActionFocus || salesActionFocus.ids.has(String(r.co.id)))
       .filter(r=> matchesSearch(r.co, r.acts, searchQuery, searchQuery ? (()=>{
         const parent = D.resolveParentCompanyDisplay(r.co, companies, relationIndex);
         return parent ? parent.name : null;
