@@ -3069,14 +3069,10 @@ html,body{background:radial-gradient(circle at 75% -10%,rgba(11,91,211,.055),tra
   background:#FFFFFF; border:1px solid #E6ECF4; border-radius:24px;
   box-shadow:0 14px 34px rgba(35,65,110,.07);
   padding:20px 22px; display:flex; flex-direction:column; gap:16px;
+  flex:1 1 auto; min-height:0;
 }
 .nf-card-action .nf-card-head{ margin-bottom:0; }
 .nf-card-title-group{ display:flex; align-items:center; gap:11px; min-width:0; }
-.sa-card-ico{
-  flex:none; width:40px; height:40px; border-radius:13px; background-color:#EDF3FF;
-  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232563EB' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='3' width='18' height='18' rx='2'/><path d='m9 12 2 2 4-4'/></svg>"); background-repeat:no-repeat;
-  background-position:center; background-size:20px 20px;
-}
 .nf-card-action .nf-card-title{ font-size:16.5px; font-weight:700; color:#10233F; letter-spacing:-.02em; }
 .nf-card-action .nf-card-sub{ margin-top:2px; font-size:11.5px; font-weight:500; color:#7C899D; }
 .nf-card-action .open-map-modal-btn{
@@ -3089,54 +3085,23 @@ html,body{background:radial-gradient(circle at 75% -10%,rgba(11,91,211,.055),tra
 }
 .nf-card-action .open-map-modal-btn:hover{ background-color:#EDF3FF !important; border-color:#C2D8FB !important; }
 
-/* ---- 액션 타일 3개 — 좁은 우측 칸이라 한 줄에 하나씩 ---- */
-.sa-tiles{ display:flex; flex-direction:column; gap:8px; }
-.sa-tile{
-  display:grid; grid-template-columns:26px 1fr auto 12px; align-items:center;
-  gap:10px; padding:11px 12px; cursor:pointer;
-  background:#F7FAFF; border:1px solid #E4EAF2; border-radius:13px;
-  color:#17324D; font-family:inherit; text-align:left;
-  transition:background-color .15s, border-color .15s;
-}
-.sa-tile:hover{ background:#EFF5FF; border-color:#C2D8FB; }
-.sa-tile.is-active{ border-color:#2563EB; background:#EFF5FF; }
-.sa-tile-ico{ grid-column:1; display:flex; align-items:center; justify-content:center; color:#2563EB; }
-.sa-tile-ico svg{ width:19px; height:19px; }
-.sa-tile-label{
-  grid-column:2; font-size:12.5px; font-weight:650; line-height:1.3;
-  color:#17324D; min-width:0; word-break:keep-all;
-  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
-}
-.sa-tile-num{
-  grid-column:3; font-size:18px; font-weight:800; line-height:1.1; color:#1E3A8A;
-  font-variant-numeric:tabular-nums; white-space:nowrap;
-}
-.sa-tile-unit{ font-size:11px; font-weight:600; margin-left:2px; opacity:.75; }
-.sa-tile-chev{ grid-column:4; display:flex; align-items:center; color:#B6C2D4; }
-.sa-tile-chev svg{ width:12px; height:12px; }
-/* 긴급 표시는 "2차 미팅 회신 지연"의 아이콘·숫자·점에만. 카드 전체를 빨갛게 하지 않는다. */
-.sa-tile.sa-m2NoReply .sa-tile-ico,
-.sa-tile.sa-m2NoReply .sa-tile-num{ color:#C92E42; }
-.sa-tile.sa-m2NoReply .sa-tile-label::after{
-  content:''; display:inline-block; width:6px; height:6px; margin-left:5px;
-  border-radius:50%; background:#D94A5C; vertical-align:middle;
-}
-
-/* ---- 시공사 지역 분포 미니 지도 ---- */
-.sa-map-block{ display:flex; flex-direction:column; gap:9px; }
+/* ---- 시공사 지역 분포 지도 ---- */
+.sa-map-block{ display:flex; flex-direction:column; gap:10px; flex:1 1 auto; min-height:0; }
 .sa-map-head{ display:flex; align-items:center; gap:8px; }
 .sa-map-titles{ min-width:0; }
-.sa-map-title{ font-size:13px; font-weight:700; color:#17324D; }
-.sa-map-sub{ margin-top:1px; font-size:11px; font-weight:500; color:#7C899D; }
+.sa-map-title{ font-size:15px; font-weight:700; color:#17324D; letter-spacing:-.02em; }
+.sa-map-sub{ margin-top:2px; font-size:11.5px; font-weight:500; color:#7C899D; }
 .sa-map-open{ margin-left:auto; }
-.sa-map-wrap{ position:relative; }
+/* 액션 영역이 빠진 만큼 지도를 크게. 카드가 세로로 남는 공간을 지도가 전부 쓴다. */
+.sa-map-wrap{ position:relative; flex:1 1 auto; min-height:430px; }
 .sa-map-canvas{
-  position:relative; height:220px; border:1px solid #E4EAF2; border-radius:14px;
+  position:relative; height:100%; min-height:430px;
+  border:1px solid #E4EAF2; border-radius:16px;
   overflow:hidden; background:#F2F6FC;
 }
 .sa-map-hit{
   position:absolute; inset:0; width:100%; height:100%;
-  border:none; background:transparent; border-radius:14px; cursor:pointer; padding:0;
+  border:none; background:transparent; border-radius:16px; cursor:pointer; padding:0;
 }
 .sa-map-hit:hover{ background:rgba(37,99,235,.04); }
 .sa-map-hit:focus-visible{ outline:2px solid #2563EB; outline-offset:2px; }
@@ -3157,7 +3122,7 @@ html,body{background:radial-gradient(circle at 75% -10%,rgba(11,91,211,.055),tra
   .nf-card.nf-card-action{ padding:18px; gap:14px; }
 }
 @media(max-width:1100px){
-  .sa-map-canvas{ height:200px; }
+  .sa-map-wrap, .sa-map-canvas{ min-height:320px; }
 }
 
 /* §S — 클러스터/히트맵은 지도 위 세그먼트 하나로만 보여준다. 기존 버튼은 전환 로직을
@@ -6652,21 +6617,41 @@ body{
 .kpi-strip-row{ margin:0 !important; }
 .kpi-strip{ gap:12px !important; }
 .kpi-strip .kpi-item{
-  background:var(--nf-surface) !important;
-  border:1px solid var(--nf-border) !important;
+  background:#FFFFFF !important;
+  border:1px solid #E4EAF2 !important;
   border-radius:var(--nf-radius-card) !important;
   box-shadow:var(--nf-shadow-card) !important;
-  padding:14px 16px !important;
-  align-items:flex-start !important;
+  /* 다섯 칸의 숫자·제목·보조문구가 같은 높이에서 시작하도록 각 줄에 최소 높이를 준다.
+     카드마다 보조문구가 있고 없고, 제목이 한 줄이고 두 줄이고가 달라서, 가운데 정렬만
+     해서는 숫자 위치가 서로 어긋난다. */
+  padding:16px 14px !important;
+  align-items:center !important;
+  justify-content:flex-start !important;
+  text-align:center;
+  min-height:112px;
   transition:box-shadow .16s, transform .16s;
 }
 .kpi-strip .kpi-item:hover{ box-shadow:var(--nf-shadow-card-hover) !important; transform:translateY(-1px); }
-.kpi-strip .kpi-item-value{ font-size:var(--nf-fs-title) !important; font-weight:800 !important; color:var(--nf-navy) !important; letter-spacing:-.03em !important; }
-.kpi-strip .kpi-item-label{ font-size:var(--nf-fs-sm) !important; font-weight:700 !important; color:var(--nf-text-muted) !important; }
-.kpi-strip .kpi-item-sub{ font-size:var(--nf-fs-xs) !important; color:var(--nf-text-faint) !important; }
-.kpi-strip .kpi-item.is-up .kpi-item-value{ color:var(--nf-on-green) !important; }
-.kpi-strip .kpi-item.is-warn .kpi-item-value{ color:var(--nf-on-red) !important; }
-.kpi-strip .kpi-item.is-rising .kpi-item-value{ color:var(--nf-on-purple) !important; }
+.kpi-strip .kpi-item-value{
+  font-size:var(--nf-fs-title) !important; font-weight:800 !important;
+  color:#173B6C !important; letter-spacing:-.03em !important;
+  display:flex; align-items:center; justify-content:center; min-height:34px;
+}
+.kpi-strip .kpi-item-label{
+  font-size:var(--nf-fs-sm) !important; font-weight:700 !important; color:#7C899D !important;
+  display:flex; align-items:center; justify-content:center; min-height:30px; margin-top:2px;
+}
+.kpi-strip .kpi-item-sub{
+  font-size:var(--nf-fs-xs) !important; color:#7C899D !important;
+  min-height:28px; line-height:1.45;
+}
+/* §KPI 색 통일 — 초록(상승 업체) · 빨강(L2→L3) · 보라(TOP 5)를 쓰지 않는다.
+   판정 클래스(is-up / is-warn / is-rising)는 JS가 붙이는 그대로 두고 색만 navy/blue로
+   맞춘다. 눌러서 뭔가 열리는 카드(TOP 5)만 한 단계 진한 파랑으로 구분한다. */
+.kpi-strip .kpi-item.is-up .kpi-item-value,
+.kpi-strip .kpi-item.is-warn .kpi-item-value{ color:#173B6C !important; }
+.kpi-strip .kpi-item.is-rising .kpi-item-value{ color:#2563EB !important; }
+.kpi-strip .kpi-item.is-rising::after{ color:#9AA8BC !important; }
 
 /* ---- §7 중앙 고객목록 카드 + pastel 상태 pill ---- */
 .crm-panel.crm-list-col{
@@ -16012,106 +15997,18 @@ window.SHIN2_CRM_APP_INIT = function(){
   // matchesFilter를 그대로 읽어 "지금 처리할 일"로 묶어 보여줄 뿐이다. 한 번의 호출로
   // 네 묶음과 우선 확인 업체까지 같이 만들어 같은 계산을 반복하지 않는다(§23).
   // ==========================================================================
-  const SALES_ACTION_DEFS = [
-    ['requestedMaterials', '미팅 후 요청자료',   'questionnaire'],
-    ['m2NoReply',          '2차 미팅 회신 지연', 'agreement'],
-    ['secondMeeting',      '2차 미팅 준비',      'agreement']
-  ];
-  // 회신이 없다고 보기까지 기다리는 날수.
-  const M2_NO_REPLY_DAYS = 7;
-  let salesActionFocus = null;   // {key, ids:Set} — 타일을 누르면 고객목록을 그 묶음으로 좁힌다
+  // §오른쪽 카드 — "오늘의 영업 액션"을 걷어내고 시공사 지역 분포 지도만 남겼다.
+  // 액션 타일·집계(buildSalesActionSummary 등)는 이 카드 전용 코드라 함께 제거했다.
+  // 아래 salesActionFocus는 고객목록 쪽 필터 한 줄이 계속 참조하므로 남겨 둔다
+  // (값이 항상 null이라 목록 동작에는 영향이 없다).
+  let salesActionFocus = null;
 
-  function salesDaysBetween(ts){
-    const t = typeof ts === 'number' ? ts : Date.parse(ts || '');
-    if(!Number.isFinite(t)) return null;
-    const day = 24 * 60 * 60 * 1000;
-    const a = new Date(t); a.setHours(0,0,0,0);
-    const b = new Date();  b.setHours(0,0,0,0);
-    return Math.max(0, Math.round((b - a) / day));
-  }
-  // 날짜를 지어내지 않는다 — 실제로 저장된 값이 없으면 빈 문자열을 돌려준다.
-  function salesElapsedText(ts, prefix){
-    const d = salesDaysBetween(ts);
-    if(d === null) return '';
-    const core = d === 0 ? '오늘' : d + '일 경과';
-    return prefix ? prefix + ' ' + core : core;
-  }
-  function buildSalesActionSummary(enriched, mgmt, relationIndex){
-    const rows = enriched || [];
-    const byId = new Map(rows.map(r=> [String(r.co.id), r]));
-    const out = { requestedMaterials:[], m2NoReply:[], secondMeeting:[] };
-
-    // ① 미팅 후 요청자료 — 질문지 상담의 pending 판정(D.pendingConsultReviewDocs)을 그대로 쓴다.
-    let pendingDocs = [];
-    try{ pendingDocs = D.pendingConsultReviewDocs() || []; }
-    catch(err){ pendingDocs = []; }
-    const seenReq = new Set();
-    pendingDocs.forEach(doc=>{
-      const id = String(doc.companyId || '');
-      const row = byId.get(id);
-      if(!row || seenReq.has(id)) return;
-      seenReq.add(id);
-      const rm = (doc.consultReview || {}).requestedMaterialsAfterMeeting || {};
-      out.requestedMaterials.push({ co: row.co, ts: rm.notifiedAt || doc.updatedAt || '',
-        note: salesElapsedText(rm.notifiedAt || doc.updatedAt, '') });
-    });
-
-    // ② 2차 미팅 준비 — 1차 미팅은 끝났는데 2차가 아직인 업체.
-    // ③ 2차 미팅 회신 지연 — 2차 미팅 일정 메일을 보낸 지 오래됐는데 회신이 없는 업체.
-    //    둘 다 buildProgressStages 결과와 기존 메일 발송 기록을 읽기만 한다(새 판정 없음).
-    rows.forEach(r=>{
-      const st = {};
-      ((r.progress && r.progress.stages) || []).forEach(x=> { st[x.key] = x; });
-      const m1 = st.m1 || {}, m2 = st.m2 || {}, mou = st.mou || {};
-      if(m1.state === 'done' && m2.state !== 'done' && mou.state !== 'done'){
-        out.secondMeeting.push({ co: r.co, ts: m1.ts || null,
-          note: salesElapsedText(m1.ts, '1차 미팅 완료') || '1차 미팅 완료' });
-      }
-      // §2차 미팅 회신 지연 — 2차 미팅 일정 메일(secondMeetingRequest)을 보낸 지
-      // M2_NO_REPLY_DAYS일이 지났는데 아직 일정 회신(m2 예정일)도, 2차 미팅 완료도 없는 업체.
-      // 발송 기록은 기존 co.m1MailLog(mailType/sentAt/status)를 읽기만 한다.
-      if(m2.state !== 'done' && !m2.scheduledLabel && mou.state !== 'done'){
-        const sent = (Array.isArray(r.co.m1MailLog) ? r.co.m1MailLog : [])
-          .filter(l=> l && l.mailType === 'secondMeetingRequest' && l.status === 'sent' && l.sentAt);
-        const last = sent.length ? sent[sent.length - 1] : null;
-        const days = last ? salesDaysBetween(last.sentAt) : null;
-        if(days !== null && days >= M2_NO_REPLY_DAYS){
-          out.m2NoReply.push({ co: r.co, ts: last.sentAt, note: '메일 발송 후 ' + days + '일 경과' });
-        }
-      }
-    });
-
-    return out;
-  }
-
-  const SALES_ACTION_HINT = {
-    requestedMaterials:'미팅 후 요청자료 메모가 있고 아직 발송 완료 처리되지 않은 업체',
-    m2NoReply:'2차 미팅 일정 메일 발송 후 ' + M2_NO_REPLY_DAYS + '일 이상 회신이 없는 업체',
-    secondMeeting:'1차 미팅은 끝났고 2차 미팅이 아직인 업체'
-  };
-  const SALES_ICO = {
-    requestedMaterials:"<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true'><path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z'/><path d='M14 2v6h6M9 15l2 2 4-4'/></svg>",
-    secondMeeting:"<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true'><rect x='3' y='4' width='18' height='18' rx='2'/><path d='M16 2v4M8 2v4M3 10h18M9 16l2 2 4-4'/></svg>",
-    m2NoReply:"<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true'><path d='M22 10.5V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10'/><path d='m2 7 10 6 10-6'/><path d='M19 14v3M19 21h.01'/></svg>",
-    chevron:"<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true'><path d='m9 18 6-6-6-6'/></svg>"
-  };
-
-  // 카드 뼈대는 한 번만 만든다 — 미니 지도 노드를 renderList마다 지웠다 다시 만들면
-  // 지도 인스턴스가 매번 새로 생겨 느리고 깜빡인다. 타일 영역만 다시 그린다.
+  // 카드 뼈대는 한 번만 만든다 — 지도 노드를 renderList마다 지웠다 다시 만들면
+  // 지도 인스턴스가 매번 새로 생겨 느리고 깜빡인다.
   function ensureSalesActionShell(wrap){
-    if(wrap.dataset.shell === '1') return;
-    wrap.dataset.shell = '1';
+    if(wrap.dataset.shell === '2') return;
+    wrap.dataset.shell = '2';
     wrap.innerHTML = `
-      <div class="nf-card-head sa-head">
-        <div class="nf-card-title-group">
-          <span class="sa-card-ico" aria-hidden="true"></span>
-          <div>
-            <div class="nf-card-title">오늘의 영업 액션</div>
-            <div class="nf-card-sub">지금 확인이 필요한 업무를 모았습니다.</div>
-          </div>
-        </div>
-      </div>
-      <div class="sa-tiles" id="crmActionTiles"></div>
       <div class="sa-map-block">
         <div class="sa-map-head">
           <div class="sa-map-titles">
@@ -16195,43 +16092,14 @@ window.SHIN2_CRM_APP_INIT = function(){
     });
   }
 
+  // 호출부(renderList)를 건드리지 않으려고 이름과 인자는 그대로 둔다 — 이제 하는 일은
+  // "오른쪽 카드 뼈대 보장 + 지도 갱신" 뿐이다.
   function renderNfSalesActionCard(enriched, mgmt, relationIndex){
     const wrap = document.getElementById('crmActionCard');
     if(!wrap) return;
     ensureSalesActionShell(wrap);
-    let sum;
-    try{ sum = buildSalesActionSummary(enriched, mgmt, relationIndex); }
-    catch(err){ console.warn('영업 액션 집계 실패:', err);
-      sum = { requestedMaterials:[], m2NoReply:[], secondMeeting:[] }; }
-    salesActionSummaryCache = sum;
-    const box = document.getElementById('crmActionTiles');
-    if(box) box.innerHTML = SALES_ACTION_DEFS.map(([key,label])=> `
-      <button type="button" class="sa-tile sa-${esc(key)}${salesActionFocus && salesActionFocus.key === key ? ' is-active' : ''}"
-        data-sales-action="${esc(key)}" aria-pressed="${salesActionFocus && salesActionFocus.key === key ? 'true' : 'false'}"
-        title="${esc(SALES_ACTION_HINT[key] || label)}">
-        <span class="sa-tile-ico">${SALES_ICO[key]}</span>
-        <span class="sa-tile-label">${esc(label)}</span>
-        <span class="sa-tile-num">${sum[key].length}<span class="sa-tile-unit">건</span></span>
-        <span class="sa-tile-chev">${SALES_ICO.chevron}</span>
-      </button>`).join('');
-
-    // 타일 — 누르면 고객목록을 그 묶음으로 좁히고, 다시 누르면 푼다. 새 판정 없이
-    // 방금 계산한 id 집합으로 거르기만 한다.
-    if(box) box.querySelectorAll('[data-sales-action]').forEach(btn=> btn.addEventListener('click', ()=>{
-      const key = btn.getAttribute('data-sales-action');
-      if(salesActionFocus && salesActionFocus.key === key) salesActionFocus = null;
-      else {
-        const ids = new Set((sum[key] || []).map(x=> String(x.co.id)));
-        if(!ids.size) return;   // 0건이면 빈 목록으로 만들지 않는다
-        salesActionFocus = { key, ids };
-        filterKey = 'all';
-      }
-      currentPage = 1;
-      renderList();
-    }));
     renderCrmMiniMap();
   }
-  let salesActionSummaryCache = null;
 
   // 우측 "최근 요청" — buildRequestListItems() 결과를 업체 구분 없이 최신순으로 모은다.
   function renderNfRecentReqCard(companyList, idx){
@@ -16617,8 +16485,8 @@ window.SHIN2_CRM_APP_INIT = function(){
     // 없앰).
     const rows = enriched
       .filter(r=> matchesFilter(r.co, r.progress, filterKey, relationIndex))
-      // §오늘의 영업 액션 — 타일을 누르면 그 묶음의 업체만 남긴다. 새 판정이 아니라
-      // buildSalesActionSummary가 방금 만든 id 집합으로 거르기만 한다.
+      // salesActionFocus는 지금 항상 null이라 이 줄은 아무 것도 거르지 않는다.
+      // 나중에 다시 "특정 묶음만 보기"를 붙일 때 쓰려고 자리만 남겨 둔다.
       .filter(r=> !salesActionFocus || salesActionFocus.ids.has(String(r.co.id)))
       .filter(r=> matchesSearch(r.co, r.acts, searchQuery, searchQuery ? (()=>{
         const parent = D.resolveParentCompanyDisplay(r.co, companies, relationIndex);
