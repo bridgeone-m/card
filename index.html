@@ -3167,6 +3167,12 @@ html,body{background:radial-gradient(circle at 75% -10%,rgba(11,91,211,.055),tra
 /* §질문지 상담 확장 — 상단 요약 배지, 선택지 칩, 권장 대응 줄. 기존 .crv-rate-btn
    모양을 그대로 쓰고 선택지용(.is-choice)만 폭을 글자에 맞춘다. */
 .crv-insight-tags{ display:flex; flex-wrap:wrap; gap:5px; margin-bottom:9px; }
+/* 종합 고객 인사이트는 한 문단으로 읽히게 넉넉한 행간을, 그 아래 2차 미팅 준비·요청자료는
+   실제 업무 Action이라 가는 선으로 끊어 따로 보이게 한다(§6, §7). */
+.crv-insight-sec.is-verdict .crv-insight-sec-text{ line-height:1.75; }
+.crv-insight-sec.is-verdict + .crv-insight-sec{
+  margin-top:10px; padding-top:10px; border-top:1px solid #EDF2F8;
+}
 .crv-insight-tag{
   display:inline-flex; align-items:center; height:21px; padding:0 9px; border-radius:999px;
   background:#EDF3FF; color:#1D4ED8; font-size:11px; font-weight:700; white-space:nowrap;
@@ -3187,10 +3193,6 @@ html,body{background:radial-gradient(circle at 75% -10%,rgba(11,91,211,.055),tra
   display:flex !important; flex-wrap:wrap; gap:5px; width:100%;
   margin:0 0 8px; position:relative; z-index:1;
 }
-.insight-auto-advice{
-  margin-top:6px; font-size:11.5px; line-height:1.6; color:#56637A;
-}
-.insight-auto-advice b{ color:#1D4ED8; font-weight:700; margin-right:4px; }
 
 /* 근처 찾기 반경 — 칩 줄 대신 드롭다운 하나. 옆 검색칸을 밀지 않게 폭을 고정한다. */
 .map-near-radius-select{ flex:none !important; width:84px !important; min-width:84px !important; }
@@ -20303,18 +20305,16 @@ window.SHIN2_CRM_APP_INIT = function(){
     const r = D.readConsultReview(doc);
     const parsed = parseConsultInsightSummary(r.autoInsight.summary);
     if(!parsed.sections.length) return '';
-    // 상단은 저장된 요약 배지, 아래는 종합 인사이트 + 권장 대응(최대 2블록 = 2~4줄).
+    // 상단은 저장된 요약 배지, 아래는 종합 고객 인사이트 한 문단. 항목별 해설과
+    // "권장 대응" 줄은 더 이상 만들지 않는다(§1, §5) — 후속 관리 의미는 문단 마지막
+    // 문장에 들어 있다. 2차 미팅 준비·요청자료는 질문지 상담 요약 카드에서 따로 본다.
     const lead = parsed.verdict || (parsed.sections[0] || {}).text || '';
-    const advice = (parsed.sections.find(sec=> sec.key === 'advice') || {}).text || '';
     const tags = r.autoInsight.tags || [];
-    const chips = parsed.sections.filter(sec=> sec.key !== 'verdict' && sec.key !== 'advice').map(sec=> sec.label);
     return `
       <div class="insight-auto-block">
         <div class="insight-auto-label">자동 인사이트 <span class="insight-auto-src">질문지 상담 기준</span></div>
         ${tags.length ? `<div class="crv-insight-tags">${tags.map(t=> `<span class="crv-insight-tag">${esc(t)}</span>`).join('')}</div>` : ''}
         <div class="insight-auto-lead">${esc(lead)}</div>
-        ${advice ? `<div class="insight-auto-advice"><b>권장 대응</b> ${esc(advice)}</div>` : ''}
-        ${chips.length ? `<div class="insight-auto-chips">${chips.map(c=> `<span class="insight-auto-chip">${esc(c)}</span>`).join('')}</div>` : ''}
         <button type="button" class="insight-auto-more" id="cdashAutoInsightMore">질문지 상담에서 전체 보기</button>
       </div>`;
   }
@@ -26565,7 +26565,8 @@ window.SHIN2_CRM_APP_INIT = function(){
       const lines = block.split('\n');
       const label = (lines.shift() || '').trim();
       const text = lines.join(' ').trim();
-      const key = Object.keys(CONSULT_INSIGHT_LABELS).find(k=> CONSULT_INSIGHT_LABELS[k] === label) || '';
+      const key = Object.keys(CONSULT_INSIGHT_LABELS).find(k=> CONSULT_INSIGHT_LABELS[k] === label)
+        || CONSULT_INSIGHT_LEGACY_LABELS[label] || '';
       return { key, label, text };
     }).filter(sec=> sec.label && sec.text);
     const v = sections.find(sec=> sec.key === 'verdict');
@@ -26597,42 +26598,6 @@ window.SHIN2_CRM_APP_INIT = function(){
   // 메모는 뜻을 바꾸지 않는다 — 공백 정리 + 1~2문장으로 자르기 + 마침표 보정만 한다.
   // 맞춤법 교정은 사전 없이 규칙만으로는 원문 뜻을 바꿀 위험이 있어 하지 않는다.
   // ==========================================================================
-  const CONSULT_INSIGHT_SENTENCES = {
-    marketUnderstanding: {
-      high:'관련 시장 및 영업 구조에 대한 이해도가 높으며, 제안 내용을 빠르게 이해하는 편입니다.',
-      mid: '기본적인 시장 이해도는 있으나 일부 내용은 추가 설명이 필요합니다.',
-      low: '시장 및 제안 구조에 대한 이해가 아직 낮아 충분한 설명과 안내가 필요합니다.'
-    },
-    sincerity: {
-      high:'협력 및 후속 진행에 대한 의지가 높게 확인됩니다.',
-      mid: '관심은 확인되나 실제 후속 진행 여부는 추가 확인이 필요합니다.',
-      low: '현재 단계에서는 적극적인 협력 의지가 높지 않은 것으로 판단됩니다.'
-    },
-    conversionPotential: {
-      high:'실제 협력 및 다음 단계로 전환될 가능성이 높은 업체입니다.',
-      mid: '전환 가능성은 있으나 추가 협의 및 확인 과정이 필요합니다.',
-      low: '현재 단계에서는 단기간 내 전환 가능성이 낮아 지속적인 관리가 필요합니다.'
-    }
-  };
-  // 선택지 항목 3개의 고정 문장. 상/중/하 표와 같은 원칙 — 고르는 것뿐, 지어내지 않는다.
-  const CONSULT_CHOICE_SENTENCES = {
-    competitorUsage: {
-      current:'현재 타사 공법 또는 제품을 사용 중인 업체입니다.',
-      past:   '과거 타사 공법 또는 제품을 사용한 경험이 있습니다.',
-      none:   '현재 확인된 타사 공법 또는 제품 사용 이력은 없습니다.',
-      unknown:'타사 공법 또는 제품 사용 여부는 추가 확인이 필요합니다.'
-    },
-    priceSensitivity: {
-      high:'가격에 대한 민감도가 높은 편으로 확인됩니다.',
-      mid: '가격 민감도는 보통 수준입니다.',
-      low: '가격보다는 기술력·실적·지원 등 다른 요소를 더 중요하게 보는 편입니다.'
-    },
-    relationshipLevel: {
-      active: '현재 관계 형성이 적극적으로 이루어지고 있습니다.',
-      mid:    '관계 형성은 보통 수준으로, 지속적인 접촉이 필요합니다.',
-      passive:'현재 관계 형성 정도가 낮아 추가 접점 확보가 필요합니다.'
-    }
-  };
   // 고객 인사이트에 쓰는 항목 제목(§1의 6개). 입력 카드 제목과 조금 다르다("전환 가능성
   // 확인" → "전환 가능성") — 명세의 표기를 그대로 따른다.
   const CONSULT_INSIGHT_LABELS = {
@@ -26645,9 +26610,11 @@ window.SHIN2_CRM_APP_INIT = function(){
     interestPoints:'주요 관심 포인트',
     secondMeetingPreparation:'2차 미팅 준비',
     requestedMaterialsAfterMeeting:'요청자료',
-    verdict:'종합 인사이트',
-    advice:'권장 대응'
+    verdict:'종합 고객 인사이트',
+    advice:'권장 대응'          // 더 이상 만들지 않는다 — 예전에 저장된 요약을 읽기 위해 남긴다
   };
+  // 라벨이 바뀌기 전에 저장된 요약도 같은 항목으로 읽히게 하는 옛 이름 표.
+  const CONSULT_INSIGHT_LEGACY_LABELS = { '종합 인사이트':'verdict' };
   // 메모 정리 — 뜻은 그대로 두고 모양만 다듬는다.
   function consultMemoClean(memo){
     let t = String(memo || '').replace(/\s+/g, ' ').trim();
@@ -26659,62 +26626,6 @@ window.SHIN2_CRM_APP_INIT = function(){
     if(t.length > 120) t = t.slice(0, 120).replace(/\s+\S*$/, '') + '…';
     if(!/[.!?。…]$/.test(t)) t += '.';
     return t;
-  }
-  // 종합 인사이트 — 판정 순서는 §9에 적힌 그대로다(중복 조건이 걸려도 위가 이긴다).
-  const CONSULT_VERDICT_RULES = [
-    { id:'allHigh',   test:c=> c.high === 3,                 text:'전반적으로 이해도와 협력 의지가 높아 후속 진행 우선도가 높은 업체입니다.' },
-    { id:'lowMany',   test:c=> c.low >= 2,                   text:'현재는 적극적인 전환보다 관계 유지와 추가 안내 중심의 관리가 필요한 업체입니다.' },
-    { id:'highMany',  test:c=> c.high >= 2,                  text:'전반적인 이해도와 관심도가 높은 편으로, 후속 협의를 적극적으로 진행할 가치가 있는 업체입니다.' },
-    { id:'allMid',    test:c=> c.mid === 3,                  text:'전반적인 관심은 확인되나 후속 진행을 위해 추가 확인이 필요한 업체입니다.' },
-    { id:'highOneMid',test:c=> c.high === 1 && c.mid >= 2,   text:'시장 이해도 또는 관심도는 확인되나 실제 전환을 위해 추가 협의가 필요한 업체입니다.' },
-    { id:'mixed',     test:()=> true,                        text:'일부 긍정적인 요소는 확인되지만 실제 전환 가능성을 판단하기 위해 추가 확인이 필요합니다.' }
-  ];
-  function consultVerdictText(review){
-    const r = review || {};
-    const vals = ['marketUnderstanding','sincerity','conversionPotential']
-      .map(k=> (r[k] || {}).rating).filter(Boolean);
-    if(!vals.length) return '';   // 평가가 하나도 없으면 종합도 만들지 않는다
-    const c = {
-      high: vals.filter(v=> v==='high').length,
-      mid:  vals.filter(v=> v==='mid').length,
-      low:  vals.filter(v=> v==='low').length
-    };
-    const hit = CONSULT_VERDICT_RULES.find(rule=> rule.test(c));
-    return hit ? hit.text : '';
-  }
-  // §관심 포인트 문장 — 고른 라벨을 순서대로 이어 붙이기만 한다.
-  function consultInterestText(review){
-    const node = (review || {}).interestPoints || { values:[], memo:'' };
-    const labels = (node.values || [])
-      .map(v=>{ const hit = D.CONSULT_INTEREST_POINTS.find(o=> o[0] === v); return hit ? hit[1] : ''; })
-      .filter(Boolean);
-    const memo = consultMemoClean(node.memo);
-    if(!labels.length) return memo;
-    const base = '주요 관심 포인트는 ' + labels.join(', ') + '입니다.';
-    return [base, memo].filter(Boolean).join(' ');
-  }
-  // §권장 대응 — 조건마다 문장이 하나씩 정해져 있고, 걸린 것만 중복 없이 2~4문장으로 모은다.
-  //   순서는 "무엇을 설명할지" → "무엇을 먼저 줄지" → "그다음 무엇을 할지"가 되게 고정했다.
-  function consultAdviceText(review){
-    const r = review || {};
-    const picks = (r.interestPoints || {}).values || [];
-    const out = [];
-    const push = t=>{ if(t && out.indexOf(t) < 0) out.push(t); };
-    if((r.competitorUsage || {}).status === 'current'){
-      push('기존 사용 공법과의 차이점 및 POUR 적용 장점을 비교 설명하는 것이 필요합니다.');
-    }
-    if((r.priceSensitivity || {}).level === 'high'){
-      push('가격 경쟁력과 비용 대비 효과를 구체적으로 설명하는 것이 필요합니다.');
-    }
-    if(picks.indexOf('tech') >= 0) push('공법 기술적 차별성과 특허 내용을 중심으로 설명하는 것이 좋습니다.');
-    if(picks.indexOf('record') >= 0) push('최근 시공실적과 적용사례를 우선 제공하는 것이 좋습니다.');
-    if(picks.indexOf('support') >= 0) push('현장 기술지원 범위와 대응 체계를 구체적으로 안내하는 것이 좋습니다.');
-    const conv = (r.conversionPotential || {}).rating;
-    if(conv === 'high') push('후속 미팅 및 협약 진행을 적극적으로 이어가는 것이 적절합니다.');
-    else if(conv === 'mid') push('추가 자료 제공과 후속 상담을 통해 전환 가능성을 확인하는 것이 적절합니다.');
-    else if(conv === 'low') push('즉각적인 전환 유도보다는 관계 유지와 추가 안내 중심으로 관리하는 것이 적절합니다.');
-    // 너무 길어지면 앞의 4문장까지만 — 우선순위가 높은 설명·제공 항목이 앞에 온다.
-    return out.slice(0, 4).join(' ');
   }
   // §상단 요약 배지 — 저장된 선택값을 라벨로 바꿔 적을 뿐, 해석을 더하지 않는다.
   function consultInsightTags(review){
@@ -26736,35 +26647,165 @@ window.SHIN2_CRM_APP_INIT = function(){
   }
   // 최대 6개 항목을 만든다. 반환값: { sections:[{key,label,text}], summary, verdict }
   // summary는 저장·표시에 쓰는 평문(제목 줄 + 본문 줄).
+  // ==========================================================================
+  // §고객 인사이트 간결화 라운드 — 항목마다 한 문단씩 늘어놓던 것을 "종합 고객 인사이트"
+  // 한 문단으로 합친다. 상단 요약 배지가 값 자체를 이미 보여주므로, 문단은 그 값들을
+  // 서로 이어 읽히게 만드는 역할만 한다.
+  //
+  // 문장을 지어내지 않는 원칙은 그대로다 — 아래 표의 조각을 고르고, 사람이 쓴 메모를
+  // 인용할 뿐이다. 각 값은 조각 두 벌을 갖는다:
+  //   lead = 다음 조각으로 이어지는 연결형("…이며", "…이고")
+  //   tail = 문장을 끝맺는 종결형("…입니다.")
+  // 한 문장에 여러 값이 들어가면 마지막만 tail을 쓰고 나머지는 lead를 쓴다. 그래서
+  // "가격 민감도는 보통입니다. 관계 형성은 보통입니다."처럼 끊기지 않는다.
+  // ==========================================================================
+  const CONSULT_CLAUSES = {
+    marketUnderstanding: {
+      high:{ lead:'시장 및 영업 구조에 대한 이해도가 높은 편이며', tail:'시장 및 영업 구조에 대한 이해도가 높은 편입니다.' },
+      mid: { lead:'기본적인 시장 이해도는 갖추고 있으나 일부 내용은 추가 설명이 필요하며', tail:'기본적인 시장 이해도는 갖추고 있으나 일부 내용은 추가 설명이 필요합니다.' },
+      low: { lead:'시장 및 제안 구조에 대한 이해가 아직 낮아 충분한 설명이 필요하며', tail:'시장 및 제안 구조에 대한 이해가 아직 낮아 충분한 설명이 필요합니다.' }
+    },
+    sincerity: {
+      high:{ lead:'협력 및 후속 진행에 대한 의지도 높게 확인되며', tail:'협력 및 후속 진행에 대한 의지가 높게 확인됩니다.' },
+      mid: { lead:'협력에 대한 관심은 확인되나 실제 후속 진행 여부는 추가 확인이 필요하며', tail:'협력에 대한 관심은 확인되나 실제 후속 진행 여부는 추가 확인이 필요합니다.' },
+      low: { lead:'현재 단계에서는 적극적인 협력 의지가 높지 않으며', tail:'현재 단계에서는 적극적인 협력 의지가 높지 않은 것으로 판단됩니다.' }
+    },
+    conversionPotential: {
+      high:{ lead:'실제 협력 및 다음 단계로 전환될 가능성이 높으며', tail:'실제 협력 및 다음 단계로 전환될 가능성이 높은 업체입니다.' },
+      mid: { lead:'전환 가능성은 있으나 추가 협의와 확인 과정이 필요하며', tail:'전환 가능성은 있으나 추가 협의와 확인 과정이 필요합니다.' },
+      low: { lead:'단기간 내 전환 가능성은 낮으며', tail:'단기간 내 전환 가능성은 낮아 지속적인 관리가 필요한 단계입니다.' }
+    },
+    competitorUsage: {
+      current:{ lead:'현재 타사 공법 또는 제품을 사용 중이며', tail:'현재 타사 공법 또는 제품을 사용 중입니다.' },
+      past:   { lead:'과거 타사 공법 또는 제품을 사용한 경험이 있으며', tail:'과거 타사 공법 또는 제품을 사용한 경험이 있습니다.' },
+      none:   { lead:'현재 확인된 타사 공법 사용 이력은 없으며', tail:'현재 확인된 타사 공법 사용 이력은 없습니다.' },
+      unknown:{ lead:'타사 공법 사용 여부는 추가 확인이 필요하며', tail:'타사 공법 사용 여부는 추가 확인이 필요합니다.' }
+    },
+    priceSensitivity: {
+      high:{ lead:'가격에 대한 민감도가 높은 편이고', tail:'가격에 대한 민감도가 높은 편입니다.' },
+      mid: { lead:'가격 민감도는 보통 수준이고', tail:'가격 민감도는 보통 수준입니다.' },
+      low: { lead:'가격보다 기술력·실적·지원을 더 중요하게 보는 편이고', tail:'가격보다 기술력·실적·지원을 더 중요하게 보는 편입니다.' }
+    },
+    relationshipLevel: {
+      active: { lead:'관계 형성도 적극적으로 이루어지고 있고', tail:'관계 형성은 적극적으로 이루어지고 있습니다.' },
+      mid:    { lead:'관계 형성은 보통 수준이고', tail:'관계 형성은 보통 수준입니다.' },
+      passive:{ lead:'관계 형성 정도는 낮은 편이고', tail:'관계 형성 정도는 낮아 추가 접점 확보가 필요합니다.' }
+    }
+  };
+  // 가격·관계가 둘 다 "보통"일 때만 한 조각으로 묶는다(§4의 예시 그대로).
+  const CONSULT_PRICE_REL_BOTH_MID = { lead:'가격 민감도와 관계 형성 수준은 보통이고', tail:'가격 민감도와 관계 형성 수준은 보통입니다.' };
+  // 문단 마지막의 후속 관리 문장 — 예전 "권장 대응" 영역이 하던 말을 한 문장으로 줄인 것.
+  const CONSULT_FOLLOWUP = {
+    high:'후속 미팅과 협약 진행을 이어갈 필요가 있습니다.',
+    mid: '추가 자료 제공과 후속 상담을 통해 전환 가능성을 확인할 필요가 있습니다.',
+    low: '즉각적인 전환 유도보다 관계 유지와 추가 안내 중심의 관리가 필요합니다.'
+  };
+  const CONSULT_FOLLOWUP_PREFIX = {
+    competitorCurrent:'기존 사용 공법과의 차이점을 설명하면서 ',
+    priceHigh:'가격 대비 효과를 구체적으로 제시하면서 '
+  };
+  // 받침이 있으면 "과", 없으면 "와". 한글 음절은 (코드-0xAC00)%28로 종성을 알 수 있다.
+  function consultJosaGwa(word){
+    const ch = String(word || '').trim().slice(-1);
+    if(!ch) return '와';
+    const code = ch.charCodeAt(0) - 0xAC00;
+    if(code < 0 || code > 11171) return '와';   // 한글이 아니면 기본값
+    return (code % 28) ? '과' : '와';
+  }
+  // 조각 목록을 한 문장으로 잇는다 — 마지막만 종결형.
+  function consultJoinClauses(parts){
+    const list = parts.filter(Boolean);
+    if(!list.length) return '';
+    if(list.length === 1) return list[0].tail;
+    return list.slice(0, -1).map(x=> x.lead).join(' ') + ' ' + list[list.length - 1].tail;
+  }
+  function consultClause(key, val){
+    if(!val) return null;
+    return (CONSULT_CLAUSES[key] || {})[val] || null;
+  }
+  // 메모는 한 문장만 인용한다 — 문단이 길어지지 않게.
+  function consultMemoOneSentence(memo){
+    const t = consultMemoClean(memo);
+    if(!t) return '';
+    const first = t.split(/(?<=[.!?。…])\s+/)[0] || t;
+    return first;
+  }
+  // 값 + 메모를 모아 "종합 고객 인사이트" 한 문단을 만든다.
+  //   문장 1  시장 이해도 + 진정성
+  //   문장 2  전환 가능성
+  //   문장 3  타사 사용 + 가격 민감도 + 관계 형성
+  //   문장 4  주요 관심 포인트
+  //   문장 5  후속 관리
+  // 값이 없는 항목은 통째로 빠지므로, 적게 입력하면 문단도 짧아진다.
+  function consultSummaryParagraph(review){
+    const r = review || {};
+    const rate = k=> (r[k] || {}).rating;
+    const out = [];
+
+    const s1 = consultJoinClauses([
+      consultClause('marketUnderstanding', rate('marketUnderstanding')),
+      consultClause('sincerity', rate('sincerity'))
+    ]);
+    if(s1) out.push(s1);
+
+    const s2 = consultJoinClauses([consultClause('conversionPotential', rate('conversionPotential'))]);
+    if(s2) out.push(s2);
+
+    const price = (r.priceSensitivity || {}).level;
+    const rel = (r.relationshipLevel || {}).level;
+    const parts3 = [consultClause('competitorUsage', (r.competitorUsage || {}).status)];
+    if(price === 'mid' && rel === 'mid') parts3.push(CONSULT_PRICE_REL_BOTH_MID);
+    else { parts3.push(consultClause('priceSensitivity', price)); parts3.push(consultClause('relationshipLevel', rel)); }
+    const s3 = consultJoinClauses(parts3);
+    if(s3) out.push(s3);
+
+    const picks = ((r.interestPoints || {}).values || [])
+      .map(v=>{ const hit = D.CONSULT_INTEREST_POINTS.find(o=> o[0] === v); return hit ? hit[1] : ''; })
+      .filter(Boolean);
+    if(picks.length){
+      const last = picks[picks.length - 1];
+      const head = picks.slice(0, -1);
+      const joined = head.length
+        ? head.join(', ') + consultJosaGwa(head[head.length - 1]) + ' ' + last
+        : last;
+      out.push('주요 관심 포인트는 ' + joined + '으로 확인됩니다.');
+    }
+
+    // 사람이 쓴 메모는 지어낸 말이 아니므로 그대로 인용한다. 문단이 길어지지 않게
+    // 최대 두 개, 각 한 문장까지만.
+    const memoKeys = ['marketUnderstanding','sincerity','conversionPotential',
+      'competitorUsage','priceSensitivity','relationshipLevel','interestPoints'];
+    const memos = [];
+    memoKeys.forEach(k=>{
+      if(memos.length >= 2) return;
+      const m = consultMemoOneSentence((r[k] || {}).memo);
+      if(m && memos.indexOf(m) < 0) memos.push(m);
+    });
+    memos.forEach(m=> out.push(m));
+
+    const conv = rate('conversionPotential');
+    if(conv && CONSULT_FOLLOWUP[conv]){
+      let prefix = '';
+      if((r.competitorUsage || {}).status === 'current') prefix = CONSULT_FOLLOWUP_PREFIX.competitorCurrent;
+      else if(price === 'high') prefix = CONSULT_FOLLOWUP_PREFIX.priceHigh;
+      out.push(prefix + CONSULT_FOLLOWUP[conv]);
+    }
+    return out.join(' ');
+  }
+  // 반환값은 예전과 같은 모양이지만, sections는 이제 최대 3개다 —
+  // 종합 고객 인사이트 / 2차 미팅 준비 / 미팅 후 요청자료.
+  // 항목별 해설과 "권장 대응"은 더 이상 만들지 않는다(§1, §5). 예전에 저장된 요약은
+  // parseConsultInsightSummary가 그대로 읽을 수 있고, 저장값을 지우지도 않는다.
   function buildConsultAutoInsight(review){
     const r = review || {};
     const sections = [];
-    ['marketUnderstanding','sincerity','conversionPotential'].forEach(key=>{
-      const node = r[key] || { rating:'', memo:'' };
-      const base = node.rating ? (CONSULT_INSIGHT_SENTENCES[key] || {})[node.rating] : '';
-      const memo = consultMemoClean(node.memo);
-      // rating이 없으면 고정 문장은 만들지 않는다(§2~4). 메모만 있으면 사람이 쓴 그 문장만
-      // 인용해 남긴다 — 입력한 내용이 요약에서 통째로 사라지지 않게 하기 위해서다.
-      const text = [base, memo].filter(Boolean).join(' ');
-      if(text) sections.push({ key, label:CONSULT_INSIGHT_LABELS[key], text });
-    });
-    D.CONSULT_REVIEW_CHOICE.forEach(([key, field])=>{
-      const node = r[key] || {};
-      const base = node[field] ? (CONSULT_CHOICE_SENTENCES[key] || {})[node[field]] : '';
-      const memo = consultMemoClean(node.memo);
-      const text = [base, memo].filter(Boolean).join(' ');
-      if(text) sections.push({ key, label:CONSULT_INSIGHT_LABELS[key], text });
-    });
-    const interest = consultInterestText(r);
-    if(interest) sections.push({ key:'interestPoints', label:CONSULT_INSIGHT_LABELS.interestPoints, text:interest });
+    const verdict = consultSummaryParagraph(r);
+    if(verdict) sections.push({ key:'verdict', label:CONSULT_INSIGHT_LABELS.verdict, text:verdict });
+    // §6 — 2차 미팅 준비와 요청자료는 성향 분석이 아니라 실제 업무 Action이라 따로 둔다.
     const prep = consultMemoClean((r.secondMeetingPreparation || {}).memo);
     if(prep) sections.push({ key:'secondMeetingPreparation', label:CONSULT_INSIGHT_LABELS.secondMeetingPreparation, text:prep });
     const req = consultMemoClean((r.requestedMaterialsAfterMeeting || {}).memo);
     if(req) sections.push({ key:'requestedMaterialsAfterMeeting', label:CONSULT_INSIGHT_LABELS.requestedMaterialsAfterMeeting, text:req });
-    const verdict = consultVerdictText(r);
-    if(verdict) sections.push({ key:'verdict', label:CONSULT_INSIGHT_LABELS.verdict, text:verdict });
-    const advice = consultAdviceText(r);
-    if(advice) sections.push({ key:'advice', label:CONSULT_INSIGHT_LABELS.advice, text:advice });
     const summary = sections.map(sec=> sec.label + '\n' + sec.text).join('\n\n');
     return { sections, summary, verdict, tags: consultInsightTags(r) };
   }
