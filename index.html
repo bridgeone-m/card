@@ -7748,6 +7748,215 @@ body.crm-fixed-view .crm-list-col .co-list{ overflow-y:auto !important; overscro
   body.crm-fixed-view .list-filter-row-wrap{ row-gap:6px !important; }
   body.crm-fixed-view #crmFilterRow > *{ height:28px !important; }
 }
+
+/* ==========================================================================
+   §전체 UI 통일 라운드(신규) — 공통 컴포넌트 레이어.
+
+   기준은 "현재 고객관리 화면"이고, 그 실측값을 여기 한 곳에만 적는다.
+     카드   흰 배경 / border 1px #E4EAF1 / radius 16px / 아주 미세한 shadow
+     Primary 버튼  deep navy 꽉 찬 배경 / 흰 글자 / height 34 / radius 11
+     Secondary     흰 배경 / navy border / navy 글자 / 같은 높이·radius
+     필터칩        radius 999 / height 30 / 선택 시 연한 네이비 배경 + 네이비 글자
+   화면별로 CSS를 또 덧붙이지 않도록, 아래 공통 class와 토큰에 값을 모으고
+   기존 선택자들이 그 토큰을 읽게 연결한다. 한 화면만 고쳤을 때 다른 화면이
+   다시 제각각 되는 걸 줄이는 것이 목적이다(§11).
+
+   [실측으로 이미 통일돼 있던 것 — 건드리지 않는다]
+     · 헤더/메인탭: gnav 59px, inner y=15, app y=14/x=14/w=1892/h=1052/r=20px
+       (세 탭을 왕복해도 네 번 모두 동일)
+     · page shell: body.crm-page-shell padding 14px, overflow hidden
+     · 문서 스크롤: 세 탭 모두 vScroll 0 / hScroll 0
+     · 필터칩: 고객관리와 MOU가 이미 같은 값(r999 h30)
+     · 메일 본문 툴바: 이미 한 줄로 이동 완료, 버튼 높이 28px 통일
+   ========================================================================== */
+
+:root{
+  /* 요청하신 이름을 기존 토큰의 별칭으로 연결한다 — 값의 출처를 두 벌로 만들지 않는다.
+     (--primary-navy / --surface / --border-soft는 이미 있어 그대로 쓴다.) */
+  --navy-dark: var(--navy-text);     /* #17345F */
+  --navy-mid:  var(--navy-500);      /* #1E4A86 */
+  --navy-soft: var(--navy-100);      /* #EEF3FA */
+  --page-bg:   var(--bg-soft-2);     /* #F5F8FC */
+  --text-main: var(--text);          /* #13243E */
+  --text-sub:  var(--text-muted);    /* #66758D */
+
+  /* 카드·컨트롤 공통 수치 — 고객관리 실측값 */
+  --ui-card-radius: 16px;
+  --ui-card-shadow: 0 1px 2px rgba(20,35,60,.04), 0 4px 16px rgba(23,52,95,.04);
+  --ui-ctrl-h: 34px;
+  --ui-ctrl-h-sm: 28px;
+  --ui-ctrl-radius: 11px;
+  --ui-chip-h: 30px;
+}
+/* 카드 모서리 토큰이 18px로 선언돼 있었는데 실제 카드는 16px로 그려지고 있었다.
+   토큰을 실제 값에 맞춘다 — 이 토큰을 읽는 곳이 자동으로 같은 값이 된다. */
+:root{ --nf-radius-card: var(--ui-card-radius); }
+
+/* ---- 공통 class (§11) ---- */
+.surface-card{
+  background:var(--surface); border:1px solid var(--border-soft);
+  border-radius:var(--ui-card-radius); box-shadow:var(--ui-card-shadow); box-sizing:border-box;
+}
+.kpi-card{ /* surface-card + KPI 높이 체계 */
+  background:var(--surface); border:1px solid var(--border-soft);
+  border-radius:var(--ui-card-radius); box-shadow:var(--ui-card-shadow);
+  box-sizing:border-box; min-height:85px;
+}
+.primary-btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  height:var(--ui-ctrl-h); padding:0 14px; box-sizing:border-box;
+  background:var(--primary-navy); color:#fff; border:1px solid var(--primary-navy);
+  border-radius:var(--ui-ctrl-radius); font-family:inherit; font-size:13px; font-weight:700;
+  white-space:nowrap; cursor:pointer;
+}
+.primary-btn:hover{ background:var(--navy-700); border-color:var(--navy-700); }
+.secondary-btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  height:var(--ui-ctrl-h); padding:0 13px; box-sizing:border-box;
+  background:var(--surface); color:var(--navy-dark); border:1px solid var(--border-soft);
+  border-radius:var(--ui-ctrl-radius); font-family:inherit; font-size:13px; font-weight:650;
+  white-space:nowrap; cursor:pointer;
+}
+.secondary-btn:hover{ background:var(--navy-soft); border-color:var(--navy-200); }
+.filter-chip{
+  display:inline-flex; align-items:center; gap:5px; height:var(--ui-chip-h); padding:0 12px;
+  box-sizing:border-box; background:var(--surface); color:var(--text-sub);
+  border:1px solid var(--border-soft); border-radius:999px;
+  font-family:inherit; font-size:12px; font-weight:650; white-space:nowrap; cursor:pointer;
+}
+.filter-chip.is-active{ background:var(--navy-soft); color:var(--navy-700); border-color:var(--navy-200); }
+.sub-tab{
+  display:inline-flex; align-items:center; gap:5px; height:var(--ui-ctrl-h); padding:0 14px;
+  box-sizing:border-box; background:var(--surface); color:var(--text-sub);
+  border:1px solid var(--border-soft); border-bottom:0; border-radius:10px 10px 0 0;
+  font-family:inherit; font-size:13px; font-weight:650; white-space:nowrap; cursor:pointer;
+}
+.sub-tab.is-active{ background:var(--primary-navy); color:#fff; border-color:var(--primary-navy); }
+
+/* ---- §3 Primary 버튼 높이·모서리 통일 ----
+   실측: "+ 고객 등록" 32px / "PDF 내보내기" 34px / 메일 "저장" 40px 로 세 가지였다.
+   색은 이미 같은 네이비(#1B4480)였고 높이·radius만 갈려 있었다. */
+#crmAddBtn,
+#crmPdfExportBtn,
+#crmMouPdfBtn,
+#mailSettingsView .btn-primary-action,
+.mail-tpl-save-bar .btn-primary-action{
+  height:var(--ui-ctrl-h) !important; min-height:var(--ui-ctrl-h) !important;
+  border-radius:var(--ui-ctrl-radius) !important;
+  padding:0 14px !important; font-size:13px !important; font-weight:700 !important;
+  box-sizing:border-box !important;
+}
+/* 메일 저장 버튼은 저장 바에서 width:100%로 늘어난다 — 폭만 그대로 두고 높이만 맞춘다. */
+.mail-tpl-save-bar .btn-primary-action{ width:100% !important; }
+/* 세 버튼의 네이비를 토큰 하나에서 읽게 한다(각 화면이 다른 파란색을 쓰지 않도록). */
+#crmAddBtn, #crmMouPdfBtn, #mailSettingsView .btn-primary-action{
+  background:var(--primary-navy) !important; color:#fff !important; border:1px solid var(--primary-navy) !important;
+}
+#crmAddBtn:hover, #crmMouPdfBtn:hover, #mailSettingsView .btn-primary-action:hover{
+  background:var(--navy-700) !important; border-color:var(--navy-700) !important;
+}
+
+/* ---- §3 Secondary 통일 ----
+   실측 radius가 6 / 7 / 8 / 11px 네 가지, 높이가 28 / 34 / 38px 세 가지였다.
+   본문 툴바의 compact 버튼(28px)은 편집 화면 특성상 그대로 두고 모서리만 맞춘다. */
+#crmToolsBtn,
+#mailSettingsView .mailx-account-btn,
+/* 미리보기 버튼은 .mailx-actionbar .mailx-tool-btn 규칙이 따로 38px를 주고 있었다. */
+#mailSettingsView .mailx-actionbar .mailx-tool-btn{
+  height:var(--ui-ctrl-h) !important; min-height:var(--ui-ctrl-h) !important;
+  padding:0 13px !important;
+  border-radius:var(--ui-ctrl-radius) !important;
+  box-sizing:border-box !important;
+}
+#mailSettingsView .mailx-toolbar button,
+#mailSettingsView .mailx-toolbar select{
+  height:var(--ui-ctrl-h-sm) !important; border-radius:9px !important; box-sizing:border-box !important;
+}
+
+/* ---- §6/§7 MOU 진행상황: 카드를 고객관리 톤으로 ----
+   실측: 3개 카드 radius 14px(고객관리 16px), 목록 패널은 배경·테두리·그림자가 아예 없었다. */
+.workq-task-card{
+  background:var(--surface) !important;
+  border:1px solid var(--border-soft) !important;
+  border-radius:var(--ui-card-radius) !important;
+  box-shadow:var(--ui-card-shadow) !important;
+}
+.workq-task-card:hover{ background:var(--navy-soft) !important; border-color:var(--navy-200) !important; }
+/* 숫자는 deep navy로. 주황/초록 강조는 빼고(§7) 상태는 아래 badge에만 남긴다. */
+.workq-task-card-num,
+.workq-task-card-num.c-navy,
+.workq-task-card-num.c-orange,
+.workq-task-card-num.c-green{ color:var(--navy-dark) !important; }
+.workq-task-card-num.is-zero{ color:var(--text-sub) !important; }
+/* 진행 목록을 고객관리 목록 패널과 같은 카드로 감싼다. */
+#workQueueView .workq-results-scroll{
+  background:var(--surface);
+  border:1px solid var(--border-soft);
+  border-radius:var(--ui-card-radius);
+  box-shadow:var(--ui-card-shadow);
+}
+/* 표 머리줄 — 고객관리 머리줄 톤(연한 배경 + 보조 글자색)과 같게. */
+#workQueueView .workq-table th{
+  background:var(--page-bg) !important; color:var(--text-sub) !important;
+}
+
+/* ---- §6/§8 메일 설정: 패널을 카드로, 내부 탭을 공통 sub-tab으로 ----
+   실측: .mail-settings-panel은 border 0 / radius 0 / shadow none / 배경 투명이라
+   카드로 보이지 않았고, 내부 탭 active가 연한 네이비 배경이었다. */
+#mailSettingsView .mail-tab-panel{
+  background:var(--surface) !important;
+  border:1px solid var(--border-soft) !important;
+  border-radius:var(--ui-card-radius) !important;
+  box-shadow:var(--ui-card-shadow) !important;
+  padding:16px 18px !important; box-sizing:border-box;
+}
+.mail-tabs-bar{ border-bottom:1px solid var(--border-soft) !important; gap:4px !important; }
+.mail-tab-btn{
+  height:var(--ui-ctrl-h) !important; min-height:var(--ui-ctrl-h) !important;
+  padding:0 14px !important;
+  background:var(--surface) !important; color:var(--text-sub) !important;
+  border:1px solid var(--border-soft) !important; border-bottom:0 !important;
+  border-radius:10px 10px 0 0 !important;
+  font-size:13px !important; font-weight:650 !important; box-sizing:border-box !important;
+}
+.mail-tab-btn:hover{ background:var(--navy-soft) !important; color:var(--navy-700) !important; }
+/* active = deep navy 꽉 찬 배경 + 흰 글자(§8). */
+.mail-tab-btn.is-active{
+  background:var(--primary-navy) !important; color:#fff !important;
+  border-color:var(--primary-navy) !important; font-weight:750 !important;
+}
+.mail-tab-btn.is-active .mail-type-card-title,
+.mail-tab-btn.is-active .mail-type-card-icon{ color:#fff !important; }
+/* 편집기 외곽도 같은 모서리 체계로(카드 안의 입력 영역이라 한 단계 작게). */
+#mailSettingsView .mail-body-editor{
+  border:1px solid var(--border-soft) !important; border-radius:10px !important;
+}
+
+/* ---- §7 MOU 상단 카드 폭을 고객관리 KPI와 같게 ----
+   실측(1920×1080): 두 화면의 컨테이너는 폭 1858 / x=31로 이미 같은데, 고객관리 KPI는
+   5칸이라 카드가 360px인 반면 MOU는 repeat(3, 1fr)이라 카드 하나가 611px까지 늘어나
+   숫자·라벨이 왼쪽에 몰리고 오른쪽이 비어 보였다. 같은 5열 격자에 3장을 올려 카드
+   자체의 크기를 고객관리 KPI 카드와 똑같이 만든다(360px, gap 14px).
+   카드 개수·내용·클릭 동작은 그대로다 — 격자 칸 수만 바꾼다.
+   641px 미만에서 1열로 떨어지는 기존 media query는 그대로 둔다(모바일은 이 규칙 밖). */
+@media (min-width: 641px){
+  body.crm-page-shell #workQueueView .workq-task-row{
+    grid-template-columns:repeat(5, minmax(0, 1fr)) !important;
+    gap:14px !important;
+  }
+}
+
+/* ---- §4 메일 화면만 좁던 폭 ----
+   실측(1920×1080): MOU 본문은 x=31 / 폭 1858 / 우측 31로 거의 전체 폭을 쓰는데,
+   메일은 .mail-settings-panel과 .mail-settings-header-wrap에 max-width:1500px +
+   margin:0 auto가 걸려 x=210 / 폭 1500 / 우측 210으로 혼자 좁고 가운데 몰려 있었다.
+   "한 화면은 꽉 차고 다른 화면은 좁아지는 현상 금지"에 맞춰 같은 선까지 쓰게 한다.
+   max-width 자체를 지우지 않고 shell 안에서만 풀어, 이 화면을 shell 밖에서 쓰는
+   경우가 생겨도 원래 폭 제한이 그대로 남는다. */
+body.crm-page-shell #mailSettingsView .mail-settings-panel,
+body.crm-page-shell #mailSettingsView .mail-settings-header-wrap{
+  max-width:none !important; margin-left:0 !important; margin-right:0 !important;
+}
 </style>
 </head>
 <body>
