@@ -6130,6 +6130,454 @@ table.sales-import-table td{ padding:5px 8px; border-bottom:1px solid #EEF2F7; v
   .col-help-pop{ max-width:min(268px, calc(100vw - 20px)); padding:10px 12px; }
   .col-help-pop-body{ font-size:12px; }
 }
+
+/* ==========================================================================
+   §NETFORM·POUR 리디자인 라운드(신규) — 참고 시안을 디자인 시스템으로 옮긴 블록.
+   기능·데이터·렌더 함수는 건드리지 않고, 토큰 → 배경 → 캔버스 → 내비 → 3열 레이아웃 →
+   카드/버튼/탭/pill 순으로 시각 언어만 다시 맞춘다. 파일 맨 뒤라 위쪽 규칙을 이긴다.
+   ========================================================================== */
+:root{
+  /* §11 색상 — 참고 시안 기준. 검정 대면적 없음, 전부 저채도 파랑/라벤더 계열. */
+  --nf-primary:#2563EB;  --nf-primary-strong:#1D4ED8;  --nf-primary-soft:#EFF4FF;
+  --nf-navy:#173B6C;
+  --nf-text:#10233F;     --nf-text-muted:#6F7C91;      --nf-text-faint:#93A1B5;
+  --nf-border:#E4EAF2;   --nf-border-soft:#EDF1F7;
+  --nf-surface:#FFFFFF;  --nf-soft-gray:#F7F9FC;
+  --nf-soft-blue:#EFF5FF; --nf-soft-green:#EAF8EF; --nf-soft-purple:#F1ECFF; --nf-soft-red:#FFF0F0;
+  --nf-on-blue:#1D4ED8;  --nf-on-green:#15803D;  --nf-on-purple:#6D28D9;  --nf-on-red:#C2403A;
+  /* §14 카드 / §3 캔버스 */
+  --nf-radius-canvas:28px; --nf-radius-card:18px; --nf-radius-ctrl:11px; --nf-radius-pill:999px;
+  --nf-shadow-canvas:0 20px 60px rgba(30,50,90,.08);
+  --nf-shadow-card:0 8px 24px rgba(30,55,90,.05);
+  --nf-shadow-card-hover:0 12px 28px rgba(30,55,90,.10);
+  --nf-shadow-btn:0 2px 6px rgba(20,60,120,.12);
+  /* §15 타이포 */
+  --nf-fs-title:24px; --nf-fs-section:17px; --nf-fs-body:13px; --nf-fs-sm:12px; --nf-fs-xs:11px;
+}
+/* §2 전체 배경 — 거의 흰색에 가까운 파스텔(blue/lavender/mint). 강한 그라데이션 금지. */
+body{
+  background:
+    radial-gradient(1100px 620px at 12% -8%, #EEF3FF 0%, rgba(238,243,255,0) 62%),
+    radial-gradient(900px 520px at 92% 2%, #F0ECFF 0%, rgba(240,236,255,0) 58%),
+    radial-gradient(900px 600px at 78% 100%, #EAF7F4 0%, rgba(234,247,244,0) 60%),
+    #F6F8FD !important;
+  background-attachment:fixed;
+  color:var(--nf-text);
+}
+/* §3 메인 컨테이너 — CRM 전체를 하나의 floating canvas로. */
+.app{
+  background:var(--nf-surface);
+  border:1px solid rgba(160,180,205,.18);
+  border-radius:var(--nf-radius-canvas);
+  box-shadow:var(--nf-shadow-canvas);
+  padding:0 0 26px !important;
+  width:min(1680px, calc(100% - 56px)) !important;
+  max-width:1680px !important;
+  margin:22px auto 40px !important;
+  overflow:hidden;
+}
+@media(max-width:900px){
+  .app{ width:calc(100% - 16px) !important; border-radius:20px; margin:10px auto 24px !important; }
+}
+/* §4 상단 내비 — 남색 바를 걷어내고 캔버스 안의 얇고 가벼운 흰 내비로. */
+.gnav{
+  background:transparent !important; height:auto !important;
+  border-radius:0 !important; border-bottom:1px solid var(--nf-border-soft);
+}
+.gnav-inner{
+  height:auto !important; max-width:none !important;
+  padding:14px 24px !important; gap:18px !important; align-items:center !important;
+}
+.gnav, .gnav-inner, .gnav-menu, .gnav-menu .top-tab{ height:auto !important; }
+.brand-logo{ filter:none !important; height:22px !important; }
+.gnav-brand{ gap:8px !important; }
+.brand-sub{ color:var(--nf-text-muted) !important; font-size:var(--nf-fs-sm) !important; font-weight:600 !important; }
+.gnav-menu{ margin-left:22px !important; gap:4px !important; align-items:center !important; }
+.gnav-menu .top-tab{
+  height:34px !important; padding:0 14px !important; border-radius:var(--nf-radius-pill) !important;
+  font-size:var(--nf-fs-body) !important; font-weight:650 !important;
+  color:var(--nf-text-muted) !important; background:transparent !important; border:0 !important;
+  transition:background-color .16s, color .16s;
+}
+.gnav-menu .top-tab:hover{ background:var(--nf-soft-gray) !important; color:var(--nf-text) !important; }
+.gnav-menu .top-tab.is-active{
+  background:var(--nf-primary-soft) !important; color:var(--nf-primary-strong) !important; font-weight:700 !important;
+}
+.gnav-right{ gap:8px !important; }
+.gnav-tool-btn{
+  height:34px !important; padding:0 13px !important; border-radius:var(--nf-radius-ctrl) !important;
+  background:var(--nf-surface) !important; border:1px solid var(--nf-border) !important;
+  color:var(--nf-text) !important; font-size:var(--nf-fs-sm) !important; font-weight:650 !important;
+}
+.gnav-tool-btn:hover{ background:var(--nf-soft-gray) !important; border-color:#D3DCE9 !important; }
+.gnav-right .btn-primary-action, .gnav-right #crmMouPdfBtn{
+  height:34px !important; padding:0 14px !important; border-radius:var(--nf-radius-ctrl) !important;
+  background:var(--nf-primary) !important; border:0 !important; color:#fff !important;
+  font-size:var(--nf-fs-sm) !important; font-weight:700 !important; box-shadow:var(--nf-shadow-btn) !important;
+}
+.gnav-right .btn-primary-action:hover, .gnav-right #crmMouPdfBtn:hover{ background:var(--nf-primary-strong) !important; }
+/* 내비 우측 line icon 버튼(검색/알림/설정/사용자) */
+.nf-nav-search{
+  display:flex; align-items:center; gap:7px; height:34px; padding:0 12px;
+  background:var(--nf-soft-gray); border:1px solid var(--nf-border); border-radius:var(--nf-radius-pill);
+  min-width:210px; color:var(--nf-text-faint);
+}
+.nf-nav-search input{
+  border:0; background:transparent; outline:none; font-family:inherit;
+  font-size:var(--nf-fs-sm); color:var(--nf-text); width:100%; min-width:0;
+}
+.nf-nav-search input::placeholder{ color:var(--nf-text-faint); }
+.nf-icon-btn{
+  display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px;
+  border:1px solid var(--nf-border); background:var(--nf-surface); border-radius:var(--nf-radius-ctrl);
+  color:var(--nf-text-muted); cursor:pointer; transition:background-color .16s, color .16s, border-color .16s;
+}
+.nf-icon-btn:hover{ background:var(--nf-soft-gray); color:var(--nf-text); border-color:#D3DCE9; }
+.nf-icon-btn svg{ width:17px; height:17px; }
+@media(max-width:1100px){ .nf-nav-search{ display:none; } }
+
+/* ===========================================================================
+   §전면 리디자인 라운드(신규) — 2/3단계: 3열 레이아웃 · 좌측 요약 · 우측 위젯 ·
+   고객목록 카드/상태 pill · 팝업 톤 통일 · 반응형.
+   앞 블록에서 정의한 --nf-* 토큰만 쓴다(새 색을 즉석에서 적지 않는다). 이 파일에는
+   같은 선택자의 !important 선언이 여러 깊이에 중복돼 있어서(예: .crm-main-grid 1열
+   강제) 이 블록을 스타일시트 맨 끝에 둬서 마지막에 적용되게 한다 — 기존 선언을
+   지우지 않고 덮어쓰기만 한다.
+   =========================================================================== */
+
+/* ---- §5 3열 레이아웃 (좌 요약 22% / 중앙 목록 1fr / 우 위젯 25%) ---- */
+.crm-main-grid{
+  display:grid !important;
+  grid-template-columns: minmax(0,22%) minmax(0,1fr) minmax(0,25%) !important;
+  grid-template-rows: auto auto !important;
+  gap:16px !important;
+  align-items:start !important;
+  margin-top:16px !important;
+  padding:0 24px !important;
+}
+.crm-main-grid .kpi-strip-row.crm-kpi-cell{ grid-column:1 / -1 !important; grid-row:1 !important; }
+.crm-main-grid .nf-side-left{ grid-column:1 !important; grid-row:2 !important; }
+.crm-main-grid .crm-list-col{ grid-column:2 !important; grid-row:2 !important; min-width:0 !important; }
+.crm-main-grid .nf-side-right{ grid-column:3 !important; grid-row:2 !important; }
+.nf-side-col{ display:flex; flex-direction:column; gap:14px; min-width:0; }
+
+/* #listView 자체도 캔버스(.app) 안쪽 여백에 맞춘다 — .app의 padding을 0으로 바꿨으므로. */
+#listView{ padding:0 !important; }
+#listView > .list-search-row,
+#listView > .list-filter-row,
+#listView > .map-open-row{ margin-left:24px !important; margin-right:24px !important; }
+
+/* ---- §14 카드 공통 ---- */
+.nf-card{
+  background:var(--nf-surface);
+  border:1px solid var(--nf-border);
+  border-radius:var(--nf-radius-card);
+  box-shadow:var(--nf-shadow-card);
+  padding:16px 16px 15px;
+}
+.nf-card-head{ display:flex; align-items:center; gap:8px; margin-bottom:12px; }
+.nf-card-title{
+  font-size:var(--nf-fs-section); font-weight:750; color:var(--nf-text);
+  letter-spacing:-.02em; line-height:1.3;
+}
+.nf-card-more{
+  margin-left:auto; flex:none; height:26px; padding:0 10px;
+  border:1px solid var(--nf-border); background:var(--nf-surface);
+  border-radius:var(--nf-radius-pill); color:var(--nf-primary-strong);
+  font-size:var(--nf-fs-xs); font-weight:700; cursor:pointer;
+}
+.nf-card-more:hover{ background:var(--nf-primary-soft); border-color:#C9DAF8; }
+.nf-card-count{ margin-left:auto; font-size:var(--nf-fs-sm); font-weight:700; color:var(--nf-text-muted); }
+.nf-card-empty{
+  padding:18px 4px; text-align:center;
+  font-size:var(--nf-fs-sm); color:var(--nf-text-faint);
+}
+
+/* ---- §6 좌측 요약 패널 ---- */
+.nf-sum-card{ padding:15px 15px 14px; }
+.nf-sum-total{
+  display:flex; align-items:baseline; gap:8px;
+  padding-bottom:12px; margin-bottom:12px;
+  border-bottom:1px solid var(--nf-border-soft);
+}
+.nf-sum-total-label{ font-size:var(--nf-fs-sm); font-weight:700; color:var(--nf-text-muted); }
+.nf-sum-total-num{
+  margin-left:auto; font-size:var(--nf-fs-title); font-weight:800;
+  color:var(--nf-navy); letter-spacing:-.03em; line-height:1;
+}
+.nf-sum-rows{ display:flex; flex-direction:column; gap:3px; }
+.nf-sum-row{
+  display:grid; grid-template-columns:1fr auto; grid-template-rows:auto 4px;
+  gap:5px 8px; width:100%; text-align:left;
+  padding:7px 8px; border:0; background:transparent;
+  border-radius:var(--nf-radius-ctrl); cursor:pointer;
+}
+.nf-sum-row:hover{ background:var(--nf-soft-gray); }
+.nf-sum-row.is-active{ background:var(--nf-primary-soft); }
+.nf-sum-row-label{
+  font-size:var(--nf-fs-sm); font-weight:650; color:var(--nf-text-muted);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0;
+}
+.nf-sum-row.is-active .nf-sum-row-label{ color:var(--nf-primary-strong); font-weight:750; }
+.nf-sum-row-val{ font-size:var(--nf-fs-body); font-weight:800; color:var(--nf-text); line-height:1.1; }
+.nf-sum-bar{
+  grid-column:1 / -1; height:4px; border-radius:999px;
+  background:var(--nf-border-soft); overflow:hidden;
+}
+.nf-sum-bar-fill{ display:block; height:100%; border-radius:999px; min-width:2px; }
+.nf-tone-blue{ background:var(--nf-primary); }
+.nf-tone-green{ background:#19A96F; }
+.nf-tone-purple{ background:#7C5CFF; }
+.nf-tone-red{ background:#E2655F; }
+.nf-sum-alert-card .nf-card-title{ margin-bottom:0; }
+.nf-sum-pills{ display:flex; flex-wrap:wrap; gap:6px; }
+.nf-pill{
+  display:inline-flex; align-items:center; gap:6px;
+  height:28px; padding:0 11px; border-radius:var(--nf-radius-pill);
+  border:1px solid transparent; font-size:var(--nf-fs-xs); font-weight:700;
+  cursor:pointer;
+}
+.nf-pill b{ font-weight:800; font-size:var(--nf-fs-sm); }
+.nf-pill-red{   background:var(--nf-soft-red);    color:var(--nf-on-red); }
+.nf-pill-blue{  background:var(--nf-soft-blue);   color:var(--nf-on-blue); }
+.nf-pill-green{ background:var(--nf-soft-green);  color:var(--nf-on-green); }
+.nf-pill-purple{background:var(--nf-soft-purple); color:var(--nf-on-purple); }
+.nf-pill-gray{  background:var(--nf-soft-gray);   color:var(--nf-text-muted); }
+.nf-pill:hover{ filter:brightness(.97); }
+.nf-pill.is-active{ border-color:currentColor; }
+
+/* ---- §9 우측 도넛 ---- */
+.nf-donut-wrap{ position:relative; width:112px; height:112px; margin:2px auto 12px; }
+.nf-donut{ width:112px; height:112px; display:block; }
+.nf-donut-seg{ transition:opacity .15s; }
+.nf-donut-center{
+  position:absolute; inset:0; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; pointer-events:none;
+}
+.nf-donut-center-num{ font-size:20px; font-weight:800; color:var(--nf-text); letter-spacing:-.03em; line-height:1; }
+.nf-donut-center-label{ font-size:var(--nf-fs-xs); font-weight:650; color:var(--nf-text-faint); margin-top:3px; }
+.nf-legend{ display:flex; flex-direction:column; gap:1px; }
+.nf-legend-row{
+  display:grid; grid-template-columns:8px 1fr auto auto; align-items:center;
+  gap:8px; padding:5px 2px; font-size:var(--nf-fs-sm);
+}
+.nf-legend-row + .nf-legend-row{ border-top:1px solid var(--nf-border-soft); }
+.nf-legend-dot{ width:8px; height:8px; border-radius:50%; }
+.nf-legend-name{
+  color:var(--nf-text-muted); font-weight:650; min-width:0;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.nf-legend-val{ font-weight:800; color:var(--nf-text); }
+.nf-legend-pct{ font-size:var(--nf-fs-xs); font-weight:700; color:var(--nf-text-faint); min-width:30px; text-align:right; }
+
+/* ---- §10 우측 최근 요청 ---- */
+.nf-req-list{ display:flex; flex-direction:column; }
+.nf-req-row{
+  display:flex; flex-direction:column; gap:4px; width:100%; text-align:left;
+  padding:9px 8px; border:0; background:transparent;
+  border-radius:var(--nf-radius-ctrl); cursor:pointer;
+}
+.nf-req-row + .nf-req-row{ border-top:1px solid var(--nf-border-soft); }
+.nf-req-row:hover{ background:var(--nf-soft-gray); }
+.nf-req-top{ display:flex; align-items:baseline; gap:8px; }
+.nf-req-name{
+  font-size:var(--nf-fs-sm); font-weight:750; color:var(--nf-text);
+  min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.nf-req-date{ margin-left:auto; flex:none; font-size:var(--nf-fs-xs); font-weight:650; color:var(--nf-text-faint); }
+.nf-req-text{
+  display:flex; align-items:center; gap:6px;
+  font-size:var(--nf-fs-xs); color:var(--nf-text-muted); line-height:1.45;
+  min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.nf-req-kind{
+  flex:none; height:18px; padding:0 7px; border-radius:var(--nf-radius-pill);
+  display:inline-flex; align-items:center;
+  font-size:10px; font-weight:750;
+}
+.nf-req-kind-memo{     background:var(--nf-soft-gray);   color:var(--nf-text-muted); }
+.nf-req-kind-material{ background:var(--nf-soft-blue);   color:var(--nf-on-blue); }
+.nf-req-kind-gsheet{   background:var(--nf-soft-green);  color:var(--nf-on-green); }
+
+/* ---- §4 KPI 스트립 — 참고 이미지의 상단 통계 타일 톤 ---- */
+.kpi-strip-row{ margin:0 !important; }
+.kpi-strip{ gap:12px !important; }
+.kpi-strip .kpi-item{
+  background:var(--nf-surface) !important;
+  border:1px solid var(--nf-border) !important;
+  border-radius:var(--nf-radius-card) !important;
+  box-shadow:var(--nf-shadow-card) !important;
+  padding:14px 16px !important;
+  align-items:flex-start !important;
+  transition:box-shadow .16s, transform .16s;
+}
+.kpi-strip .kpi-item:hover{ box-shadow:var(--nf-shadow-card-hover) !important; transform:translateY(-1px); }
+.kpi-strip .kpi-item-value{ font-size:var(--nf-fs-title) !important; font-weight:800 !important; color:var(--nf-navy) !important; letter-spacing:-.03em !important; }
+.kpi-strip .kpi-item-label{ font-size:var(--nf-fs-sm) !important; font-weight:700 !important; color:var(--nf-text-muted) !important; }
+.kpi-strip .kpi-item-sub{ font-size:var(--nf-fs-xs) !important; color:var(--nf-text-faint) !important; }
+.kpi-strip .kpi-item.is-up .kpi-item-value{ color:var(--nf-on-green) !important; }
+.kpi-strip .kpi-item.is-warn .kpi-item-value{ color:var(--nf-on-red) !important; }
+.kpi-strip .kpi-item.is-rising .kpi-item-value{ color:var(--nf-on-purple) !important; }
+
+/* ---- §7 중앙 고객목록 카드 + pastel 상태 pill ---- */
+.crm-panel.crm-list-col{
+  background:var(--nf-surface) !important;
+  border:1px solid var(--nf-border) !important;
+  border-radius:var(--nf-radius-card) !important;
+  box-shadow:var(--nf-shadow-card) !important;
+  padding:16px 16px 14px !important;
+}
+.crm-panel.crm-list-col .crm-panel-title{
+  font-size:var(--nf-fs-section) !important; font-weight:750 !important;
+  color:var(--nf-text) !important; letter-spacing:-.02em !important;
+  margin-bottom:12px !important;
+}
+.crm-list-col .co-table-head{
+  background:var(--nf-soft-gray) !important;
+  border:1px solid var(--nf-border) !important;
+  border-radius:12px 12px 0 0 !important;
+  color:var(--nf-text-muted) !important; font-weight:750 !important;
+}
+.crm-list-col .co-list{
+  border:1px solid var(--nf-border) !important; border-top:0 !important;
+  border-radius:0 0 12px 12px !important;
+}
+.crm-list-col .co-row{ border-bottom:1px solid var(--nf-border-soft) !important; }
+.crm-list-col .co-row:hover{
+  background:var(--nf-primary-soft) !important;
+  box-shadow:inset 3px 0 0 var(--nf-primary) !important;
+}
+.crm-list-col .co-name-text{ color:var(--nf-text) !important; font-weight:750 !important; }
+.crm-list-col .co-code-sub{ color:var(--nf-text-faint) !important; }
+/* 필터 탭 — pastel pill. 활성은 참고 이미지처럼 옅은 파랑 배경 + 진한 파랑 글씨. */
+.list-filter-chip{
+  border:1px solid var(--nf-border) !important;
+  background:var(--nf-surface) !important;
+  border-radius:var(--nf-radius-pill) !important;
+  color:var(--nf-text-muted) !important;
+  font-weight:700 !important;
+}
+.list-filter-chip:hover{ background:var(--nf-soft-gray) !important; }
+.list-filter-chip.is-active{
+  background:var(--nf-primary-soft) !important;
+  border-color:#C9DAF8 !important;
+  color:var(--nf-primary-strong) !important;
+}
+/* 활성 탭의 건수 배지 — 활성 배경이 남색에서 옅은 파랑으로 바뀌어 흰 글씨가 안 보였다. */
+.list-filter-chip.is-active .chip-count{ background:#fff !important; color:var(--nf-primary-strong) !important; }
+.list-filter-chip .chip-count{ background:var(--nf-soft-gray) !important; color:var(--nf-text-muted) !important; }
+/* 중앙 열이 좁아졌으므로(3열) 표의 6개 열을 고정 최소폭 대신 전부 가변으로 돌린다 —
+   열 구성/순서/정렬/데이터는 그대로고, 넘쳐서 잘리던 마지막 열(실적-매출)까지 카드
+   안에 들어온다. minmax(0,…)이라 어떤 폭에서도 가로로 넘치지 않는다. */
+.crm-list-col .co-table-head, .crm-list-col .co-row{
+  grid-template-columns:
+    minmax(0,1.65fr) minmax(0,1.00fr) minmax(0,1.05fr)
+    minmax(0,0.92fr) minmax(0,0.70fr) minmax(0,0.74fr) !important;
+  gap:10px !important;
+  min-width:0 !important;
+}
+.crm-list-col .co-table-head > *, .crm-list-col .co-row > *{ min-width:0 !important; }
+.crm-list-col .co-list{ min-width:0 !important; }
+.crm-list-col .co-table-head{ padding:11px 14px !important; }
+.crm-list-col .co-row{ padding:9px 14px !important; }
+
+/* 상태 글리프/배지 — 참고 이미지의 pastel 상태칩 톤. 판정 로직은 그대로다. */
+.co-partner-glyph{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:17px; height:17px; border-radius:50%;
+  font-size:9.5px; font-weight:800; margin-right:5px;
+}
+.co-partner-glyph.is-partner{ background:var(--nf-soft-green) !important; color:var(--nf-on-green) !important; }
+.co-partner-glyph.is-nonpartner{ background:var(--nf-soft-red) !important; color:var(--nf-on-red) !important; }
+.contrib-cell{ border-radius:var(--nf-radius-pill) !important; }
+.contrib-cell.lv-high{ background:var(--nf-soft-green) !important; color:var(--nf-on-green) !important; }
+.contrib-cell.lv-mid{ background:var(--nf-soft-blue) !important; color:var(--nf-on-blue) !important; }
+.contrib-cell.lv-low{ background:var(--nf-soft-red) !important; color:var(--nf-on-red) !important; }
+.contrib-cell.lv-insufficient{ background:var(--nf-soft-gray) !important; color:var(--nf-text-faint) !important; }
+
+/* 헤더가 남색 → 흰색으로 바뀌었으므로, 남색 배경 전제로 흰 테두리·흰 글씨였던
+   헤더 버튼들(관리 도구 / 햄버거)을 밝은 배경에서 보이는 톤으로 되돌린다.
+   id·클릭 핸들러·드롭다운 내용은 전혀 안 건드렸다. */
+.gnav-right .gnav-tool-btn#crmDataUpdateBtn{
+  height:34px !important; padding:0 13px !important;
+  border:1px solid var(--nf-border) !important;
+  background:var(--nf-surface) !important;
+  color:var(--nf-text-muted) !important;
+  border-radius:var(--nf-radius-ctrl) !important;
+  font-size:var(--nf-fs-sm) !important; font-weight:700 !important;
+}
+.gnav-right .gnav-tool-btn#crmDataUpdateBtn:hover{
+  background:var(--nf-soft-gray) !important; color:var(--nf-text) !important;
+}
+.gnav-hamburger{
+  color:var(--nf-text-muted) !important;
+  border:1px solid var(--nf-border) !important;
+  background:var(--nf-surface) !important;
+  border-radius:var(--nf-radius-ctrl) !important;
+}
+/* 실적-매출 배지가 열 폭을 넘어 잘리던 것 — 배지를 열 안쪽으로 가둔다. */
+.crm-list-col .col-contrib{ display:flex; justify-content:flex-end; min-width:0; }
+.crm-list-col .contrib-trigger{ max-width:100%; overflow:hidden; }
+.crm-list-col .contrib-level{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+/* ---- §13 버튼 ---- */
+.list-add-btn{
+  background:var(--nf-primary) !important;
+  border:0 !important; border-radius:var(--nf-radius-ctrl) !important;
+  box-shadow:var(--nf-shadow-btn) !important; font-weight:700 !important;
+}
+.list-add-btn:hover{ background:var(--nf-primary-strong) !important; }
+.map-open-btn{
+  border:1px solid var(--nf-border) !important; background:var(--nf-surface) !important;
+  color:var(--nf-primary-strong) !important; border-radius:var(--nf-radius-pill) !important;
+  font-weight:700 !important;
+}
+.map-open-btn:hover{ background:var(--nf-primary-soft) !important; border-color:#C9DAF8 !important; }
+.search-box, .list-sort-select{
+  border:1px solid var(--nf-border) !important;
+  border-radius:var(--nf-radius-ctrl) !important;
+  background:var(--nf-surface) !important;
+}
+.list-search-row{
+  background:transparent !important; border:0 !important; box-shadow:none !important;
+  padding:0 !important; margin-top:14px !important;
+}
+
+/* ---- §18/§19 팝업·지도 카드 톤 통일 ---- */
+.modal-card, .map-modal-card, .cdash2-card, .cdet-panel, .map-embed-side{
+  border-radius:var(--nf-radius-card) !important;
+  border-color:var(--nf-border) !important;
+}
+/* 오버레이 dim(.28)은 사용자가 이전 라운드에서 직접 "약하게"로 정한 값이라 이번
+   리디자인에서 바꾸지 않는다 — 카드 모서리/테두리 톤만 맞춘다. */
+
+/* ---- §20 반응형 ---- */
+@media(max-width:1500px){
+  .crm-main-grid{ grid-template-columns: minmax(0,24%) minmax(0,1fr) !important; }
+  .crm-main-grid .nf-side-right{ grid-column:1 / -1 !important; grid-row:3 !important; }
+  .nf-side-right{ flex-direction:row !important; }
+  .nf-side-right > .nf-card{ flex:1 1 0; min-width:0; }
+}
+@media(max-width:1100px){
+  .crm-main-grid{ grid-template-columns: minmax(0,1fr) !important; padding:0 16px !important; }
+  .crm-main-grid .kpi-strip-row.crm-kpi-cell{ grid-column:1 !important; grid-row:1 !important; }
+  .crm-main-grid .nf-side-left{ grid-column:1 !important; grid-row:2 !important; }
+  .crm-main-grid .crm-list-col{ grid-column:1 !important; grid-row:3 !important; }
+  .crm-main-grid .nf-side-right{ grid-column:1 !important; grid-row:4 !important; }
+  .nf-side-left{ flex-direction:row !important; }
+  .nf-side-left > .nf-card{ flex:1 1 0; min-width:0; }
+  #listView > .list-search-row, #listView > .list-filter-row, #listView > .map-open-row{
+    margin-left:16px !important; margin-right:16px !important;
+  }
+}
+@media(max-width:760px){
+  .nf-side-left, .nf-side-right{ flex-direction:column !important; }
+  .crm-main-grid{ padding:0 10px !important; gap:12px !important; }
+  #listView > .list-search-row, #listView > .list-filter-row, #listView > .map-open-row{
+    margin-left:10px !important; margin-right:10px !important;
+  }
+  .nf-nav-search{ display:none !important; }
+}
 </style>
 </head>
 <body>
@@ -6188,6 +6636,18 @@ table.sales-import-table td{ padding:5px 8px; border-bottom:1px solid #EEF2F7; v
            클릭 핸들러) 전부 그대로, DOM 위치와 색 톤(.gnav-tool-btn, 아래 CSS — 흰
            배경+네이비 테두리 대신 투명 배경+옅은 흰 테두리로 남색 헤더에 맞춤)만
            바꿨다. -->
+      <!-- §전면 리디자인 라운드(신규) §5 — 참고 이미지 상단 내비의 검색 필드. 새 검색
+           로직을 만들지 않고, 이미 있는 고객목록 검색창(#crmSearchInput, renderList의
+           유일한 검색 소스)에 값을 그대로 전달하고 input 이벤트를 발생시키는 프록시다
+           (§17 "고객 검색 변경 금지" — 판정/필터 코드는 한 줄도 안 건드렸다).
+           참고 이미지에 있는 알림(종)/설정(기어)/아바타 아이콘은 이 앱에 연결된 기능이
+           실제로 없어서 넣지 않았다 — 이 파일의 기존 원칙("가짜 메뉴 추가 금지", 바로
+           위 주석 참고)을 그대로 따른다. 대신 실제 동작하는 관리 도구/PDF 버튼을 참고
+           이미지의 아이콘 버튼과 같은 톤(.nf-icon-btn 계열 높이/모서리)으로 맞췄다. -->
+      <label class="nf-nav-search" id="crmNavSearchWrap">
+        <svg class="nf-nav-search-ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/></svg>
+        <input type="text" id="crmNavSearchInput" placeholder="업체 검색" aria-label="업체 검색" autocomplete="off" />
+      </label>
       <div class="update-menu-wrap gnav-tool-wrap" id="crmUpdateMenuWrap">
         <button type="button" id="crmDataUpdateBtn" class="gnav-tool-btn">관리 도구 <span id="crmDataUpdateReviewBadge" class="unreg-badge" style="display:none;"></span> ▾</button>
         <div class="update-menu" id="crmUpdateMenu">
@@ -6289,6 +6749,11 @@ table.sales-import-table td{ padding:5px 8px; border-bottom:1px solid #EEF2F7; v
       <div class="kpi-strip-row crm-kpi-cell">
         <div class="kpi-strip" id="crmKpiStrip"></div>
       </div>
+      <!-- §전면 리디자인 라운드(신규) §6 — 참고 이미지 좌측 요약 패널. 여기에 들어가는
+           모든 숫자는 renderList()가 이미 계산해 둔 filterCounts / managementNeedCache를
+           그대로 다시 보여주는 것뿐이다(새 집계·새 판정 없음, §17). 클릭하면 기존
+           filterKey만 바꿔서 기존 renderList()를 다시 돌린다 — 새 필터를 만들지 않았다. -->
+      <aside class="nf-side-col nf-side-left" id="crmSummaryPanel" aria-label="요약"></aside>
       <!-- 좌: 업체 목록 카드 — 검색/정렬/필터 pill/표는 전부 기존 DOM·id·렌더 함수
            (renderFilterChips/renderList/applySort 등) 그대로, 카드 틀만 새로 씌운다. -->
       <div class="crm-panel crm-list-col">
@@ -6391,6 +6856,15 @@ table.sales-import-table td{ padding:5px 8px; border-bottom:1px solid #EEF2F7; v
         <div class="co-list" id="crmList"></div>
         <div class="list-pagination" id="crmPagination"></div>
       </div>
+      <!-- §전면 리디자인 라운드(신규) §9/§10 — 참고 이미지 우측 위젯 열(도넛 + 최근 요청).
+           도넛은 지도 팝업과 완전히 같은 소스(applyMapFilters(buildMapCompanies()))로
+           지역 분포를 집계하고, 카드/조각을 누르면 이미 있는 openMapDistributionModal()을
+           그대로 연다(§17 "지도 변경 금지" — 지도 코드는 호출만 한다). 최근 요청은 기존
+           buildRequestListItems()가 만든 항목을 그대로 최신순으로 모은 것이다. -->
+      <aside class="nf-side-col nf-side-right" aria-label="위젯">
+        <section class="nf-card nf-card-region" id="crmRegionCard"></section>
+        <section class="nf-card nf-card-recentreq" id="crmRecentReqCard"></section>
+      </aside>
     </div>
     <!-- §지도 팝업 전환 라운드(신규) — 지도를 메인 우측 고정 카드(.crm-map-col)에서 빼고
          팝업으로만 연다(§요청 1/14). 그 자리는 고객목록이 전체 폭으로 넓어져 채운다
@@ -14644,6 +15118,198 @@ window.SHIN2_CRM_APP_INIT = function(){
   // §업체명 왼쪽 금액 이동 라운드 §6: "총 매출" 헤더 옆 화살표를 현재 sortMode에 맞춰
   // 갱신한다 — renderList()가 헤더 자체를 다시 그리지 않아서(정적 HTML) 화살표만 별도로
   // 갱신하면 된다.
+  /* ==========================================================================
+     §전면 리디자인 라운드(신규) — 참고 이미지의 좌측 요약 패널 / 우측 위젯(도넛 + 최근
+     요청) 렌더. 세 함수 모두 "이미 계산된 값을 다시 보여주기"만 한다:
+       · renderNfSummaryPanel(counts)  — renderList()가 만든 filterCounts 그대로.
+       · renderNfRegionCard()          — 지도 팝업과 완전히 같은
+                                          applyMapFilters(buildMapCompanies()) 결과를
+                                          지역별로 세기만 한다. 클릭 → 기존
+                                          openMapDistributionModal() 호출.
+       · renderNfRecentReqCard(cos,idx)— 기존 buildRequestListItems()가 만든 항목을
+                                          최신순으로 모으기만 한다.
+     새 저장소/새 판정/새 집계 기준은 하나도 만들지 않았고, Firebase·MOU 판정·매출 계산·
+     검색·필터·메일·질문지·서류·지도·PDF·삭제·접촉기록 코드는 한 줄도 건드리지 않았다(§17).
+     ========================================================================== */
+  // 좌측 요약 패널. 행을 누르면 기존 filterKey만 바꿔 기존 renderList()를 다시 돌린다.
+  function renderNfSummaryPanel(counts){
+    const wrap = document.getElementById('crmSummaryPanel');
+    if(!wrap) return;
+    const c = counts || {};
+    const total = c.all || 0;
+    const pct = (n)=> total > 0 ? Math.round((Number(n||0) / total) * 100) : 0;
+    const rows = [
+      { key:'mouDone',            label:'MOU 체결',          value:c.mouDone,            tone:'green'  },
+      { key:'agreementInProgress',label:'협약 진행',          value:c.agreementInProgress,tone:'blue'   },
+      { key:'newPartner',         label:'신규 협약사',        value:c.newPartner,         tone:'purple' },
+      { key:'trendUp',            label:'최근흐름 상승세',    value:c.trendUp,            tone:'green'  },
+      { key:'revenueNoMou',       label:'실적 있음 · MOU 미체결', value:c.revenueNoMou,   tone:'blue'   },
+      { key:'l2l3Manage',         label:'L2→L3 전환관리',     value:c.l2l3Manage,         tone:'purple' }
+    ].filter(r=> Number.isFinite(Number(r.value)));
+    const alerts = [
+      { key:'manageNeeded', label:'관리 필요', value:c.manageNeeded, tone:'red'  },
+      { key:'willpower',    label:'의지박약',  value:c.willpower,    tone:'red'  },
+      { key:'trash',        label:'쓰레기통',  value:c.trash,        tone:'gray' }
+    ].filter(r=> Number.isFinite(Number(r.value)));
+    wrap.innerHTML = `
+      <section class="nf-card nf-sum-card">
+        <div class="nf-sum-total">
+          <div class="nf-sum-total-label">전체 업체</div>
+          <div class="nf-sum-total-num">${esc(total.toLocaleString('ko-KR'))}</div>
+        </div>
+        <div class="nf-sum-rows">
+          ${rows.map(r=> `
+            <button type="button" class="nf-sum-row${filterKey === r.key ? ' is-active' : ''}" data-nf-sum="${esc(r.key)}">
+              <span class="nf-sum-row-label">${esc(r.label)}</span>
+              <span class="nf-sum-row-val">${esc(Number(r.value||0).toLocaleString('ko-KR'))}</span>
+              <span class="nf-sum-bar"><span class="nf-sum-bar-fill nf-tone-${esc(r.tone)}" style="width:${pct(r.value)}%"></span></span>
+            </button>`).join('')}
+        </div>
+      </section>
+      <section class="nf-card nf-sum-card nf-sum-alert-card">
+        <div class="nf-card-title">확인이 필요한 업체</div>
+        <div class="nf-sum-pills">
+          ${alerts.map(r=> `
+            <button type="button" class="nf-pill nf-pill-${esc(r.tone)}${filterKey === r.key ? ' is-active' : ''}" data-nf-sum="${esc(r.key)}">
+              ${esc(r.label)}<b>${esc(Number(r.value||0).toLocaleString('ko-KR'))}</b>
+            </button>`).join('')}
+        </div>
+      </section>`;
+    wrap.querySelectorAll('[data-nf-sum]').forEach(btn=> btn.addEventListener('click', ()=>{
+      filterKey = btn.getAttribute('data-nf-sum');
+      currentPage = 1;
+      renderList();
+    }));
+  }
+  // 우측 도넛 — 지역 분포. 지도 팝업과 같은 소스 하나만 쓴다(§3 단일 source of truth).
+  const NF_DONUT_COLORS = ['#2563EB','#7C5CFF','#13B47A','#F0A33C','#EC6B6B','#3AAFD9','#9AA7BC'];
+  function renderNfRegionCard(){
+    const wrap = document.getElementById('crmRegionCard');
+    if(!wrap) return;
+    let entries = [];
+    // 지도 팝업의 임시 필터(mapFilterState)는 일부러 적용하지 않는다 — 그 상태는 팝업이
+    // 열려 있는 동안만 쓰는 값이라, 메인 대시보드 숫자가 "마지막에 팝업에서 뭘 눌렀는지"에
+    // 따라 몰래 달라지면 안 된다. 메인 카드는 항상 활성 업체 전체(= 팝업을 '전체'로 열었을
+    // 때와 같은 집합)를 보여준다. 캐시는 목록을 다시 그릴 때마다 비워서 방금 추가·삭제된
+    // 업체가 바로 반영되게 한다(팝업이 열 때 하는 것과 같은 처리).
+    try{
+      invalidateMapCompaniesCache();
+      entries = buildMapCompanies();
+    }
+    catch(err){ console.warn('지역 분포 집계 실패:', err); entries = []; }
+    const byRegion = new Map();
+    entries.forEach(e=>{
+      const k = e.region || '지역 미확인';
+      byRegion.set(k, (byRegion.get(k) || 0) + 1);
+    });
+    let list = Array.from(byRegion.entries()).map(([name,count])=> ({ name, count }))
+      .sort((a,b)=> b.count - a.count);
+    const total = list.reduce((s,r)=> s + r.count, 0);
+    // 상위 6개 + 나머지 합계 한 줄(조각이 너무 얇아지지 않게). 숫자는 그대로 보존된다.
+    if(list.length > 7){
+      const head = list.slice(0, 6);
+      const restCount = list.slice(6).reduce((s,r)=> s + r.count, 0);
+      list = head.concat([{ name:'기타', count: restCount }]);
+    }
+    const R = 42, CIRC = 2 * Math.PI * R;
+    let offset = 0;
+    const segs = total > 0 ? list.map((r,i)=>{
+      const len = CIRC * (r.count / total);
+      const dash = `${len} ${CIRC - len}`;
+      const seg = `<circle class="nf-donut-seg" r="${R}" cx="56" cy="56" fill="none"
+        stroke="${NF_DONUT_COLORS[i % NF_DONUT_COLORS.length]}" stroke-width="15"
+        stroke-dasharray="${dash}" stroke-dashoffset="${-offset}" />`;
+      offset += len;
+      return seg;
+    }).join('') : '';
+    wrap.innerHTML = `
+      <div class="nf-card-head">
+        <div class="nf-card-title">시공사 지역 분포</div>
+        <button type="button" class="nf-card-more" id="crmRegionCardMore">지도 열기</button>
+      </div>
+      ${total > 0 ? `
+        <div class="nf-donut-wrap">
+          <svg class="nf-donut" viewBox="0 0 112 112" role="img" aria-label="지역 분포 도넛">
+            <g transform="rotate(-90 56 56)">${segs}</g>
+          </svg>
+          <div class="nf-donut-center">
+            <div class="nf-donut-center-num">${esc(total.toLocaleString('ko-KR'))}</div>
+            <div class="nf-donut-center-label">시공사</div>
+          </div>
+        </div>
+        <div class="nf-legend">
+          ${list.map((r,i)=> `
+            <div class="nf-legend-row">
+              <span class="nf-legend-dot" style="background:${NF_DONUT_COLORS[i % NF_DONUT_COLORS.length]}"></span>
+              <span class="nf-legend-name">${esc(r.name)}</span>
+              <span class="nf-legend-val">${esc(r.count.toLocaleString('ko-KR'))}</span>
+              <span class="nf-legend-pct">${total ? Math.round((r.count/total)*100) : 0}%</span>
+            </div>`).join('')}
+        </div>
+      ` : `<div class="nf-card-empty">표시할 지역 데이터가 없습니다.</div>`}`;
+    const more = document.getElementById('crmRegionCardMore');
+    if(more) more.addEventListener('click', ()=>{
+      // 기존 지도 팝업을 그대로 연다 — 지도 코드는 호출만 한다(§17).
+      try{ openMapDistributionModal(); }
+      catch(err){ console.warn('지도 팝업 열기 실패:', err); }
+    });
+  }
+  // 우측 "최근 요청" — buildRequestListItems() 결과를 업체 구분 없이 최신순으로 모은다.
+  function renderNfRecentReqCard(companyList, idx){
+    const wrap = document.getElementById('crmRecentReqCard');
+    if(!wrap) return;
+    const all = [];
+    (companyList || []).forEach(co=>{
+      let items = [];
+      try{ items = buildRequestListItems(co, idx) || []; }
+      catch(err){ items = []; }
+      items.forEach(it=>{
+        const t = new Date(it.ts).getTime();
+        if(!Number.isFinite(t)) return;
+        all.push({ t, co, kind: it.kind, text: it.text });
+      });
+    });
+    all.sort((a,b)=> b.t - a.t);
+    const shown = all.slice(0, 7);
+    const kindLabel = { memo:'메모', material:'자료 요청', gsheet:'시트 요청' };
+    wrap.innerHTML = `
+      <div class="nf-card-head">
+        <div class="nf-card-title">최근 요청</div>
+        <span class="nf-card-count">${esc(all.length.toLocaleString('ko-KR'))}건</span>
+      </div>
+      ${shown.length ? `
+        <div class="nf-req-list">
+          ${shown.map(r=> `
+            <button type="button" class="nf-req-row" data-nf-req-co="${esc(r.co.id)}">
+              <span class="nf-req-top">
+                <span class="nf-req-name">${esc(r.co.name || '(업체명 없음)')}</span>
+                <span class="nf-req-date">${esc(fmtDate(r.t))}</span>
+              </span>
+              <span class="nf-req-text">
+                <span class="nf-req-kind nf-req-kind-${esc(r.kind)}">${esc(kindLabel[r.kind] || '요청')}</span>
+                ${esc(String(r.text || '').slice(0, 60))}
+              </span>
+            </button>`).join('')}
+        </div>
+      ` : `<div class="nf-card-empty">최근 요청 기록이 없습니다.</div>`}`;
+    wrap.querySelectorAll('[data-nf-req-co]').forEach(btn=> btn.addEventListener('click', ()=>{
+      openCard(btn.getAttribute('data-nf-req-co'));
+    }));
+  }
+  // 상단 내비 검색창 → 기존 고객목록 검색창(#crmSearchInput) 프록시. 검색 로직은 그대로다.
+  function bindNfNavSearch(){
+    const nav = document.getElementById('crmNavSearchInput');
+    const real = document.getElementById('crmSearchInput');
+    if(!nav || !real || nav.dataset.nfBound) return;
+    nav.dataset.nfBound = '1';
+    nav.addEventListener('input', ()=>{
+      if(real.value === nav.value) return;
+      real.value = nav.value;
+      real.dispatchEvent(new Event('input', { bubbles:true }));
+    });
+    // 반대 방향(목록 쪽에서 직접 입력/초기화)도 맞춰 둔다 — 값만 동기화한다.
+    real.addEventListener('input', ()=>{ if(nav.value !== real.value) nav.value = real.value; });
+  }
   function updateTotalRevenueSortArrow(){
     const el = document.getElementById('totalRevenueSortArrow');
     if(!el) return;
@@ -14898,6 +15564,12 @@ window.SHIN2_CRM_APP_INIT = function(){
     // 계산(관리필요 버튼/모달/고객카드 배너가 계속 씀) 자체는 그대로 둔다.
     renderKpiStrip(filterCounts);
     renderTrashSummaryBtn(filterCounts);
+    // §전면 리디자인 라운드(신규) — 좌측 요약 / 우측 위젯. 위에서 이미 계산된
+    // filterCounts·companies·requestItemsIndex를 그대로 넘겨 다시 보여줄 뿐이다.
+    renderNfSummaryPanel(filterCounts);
+    renderNfRecentReqCard(companies, requestItemsIndex);
+    renderNfRegionCard();
+    bindNfNavSearch();
     // §지도 팝업 전환 라운드(신규) — 지도는 더 이상 메인에 상시 마운트하지 않는다.
     // "[시공사 지역 분포]" 버튼을 눌렀을 때만 openMapDistributionModal()이 연다(§요청 1/2).
     // 목록을 다시 그려도 카카오맵을 건드리지 않으므로 renderList()가 더 가벼워진다.
