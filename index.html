@@ -7221,6 +7221,75 @@ html.modal-scroll-lock, body.modal-scroll-lock{
 .revenue-info-pop,
 #revenueInfoPopover,
 .col-help-pop{ z-index:var(--z-modal-child) !important; }
+
+/* ==========================================================================
+   §질문지 상담 탭 통합 라운드(신규) — 카드 네 개를 두 덩어리로.
+
+   [질문지 상담 통합 카드]  파일 한 줄 / 상담 평가 / 종합 고객 인사이트 / 요청자료
+   [추가 고객 메모]
+
+   카드 하나 안에서 섹션을 divider로 나눈다. 카드를 더 만들지 않고, 그림자도 거의
+   쓰지 않으며, 파란 강조는 칩 한 군데로만 제한한다(§10).
+   ========================================================================== */
+.qtab-card{
+  background:#FFFFFF; border:1px solid #E6EBF2; border-radius:15px;
+  box-shadow:0 1px 2px rgba(20,35,60,.04); overflow:hidden;
+}
+/* 섹션 사이는 카드가 아니라 가는 divider로만 나눈다 */
+.qtab-card > div + div:not(:empty),
+.qtab-card > div > .qtab-sec + .qtab-sec{ border-top:1px solid #EEF2F7; }
+/* 질문지가 없으면 #cdashQuestionnaireCard가 빈 div로 남는다 — 선이 두 줄 겹치지 않게 */
+.qtab-card > div:empty{ display:none; }
+.qtab-sec{ padding:12px 14px; }
+.qtab-sec-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:7px; }
+.qtab-sec-label{ font-size:11.5px; font-weight:800; color:#5B6B82; letter-spacing:-.01em; }
+.qtab-sec-meta{ font-size:10.5px; color:#9AA7B8; white-space:nowrap; }
+.qtab-sec-empty{ font-size:12px; color:#9AA7B8; }
+.qtab-sec-btn{ font-size:11px; padding:2px 8px; white-space:nowrap; }
+
+/* ① 질문지 파일 — 한 줄. 큰 박스 금지 */
+.qtab-file{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+.qtab-file-main{ min-width:0; flex:1 1 260px; }
+.qtab-file .qtab-sec-label{ display:flex; align-items:center; gap:5px; margin-bottom:3px; }
+.qtab-file-name{ font-size:13px; font-weight:700; color:#1E2C40; word-break:break-all; line-height:1.35; }
+.qtab-file-meta{ font-size:11px; color:#8A97A8; margin-top:2px; line-height:1.45; }
+.qtab-file-actions{ display:flex; align-items:center; gap:6px; flex-shrink:0; }
+/* 상태 badge는 아주 작게만 */
+.qtab-mini-badge{
+  font-size:9.5px; font-weight:700; color:#5B6B82; background:#F1F4F9;
+  border:1px solid #E3E9F1; border-radius:5px; padding:1px 5px; line-height:1.5;
+}
+
+/* ② 상담 평가 — chip 한/두 줄. 너무 진한 파랑 금지 */
+.qtab-chips{ display:flex; flex-wrap:wrap; gap:6px; }
+.qtab-chip{
+  display:inline-flex; align-items:center; gap:5px;
+  background:#F7F9FC; border:1px solid #E4EAF2; border-radius:999px;
+  padding:3px 9px; font-size:11px; line-height:1.5;
+}
+.qtab-chip-name{ color:#7A879A; font-weight:600; }
+.qtab-chip-val{ color:#1D4ED8; font-weight:800; }
+
+/* ③ 종합 고객 인사이트 — 문단 하나 */
+.qtab-insight-text{ font-size:12.5px; color:#23364F; line-height:1.72; white-space:pre-wrap; word-break:break-word; }
+
+/* ④ 요청자료 */
+.qtab-req-memo{
+  display:flex; align-items:flex-start; gap:7px; margin-bottom:7px;
+  background:#FBFCFE; border:1px solid #E9EEF5; border-radius:9px; padding:7px 9px;
+}
+.qtab-req-text{ font-size:12px; color:#23364F; line-height:1.6; word-break:break-word; }
+.qtab-req-badge{
+  flex-shrink:0; font-size:9.5px; font-weight:800; border-radius:5px; padding:1px 5px;
+  line-height:1.6; color:#B4530B; background:#FFF4E6; border:1px solid #FBDCB4;
+}
+.qtab-req-badge.is-done{ color:#2F7A4D; background:#EFF9F3; border-color:#CDE9DA; }
+.qtab-material-table{ font-size:11.5px; }
+
+/* ⑤ 추가 고객 메모 — 통합 카드와 같은 모양의 두 번째 덩어리 */
+.insight-note-block.qtab-card{ padding:12px 14px; }
+.insight-note-block.qtab-card .insight-note-title{ font-size:11.5px; font-weight:800; color:#5B6B82; }
+.insight-note-block.qtab-card .insight-note-desc{ font-size:11px; color:#8A97A8; line-height:1.5; margin:2px 0 7px; }
 </style>
 </head>
 <body>
@@ -19250,13 +19319,23 @@ window.SHIN2_CRM_APP_INIT = function(){
               <div id="agreementPopupBody"></div>
             </div>
 
-            <!-- ⑤ 질문지 상담 (§6) — 질문지 등록/교체·상/중/하 평가·상담 메모·Q1~Q8 답변,
-                 그리고 미팅 후 요청자료(발송대기/발송완료)까지 한 탭에 모은다. -->
+            <!-- ⑤ 질문지 상담 (§6) — 질문지 파일·상담 평가·종합 고객 인사이트·요청자료를
+                 한 탭에 모은다.
+                 §질문지 상담 탭 통합 라운드(신규) — 전에는 "질문지 상담" 카드와
+                 "질문지상담 요약" 카드가 상/중/하 평가와 종합 인사이트를 각각 한 번씩,
+                 즉 같은 내용을 두 번 보여주고 있었다. 카드 네 개를 세로로 쌓는 대신
+                 [통합 카드(파일 · 평가 · 종합 인사이트 · 요청자료)] + [추가 고객 메모]
+                 두 덩어리로 줄인다. 컨테이너 id는 하나도 바꾸지 않아서 기존 렌더·배선
+                 (renderAgreementPopupBody → bindQuestionnaireWork,
+                 renderQuestionnaireSummaryCard, renderRequestedMaterialsSection)이
+                 그대로 자기 자리를 찾는다. -->
             <div class="cdet-panel" data-cdet-panel="questionnaire">
               <div class="cdet-stack">
-                <div id="cdashQuestionnaireWork"></div>
-                <div id="cdashQuestionnaireCard"></div>
-                <div class="cdash2-docs-section" id="cdashMaterialsBlock"></div>
+                <div class="qtab-card">
+                  <div id="cdashQuestionnaireWork"></div>
+                  <div id="cdashQuestionnaireCard"></div>
+                  <div class="qtab-sec" id="cdashMaterialsBlock"></div>
+                </div>
                 <!-- §통합 팝업 정리 라운드(신규) — 고객 인사이트 자유 입력. 여기서 쓰고
                      기본정보 탭에서는 요약만 읽는다. 상담 메모와 저장 위치가 다르다. -->
                 <div id="cdashInsightNoteEditor"></div>
@@ -20487,12 +20566,12 @@ window.SHIN2_CRM_APP_INIT = function(){
     const wrap = document.getElementById('cdashInsightNoteEditor');
     if(!wrap) return;
     wrap.innerHTML = `
-      <div class="cdash2-docs-section insight-note-block">
+      <div class="qtab-card insight-note-block">
         <div class="insight-note-head">
-          <span class="insight-note-title">고객 인사이트</span>
+          <span class="insight-note-title">추가 고객 메모</span>
           <span class="insight-note-status" id="cdashInsightNoteStatus"></span>
         </div>
-        <div class="insight-note-desc">상담 메모와 별개입니다 — 업체 자체의 성향을 남겨 두는 칸입니다.</div>
+        <div class="insight-note-desc">자동 인사이트에 포함되지 않는 업체 성향·관계·영업 특이사항을 기록합니다.</div>
         <textarea id="cdashInsightNoteInput" class="insight-note-input"
           placeholder="업체 성향, 관심도, 의사결정 특징, 영업 포인트 등을 기록하세요.">${esc(customerInsightNote(co))}</textarea>
       </div>`;
@@ -20581,35 +20660,70 @@ window.SHIN2_CRM_APP_INIT = function(){
     const autoMore = document.getElementById('cdashAutoInsightMore');
     if(autoMore) autoMore.addEventListener('click', ()=> setCustomerDetailTab('questionnaire'));
   }
+  // §질문지 상담 탭 통합 라운드(신규) — 전에는 이 함수가 "질문지상담 요약"이라는 별도
+  // 카드를 그렸고, 그 카드가 바로 위 질문지 카드와 같은 내용(상/중/하 평가 + 종합
+  // 인사이트 + 요청자료 경고)을 한 번 더 보여줬다. 이제 카드 껍데기를 벗고 통합 카드
+  // 안의 두 섹션("상담 평가" / "종합 고객 인사이트")만 그린다.
+  //   · 요청자료는 아래 "요청자료" 섹션(renderRequestedMaterialsSection) 하나로 모았다
+  //   · 항목별 해설문은 여기서 안 보여준다(§4) — 상담 기록 팝업에서 본다
+  // 저장값은 조회만 한다. 평가·메모·자동 인사이트 생성 로직은 한 줄도 바뀌지 않았다.
   function renderQuestionnaireSummaryCard(co, questionnaireDoc){
     const wrap = document.getElementById('cdashQuestionnaireCard');
     if(!wrap) return;
     const doc = questionnaireDoc || D.documentsForCompany(co.id, 'questionnaire')[0];
-    const openBtnHtml = doc ? `<button type="button" class="co-text-action" id="cdashQuestionnaireOpenBtn" style="font-size:11px;padding:2px 8px;white-space:nowrap;">질문지 상담 기록 열기</button>` : '';
-    // §질문지 상담 기록 재구성 라운드 — Q1~Q8 답변 나열 대신 평가 3개 + 요청자료 +
-    // 자동 인사이트를 보여준다. 기존 답변(qaAnswers)은 지우지 않았고 상담 기록 팝업의
-    // "이전 기록 보기"에서 그대로 읽을 수 있다.
     const r = doc ? D.readConsultReview(doc) : null;
-    const ratedCount = r ? D.CONSULT_REVIEW_RATED.filter(([k])=> r[k].rating).length : 0;
-    const reqText = r ? r.requestedMaterialsAfterMeeting.memo.trim() : '';
-    const reqPending = !!(r && r.requestedMaterialsAfterMeeting.pending);
-    const insight = r ? parseConsultInsightSummary(r.autoInsight.summary) : { sections:[] };
-    const stateBadge = `<span class="cdash2-tag${ratedCount ? ' is-done' : ''} cdash2-qa-badge">${ratedCount ? `평가 ${ratedCount}/3` : '상담 기록 없음'}</span>`;
+    if(!r){ wrap.innerHTML = ''; return; }   // 질문지가 없으면 위 파일 줄만 남는다
+    const chipsHtml = consultEvalChipsHtml(r);
+    const verdict = r.autoInsight.verdict || parseConsultInsightSummary(r.autoInsight.summary).verdict;
     wrap.innerHTML = `
-      <div class="cdash2-card">
-        <div class="cdash2-card-title" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-          <span><span aria-hidden="true">📄</span> 질문지 상담 요약</span>
-          <div style="display:flex;align-items:center;gap:6px;">${reqText ? (reqPending ? '<span class="crv-req-badge">요청자료</span>' : '<span class="crv-req-badge is-done">발송 완료</span>') : ''}${stateBadge}${openBtnHtml}</div>
+      <div class="qtab-sec">
+        <div class="qtab-sec-head">
+          <div class="qtab-sec-label">상담 평가</div>
+          <button type="button" class="co-text-action qtab-sec-btn" id="cdashQuestionnaireOpenBtn">상담 기록 수정</button>
         </div>
-        ${reqText ? `<div class="crv-req-callout${reqPending ? '' : ' is-done'}"><div class="crv-req-callout-head">미팅 후 요청 자료${reqPending ? '' : ' <span class="crv-req-badge is-done">발송 완료</span>'}</div><div class="crv-req-callout-text">${esc(reqText)}</div></div>` : ''}
-        ${r ? consultRatingSummaryHtml(doc) : ''}
-        ${insight.sections.length ? `
-          <div class="crv-insight-box is-compact">${consultInsightInnerHtml(Object.assign(insight, { tags:r.autoInsight.tags }), r.autoInsight.updatedAt)}</div>
-        ` : `<div class="chart-empty">아직 등록된 질문지 상담 기록이 없습니다</div>`}
+        ${chipsHtml || `<div class="qtab-sec-empty">아직 등록된 상담 평가가 없습니다</div>`}
+      </div>
+      <div class="qtab-sec">
+        <div class="qtab-sec-head">
+          <div class="qtab-sec-label">종합 고객 인사이트</div>
+          ${r.autoInsight.updatedAt ? `<span class="qtab-sec-meta">${esc(fmtDate(r.autoInsight.updatedAt))} 정리</span>` : ''}
+        </div>
+        ${verdict ? `<div class="qtab-insight-text">${esc(verdict)}</div>`
+                  : `<div class="qtab-sec-empty">평가·메모를 입력하면 자동으로 정리됩니다</div>`}
       </div>
     `;
     const openBtn = document.getElementById('cdashQuestionnaireOpenBtn');
     if(openBtn) openBtn.addEventListener('click', ()=> openQuestionnaireSession(co.id, doc.id));
+  }
+  // 상/중/하 3개 + 선택 3개 + 관심 포인트를 한 줄 칩으로만 보여준다(§4 "각 항목별 설명문은
+  // 여기서 노출하지 말 것"). 값 표는 D.CONSULT_REVIEW_RATED / D.CONSULT_REVIEW_CHOICE /
+  // D.CONSULT_INTEREST_POINTS를 그대로 읽는다 — 새 판정이나 해석을 넣지 않는다.
+  const CONSULT_CHIP_SHORT = {
+    marketUnderstanding:'시장 이해도', sincerity:'진정성', conversionPotential:'전환 가능성',
+    competitorUsage:'타사 사용', priceSensitivity:'가격민감', relationshipLevel:'관계'
+  };
+  function consultEvalChipsHtml(r){
+    const chips = [];
+    D.CONSULT_REVIEW_RATED.forEach(([key,label])=>{
+      const v = r[key] && r[key].rating;
+      if(v) chips.push([CONSULT_CHIP_SHORT[key] || label, cratingLabel(v)]);
+    });
+    D.CONSULT_REVIEW_CHOICE.forEach(([key, field, label, desc, options])=>{
+      const v = r[key] && r[key][field];
+      if(!v) return;
+      const hit = options.find(o=> o[0] === v);
+      chips.push([CONSULT_CHIP_SHORT[key] || label, hit ? hit[1] : v]);
+    });
+    const picks = (r.interestPoints && r.interestPoints.values) || [];
+    if(picks.length){
+      chips.push(['관심', picks.map(v=>{
+        const hit = D.CONSULT_INTEREST_POINTS.find(o=> o[0] === v);
+        return hit ? hit[1] : v;
+      }).join(' · ')]);
+    }
+    if(!chips.length) return '';
+    return `<div class="qtab-chips">${chips.map(([name,val])=>
+      `<span class="qtab-chip"><span class="qtab-chip-name">${esc(name)}</span><span class="qtab-chip-val">${esc(val)}</span></span>`).join('')}</div>`;
   }
 
   // ---- §고객카드 전면 개선 라운드 [6] 최근 POUR 시공실적 — getTotalPourRecordsForCompany
@@ -27296,13 +27410,19 @@ window.SHIN2_CRM_APP_INIT = function(){
         // 내용이 남는다). 사람이 쓴 메모는 이 함수가 건드리지 않는다.
         try{ renderInsightNoteSummary(D.findCompany(companyId) || co); }
         catch(err){ /* 기본정보 탭이 아직 안 그려졌으면 무시 */ }
+        // §질문지 상담 탭 통합 라운드(신규) — 미팅 후 요청자료 메모가 이제 "요청자료"
+        // 섹션에서 보이므로 그 섹션도 같이 갱신한다(안 하면 저장 직후 이전 내용이 남는다).
+        try{ renderRequestedMaterialsSection(D.findCompany(companyId) || co); }
+        catch(err){ /* 질문지 상담 탭이 아직 안 그려졌으면 무시 */ }
       }
-      // §질문서 상담 평가 라운드 — 협약 진행관리 팝업이 열려 있으면 그쪽의 "질문지 상담"
-      // 줄(상/중/하 배지·메모)도 같이 갱신한다. 팝업 전체를 다시 그리면 사용자가 열어 둔
-      // 접기 구획이 닫혀 버리므로, 그 카드 하나만 제자리에서 바꿔 끼우고 다시 바인딩한다
-      // (마크업·바인딩 함수는 기존 것 그대로 재사용 — 새 렌더 경로 없음).
-      const agrBody = document.getElementById('agreementPopupBody');
-      const workCard = agrBody && agrBody.querySelector('.questionnaire-work-card');
+      // §질문서 상담 평가 라운드 — 질문지 파일 줄도 같이 갱신한다. 팝업 전체를 다시
+      // 그리면 사용자가 열어 둔 접기 구획이 닫혀 버리므로, 그 줄 하나만 제자리에서 바꿔
+      // 끼우고 다시 바인딩한다(마크업·바인딩 함수는 기존 것 그대로 재사용).
+      // §질문지 상담 탭 통합 라운드 — 전에는 #agreementPopupBody 안에서 .questionnaire-work-card
+      // 를 찾았는데, 통합 팝업에서는 이 줄이 #cdashQuestionnaireWork에 그려지므로 못 찾고
+      // 그냥 지나갔다. 컨테이너를 바로 가리켜 실제로 갱신되게 한다.
+      const workWrap = document.getElementById('cdashQuestionnaireWork');
+      const workCard = workWrap && workWrap.firstElementChild;
       if(workCard){
         const tmp = document.createElement('div');
         tmp.innerHTML = questionnaireWorkHtml(companyId);
@@ -27618,20 +27738,15 @@ window.SHIN2_CRM_APP_INIT = function(){
     // label[for]를 사용해 모바일/브라우저별 programmatic input.click() 제한을 피한다.
     const accepted = '.pdf,.jpg,.jpeg,.png,.gif,.webp';
     const inputHtml = `<input type="file" id="agreementQuestionnaireInput" class="questionnaire-file-input" accept="${accepted}" />`;
-    if(!doc) return `<div class="questionnaire-work-card"><div class="questionnaire-work-head"><span class="questionnaire-work-title">질문지 상담</span></div><div class="questionnaire-work-meta">질문서를 등록하면, 문서를 보면서 상담 메모를 바로 저장할 수 있습니다.</div><div class="questionnaire-work-actions">${inputHtml}<label for="agreementQuestionnaireInput" class="co-text-action primary questionnaire-file-label">질문지 등록</label></div></div>`;
-    return `<div class="questionnaire-work-card"><div class="questionnaire-work-head"><span class="questionnaire-work-title">질문지 상담</span><span class="questionnaire-work-head-right">${reqMatBadgeHtml(doc)}<span class="status-badge is-progress">등록됨</span></span></div><div class="questionnaire-work-meta">${esc(doc.fileName || doc.originalFileName || '질문서')} · ${esc(fmtDate(doc.createdAt))} 등록${doc.localOnly ? ' · 이 브라우저에만 저장됨' : ''}</div>${consultWorkCardHtml(doc)}<div class="questionnaire-work-actions">${inputHtml}<button type="button" class="co-text-action primary" data-questionnaire-session="${esc(doc.id)}">질문지 열고 상담 메모</button><label for="agreementQuestionnaireInput" class="co-text-action questionnaire-file-label">질문지 교체</label></div></div>`;
+    // §질문지 상담 탭 통합 라운드(신규) — 큰 박스 대신 한 줄. 평가 줄·종합 인사이트
+    // 한 줄·요청자료 경고(consultWorkCardHtml)를 여기서 뺐다 — 바로 아래 "상담 평가"와
+    // "종합 고객 인사이트" 섹션이 같은 내용을 이미 보여주고 있었다(중복 제거).
+    if(!doc) return `<div class="qtab-sec qtab-file"><div class="qtab-file-main"><div class="qtab-sec-label">질문지 상담</div><div class="qtab-file-meta">질문서를 등록하면, 문서를 보면서 상담 메모를 바로 저장할 수 있습니다.</div></div><div class="qtab-file-actions">${inputHtml}<label for="agreementQuestionnaireInput" class="co-text-action primary questionnaire-file-label">질문지 등록</label></div></div>`;
+    return `<div class="qtab-sec qtab-file"><div class="qtab-file-main"><div class="qtab-sec-label">질문지 상담${reqMatBadgeHtml(doc)}<span class="qtab-mini-badge">등록됨</span></div><div class="qtab-file-name">${esc(doc.fileName || doc.originalFileName || '질문서')}</div><div class="qtab-file-meta">${esc(fmtDate(doc.createdAt))} 등록${doc.localOnly ? ' · 이 브라우저에만 저장됨' : ''}</div></div><div class="qtab-file-actions">${inputHtml}<button type="button" class="co-text-action primary" data-questionnaire-session="${esc(doc.id)}">질문지 열기</button><label for="agreementQuestionnaireInput" class="co-text-action questionnaire-file-label">교체</label></div></div>`;
   }
-  // §질문지 상담 기록 재구성 라운드 — 협약 진행관리 카드 안의 요약. 요청자료가 있으면
-  // 빨간 경고를, 평가가 있으면 상/중/하 줄과 종합 인사이트 한 줄을 compact하게 보여준다(§15-3).
-  function consultWorkCardHtml(doc){
-    const r = D.readConsultReview(doc);
-    const req = r.requestedMaterialsAfterMeeting.memo.trim();
-    const reqPending = r.requestedMaterialsAfterMeeting.pending;
-    const verdict = r.autoInsight.verdict || parseConsultInsightSummary(r.autoInsight.summary).verdict;
-    return `${req ? `<div class="crv-req-callout${reqPending ? '' : ' is-done'}"><div class="crv-req-callout-head">미팅 후 요청 자료 <span class="crv-req-badge${reqPending ? '' : ' is-done'}">${reqPending ? '발송 필요' : '발송 완료'}</span></div><div class="crv-req-callout-text">${esc(req)}</div></div>` : ''}`
-      + consultRatingSummaryHtml(doc)
-      + `${verdict ? `<div class="crv-verdict-line">${esc(verdict)}</div>` : ''}`;
-  }
+  // §질문지 상담 탭 통합 라운드(신규) — 질문지 파일 줄 안에 평가·종합 인사이트·요청자료를
+  // 한 번 더 넣던 consultWorkCardHtml은 지웠다. 같은 내용을 "상담 평가" / "종합 고객
+  // 인사이트" / "요청자료" 섹션이 바로 아래에서 한 번만 보여준다.
   function bindQuestionnaireWork(companyId){
     const input = document.getElementById('agreementQuestionnaireInput');
     if(input) input.addEventListener('change', async e=>{
@@ -33072,13 +33187,24 @@ window.SHIN2_CRM_APP_INIT = function(){
     if(!wrap) return;
     const editing = !!cardState.sectionEdit.materials;
     const items = (co.requestedMaterials || []).slice().sort((a,b)=> new Date(b.createdAt) - new Date(a.createdAt));
+    // §질문지 상담 탭 통합 라운드(신규) — "요청자료"라는 이름의 데이터가 두 군데에 있다.
+    //   · co.requestedMaterials                               — 업체 레코드의 요청자료 목록
+    //   · 질문지 문서의 consultReview.requestedMaterialsAfterMeeting — 미팅 후 요청 메모
+    // 전에는 앞의 것이 이 섹션에, 뒤의 것이 질문지 카드와 요약 카드에 각각(=두 번) 떠서
+    // 같은 "요청자료"가 화면 세 곳에 흩어져 있었다. 이제 이 섹션 하나에서만 함께 읽는다.
+    // 어느 쪽도 고치거나 옮기지 않는다 — 조회만 한다.
+    const qdoc = D.documentsForCompany(co.id, 'questionnaire')[0];
+    const qr = qdoc ? D.readConsultReview(qdoc) : null;
+    const reqMemo = qr ? qr.requestedMaterialsAfterMeeting.memo.trim() : '';
+    const reqPending = !!(qr && qr.requestedMaterialsAfterMeeting.pending);
     wrap.innerHTML = `
-      <div class="cdash-col-title-row">
-        <div class="cdash-col-title">요청 자료</div>
-        <button type="button" class="cdash-mini-edit" id="cdashMaterialsToggle">${editing ? '완료' : '수정'}</button>
+      <div class="qtab-sec-head">
+        <div class="qtab-sec-label">요청자료</div>
+        <button type="button" class="co-text-action qtab-sec-btn" id="cdashMaterialsToggle">${editing ? '완료' : '수정'}</button>
       </div>
+      ${reqMemo ? `<div class="qtab-req-memo"><span class="qtab-req-badge${reqPending ? '' : ' is-done'}">${reqPending ? '발송 필요' : '발송 완료'}</span><span class="qtab-req-text">${esc(reqMemo)}</span></div>` : ''}
       ${items.length ? `
-        <table class="cdash-material-table"><tbody>
+        <table class="cdash-material-table qtab-material-table"><tbody>
           ${items.map(it=> `<tr>
             <td>${esc(fmtDate(it.createdAt))}</td>
             <td>${esc(it.materialType)}</td>
@@ -33090,7 +33216,7 @@ window.SHIN2_CRM_APP_INIT = function(){
             </td>
           </tr>`).join('')}
         </tbody></table>
-      ` : `<div class="cdash-field-value is-muted">미확인</div>`}
+      ` : (reqMemo ? '' : `<div class="qtab-sec-empty">등록된 요청자료 없음</div>`)}
       ${editing ? `<div class="cdash-mini-add-row">
         <select id="cdashMaterialTypeInput">${D.REQUESTED_MATERIAL_TYPES.map(t=> `<option value="${esc(t)}">${esc(t)}</option>`).join('')}</select>
         <button type="button" class="co-text-action primary" id="cdashMaterialAddBtn">추가</button>
