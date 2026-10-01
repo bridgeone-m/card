@@ -7667,8 +7667,13 @@ body{
 .crm-list-col .co-row{ padding:7px 14px !important; min-height:54px !important; }
 .crm-list-col .co-table-head{ padding:9px 14px !important; }
 
-/* §3 페이지네이션 — 번호를 보여주는 것보다 업체 한 줄이 더 중요하다. 줄 높이를
-   44 → 28px로 줄이고 버튼도 한 단계 작게 한다. 페이지 상태·건수·렌더 함수는 그대로다. */
+/* §3 페이지네이션 — 고정 모드에서는 줄 자체를 화면에서 뺀다. 번호 대신 목록 안에서
+   휠로 내려 보고(.co-list overflow-y:auto), 그 29px만큼 업체가 한 줄 더 보인다.
+   "총 N개 업체"도 이 줄 안에 있어 같이 빠지는데, 같은 숫자가 "전체 N" 필터 칩에 이미
+   있다. renderPagination과 페이지 상태는 그대로 돌고, 모바일·태블릿에서는 예전처럼
+   이 줄이 보인다. */
+body.crm-fixed-view .crm-list-col .list-pagination{ display:none !important; }
+/* 아래는 고정 모드가 아닐 때(모바일·태블릿) 쓰는 compact 페이지네이션 — 그대로 둔다. */
 .crm-list-col .list-pagination{
   min-height:28px !important; padding:4px 2px 0 !important; gap:8px !important;
 }
@@ -17482,7 +17487,14 @@ window.SHIN2_CRM_APP_INIT = function(){
       : [];
 
     syncCrmFixedViewClass();   // crmPageSize()가 고정 레이아웃 여부를 먼저 알아야 한다
-    const pageSize = crmPageSize();
+    // §목록 스크롤 전환 라운드(신규) — 한 화면 고정 모드(고객관리 데스크톱)에서는 아래
+    // 페이지네이션 줄을 화면에서 뺐다. 번호가 없으니 한 페이지에 전부 담고 목록 안에서
+    // 휠로 내려 본다(.co-list가 overflow-y:auto). 페이지 상태·renderPagination·
+    // crmPageSize는 그대로 둔다 — 모바일·태블릿처럼 고정 모드가 아닐 때는 예전처럼
+    // 페이지를 나눠서 보여준다.
+    const pageSize = document.body.classList.contains('crm-fixed-view')
+      ? Math.max(1, rows.length)
+      : crmPageSize();
     const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
     if(currentPage > totalPages) currentPage = totalPages;
     const pageRows = rows.slice((currentPage - 1) * pageSize, currentPage * pageSize);
