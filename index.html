@@ -3111,6 +3111,22 @@ html,body{background:radial-gradient(circle at 75% -10%,rgba(11,91,211,.055),tra
 }
 
 /* ==========================================================================
+   §28 신규 고객 등록 모달 — 제목줄과 [취소][등록]은 항상 보이고 가운데 입력폼만
+   스크롤된다. 제목줄(.pi-head)은 원래 스크롤 영역(.pi-body) 밖이라 이미 고정이고,
+   버튼 줄만 폼 맨 아래에 같이 흘러내려 등록하려면 끝까지 내려야 했다.
+   그 줄만 스크롤 영역 바닥에 붙인다(sticky) — 마크업·제출 로직은 그대로다.
+   #addCoOverlay 범위로 좁혀 같은 .popup-action-bar를 쓰는 다른 팝업은 안 건드린다.
+   ========================================================================== */
+#addCoOverlay .pi-panel{ max-height:90vh; }
+/* 스크롤 칸 아래 여백이 남아 있으면 sticky 버튼 줄과 칸 바닥 사이에 틈이 생긴다. */
+#addCoOverlay .pi-body{ overscroll-behavior:contain; padding-bottom:0 !important; }
+#addCoOverlay .popup-action-bar{
+  position:sticky; bottom:0; z-index:2;
+  margin:14px -18px 0; padding:12px 18px;
+  background:#fff; border-top:1px solid #E6ECF4;
+  box-shadow:0 -6px 14px rgba(15,23,42,.05);
+}
+/* ==========================================================================
    §한 화면 고정형 CRM 레이아웃 — 고객관리 "목록" 화면에서만(body.crm-fixed-view)
    데스크톱에 한해 적용한다. 모바일·태블릿은 지금처럼 자연스럽게 세로로 스크롤되고,
    다른 탭(MOU 진행상황·메일 설정)과 고객 상세 전체화면도 영향을 받지 않는다.
