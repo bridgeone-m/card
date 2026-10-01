@@ -7967,6 +7967,32 @@ body.crm-fixed-view .crm-list-col .co-list{ overflow-y:auto !important; overscro
   }
 }
 
+/* ---- §MOU 바로가기 버튼 축소 라운드(신규) ----
+   "실적있음·MOU미체결" 탭에서만 뜨는 행 우측 끝 작은 버튼. 행 아래 별도 줄을 없애고
+   이 버튼만 남겼다(업체코드는 이미 업체명 아래 .co-code-sub에 있다).
+   .co-row의 grid-template-columns는 머리줄과 공유하므로 칸을 늘리지 않고 absolute로
+   얹는다 — 열 정렬이 틀어지지 않는다. 평소에는 흐리게, 행에 올리거나 키보드 포커스가
+   가면 또렷해진다. 색·모서리·높이는 사이트 공통 secondary 체계를 따른다. */
+.crm-list-col .co-row{ position:relative; }
+/* 마지막 열(실적-매출) 내용과 겹치지 않게 그 칸 오른쪽만 비워 둔다. */
+.crm-list-col .co-row:has(> .co-row-quick-action) > .col-contrib{ padding-right:86px !important; }
+.co-row-quick-action{
+  position:absolute; right:10px; top:50%; transform:translateY(-50%);
+  display:inline-flex; align-items:center; justify-content:center;
+  height:22px; padding:0 9px; box-sizing:border-box;
+  background:var(--surface); color:var(--navy-dark);
+  border:1px solid var(--border-soft); border-radius:999px;
+  font-family:inherit; font-size:10.5px; font-weight:700; white-space:nowrap;
+  cursor:pointer; opacity:.45; transition:opacity .12s ease, background .12s ease, border-color .12s ease;
+}
+.crm-list-col .co-row:hover .co-row-quick-action{ opacity:1; }
+.co-row-quick-action:hover{
+  opacity:1 !important; background:var(--primary-navy); color:#fff; border-color:var(--primary-navy);
+}
+.co-row-quick-action:focus-visible{
+  opacity:1 !important; outline:2px solid var(--primary-navy); outline-offset:1px;
+}
+
 /* ---- §4 메일 화면만 좁던 폭 ----
    실측(1920×1080): MOU 본문은 x=31 / 폭 1858 / 우측 31로 거의 전체 폭을 쓰는데,
    메일은 .mail-settings-panel과 .mail-settings-header-wrap에 max-width:1500px +
@@ -14803,12 +14829,17 @@ window.SHIN2_CRM_APP_INIT = function(){
   // "MOU 체결" 버튼은 새 판정/저장 로직이 아니라 기존 handleConfirmMouFromNonPartnerTab을
   // 그대로 호출한다(§요청 "MOU 체결 버튼 하나로 업체코드도 같이 입혀지게" — 그 함수가
   // 이미 하던 동작 그대로).
+  // §MOU 바로가기 버튼 축소 라운드(신규) — 사용자 요청: "MOU 체결 바로가기 버튼은 맨
+  // 오른쪽에 불투명식으로 작게, 업체코드 미발급 줄은 삭제".
+  // 예전에는 행 아래에 별도 줄(.terminated-info-row)을 하나 더 깔고 거기에 "업체코드
+  // 미발급"과 큰 버튼을 함께 뒀다. 그 줄 때문에 업체 한 곳이 두 줄을 차지해 한 화면에
+  // 보이는 업체 수가 절반이 됐고, 업체코드는 이미 업체명 아래(.co-code-sub)에 있어서
+  // 같은 정보가 두 번 나오고 있었다. 줄 자체를 없애고 버튼만 행 오른쪽 끝에 올린다.
+  // .co-row의 grid-template-columns는 머리줄과 공유하므로 칸을 늘리지 않고 absolute로
+  // 얹는다(열 정렬이 틀어지지 않는다). 평소에는 흐리게 두고 행에 올리면 또렷해진다.
   function revenueNoMouActionRowHtml(co){
-    return `
-      <div class="terminated-info-row" data-revenue-no-mou-info="${esc(co.id)}">
-        <span class="terminated-info-item"><b>업체코드</b> ${co.code ? esc(co.code) : '미발급'}</span>
-        <button type="button" class="co-text-action primary" data-revenue-no-mou-confirm="${esc(co.id)}">MOU 체결</button>
-      </div>`;
+    return `<button type="button" class="co-row-quick-action" data-revenue-no-mou-confirm="${esc(co.id)}"
+      title="MOU 체결로 확정하고 업체코드를 발급합니다">MOU 체결</button>`;
   }
   // §미등록 업체 리스트 통합 라운드(신규) — 사용자 요청: "관리도구 미등록업체 목록을
   // 통째로 옮기지 말고, 실적있음·MOU미체결 탭의 리스트 안에 같은 모양으로 넣어달라."
@@ -14836,10 +14867,8 @@ window.SHIN2_CRM_APP_INIT = function(){
         </div>
         <div class="col-request">—</div>
         <div class="col-contrib-trend">—</div>
-      </div>
-      <div class="terminated-info-row" data-revenue-no-mou-unreg-info="${esc(x.name)}">
-        <span class="terminated-info-item"><b>업체코드</b> 미발급</span>
-        <button type="button" class="co-text-action primary" data-revenue-no-mou-unreg-confirm="${esc(x.name)}">MOU 체결</button>
+        <button type="button" class="co-row-quick-action" data-revenue-no-mou-unreg-confirm="${esc(x.name)}"
+          title="CRM에 등록하고 MOU 체결로 확정합니다">MOU 체결</button>
       </div>`;
   }
   // §신규 협약사 탭 라운드 → §요청 발생 UI 보류 라운드(신규) — terminatedInfoRowHtml과
@@ -18097,7 +18126,11 @@ window.SHIN2_CRM_APP_INIT = function(){
         <!-- §단계 진행상황 이전 라운드: 이 컬럼은 목록에서 뺐다(업무관리 화면으로 이전,
              stageStepperHtml 변수/buildStageStepperHtml 함수는 그대로 계산돼 있다 —
              §"데이터 제거가 아니라 숨김" 관례 그대로). -->
-      </div>${terminatedInfoHtml}${revenueNoMouActionHtml}`;
+        <!-- §MOU 바로가기 버튼 축소 라운드 — 행 오른쪽 끝에 absolute로 얹는 작은 버튼이라
+             반드시 .co-row 안에 있어야 한다(기준 박스가 행이 되도록). 예전 보조 줄은
+             행 바깥(형제)이었다. 이 탭이 아니면 빈 문자열이라 다른 탭은 그대로다. -->
+        ${revenueNoMouActionHtml}
+      </div>${terminatedInfoHtml}`;
     }).join('');
     if(filterKey === 'mouDone' && currentPage === 1 && classifiedMouRows.length){
       listEl.insertAdjacentHTML('afterbegin', classifiedUnregisteredTableHtml(classifiedMouRows, '엑셀 기준 MOU 체결 · CRM 미등록', 'MOU 체결'));
