@@ -3864,7 +3864,6 @@ body.map-modal-lock{ overflow:hidden; }
 .cdet-sec-title{ font-size:12.5px; font-weight:800; color:var(--navy); margin-bottom:8px; }
 .cdet-sec-hint{ font-size:11.5px; color:var(--text-muted); padding:9px 12px; background:var(--bg); border-radius:8px; line-height:1.5; }
 /* 헤더 — 서류 업로드 버튼은 고객 인사이트 버튼과 같은 톤 */
-#chartDocUploadBtn{ margin-left:4px; }
 /* 고객 인사이트 — 질문지 상담 탭의 입력칸 */
 .insight-note-block{ margin-top:0; }
 .insight-note-head{ display:flex; align-items:center; gap:8px; margin-bottom:2px; }
@@ -21320,10 +21319,6 @@ window.SHIN2_CRM_APP_INIT = function(){
                   <div class="cdet-sec-title">협약 서류 체크</div>
                   <div id="agreementDocSection"></div>
                 </section>
-                <!-- 실제 업로드/보기/삭제(#cdashDocStatusBlock)는 헤더 [서류 업로드] 버튼이
-                     여는 모달로 옮겼다. 컨테이너를 지우지 않고 그대로 옮기기만 해서
-                     renderDocStatusBlock/renderDocsSection의 배선이 한 줄도 안 바뀐다. -->
-                <div class="cdet-sec-hint">실제 파일 업로드·보기·삭제는 상단 <b>[서류 업로드]</b> 버튼에서 합니다.</div>
               </div>
             </div>
           </div>
@@ -21481,11 +21476,6 @@ window.SHIN2_CRM_APP_INIT = function(){
           <button type="button" class="cdash2-header-insight-btn" id="chartHeaderInsightBtn" title="고객 인사이트 보기">
             <span aria-hidden="true">💡</span> 고객 인사이트${hasInsight ? ' <span class="cdash2-header-insight-dot" aria-hidden="true">●</span>' : ''}
           </button>
-          <!-- §통합 팝업 정리 라운드(신규) — 실제 파일 관리는 서류 탭이 아니라 이 버튼이
-               여는 별도 모달에서 한다(서류 탭은 체크리스트만 = 상태 확인 전용). -->
-          <button type="button" class="cdash2-header-insight-btn" id="chartDocUploadBtn" title="서류 파일 업로드·보기·삭제">
-            <span aria-hidden="true">📎</span> 서류 업로드
-          </button>
         </div>
         <button type="button" class="cdash2-header-close" id="chartCloseBtn" title="닫기" aria-label="닫기">&times;</button>
       </div>
@@ -21497,8 +21487,6 @@ window.SHIN2_CRM_APP_INIT = function(){
     }
     const insightBtn = document.getElementById('chartHeaderInsightBtn');
     if(insightBtn) insightBtn.addEventListener('click', ()=> openHeaderInsightModal(co));
-    const docUpBtn = document.getElementById('chartDocUploadBtn');
-    if(docUpBtn) docUpBtn.addEventListener('click', ()=> openDocUploadModal(co));
   }
 
   /* §통합 고객 상세 팝업 라운드(신규) — 상단 가로 탭바(§1/§13/§16).
@@ -21509,8 +21497,12 @@ window.SHIN2_CRM_APP_INIT = function(){
     try{
       if(key === 'activity'){ const n = buildContactHistoryItems(co).length; return n ? String(n) : ''; }
       if(key === 'documents'){
-        const list = buildDocStatusList(co);
-        return list.length ? (list.filter(d=> d.count > 0).length + '/' + list.length) : '';
+        // 업로드 창을 없앤 뒤로 파일 개수는 늘지 않는다. 배지는 서류 탭이 실제로
+        // 보여주는 값(체크 상태)과 같은 기준이어야 하므로 docCheckState로 센다.
+        const summary = buildAgreementDocSummary(co.id);
+        if(!summary.total) return '';
+        const n = summary.list.filter(it=> docCheckState(co, it.type, it.doc)).length;
+        return n + '/' + summary.total;
       }
     }catch(e){ /* 배지는 보조 정보라 계산 실패 시 조용히 생략 */ }
     return '';
@@ -22504,32 +22496,15 @@ window.SHIN2_CRM_APP_INIT = function(){
   // 안에 들어가는 건 원래 서류 탭에 있던 #cdashDocStatusBlock 컨테이너 그대로다 —
   // renderDocStatusBlock/renderDocsSection이 자기 id를 찾아 그리고 이벤트를 붙이는
   // 구조라(이 파일의 관례), 컨테이너를 새로 만들지 않고 위치만 옮겨야 배선이 안 끊긴다.
-  function openDocUploadModal(co){
-    let root = document.getElementById('docUploadModalRoot');
-    if(!root){ root = document.createElement('div'); root.id = 'docUploadModalRoot'; document.body.appendChild(root); }
-    root.innerHTML = `
-      <div class="pi-overlay" id="docUploadOverlay" style="z-index:10025;">
-        <div class="pi-panel doc-upload-panel" role="dialog" aria-modal="true" aria-label="서류 업로드">
-          <div class="pi-head">
-            <div class="pi-title">서류 업로드 — ${esc(co.name)}</div>
-            <button type="button" class="chart-close-btn" id="docUploadClose" aria-label="닫기">&times;</button>
-          </div>
-          <div class="pi-body">
-            <div class="cdash2-docs-section" id="cdashDocStatusBlock"></div>
-          </div>
-        </div>
-      </div>`;
-    const close = ()=>{
-      root.innerHTML = '';
-      // 닫을 때 서류 탭 체크리스트를 다시 그려 방금 올린 파일이 바로 반영되게 한다.
-      if(document.getElementById('agreementDocSection')) bindAgreementDocChecklistHandlers(co.id);
-      renderCustomerDetailTabBar(co);   // 탭 배지(서류 N/6)도 같이 갱신
-      applyCustomerDetailTab();
-    };
-    document.getElementById('docUploadClose').addEventListener('click', close);
-    bindSafeBackdropClose(document.getElementById('docUploadOverlay'), close);
-    renderDocStatusBlock(co);   // 기존 렌더 함수 그대로
-  }
+  /* §서류 체크 전용 라운드(신규) — 서류 업로드 창을 없앴다. 사용자 요청: 파일을
+     보관해 두고 열어 볼 일이 없고 "받았는지"만 체크하면 된다. 그래서 고객 상세
+     헤더의 [서류 업로드] 버튼과 그 버튼이 열던 모달(openDocUploadModal)을 뺐다.
+     서류 탭은 원래부터 체크리스트만 그렸고(co.docChecks), 그 체크는 파일 유무와
+     독립이라 그대로 동작한다.
+     지우지 않은 것 — 이미 올라가 있는 파일, Storage 경로, D.addDocument /
+     saveDocumentFile / renderDocStatusBlock 같은 저장·렌더 함수는 손대지 않았다.
+     화면에서 들어가는 입구만 없앤 것이라 되돌리기도 쉽고, 기존 서류가 삭제되지도
+     않는다. */
   function renderInsightNoteEditor(co){
     const wrap = document.getElementById('cdashInsightNoteEditor');
     if(!wrap) return;
@@ -28839,6 +28814,11 @@ window.SHIN2_CRM_APP_INIT = function(){
       // 접기 머리글의 "서류 현황 N/6" 도 같은 값으로 맞춘다.
       const foldCountEl = document.getElementById('agrDocFoldCount');
       if(foldCountEl) foldCountEl.textContent = `${wrap.querySelectorAll('[data-doc-check]:checked').length}/${wrap.querySelectorAll('[data-doc-check]').length}`;
+      // 고객 상세 탭바의 서류 배지도 같은 값으로. 예전에는 서류 업로드 모달을 닫을 때
+      // renderCustomerDetailTabBar가 다시 그려 줬는데 그 모달을 없앴으므로, 체크한
+      // 자리에서 숫자만 바꿔 준다(전체 재렌더를 하면 포커스가 날아간다).
+      const tabBadgeEl = document.querySelector('#chartTabBar [data-cdet-tab="documents"] .chip-count');
+      if(tabBadgeEl) tabBadgeEl.textContent = `${wrap.querySelectorAll('[data-doc-check]:checked').length}/${wrap.querySelectorAll('[data-doc-check]').length}`;
       renderAgreementDocFilterCount();
       // 클라우드 저장 실패 시에도 로컬 값과 화면은 되돌리지 않는다 — 이 파일의 다른 서류
       // 액션(업로드/확인/메모: confirmDocsCloudSave 실패 시 alert만 띄우고 로컬은 유지)과
