@@ -7493,16 +7493,6 @@ body{
   box-shadow:0 4px 16px rgba(23,52,95,.04) !important;
 }
 .kpi-strip .kpi-item:hover{ box-shadow:0 8px 22px rgba(23,52,95,.09) !important; }
-.kpi-strip .kpi-item::before{
-  content:''; grid-column:1 !important; grid-row:1 / 4 !important;
-  width:38px; height:38px; border-radius:12px;
-  background-repeat:no-repeat; background-position:center; background-size:19px 19px;
-}
-.kpi-strip .kpi-item[data-kpi="all"]::before{ background-color:var(--navy-100); background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231B4480' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'><path d='M3 21h18M5 21V7l7-4 7 4v14M9 21v-5h6v5'/></svg>"); }
-.kpi-strip .kpi-item[data-kpi="mouDone"]::before{ background-color:var(--navy-100); background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23163A70' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'><path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/><path d='M14 2v6h6'/><path d='m9 15 2 2 4-4'/></svg>"); }
-.kpi-strip .kpi-item[data-kpi="trendUp"]::before{ background-color:var(--navy-100); background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231B4480' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'><path d='m3 17 6-6 4 4 8-8'/><path d='M14 7h7v7'/></svg>"); }
-.kpi-strip .kpi-item[data-kpi="l2l3Manage"]::before{ background-color:var(--navy-100); background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231B4480' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'><path d='M3 7h13l-3-3M21 17H8l3 3'/><circle cx='18' cy='7' r='2.4'/><circle cx='6' cy='17' r='2.4'/></svg>"); }
-.kpi-strip .kpi-item[data-kpi="risingTop5"]::before{ background-color:var(--navy-100); background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231B4480' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'><path d='m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z'/></svg>"); }
 .kpi-strip .kpi-item-label{
   grid-column:2 !important; grid-row:1 !important;
   min-height:0 !important; margin:0 !important;
@@ -7940,7 +7930,6 @@ body.crm-fixed-view .crm-list-col .co-list{ overflow-y:auto !important; overscro
   body.crm-fixed-view .kpi-strip .kpi-item{
     min-height:74px !important; grid-template-rows:15px 26px 13px !important;
   }
-  body.crm-fixed-view .kpi-strip .kpi-item::before{ width:32px; height:32px; border-radius:10px; background-size:17px 17px; }
   body.crm-fixed-view .kpi-strip .kpi-item-value{ font-size:22px !important; }
   body.crm-fixed-view .kpi-strip{ gap:10px !important; }
   /* 상태 필터 pill이 두 줄로 접히는 폭에서는 pill 자체를 한 단계 작게 — 줄 수는 그대로
@@ -8227,23 +8216,42 @@ body.crm-page-shell #mailSettingsView .mail-settings-header-wrap{
   box-shadow:0 4px 16px rgba(31,54,90,.03) !important;
 }
 .kpi-strip .kpi-item:hover{ box-shadow:0 6px 18px rgba(31,54,90,.07) !important; }
-/* 장식 — 네 장 모두 같은 모양 하나. 예전 아이콘 타일이 쓰던 ::before를 그대로 쓰되
-   레이아웃에서 빼내(absolute) 카드 오른쪽에 아주 연한 곡선 덩어리로 깐다.
+/* 장식 — 카드마다 뜻이 다른 아주 연한 선 그림을 오른쪽에 워터마크로 깐다.
+   예전의 반원 하나는 너무 약해서 거의 안 보였고 네 장이 전부 같은 모양이었다.
+     전체 업체    빌딩 세 채와 창 — 등록된 업체
+     MOU 체결     계약서와 확인 도장
+     L2→L3 전환율 올라가는 꺾은선과 화살표
+     TOP 5        별과 순위 막대
+   아이콘을 크게 박는 느낌이 되지 않게 지킨 것:
+     · 오른쪽 34%에만 두고, 왼쪽은 mask로 서서히 사라지게 해서 글자 뒤에는 안 깔린다
+     · 불투명도 .09 — 선은 네 장 모두 같은 남색 하나라 카드마다 색이 달라지지 않는다
+     · 그림 뒤에 아주 연한 남색 radial을 한 겹 깔아 평평해 보이지 않게 했다
+     · 카드가 82px로 낮고 옆으로 길어서 그림판도 정사각형이 아니라 150×92(카드와
+       같은 가로형)로 그린다. 정사각형으로 그렸더니 오른쪽 위에 작은 아이콘을 붙여
+       놓은 꼴이 됐다(실측). 그림은 판 안에서 위아래 가운데에 맞춰 두고 오른쪽 여백도
+       4px만 남긴다 — 별이나 막대가 어중간하게 잘리면 실수처럼 보인다.
    (::after는 TOP 5 카드의 ▾ 표시가 이미 쓰고 있어 건드리지 않는다.) */
 .kpi-strip .kpi-item::before{
-  content:''; position:absolute; right:-46px; top:-52px;
-  width:150px; height:150px; border-radius:50%;
-  /* 앞 라운드의 카드별 아이콘 규칙(.kpi-item[data-kpi="…"]::before)이 더 구체적이라
-     !important 없이는 이 배경이 그 SVG에 밀린다(실측). */
-  /* 원의 테두리가 보이면 장식이 먼저 읽힌다 — 원 안쪽에서 이미 투명해지게 둔다. */
-  background-image:radial-gradient(circle at 34% 66%,
-    rgba(238,243,250,.9) 0%, rgba(238,243,250,.45) 38%, rgba(238,243,250,0) 66%) !important;
-  background-color:transparent !important; background-size:auto !important;
-  background-repeat:no-repeat !important; background-position:center !important;
+  content:''; position:absolute; right:0; top:0; bottom:0;
+  width:34%;
+  opacity:.09;
+  background-repeat:no-repeat, no-repeat !important;
+  background-position:right 4px center, right -40px center !important;
+  /* contain — 칸보다 그림이 커져 왼쪽이 잘리는 일이 없다. 좁은 화면에서 min-width로
+     칸을 넓혀 봤자 그림만 잘려서, 칸은 항상 카드의 34%로 두고 그림이 칸에 맞춰 준다. */
+  background-size:contain, 190px 190px !important;
+  background-color:transparent !important;
+  /* 왼쪽으로 갈수록 사라지게 — 숫자/라벨이 있는 영역에는 아무것도 안 깔린다. */
+  -webkit-mask-image:linear-gradient(to right, transparent 0%, rgba(0,0,0,.5) 34%, #000 68%);
+          mask-image:linear-gradient(to right, transparent 0%, rgba(0,0,0,.5) 34%, #000 68%);
   pointer-events:none; z-index:0;
   /* grid 자동 배치에 끼어들지 않게 — 아이콘 자리로 쓰던 지정을 지운다. */
   grid-column:auto !important; grid-row:auto !important;
 }
+.kpi-strip .kpi-item[data-kpi="all"]::before{ background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 150 92' fill='none' stroke='%231B4480' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'><path d='M12 82h126'/><path d='M30 82V40h26v42'/><path d='M56 82V16h30v66'/><path d='M86 82V50h26v32'/><path d='M38 50h10M38 62h10M64 30h12M64 44h12M64 58h12M94 60h10'/></svg>"), radial-gradient(circle at 74% 50%, rgba(27,68,128,.18) 0%, rgba(27,68,128,.08) 46%, rgba(27,68,128,0) 74%) !important; }
+.kpi-strip .kpi-item[data-kpi="mouDone"]::before{ background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 150 92' fill='none' stroke='%231B4480' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'><path d='M34 6h38l20 20v50a6 6 0 0 1-6 6H40a6 6 0 0 1-6-6z'/><path d='M72 6v20h20'/><path d='M46 42h32M46 56h20'/><circle cx='106' cy='62' r='18'/><path d='m98 62 6 7 12-14'/></svg>"), radial-gradient(circle at 74% 50%, rgba(27,68,128,.18) 0%, rgba(27,68,128,.08) 46%, rgba(27,68,128,0) 74%) !important; }
+.kpi-strip .kpi-item[data-kpi="l2l3Manage"]::before{ background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 150 92' fill='none' stroke='%231B4480' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'><path d='M14 78h124'/><path d='M22 66l26-15 20 11 36-37'/><path d='M90 25h16v16'/><circle cx='48' cy='51' r='4.5'/><circle cx='68' cy='62' r='4.5'/></svg>"), radial-gradient(circle at 74% 50%, rgba(27,68,128,.18) 0%, rgba(27,68,128,.08) 46%, rgba(27,68,128,0) 74%) !important; }
+.kpi-strip .kpi-item[data-kpi="risingTop5"]::before{ background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 150 92' fill='none' stroke='%231B4480' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'><path d='M16 82h118'/><path d='M38 82V58h22v24M64 82V42h24v40M92 82V66h22v16'/><path d='m76 6 5.6 11.3 12.5 1.8-9 8.8 2.1 12.4L76 34.4l-11.2 5.9 2.1-12.4-9-8.8 12.5-1.8z'/></svg>"), radial-gradient(circle at 74% 50%, rgba(27,68,128,.18) 0%, rgba(27,68,128,.08) 46%, rgba(27,68,128,0) 74%) !important; }
 .kpi-strip .kpi-item > *{
   position:relative; z-index:1;
   justify-self:start !important;      /* 칸 폭만큼 늘어나면 안쪽 가운데 정렬이 살아난다 */
