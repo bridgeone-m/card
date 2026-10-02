@@ -7904,6 +7904,12 @@ body.crm-fixed-view .crm-list-col .list-pagination{ display:none !important; }
 /* §3 표 영역 — 한 화면에 안 들어가는 상황에서는 목록 안에서 휠로 더 볼 수 있게 한다.
    줄 수가 칸에 딱 맞을 때는 스크롤바가 생기지 않는다(auto라 필요할 때만). */
 body.crm-fixed-view .crm-list-col .co-list{ overflow-y:auto !important; overscroll-behavior:contain; }
+/* §검색 성능 라운드(신규) — 데스크톱 고정 화면은 검색 결과 전체(최대 603행)를 한 목록에
+   담고 안에서 스크롤한다. 화면 밖 행까지 매번 레이아웃을 계산하느라 검색 반영이 느렸다
+   (실측: 268행 레이아웃 약 300ms). 화면 밖 행은 그리기를 건너뛰고(보이는 순간 그린다),
+   높이는 한 번 그려진 실제 높이를 기억해(auto) 스크롤바 길이가 흔들리지 않게 한다.
+   행 안의 팝오버는 전부 행 밖(고정 id 요소)에 붙으므로 잘리지 않는다. */
+body.crm-fixed-view .crm-list-col .co-list .co-row{ content-visibility:auto; contain-intrinsic-block-size:auto 52px; }
 .crm-list-col .co-list::-webkit-scrollbar{ width:8px; }
 .crm-list-col .co-list::-webkit-scrollbar-thumb{ background:#D7DFEA; border-radius:999px; }
 .crm-list-col .co-list::-webkit-scrollbar-track{ background:transparent; }
@@ -10910,6 +10916,7 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
         + '건으로 줄어드는 저장을 막았습니다(' + key + ')');
       return false;
     }
+    window.__SHIN2_DATA_GEN = (window.__SHIN2_DATA_GEN || 0) + 1; // §검색 성능 라운드 — 목록 검색 보관값 무효화 신호
     try{ localStorage.setItem(key, JSON.stringify(arr)); }
     catch(e){
       if(opts.cloudFallback){
@@ -10956,6 +10963,7 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
         return false;
       }
     }
+    window.__SHIN2_DATA_GEN = (window.__SHIN2_DATA_GEN || 0) + 1; // §검색 성능 라운드 — 목록 검색 보관값 무효화 신호
     try{ localStorage.setItem(key, JSON.stringify(obj)); }
     catch(e){
       storageProblem('저장 공간이 가득 찼습니다 — 파일이 저장되지 않았습니다(' + key + ')', e);
@@ -18512,23 +18520,64 @@ window.SHIN2_CRM_APP_INIT = function(){
   /* 검색어 한 개가 이 업체의 표기 변형 중 하나에 걸리는지. 목록 검색과 자동완성이
      같은 인덱스·같은 판정을 쓰도록 여기 한 군데에 모아 뒀다. 검색어 쪽 변형은
      몇 개뿐이라 keypress마다 만들어도 부담이 없고, 업체 쪽은 캐시에서 꺼낸다. */
+  /* §검색 성능 라운드(신규) — 검색어 쪽 변형(정규화 + 표기 변형 최대 16개)은 업체마다가
+     아니라 "검색어 하나당 한 번"만 만든다. 예전에는 업체 603곳마다 같은 검색어를 다시
+     정규화·확장했다. 목록 검색·MOU 탭 검색·자동완성이 모두 이 함수를 거치므로 같은
+     검색어면 같은 결과 객체를 그대로 재사용한다. 입력 문자열이 같으면 결과도 완전히
+     같다(순수 함수) — 검색 결과 의미는 바뀌지 않는다. */
+  let searchQueryVariantsMemo = { key: null, value: null };
+  function buildSearchQueryVariants(rawQuery){
+    const key = String(rawQuery == null ? '' : rawQuery);
+    if(searchQueryVariantsMemo.key === key && searchQueryVariantsMemo.value) return searchQueryVariantsMemo.value;
+    const nq = normalizeCompanySearchText(key);
+    const value = { nq, variants: nq ? expandHangulSearchVariants(nq) : [] };
+    searchQueryVariantsMemo = { key, value };
+    return value;
+  }
+
   function matchesCompanySearchAlias(co, rawQuery){
-    const nq = normalizeCompanySearchText(rawQuery);
-    if(!nq) return false;
+    const qv = buildSearchQueryVariants(rawQuery);
+    if(!qv.nq) return false;
     const aliases = companySearchAliasesFor(co);
     if(!aliases.length) return false;
-    const queries = expandHangulSearchVariants(nq);
+    const queries = qv.variants;
     return aliases.some(alias=> queries.some(q=> alias.includes(q)));
+  }
+
+  /* §검색 성능 라운드(신규) — 업체별 검색 대상 문자열(업체명·대표자·담당자·전화·주소·
+     사업자번호·이전상호·미확정 모회사명 + 활동이력 내용)을 업체마다 한 번만 만들어 둔다.
+     예전에는 키를 누를 때마다 603곳 전부 배열을 이어 붙이고 소문자로 바꿨다.
+     - 같은 업체 객체·같은 활동 배열이면(타이핑 중) 그대로 꺼내 쓴다.
+     - 객체가 새로 읽혔으면 원문을 다시 이어 붙여 비교하고, 내용이 실제로 바뀐 업체만
+       소문자 문자열을 다시 만든다(업체명/이전상호/대표자/담당자/전화/주소/사업자번호/
+       활동이력 추가·수정·삭제 — 무엇이 바뀌어도 원문이 달라지므로 그 업체만 갱신된다).
+     문자열을 잇는 순서·구분자(공백 하나)는 예전 판정과 완전히 같다. 모회사 이름 힌트가
+     있는 업체(소수)는 그 이름이 중간에 끼므로 예전 방식 그대로 그 자리에서 만든다. */
+  const companySearchHayCache = new Map();   // companyId -> { co, acts, raw, lower }
+  function companySearchHayParts(co, acts, parentNameHint){
+    return [co.name, co.repName, co.contactName, co.phone, co.mobile, co.address, co.bizRegNo]
+      .concat(Array.isArray(co.formerNames) ? co.formerNames : [])
+      .concat(co.parentCompanyNameUnconfirmed ? [co.parentCompanyNameUnconfirmed] : [])
+      .concat(parentNameHint ? [parentNameHint] : [])
+      .concat(acts.map(a=> a.activityText));
+  }
+  function companySearchHayLower(co, acts){
+    const id = co && co.id != null ? String(co.id) : '';
+    const hit = id ? companySearchHayCache.get(id) : null;
+    if(hit && hit.co === co && hit.acts === acts) return hit.lower;
+    const raw = companySearchHayParts(co, acts, null).join(' ');
+    if(hit && hit.raw === raw){ hit.co = co; hit.acts = acts; return hit.lower; }
+    const lower = raw.toLowerCase();
+    if(id) companySearchHayCache.set(id, { co, acts, raw, lower });
+    return lower;
   }
 
   function matchesSearch(co, acts, q, parentNameHint){
     if(!q) return true;
     q = q.toLowerCase();
-    const hay = [co.name, co.repName, co.contactName, co.phone, co.mobile, co.address, co.bizRegNo]
-      .concat(Array.isArray(co.formerNames) ? co.formerNames : [])
-      .concat(co.parentCompanyNameUnconfirmed ? [co.parentCompanyNameUnconfirmed] : [])
-      .concat(parentNameHint ? [parentNameHint] : [])
-      .concat(acts.map(a=> a.activityText)).join(' ').toLowerCase();
+    const hay = parentNameHint
+      ? companySearchHayParts(co, acts, parentNameHint).join(' ').toLowerCase()
+      : companySearchHayLower(co, acts);
     if(hay.includes(q)) return true;
     // 기존 판정으로 못 찾은 경우에만 표기 변형(영문 약칭 ↔ 한글 발음)을 한 번 더 본다.
     // 뒤에 덧붙이기만 하므로 지금까지 걸리던 검색 결과는 그대로 유지된다.
@@ -18565,7 +18614,44 @@ window.SHIN2_CRM_APP_INIT = function(){
     });
   }
 
+  /* §검색 성능 라운드(신규) — 검색어만 바뀔 때 다시 그릴 필요가 없는 것(목록 인덱스,
+     필터칩/KPI 건수, 관리필요·의지박약 집계, 우측 카드)은 검색어와 무관하게 계산된다
+     (filterCounts는 검색 적용 전 enriched로 센다 — 기존 코드 그대로). 그래서 마지막
+     전체 렌더링이 만든 값을 lastListCtx에 보관해 두고, 검색어 입력 때는 목록 행·건수·
+     페이지 부분만 다시 그린다(renderListSearchOnly).
+     오래된 값을 쓰지 않도록, 아래 경우에는 보관값을 버리고 전체 렌더링으로 돌아간다:
+       · 데이터 저장(writeArr/writeObj → window.__SHIN2_DATA_GEN 증가)
+       · 다른 탭의 localStorage 변경('storage'), 클라우드 수신('shin2-crm-cloud-update')
+       · 탭(filterKey)·정렬(sortMode)·묶음(salesActionFocus)이 바뀐 경우
+       · 쓰레기통/신규 협약사 등 전용 화면(이 경로를 아예 타지 않는다) */
+  let lastListCtx = null;
+  // "N일 전" 같은 날짜 표시가 오래 묵지 않도록 보관값은 최대 5분만 쓴다(그 뒤 첫 검색은
+  // 예전처럼 전체 렌더링).
+  const LIST_CTX_MAX_AGE_MS = 5 * 60 * 1000;
+  function currentDataGen(){ return window.__SHIN2_DATA_GEN || 0; }
+  window.addEventListener('storage', ()=>{ lastListCtx = null; });
+  window.addEventListener('shin2-crm-cloud-update', ()=>{ lastListCtx = null; });
+  function closeListRowPopovers(){
+    if(typeof closeTotalRevenuePopover === 'function') closeTotalRevenuePopover();
+    if(typeof closeInsightPopover === 'function') closeInsightPopover();
+    if(typeof closeContribPopover === 'function') closeContribPopover();
+    if(typeof closeTrendPopover === 'function') closeTrendPopover();
+    if(typeof closeRequestPopover === 'function') closeRequestPopover();
+  }
+  function renderListSearchOnly(){
+    const ctx = lastListCtx;
+    if(!ctx || ctx.gen !== currentDataGen() || ctx.filterKey !== filterKey
+      || ctx.sortMode !== sortMode || ctx.salesActionFocus !== salesActionFocus
+      || Date.now() - ctx.createdAt > LIST_CTX_MAX_AGE_MS){
+      renderList();
+      return;
+    }
+    closeListRowPopovers();
+    renderListRows(ctx);
+  }
+
   function renderList(){
+    lastListCtx = null;
     // §총 매출 Popover 전환 라운드: 필터/검색/정렬/페이지가 바뀌면 목록 DOM이 통째로
     // 새로 그려져 popover가 붙어있던 버튼이 사라진다 — 열려있던 popover가 엉뚱한 위치에
     // 남지 않도록 재렌더링 전에 닫는다. §판정근거 팝오버 전환 라운드에서 추가된 나머지
@@ -18805,16 +18891,36 @@ window.SHIN2_CRM_APP_INIT = function(){
     // 계산해 그 결과를 버렸다 — 검색 중일 때만 실제로 필요한 값이므로, 검색어가 있을
     // 때만 계산하도록 좁혔다(결과·동작은 이전과 동일, 검색 안 할 때의 불필요한 계산만
     // 없앰).
-    const rows = enriched
-      .filter(r=> matchesFilter(r.co, r.progress, filterKey, relationIndex))
-      // salesActionFocus는 지금 항상 null이라 이 줄은 아무 것도 거르지 않는다.
-      // 나중에 다시 "특정 묶음만 보기"를 붙일 때 쓰려고 자리만 남겨 둔다.
-      .filter(r=> !salesActionFocus || salesActionFocus.ids.has(String(r.co.id)))
+    const ctx = { gen: currentDataGen(), createdAt: Date.now(), filterKey, sortMode, salesActionFocus,
+      companies, unregisteredClassification, caseByCaseConvertedIds, classifiedCaseByCaseRows,
+      pourLatestIndex, requestHistoryIndex, requestItemsIndex, contribIndex, relationIndex, enriched };
+    lastListCtx = ctx;
+    // 행 렌더가 끝까지 갔을 때만(빈 결과로 일찍 끝나면 예전처럼 호출 안 함) 지도 갱신.
+    // 검색어 입력(renderListSearchOnly)은 업체 데이터가 안 바뀌므로 지도를 건드리지 않는다.
+    if(renderListRows(ctx) && typeof refreshMapIfOpen === 'function') refreshMapIfOpen();
+  }
+
+  function renderListRows(ctx){
+    const { companies, unregisteredClassification, caseByCaseConvertedIds, classifiedCaseByCaseRows,
+      pourLatestIndex, requestHistoryIndex, requestItemsIndex, contribIndex, relationIndex, enriched } = ctx;
+    // §검색 성능 라운드 — 탭 필터 + 정렬은 검색어와 무관하므로 보관값(ctx)당 한 번만
+    // 계산하고, 검색은 이미 정렬된 목록에서 거르기만 한다. Array.prototype.sort는 안정
+    // 정렬이고 applySort의 비교 함수는 두 행만 보고 정해지므로, "정렬 후 거르기"는 예전의
+    // "거른 뒤 정렬"과 순서까지 완전히 같다. filter → sort → paginate가 각각 한 번씩만 돈다.
+    if(!ctx.sortedBase){
+      const base = enriched
+        .filter(r=> matchesFilter(r.co, r.progress, filterKey, relationIndex))
+        // salesActionFocus는 지금 항상 null이라 이 줄은 아무 것도 거르지 않는다.
+        // 나중에 다시 "특정 묶음만 보기"를 붙일 때 쓰려고 자리만 남겨 둔다.
+        .filter(r=> !salesActionFocus || salesActionFocus.ids.has(String(r.co.id)));
+      applySort(base, contribIndex);
+      ctx.sortedBase = base;
+    }
+    const rows = ctx.sortedBase
       .filter(r=> matchesSearch(r.co, r.acts, searchQuery, searchQuery ? (()=>{
         const parent = D.resolveParentCompanyDisplay(r.co, companies, relationIndex);
         return parent ? parent.name : null;
       })() : null));
-    applySort(rows, contribIndex);
 
     // §관리도구 미등록 업체 전량 이동 라운드(신규) — unregisteredClassification.mou도
     // 이제 위 classifiedCaseByCaseRows에 합쳐져 "실적 있음·MOU미체결" 탭으로만 가므로,
@@ -18861,7 +18967,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       const retryBtn = document.getElementById('cloudBootRetryBtn');
       if(retryBtn) retryBtn.addEventListener('click', ()=> location.reload());
       renderPagination(0);
-      return;
+      return false;
     }
     // §최근 활동일/단계 D+N 복원 라운드(→§최근 활동일 정정 라운드→§2026 매출/자재판매/
     // 미수금 라운드→§최근 시공 강화/현재 단계 숨김 라운드): 7개 컬럼(협력사/최근 시공/
@@ -18871,7 +18977,12 @@ window.SHIN2_CRM_APP_INIT = function(){
     // 목록에서 뺐지만 계산 함수(buildRecentPourActivity/getTotalPourCount/
     // getTotalRevenue)는 그대로 두고 부르지 않을 뿐이다 — 상세 고객관리카드(renderChart의
     // 글랜스행·POUR 시공실적 섹션)에서 그대로 볼 수 있다(§4/§18, 데이터 삭제 아님).
-    listEl.innerHTML = pageRows.map(r=>{
+    // §검색 성능 라운드 — 행 HTML은 업체 데이터·탭(filterKey)으로만 정해지고 검색어와는
+    // 무관하다(템플릿 안에서 검색어/페이지/시각을 쓰지 않는다). 같은 보관값(ctx) 안에서
+    // 한 번 만든 행은 다시 만들지 않고 재사용한다 — 검색어를 지우면 603행이 한꺼번에
+    // 다시 나오는 경우가 가장 무거웠다.
+    const rowHtmlCache = ctx.rowHtmlCache || (ctx.rowHtmlCache = new Map());
+    const buildListRowHtml = (r)=>{
       const co = r.co;
       // §등급 제거/2025년 매출 반영 라운드: 등급 배지를 없애고 그 자리에 2025년 매출을
       // 표시했었다(§1/§2). getCompanyGrade()/GRADE_LABEL/GRADE_BADGE_CLASS 함수 자체는
@@ -19124,6 +19235,11 @@ window.SHIN2_CRM_APP_INIT = function(){
              행 바깥(형제)이었다. 이 탭이 아니면 빈 문자열이라 다른 탭은 그대로다. -->
         ${revenueNoMouActionHtml}
       </div>${terminatedInfoHtml}`;
+    };
+    listEl.innerHTML = pageRows.map(r=>{
+      let html = rowHtmlCache.get(r);
+      if(html === undefined){ html = buildListRowHtml(r); rowHtmlCache.set(r, html); }
+      return html;
     }).join('');
     if(filterKey === 'mouDone' && currentPage === 1 && classifiedMouRows.length){
       listEl.insertAdjacentHTML('afterbegin', classifiedUnregisteredTableHtml(classifiedMouRows, '엑셀 기준 MOU 체결 · CRM 미등록', 'MOU 체결'));
@@ -19294,8 +19410,9 @@ window.SHIN2_CRM_APP_INIT = function(){
     // §지도분포4 동기화 훅: renderList()는 업체 등록/수정/삭제/협력사 데이터
     // 업데이트·동기화 등 companies가 바뀔 수 있는 거의 모든 경로에서 이미 호출되고
     // 있는 단일 지점이다(§기존 코드 재사용 — 새 훅을 여러 곳에 흩어 넣는 대신 여기
-    // 한 곳에서만 지도 팝업이 열려 있는지 확인해 갱신한다).
-    if(typeof refreshMapIfOpen === 'function') refreshMapIfOpen();
+    // 한 곳에서만 지도 팝업이 열려 있는지 확인해 갱신한다). §검색 성능 라운드: 그 호출은
+    // 위 renderList() 쪽으로 옮겼다 — 이 함수가 true를 돌려주면 renderList가 부른다.
+    return true;
   }
 
   /* ==========================================================================
@@ -44070,8 +44187,12 @@ if(!window.__mapxRowDelegated){
     searchDebounceTimer = setTimeout(()=>{
       searchDebounceTimer = null;
       if(searchComposing) return; // 조합이 아직 안 끝났으면 compositionend가 다시 예약한다
-      searchQuery = val.trim(); currentPage = 1; renderList();
-    }, 120);
+      const next = val.trim();
+      if(next === searchQuery) return; // 같은 검색어로 다시 그리지 않는다(공백만 추가 등)
+      // §검색 성능 라운드 — 검색어만 바뀌었으니 목록 행·건수만 다시 그린다(KPI/필터칩/
+      // 우측 카드/지도는 그대로). 보관값이 없거나 오래됐으면 내부에서 전체 렌더링한다.
+      searchQuery = next; currentPage = 1; renderListSearchOnly();
+    }, 100);
   };
   searchInput.addEventListener('compositionstart', ()=>{
     searchComposing = true;
