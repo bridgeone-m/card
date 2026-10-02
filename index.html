@@ -7545,48 +7545,58 @@ body{
 .nf-side-right .nf-card-action{ padding:16px 16px 14px !important; }
 .nf-side-right .sa-map-block{ gap:12px; }
 .nf-side-right .sa-map-wrap{
-  /* 남는 세로 공간은 지도가 흡수한다. 상한을 520 → 760으로 올렸다 — 아래 블록이
-     지역 막대(7줄)에서 알림 줄(최대 5줄)로 바뀌면서 지도가 쓸 수 있는 높이가 늘었고,
-     520에 묶어두면 1920×1080에서 지도가 카드의 절반밖에 못 쓴다(실측 51.7%).
-     §요청 12 "지도 70~75% / 알림 25~30%" 기준이다. */
-  flex:1 1 auto !important; min-height:240px !important; max-height:760px !important;
+  /* 남는 세로 공간은 지도가 전부 흡수한다. 예전에는 상한(520px)이 있었는데, 아래
+     블록이 지역 막대(7줄)에서 알람 탭(0~5줄)으로 바뀌면서 그 상한이 두 방향으로
+     어긋났다 — 알람이 5줄이면 지도가 카드의 절반밖에 못 쓰고(실측 51.7%), 알람이
+     0건이면 거꾸로 카드 아래에 400px 가까운 빈 칸이 남았다. 상한을 없애면 두 경우
+     모두 지도가 남는 만큼만 가져간다: 5줄일 때 73%, 0건일 때 90%. */
+  flex:1 1 auto !important; min-height:240px !important; max-height:none !important;
 }
 .nf-side-right .sa-map-canvas{
   min-height:0 !important; height:100%; border-radius:14px !important;
   border:1px solid var(--border-soft) !important;
 }
 .nf-side-right .sa-map-hit{ border-radius:14px; }
-/* 지도 아래 알림 줄 — 카드 안의 카드를 또 만들지 않는다(§요청 4). 지도와 같은 카드
-   안에서 divider 한 줄로만 나뉘고, 배경·테두리·그림자를 따로 두지 않는다.
-   빨강은 제목 옆 점과 경과일 숫자에만 쓴다(§요청 5). */
-.sa-alert{
-  flex:0 0 auto; min-height:0; display:flex; flex-direction:column; gap:7px;
+/* 지도 아래 알람 탭 — 지도와는 별개 영역이고, 지역 막대를 걷어낸 자리를 쓴다.
+   카드 안의 카드를 또 만들지 않는다: 지도와 같은 흰 카드 안에서 divider 한 줄로만
+   나뉘고, 배경·테두리·그림자를 따로 두지 않는다. 빨강은 탭의 작은 점과 경과일
+   숫자에만 쓴다. */
+.sa-alarm{
+  flex:0 0 auto; min-height:0; display:flex; flex-direction:column; gap:8px;
   padding-top:10px; border-top:1px solid var(--border-soft); overflow:hidden;
 }
-.sa-alert-head{ display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
-.sa-alert-title{
-  display:flex; align-items:center; gap:6px;
-  font-size:12px; font-weight:750; color:#3D4D64; letter-spacing:-.02em;
+.sa-alarm-tabs{ display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
+.sa-alarm-tab{
+  display:inline-flex; align-items:center; gap:5px;
+  padding:4px 10px; border:1px solid transparent; border-radius:999px;
+  background:none; cursor:pointer; font-family:inherit;
+  font-size:11.5px; font-weight:700; color:#8494A8; letter-spacing:-.02em; white-space:nowrap;
 }
-.sa-alert-dot{ flex:none; width:5px; height:5px; border-radius:50%; background:#DC2626; }
-.sa-alert-sub{ font-size:11px; color:#95A2B4; margin-top:2px; }
-.sa-alert-count{ font-size:12px; font-weight:750; color:#17324D; font-variant-numeric:tabular-nums; white-space:nowrap; }
-.sa-alert-list{ display:flex; flex-direction:column; min-height:0; overflow:hidden; }
-.sa-alert-row{
+.sa-alarm-tab:hover{ background:var(--bg-soft); }
+.sa-alarm-tab.is-active{
+  color:var(--navy-text); background:var(--navy-100); border-color:var(--navy-200);
+}
+.sa-alarm-dot{ flex:none; width:5px; height:5px; border-radius:50%; background:#DC2626; }
+.sa-alarm-tab-num{ font-variant-numeric:tabular-nums; font-weight:750; color:#17324D; }
+.sa-alarm-tab:not(.is-active) .sa-alarm-tab-num{ color:#8494A8; }
+.sa-alarm-body{ display:flex; flex-direction:column; gap:5px; min-height:0; overflow:hidden; }
+.sa-alarm-desc{ font-size:11px; color:#95A2B4; }
+.sa-alarm-list{ display:flex; flex-direction:column; min-height:0; overflow:hidden; }
+.sa-alarm-row{
   display:grid; grid-template-columns:minmax(0,1fr) auto 10px; align-items:center; gap:8px;
   width:100%; padding:5px 2px; border:0; background:none; cursor:pointer; text-align:left;
   border-radius:6px; font:inherit;
 }
-.sa-alert-row:hover{ background:var(--bg-soft); }
-.sa-alert-name{ font-size:11.5px; font-weight:650; color:#3D4D64; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.sa-alert-days{ font-size:11.5px; font-weight:700; color:#C0392B; font-variant-numeric:tabular-nums; white-space:nowrap; }
-.sa-alert-go{ font-size:12px; color:#B6C0CE; }
-.sa-alert-more{
+.sa-alarm-row:hover{ background:var(--bg-soft); }
+.sa-alarm-name{ font-size:11.5px; font-weight:650; color:#3D4D64; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sa-alarm-days{ font-size:11.5px; font-weight:700; color:#C0392B; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.sa-alarm-go{ font-size:12px; color:#B6C0CE; }
+.sa-alarm-more{
   align-self:flex-start; margin-top:1px; padding:0 2px; border:0; background:none; cursor:pointer;
   font-size:11px; font-weight:650; color:var(--primary-navy); font-family:inherit;
 }
-.sa-alert-more:hover{ text-decoration:underline; }
-.sa-alert-ok{ font-size:11.5px; color:#7E8CA0; }
+.sa-alarm-more:hover{ text-decoration:underline; }
+.sa-alarm-ok{ font-size:11.5px; color:#7E8CA0; padding:2px 0 4px; }
 
 /* ==========================================================================
    §MOU 진행 뱃지 라운드(신규) — 업체명 옆 작은 단계 뱃지. 전체 톤(화이트 + 딥 네이비)에
@@ -17942,7 +17952,7 @@ window.SHIN2_CRM_APP_INIT = function(){
           <button type="button" class="sa-map-hit" id="crmMiniMapHit"
             aria-label="시공사 지역 분포 전체 지도 열기"></button>
         </div>
-        <div class="sa-alert" id="crmMiniMapAlert"></div>
+        <div class="sa-alarm" id="crmMiniMapAlarm"></div>
       </div>`;
     // 지도·버튼 어디를 눌러도 기존 대형 지도 팝업을 연다(새 팝업을 만들지 않는다).
     const openBig = ()=>{
@@ -18040,34 +18050,60 @@ window.SHIN2_CRM_APP_INIT = function(){
     }catch(err){ return ''; }
   }
 
-  // 지도 아래 알림 줄. 지도와 같은 카드 안에서 divider 하나로만 나뉜다(§요청 4).
-  function renderCrmMiniMapAlert(){
-    const box = document.getElementById('crmMiniMapAlert');
+  /* 지도 아래 알람 탭 — 지도와는 별개 영역이다. 지역 막대를 걷어낸 자리를 그대로
+     쓰고, 위에는 지도만 남는다. 탭 머리글 + 그 아래 내용 한 칸 구조라 알람 종류가
+     늘어도 ALARM_TABS에 한 줄만 더하면 된다(지금은 한 종류).
+     0건 문구도 이 탭 안에서만 뜬다 — 지도 바로 밑에 맨 문장이 떠 있지 않다. */
+  const ALARM_TABS = [
+    { key:'m2NoReply', label:'2차 미팅 회신 지연',
+      desc:`메일 발송 후 ${M2_NO_REPLY_DAYS}일 이상 미회신`,
+      empty:'지연된 2차 미팅 회신이 없습니다.',
+      rows: ()=> buildSecondMeetingNoReplyRows() }
+  ];
+  let crmAlarmTab = ALARM_TABS[0].key;
+
+  function renderCrmMiniMapAlarm(){
+    const box = document.getElementById('crmMiniMapAlarm');
     if(!box) return;
-    let rows = [];
-    try{ rows = buildSecondMeetingNoReplyRows(); }
-    catch(err){ rows = []; }
-    if(!rows.length){
-      box.innerHTML = `<div class="sa-alert-ok">지연된 2차 미팅 회신이 없습니다.</div>`;
-      return;
-    }
-    const shown = rows.slice(0, M2_NO_REPLY_PREVIEW);
+    // 탭별 건수를 먼저 구한다 — 머리글 숫자와 아래 내용이 같은 계산에서 나와야 한다.
+    const data = ALARM_TABS.map(t=>{
+      let rows = [];
+      try{ rows = t.rows() || []; }
+      catch(err){ rows = []; }
+      return { tab:t, rows };
+    });
+    if(!data.some(d=> d.tab.key === crmAlarmTab)) crmAlarmTab = data[0].tab.key;
+    const cur = data.find(d=> d.tab.key === crmAlarmTab);
+    const shown = cur.rows.slice(0, M2_NO_REPLY_PREVIEW);
     box.innerHTML = `
-      <div class="sa-alert-head">
-        <div class="sa-alert-titles">
-          <div class="sa-alert-title"><i class="sa-alert-dot" aria-hidden="true"></i>2차 미팅 회신 지연</div>
-          <div class="sa-alert-sub">메일 발송 후 ${M2_NO_REPLY_DAYS}일 이상 미회신</div>
-        </div>
-        <div class="sa-alert-count">${rows.length}건</div>
+      <div class="sa-alarm-tabs" role="tablist" aria-label="알람">
+        ${data.map(d=> `
+          <button type="button" class="sa-alarm-tab${d.tab.key === crmAlarmTab ? ' is-active' : ''}"
+            role="tab" aria-selected="${d.tab.key === crmAlarmTab ? 'true' : 'false'}"
+            data-alarm-tab="${esc(d.tab.key)}">
+            ${d.rows.length ? '<i class="sa-alarm-dot" aria-hidden="true"></i>' : ''}${esc(d.tab.label)}
+            <span class="sa-alarm-tab-num">${d.rows.length}</span>
+          </button>`).join('')}
       </div>
-      <div class="sa-alert-list">${shown.map(r=> `
-        <button type="button" class="sa-alert-row" data-m2delay-co="${esc(String(r.co.id))}"
-          title="${esc(r.co.name || '')} — ${esc(fmtMailSentDate(r.lastTs))} 발송">
-          <span class="sa-alert-name">${esc(r.co.name || '(이름 없음)')}</span>
-          <span class="sa-alert-days">${r.days}일 경과</span>
-          <span class="sa-alert-go" aria-hidden="true">›</span>
-        </button>`).join('')}</div>
-      ${rows.length > shown.length ? `<button type="button" class="sa-alert-more" id="crmM2DelayMore">전체 보기 →</button>` : ''}`;
+      <div class="sa-alarm-body">
+        ${cur.rows.length ? `
+          <div class="sa-alarm-desc">${esc(cur.tab.desc)}</div>
+          <div class="sa-alarm-list">${shown.map(r=> `
+            <button type="button" class="sa-alarm-row" data-m2delay-co="${esc(String(r.co.id))}"
+              title="${esc(r.co.name || '')} — ${esc(fmtMailSentDate(r.lastTs))} 발송">
+              <span class="sa-alarm-name">${esc(r.co.name || '(이름 없음)')}</span>
+              <span class="sa-alarm-days">${r.days}일 경과</span>
+              <span class="sa-alarm-go" aria-hidden="true">›</span>
+            </button>`).join('')}</div>
+          ${cur.rows.length > shown.length ? `<button type="button" class="sa-alarm-more" id="crmM2DelayMore">전체 보기 →</button>` : ''}
+        ` : `<div class="sa-alarm-ok">${esc(cur.tab.empty)}</div>`}
+      </div>`;
+    box.querySelectorAll('[data-alarm-tab]').forEach(btn=> btn.addEventListener('click', ()=>{
+      const key = btn.getAttribute('data-alarm-tab');
+      if(key === crmAlarmTab) return;
+      crmAlarmTab = key;
+      renderCrmMiniMapAlarm();
+    }));
     box.querySelectorAll('[data-m2delay-co]').forEach(btn=> btn.addEventListener('click', ()=>{
       // 새 팝업을 만들지 않는다 — 기존 고객 상세를 "협약 진행" 탭으로 연다.
       openCustomerDetail(btn.getAttribute('data-m2delay-co'), 'agreement');
@@ -18091,10 +18127,10 @@ window.SHIN2_CRM_APP_INIT = function(){
       if(!miniMapState || miniMapState.host !== host){
         host.innerHTML = '<div class="sa-map-loading">표시할 시공사 위치가 없습니다.</div>';
       }
-      renderCrmMiniMapAlert();
+      renderCrmMiniMapAlarm();
       return;
     }
-    renderCrmMiniMapAlert();
+    renderCrmMiniMapAlarm();
     loadKakaoMapSdk().then(kakao=>{
       const live = document.getElementById('crmMiniMap');
       if(!live || live !== host) return;
