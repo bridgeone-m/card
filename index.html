@@ -4499,10 +4499,24 @@ table.pdf-doc-table thead{ background:var(--bg); }
 .mail-final-confirm-row span{ color:var(--text-muted); }
 .ocr-confirm-field{ position:relative; }
 .ocr-status-badge{ display:inline-block; font-size:10.5px; font-weight:700; padding:1px 6px; border-radius:9px; margin-left:6px; vertical-align:middle; }
-.ocr-status-badge.is-ok{ background:#e6f4ea; color:#1e7a34; }
-.ocr-status-badge.is-check{ background:#fff4e0; color:#9a6400; }
-.ocr-status-badge.is-fail{ background:#fde8e8; color:#c0392b; }
+/* §명함 OCR 신뢰도 라운드(신규, §요청 11) — 높음은 남색, 보통은 회색, 확인 필요만
+   작은 amber로. 초록/빨강을 섞어 알록달록해지지 않게 세 단계만 둔다. */
+.ocr-status-badge.is-high{ background:var(--navy-100, #E8EEF7); color:var(--navy-700, #1B4480); }
+.ocr-status-badge.is-mid{ background:#F1F4F8; color:#6B7A8D; }
+.ocr-status-badge.is-low{ background:#FBF6EA; color:#8A6A28; }
 .ocr-status-badge.is-empty{ background:var(--bg); color:var(--text-muted); }
+/* 기존 입력값과 명함 값이 다를 때만 나오는 선택 줄(§요청 13·14) */
+.ocr-conflict{ margin-top:5px; padding:7px 9px; background:#FBF6EA; border:1px solid #EFE3C9;
+  border-radius:6px; font-size:11.5px; color:#6B5A33; line-height:1.5; }
+.ocr-conflict-head{ font-weight:700; color:#8A6A28; margin-bottom:4px; }
+.ocr-conflict label{ display:flex; align-items:center; gap:6px; cursor:pointer; padding:1px 0; }
+.ocr-conflict input[type="radio"]{ width:auto; margin:0; flex:none; }
+.ocr-conflict b{ color:var(--text); font-weight:600; }
+.ocr-pass-note{ font-size:11px; color:var(--text-muted); margin-top:6px; line-height:1.5; }
+/* 확인창 아래 버튼이 4개라 좁은 폭에서 서로 겹쳤다(기존 .pi-actions는 wrap이 없다).
+   이 확인창에서만 줄바꿈을 허용하고 "입력값에 반영"을 오른쪽 끝에 떼어 둔다. */
+#ocrConfirmOverlay .pi-actions{ flex-wrap:wrap; row-gap:8px; align-items:center; }
+#ocrConfirmOverlay .pi-actions #ocrApplyBtn{ margin-left:auto; }
 .ocr-extra-phones{ font-size:11.5px; color:#9a6400; background:#fff8ea; border:1px solid #f2e0b8; border-radius:6px; padding:6px 8px; margin:4px 0 10px; line-height:1.4; }
 .ocr-raw-text{ font-size:11px; color:var(--text-muted); background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:8px; margin-top:6px; white-space:pre-wrap; word-break:break-all; max-height:160px; overflow-y:auto; }
 .mail-final-confirm-row b{ text-align:right; font-weight:600; word-break:break-all; }
@@ -8652,15 +8666,22 @@ window.SHIN2_CRM_OCR = (function(){
   function coStripDecor(line){ return String(line || '').replace(DECOR_RE, ''); }
   const EMAIL_RE = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
   const MOBILE_RE = /01[016789][-.\s]?\d{3,4}[-.\s]?\d{4}/;
-  const LANDLINE_RE = /0(2|3[1-3]|4[1-4]|5[1-5]|6[1-4])[-.\s]?\d{3,4}[-.\s]?\d{4}/;
+  // §OCR 개선 라운드(신규): 070(인터넷전화)을 추가했다 — 명함에 흔한데 기존 패턴에
+  // 없어서 전화번호로 아예 안 잡혔다. 044(세종)·064(제주)는 4[1-4]·6[1-4]에 이미 포함.
+  const LANDLINE_RE = /0(2|3[1-3]|4[1-4]|5[1-5]|6[1-4]|70)[-.\s]?\d{3,4}[-.\s]?\d{4}/;
   // §전화번호 분류 라운드: 15xx/16xx/18xx 대표번호(하이픈 뒤 4자리 고정, 지역국번 없음)도
   // 별도로 인식한다 — 기존 LANDLINE_RE와 겹치지 않는 패턴이라 새 상수로 추가만 했다.
   const TOLLFREE_RE = /\b(15|16|18)\d{2}[-.\s]?\d{4}\b/;
   const BIZNO_RE = /\d{3}[-.\s]?\d{2}[-.\s]?\d{5}/;
   const DATE_RE = /\d{4}[.\-\/]\s?\d{1,2}[.\-\/]\s?\d{1,2}|\d{4}\s?년\s?\d{1,2}\s?월\s?\d{1,2}\s?일/;
   const LABEL_RE = /(대표자|사업자등록번호|법인등록번호|TEL|Tel|전화|FAX|Fax|팩스|주소|사업자등록증|성명)\s*[:：]?/;
-  const NAME_POS_RE = /(주식회사|㈜|\(주\)|주\)|\(주|유한회사|\(유\)|건설산업|종합건설|건설사|건설|도장|방수|개발|주택|기업|상사|산업|테크|엔지니어링|이엔지|ENG|E&C)/i;
-  const TITLE_RE = /(대표이사|대표|현장소장|사업부장|부회장|회장|부사장|사장|전무|상무보|상무|본부장|이사대우|이사|부장|차장|과장|대리|주임|팀장|실장|소장|공장장|연구원|매니저|담당자|담당|사원)/;
+  // §OCR 개선 라운드(신규): 요청한 상호 패턴(ENC/E&C/이엔씨/엔씨/공영/종합건설 등)을
+  // 더했다. 이 정규식은 "이 줄이 회사명 줄로 보이는가"를 판정할 때만 쓰고, 원문
+  // 문자열을 바꾸지 않는다(§요청 7 "후보 판정용으로만 사용").
+  const NAME_POS_RE = /(주식회사|㈜|\(주\)|주\)|\(주|유한회사|\(유\)|유\)|종합건설|건설산업|건설사|건설|건축|토목|설비|전기|도장|방수|조경|환경|플랜트|중공업|물산|산업개발|개발|주택|기업|상사|공영|산업|테크|엔지니어링|이엔지|이엔씨|엔씨|ENC|E\s?&\s?C|ENG|R\s?&\s?D)/i;
+  // §OCR 개선 라운드(신규): 전무이사/상무이사를 전무/상무보다 앞에 뒀다 — 뒤에 두면
+  // "전무"까지만 잘려 직급이 반쪽으로 들어간다. 감사·고문도 함께 추가.
+  const TITLE_RE = /(대표이사|대표|현장소장|사업부장|부회장|회장|부사장|사장|전무이사|전무|상무이사|상무보|상무|본부장|이사대우|이사|감사|고문|부장|차장|과장|대리|주임|팀장|실장|소장|공장장|연구원|매니저|담당자|담당|사원)/;
   // §영문 직급 라운드: 영문 명함(Vice President, Manager 등)도 인식한다 — 한글 TITLE_RE와
   // 별개 상수라 기존 매칭에 영향 없음, coSplitNameTitle에서만 함께 시도한다.
   const TITLE_EN_RE = /\b(chairman|vice\s*chairman|president|vice\s*president|ceo|cfo|coo|cto|managing\s*director|director|general\s*manager|manager|deputy\s*manager|assistant\s*manager|team\s*leader|engineer|staff)\b/i;
@@ -8669,13 +8690,34 @@ window.SHIN2_CRM_OCR = (function(){
   // 인식한다(공백 제거 후 2~4자 한글이면 이름 후보).
   const NAME_SPACED_RE = /^[가-힣](\s?[가-힣]){1,3}$/;
 
+  // §주소→지역 매핑표 — coIsAddressLine이 "첫 행정구역"으로도 주소를 판정하므로
+  // 그 함수보다 먼저 선언돼 있어야 한다(const는 호이스팅돼도 쓸 수 없다).
+  const REGION_MAP = [
+    [/^(서울특별시|서울시|서울)/, '서울'], [/^(부산광역시|부산시|부산)/, '부산'],
+    [/^(대구광역시|대구시|대구)/, '대구'], [/^(인천광역시|인천시|인천)/, '인천'],
+    [/^(광주광역시|광주시|광주)/, '광주'], [/^(대전광역시|대전시|대전)/, '대전'],
+    [/^(울산광역시|울산시|울산)/, '울산'], [/^(세종특별자치시|세종시|세종)/, '세종'],
+    [/^경기도?/, '경기'], [/^(강원특별자치도|강원도)/, '강원'],
+    [/^충청북도/, '충북'], [/^충청남도/, '충남'],
+    [/^(전북특별자치도|전라북도)/, '전북'], [/^전라남도/, '전남'],
+    [/^경상북도/, '경북'], [/^경상남도/, '경남'],
+    [/^(제주특별자치도|제주도|제주)/, '제주']
+  ];
+  // §OCR 개선 라운드(신규) — 실제 사례로 두 가지 구멍을 메웠다.
+  // (1) "사업장 소재지 : 충청남도 ..."처럼 라벨이 앞에 붙으면 라벨을 뗀 뒤에 판정해야
+  //     한다(예전엔 라벨이 붙은 채로 패턴을 돌려 첫 행정구역을 못 봤다).
+  // (2) "불당25로 115"처럼 도로명 안에 숫자가 섞인 주소가 흔한데, 기존 패턴은 한글만
+  //     허용해서(=[가-힣]{1,4}(로|길)) 이런 주소를 아예 주소로 보지 않았다 — 그래서
+  //     주소도 지역도 비어 있었다.
+  const ADDR_LABEL_RE = /^(사업장\s*소재지|소재지|주소|address)\s*[:：]?\s*/i;
   function coIsAddressLine(line){
-    const s = String(line || '').trim();
+    const s = String(line || '').trim().replace(ADDR_LABEL_RE, '');
     if(!s) return false;
     if(BIZNO_RE.test(s)) return false;
     if(/(사업자등록번호|법인등록번호|등록번호)/.test(s)) return false;
     if(/(특별시|광역시|자치도|자치시)/.test(s)) return true;
-    if(/[가-힣]{1,4}(시|도|군|구|읍|면|동|로|길|번길)\s?\d/.test(s)) return true;
+    if(REGION_MAP.some(([re])=> re.test(s))) return true;
+    if(/[가-힣][가-힣0-9]{0,5}(시|도|군|구|읍|면|동|리|로|길|번길)\s?\d/.test(s)) return true;
     if(/\d{5}\)?\s*$/.test(s) && /[가-힣]/.test(s) && s.length >= 6) return true;
     return false;
   }
@@ -8835,17 +8877,6 @@ window.SHIN2_CRM_OCR = (function(){
   // §주소→지역 자동 선택 라운드 — 사용자 확정 매핑표 그대로. 주소의 "첫 행정구역"만
   // 보고 판정하며, 매칭되는 표기가 전혀 없으면 임의로 추정하지 않고 null(호출부가
   // "지역 확인 필요"로 표시)을 돌려준다.
-  const REGION_MAP = [
-    [/^(서울특별시|서울시|서울)/, '서울'], [/^(부산광역시|부산시|부산)/, '부산'],
-    [/^(대구광역시|대구시|대구)/, '대구'], [/^(인천광역시|인천시|인천)/, '인천'],
-    [/^(광주광역시|광주시|광주)/, '광주'], [/^(대전광역시|대전시|대전)/, '대전'],
-    [/^(울산광역시|울산시|울산)/, '울산'], [/^(세종특별자치시|세종시|세종)/, '세종'],
-    [/^경기도?/, '경기'], [/^(강원특별자치도|강원도)/, '강원'],
-    [/^충청북도/, '충북'], [/^충청남도/, '충남'],
-    [/^(전북특별자치도|전라북도)/, '전북'], [/^전라남도/, '전남'],
-    [/^경상북도/, '경북'], [/^경상남도/, '경남'],
-    [/^(제주특별자치도|제주도|제주)/, '제주']
-  ];
   function coDeriveRegion(address){
     const s = String(address || '').trim();
     if(!s) return null;
@@ -8965,7 +8996,7 @@ window.SHIN2_CRM_OCR = (function(){
     const pf = coExtractPhoneFax(lines);
     const cp = coExtractContactAndPosition(lines);
     const addr = coExtractAddress(lines);
-    return {
+    const out = {
       name: coExtractNameCandidate(lines), repName: { value:'', ambiguous:false },
       contactName: cp.name, position: cp.position,
       // §전화번호 분류 라운드: mobile(휴대전화)/phone(일반·대표전화)/fax 3종 + extraPhones
@@ -8980,12 +9011,13 @@ window.SHIN2_CRM_OCR = (function(){
       website: coExtractHomepage(lines),
       rawOcrText: String(rawText || '')
     };
+    return coAssignConfidence(out, lines);
   }
   function extractFromBizRegText(rawText){
     const lines = coPrepLines(rawText);
     const full = lines.join('\n');
     const addr = coExtractAddress(lines);
-    return {
+    const out = {
       name: coExtractBizRegName(lines), repName: coExtractRepName(lines),
       contactName: { value:'', ambiguous:false }, position: { value:'', ambiguous:false },
       mobile: { value:'', ambiguous:false }, phone: { value:'', ambiguous:false }, fax: { value:'', ambiguous:false }, extraPhones: [],
@@ -8995,6 +9027,7 @@ window.SHIN2_CRM_OCR = (function(){
       website: { value:'', ambiguous:false },
       rawOcrText: String(rawText || '')
     };
+    return coAssignConfidence(out, lines);
   }
   function coClassifyDocType(rawText){
     const t = String(rawText || '');
@@ -9010,7 +9043,313 @@ window.SHIN2_CRM_OCR = (function(){
     if(/(www\.|https?:\/\/)/i.test(t)) cardScore += 1;
     return bizScore > cardScore ? 'bizreg' : 'card';
   }
-  return { extractFromCardText, extractFromBizRegText, coClassifyDocType, coIsAddressLine, coExtractBizRegNo, coStripDecor, coDeriveRegion };
+  /* ==========================================================================
+     §명함 OCR 전처리 라운드(신규) — OCR에 넣기 전에 이미지를 "글자를 읽기 좋은 상태"로만
+     만든다. 원본 File은 절대 건드리지 않는다 — 등록 시 서류함에 저장되는 건 지금도
+     ocrState.file(원본 그대로)이고, 여기서 만드는 건 OCR에만 쓰는 별도 canvas다.
+     순서: EXIF 방향 보정 → 크기 정규화 → 여백 crop → 기울기(deskew) → 변형본 생성.
+     ========================================================================== */
+  const OCR_MAX_SIDE = 1800;  // 이보다 크면 줄인다(느려지기만 하고 인식률은 안 오른다)
+  const OCR_MIN_SIDE = 1100;  // 너무 작으면 키운다(글자가 뭉개져 아예 안 읽힌다)
+
+  // createImageBitmap의 imageOrientation:'from-image'가 EXIF 방향(세로로 찍은 사진이
+  // 눕는 문제)을 브라우저가 직접 풀어준다. 미지원 브라우저는 <img>로 폴백하는데, 이때는
+  // 브라우저가 이미 EXIF를 적용해 그려주는 경우가 대부분이다.
+  function ocrLoadBitmap(file){
+    if(typeof createImageBitmap === 'function'){
+      try{
+        return createImageBitmap(file, { imageOrientation:'from-image' })
+          .catch(()=> createImageBitmap(file))
+          .catch(()=> ocrLoadViaImg(file));
+      }catch(e){ /* 아래 폴백 */ }
+    }
+    return ocrLoadViaImg(file);
+  }
+  function ocrLoadViaImg(file){
+    return new Promise((resolve, reject)=>{
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = ()=>{ URL.revokeObjectURL(url); resolve(img); };
+      img.onerror = ()=>{ URL.revokeObjectURL(url); reject(new Error('이미지를 읽지 못했습니다')); };
+      img.src = url;
+    });
+  }
+  function ocrNewCanvas(w, h){
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(w)); c.height = Math.max(1, Math.round(h));
+    return c;
+  }
+  // 긴 변을 OCR_MAX_SIDE 이하로, 짧은 변이 너무 작으면 OCR_MIN_SIDE까지 키운다.
+  function ocrFitCanvas(src){
+    const w = src.width, h = src.height;
+    let scale = 1;
+    const long = Math.max(w, h), short = Math.min(w, h);
+    if(long > OCR_MAX_SIDE) scale = OCR_MAX_SIDE / long;
+    else if(short < OCR_MIN_SIDE) scale = Math.min(OCR_MIN_SIDE / short, 3);
+    const c = ocrNewCanvas(w * scale, h * scale);
+    const ctx = c.getContext('2d', { willReadFrequently:true });
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(src, 0, 0, c.width, c.height);
+    return c;
+  }
+  // 회색조 밝기 배열(0~255). 이후 crop/deskew 판정은 전부 이 배열로만 한다.
+  function ocrLumaOf(canvas){
+    const ctx = canvas.getContext('2d', { willReadFrequently:true });
+    const d = ctx.getImageData(0,0,canvas.width,canvas.height).data;
+    const n = canvas.width * canvas.height;
+    const out = new Uint8ClampedArray(n);
+    for(let i=0;i<n;i++){
+      out[i] = (d[i*4]*0.299 + d[i*4+1]*0.587 + d[i*4+2]*0.114) | 0;
+    }
+    return out;
+  }
+  // 밝기 히스토그램의 하위/상위 꼬리를 잘라 임계값을 잡는다(명함은 대부분 밝은 배경 +
+  // 어두운 글자라 "평균보다 꽤 어두운 픽셀 = 글자"로 봐도 충분하다).
+  function ocrInkThreshold(luma){
+    const hist = new Uint32Array(256);
+    for(let i=0;i<luma.length;i++) hist[luma[i]]++;
+    let sum = 0, total = luma.length;
+    let lo = 0, hi = 255, acc = 0;
+    for(let v=0; v<256; v++){ acc += hist[v]; if(acc >= total*0.02){ lo = v; break; } }
+    acc = 0;
+    for(let v=255; v>=0; v--){ acc += hist[v]; if(acc >= total*0.02){ hi = v; break; } }
+    if(hi - lo < 20) return -1; // 대비가 거의 없는 이미지 — crop/deskew를 시도하지 않는다
+    for(let i=0;i<luma.length;i++) sum += luma[i];
+    const mean = sum / luma.length;
+    return Math.max(lo + 8, Math.min(hi - 8, mean - (hi - lo) * 0.18));
+  }
+  // 테두리 한 줄의 중앙값 밝기 = "배경색"으로 본다. 어두운 책상 위의 흰 명함도,
+  // 흰 스캔 배경 위의 명함도 같은 기준(배경과 얼마나 다른가)으로 다룰 수 있다.
+  // 밝기만 보던 예전 방식은 "어두운 배경 = 글자"로 읽혀 아무것도 못 잘랐다.
+  function ocrBorderLuma(luma, w, h){
+    const vals = [];
+    const stepX = Math.max(1, (w/120)|0), stepY = Math.max(1, (h/120)|0);
+    for(let x=0;x<w;x+=stepX){ vals.push(luma[x]); vals.push(luma[(h-1)*w + x]); }
+    for(let y=0;y<h;y+=stepY){ vals.push(luma[y*w]); vals.push(luma[y*w + (w-1)]); }
+    vals.sort((a,b)=> a-b);
+    return vals[(vals.length/2)|0];
+  }
+  // 명함 주변의 빈 여백(책상, 스캔 배경)을 잘라낸다. 배경색과 뚜렷이 다른 픽셀이 거의
+  // 없는 가장자리 행·열만 깎고, 안전하게 2% 패딩을 남긴다. 잘라낼 게 거의 없거나
+  // 판정이 미심쩍으면 원본을 그대로 쓴다(글자를 잘라먹는 쪽이 훨씬 손해다).
+  function ocrAutoCrop(canvas){
+    const w = canvas.width, h = canvas.height;
+    const luma = ocrLumaOf(canvas);
+    const th = ocrInkThreshold(luma);
+    if(th < 0) return canvas;
+    const bg = ocrBorderLuma(luma, w, h);
+    const diffTh = 28;
+    const rowInk = new Uint32Array(h), colInk = new Uint32Array(w);
+    for(let y=0;y<h;y++){
+      const base = y*w;
+      for(let x=0;x<w;x++){
+        if(Math.abs(luma[base+x] - bg) > diffTh){ rowInk[y]++; colInk[x]++; }
+      }
+    }
+    const rowMin = Math.max(2, w * 0.004), colMin = Math.max(2, h * 0.004);
+    let top = 0; while(top < h-1 && rowInk[top] < rowMin) top++;
+    let bottom = h-1; while(bottom > top && rowInk[bottom] < rowMin) bottom--;
+    let left = 0; while(left < w-1 && colInk[left] < colMin) left++;
+    let right = w-1; while(right > left && colInk[right] < colMin) right--;
+    const padX = Math.round(w * 0.02), padY = Math.round(h * 0.02);
+    left = Math.max(0, left - padX); right = Math.min(w-1, right + padX);
+    top = Math.max(0, top - padY); bottom = Math.min(h-1, bottom + padY);
+    const cw = right - left + 1, ch = bottom - top + 1;
+    // 5% 미만만 잘릴 거면 손대지 않는다(오판으로 글자를 자르는 쪽이 훨씬 손해다).
+    if(cw <= 0 || ch <= 0 || (cw * ch) > (w * h) * 0.95) return canvas;
+    if(cw < w * 0.3 || ch < h * 0.3) return canvas; // 너무 많이 자르면 판정 실패로 본다
+    const out = ocrNewCanvas(cw, ch);
+    out.getContext('2d', { willReadFrequently:true }).drawImage(canvas, left, top, cw, ch, 0, 0, cw, ch);
+    return out;
+  }
+  // 기울기 추정 — 작은 크기로 줄인 뒤 -6°~+6°를 1°씩 돌려보며 "가로 투영 프로파일의
+  // 분산"이 가장 큰 각을 고른다(글자 줄이 수평으로 맞으면 줄과 줄 사이 대비가 커진다).
+  function ocrDetectSkew(canvas){
+    const sw = 420, sh = Math.max(40, Math.round(canvas.height * (420 / canvas.width)));
+    if(canvas.width < 80 || canvas.height < 40) return 0;
+    const small = ocrNewCanvas(sw, sh);
+    small.getContext('2d', { willReadFrequently:true }).drawImage(canvas, 0, 0, sw, sh);
+    const luma = ocrLumaOf(small);
+    const th = ocrInkThreshold(luma);
+    if(th < 0) return 0;
+    const ink = new Uint8Array(sw*sh);
+    for(let i=0;i<luma.length;i++) ink[i] = luma[i] < th ? 1 : 0;
+    let bestAngle = 0, bestScore = -1;
+    for(let deg=-6; deg<=6; deg++){
+      const rad = deg * Math.PI / 180, tan = Math.tan(rad);
+      const prof = new Float64Array(sh);
+      for(let y=0;y<sh;y++){
+        const base = y*sw;
+        for(let x=0;x<sw;x++){
+          if(!ink[base+x]) continue;
+          const yy = y + Math.round((x - sw/2) * tan);
+          if(yy >= 0 && yy < sh) prof[yy]++;
+        }
+      }
+      let mean = 0; for(let y=0;y<sh;y++) mean += prof[y]; mean /= sh;
+      let varSum = 0; for(let y=0;y<sh;y++){ const d = prof[y]-mean; varSum += d*d; }
+      if(varSum > bestScore){ bestScore = varSum; bestAngle = deg; }
+    }
+    return bestAngle;
+  }
+  function ocrRotate(canvas, deg){
+    if(!deg) return canvas;
+    const rad = -deg * Math.PI / 180;
+    const w = canvas.width, h = canvas.height;
+    const cos = Math.abs(Math.cos(rad)), sin = Math.abs(Math.sin(rad));
+    const nw = Math.round(w*cos + h*sin), nh = Math.round(w*sin + h*cos);
+    const out = ocrNewCanvas(nw, nh);
+    const ctx = out.getContext('2d', { willReadFrequently:true });
+    ctx.fillStyle = '#fff'; ctx.fillRect(0,0,nw,nh);
+    ctx.translate(nw/2, nh/2); ctx.rotate(rad);
+    ctx.drawImage(canvas, -w/2, -h/2);
+    return out;
+  }
+  // 회색조 + 대비 스트레치(하위 2%→0, 상위 2%→255). gamma<1이면 글자를 더 진하게.
+  function ocrGrayscaleCanvas(canvas, gamma){
+    const w = canvas.width, h = canvas.height;
+    const ctx = canvas.getContext('2d', { willReadFrequently:true });
+    const img = ctx.getImageData(0,0,w,h);
+    const d = img.data, n = w*h;
+    const gray = new Uint8ClampedArray(n);
+    const hist = new Uint32Array(256);
+    for(let i=0;i<n;i++){
+      const v = (d[i*4]*0.299 + d[i*4+1]*0.587 + d[i*4+2]*0.114) | 0;
+      gray[i] = v; hist[v]++;
+    }
+    let acc = 0, lo = 0, hi = 255;
+    for(let v=0; v<256; v++){ acc += hist[v]; if(acc >= n*0.02){ lo = v; break; } }
+    acc = 0;
+    for(let v=255; v>=0; v--){ acc += hist[v]; if(acc >= n*0.02){ hi = v; break; } }
+    const span = Math.max(1, hi - lo);
+    const lut = new Uint8ClampedArray(256);
+    for(let v=0; v<256; v++){
+      let t = (v - lo) / span;
+      t = t < 0 ? 0 : (t > 1 ? 1 : t);
+      if(gamma && gamma !== 1) t = Math.pow(t, gamma);
+      lut[v] = Math.round(t * 255);
+    }
+    const out = ocrNewCanvas(w, h);
+    const octx = out.getContext('2d', { willReadFrequently:true });
+    const oimg = octx.createImageData(w, h);
+    const od = oimg.data;
+    for(let i=0;i<n;i++){
+      const v = lut[gray[i]];
+      od[i*4] = od[i*4+1] = od[i*4+2] = v; od[i*4+3] = 255;
+    }
+    octx.putImageData(oimg, 0, 0);
+    return out;
+  }
+  // 언샤프 마스크(3x3) — 작은 글자의 획 경계를 살린다. 이미 회색조인 캔버스에만 쓴다.
+  function ocrSharpenCanvas(canvas, amount){
+    const w = canvas.width, h = canvas.height;
+    const ctx = canvas.getContext('2d', { willReadFrequently:true });
+    const src = ctx.getImageData(0,0,w,h).data;
+    const out = ocrNewCanvas(w, h);
+    const octx = out.getContext('2d', { willReadFrequently:true });
+    const oimg = octx.createImageData(w, h);
+    const od = oimg.data;
+    const a = amount == null ? 0.7 : amount;
+    for(let y=0;y<h;y++){
+      for(let x=0;x<w;x++){
+        const i = (y*w + x);
+        if(x===0 || y===0 || x===w-1 || y===h-1){
+          const v = src[i*4];
+          od[i*4] = od[i*4+1] = od[i*4+2] = v; od[i*4+3] = 255;
+          continue;
+        }
+        let blur = 0;
+        for(let dy=-1; dy<=1; dy++){
+          for(let dx=-1; dx<=1; dx++){
+            blur += src[((y+dy)*w + (x+dx))*4];
+          }
+        }
+        blur /= 9;
+        const v0 = src[i*4];
+        let v = v0 + (v0 - blur) * (1 + a) * 1.4;
+        v = v < 0 ? 0 : (v > 255 ? 255 : v);
+        od[i*4] = od[i*4+1] = od[i*4+2] = v; od[i*4+3] = 255;
+      }
+    }
+    octx.putImageData(oimg, 0, 0);
+    return out;
+  }
+  // OCR용 변형본 2~3종을 만든다. 전부 같은 기준 캔버스(방향·크기·여백·기울기까지
+  // 끝낸 것)에서 파생되므로 좌표가 서로 어긋나지 않는다.
+  function prepareOcrImages(file){
+    return Promise.resolve(ocrLoadBitmap(file)).then(bmp=>{
+      let base = ocrFitCanvas(bmp);
+      if(bmp.close) try{ bmp.close(); }catch(e){}
+      base = ocrAutoCrop(base);
+      const skew = ocrDetectSkew(base);
+      if(Math.abs(skew) >= 1){
+        // 회전하면 바운딩 박스가 커지므로 상한을 한 번 더 적용한다.
+        base = ocrFitCanvas(ocrRotate(base, skew));
+      }
+      const gray = ocrGrayscaleCanvas(base, 0.9);
+      return {
+        skew,
+        size: { w: base.width, h: base.height },
+        variants: [
+          { key:'gray',  label:'회색조·대비보정', canvas: gray, psm:'6' },
+          { key:'sharp', label:'대비강화·선명화', canvas: ocrSharpenCanvas(ocrGrayscaleCanvas(base, 0.7), 0.9), psm:'6' },
+          { key:'plain', label:'원본(여백·기울기만 보정)', canvas: base, psm:'11' }
+        ]
+      };
+    });
+  }
+  /* ==========================================================================
+     §명함 OCR 신뢰도 라운드(신규) — 필드마다 0~1 신뢰도를 매긴다. 기존 {value,ambiguous}
+     모양은 그대로 두고 conf만 덧붙여서, 이 값을 안 읽는 기존 코드는 영향을 받지 않는다.
+     값을 지어내지 않는다 — 신뢰도는 "이미 뽑은 값이 얼마나 확실한가"만 말한다.
+     ========================================================================== */
+  function coAssignConfidence(res, lines){
+    const text = lines.join('\n');
+    const hasMobileLabel = /\bM\b|mobile|h\.?p\.?|휴대/i.test(text);
+    const hasTelLabel = /\bT\b|tel|전화/i.test(text);
+    const hasFaxLabel = /\bF\b|fax|팩스/i.test(text);
+    const strictBizNo = /\b\d{3}-\d{2}-\d{5}\b/.test(text.replace(/(\d)[ \t]+(?=\d)/g,'$1'));
+    function put(key, strong){
+      const f = res[key];
+      if(!f || typeof f !== 'object') return;
+      if(!f.value){ f.conf = 0; return; }
+      f.conf = f.ambiguous ? 0.35 : (strong ? 0.92 : 0.68);
+    }
+    put('email', true);            // 정규식이 통과한 값만 들어온다
+    put('website', true);
+    put('mobile', hasMobileLabel);
+    put('phone', hasTelLabel);
+    put('fax', hasFaxLabel);
+    put('bizRegNo', strictBizNo);
+    put('address', /(특별시|광역시|특별자치|[가-힣]{2,}(시|군|구))/.test(res.address && res.address.value || ''));
+    put('region', true);
+    put('repName', true);
+    put('name', NAME_POS_RE.test((res.name && res.name.value) || ''));
+    // 담당자/직급은 "같은 줄에서 둘 다" 잡혔을 때만 높음으로 본다.
+    const bothFound = !!(res.contactName && res.contactName.value && res.position && res.position.value);
+    put('contactName', bothFound);
+    put('position', bothFound);
+    return res;
+  }
+  // §OCR 개선 라운드(신규) — 요청한 이름 그대로의 진입점. 내부는 기존 extractFromCardText
+  // 와 같다(전체 텍스트를 받아 필드로 나누는 "분석" 단계만 담당하고, OCR은 하지 않는다).
+  function parseBusinessCardFields(rawText){ return extractFromCardText(rawText); }
+  // 여러 OCR pass 중 어느 결과가 나은지 고르기 위한 점수. "필드가 몇 개나 확실하게
+  // 잡혔는가"만 본다(글자 수가 많다고 좋은 결과가 아니다).
+  function scoreParsedFields(parsed){
+    if(!parsed) return 0;
+    const weight = { email:3, mobile:3, phone:2, fax:1, address:3, name:3, contactName:2, position:1, website:1, bizRegNo:2 };
+    let score = 0;
+    Object.keys(weight).forEach(k=>{
+      const f = parsed[k];
+      if(f && f.value && !f.ambiguous) score += weight[k];
+      else if(f && f.value) score += weight[k] * 0.4;
+    });
+    return score;
+  }
+  return { extractFromCardText, extractFromBizRegText, parseBusinessCardFields,
+    coClassifyDocType, coIsAddressLine, coExtractBizRegNo, coStripDecor, coDeriveRegion,
+    prepareOcrImages, coAssignConfidence, scoreParsedFields };
 })();
 </script>
 
@@ -38141,6 +38480,91 @@ window.SHIN2_CRM_APP_INIT = function(){
     return tesseractLoadPromise;
   }
   /* ==========================================================================
+     §명함 OCR 4단계 라운드(신규) — 요청한 구조:
+       전처리 → 전체 텍스트 OCR → 필드 구조화 → 사용자 확인 → 입력값 적용.
+     이 블록은 그중 1~2단계(전처리 + 전체 텍스트 OCR)만 담당한다. 필드 구조화는
+     SHIN2_CRM_OCR.parseBusinessCardFields가, 확인·적용은 등록폼 쪽이 맡는다 —
+     "OCR"과 "필드 분석"을 섞지 않는다(§요청 3).
+
+     예전에는 Tesseract.recognize(file, 'kor+eng')로 원본 파일을 그대로 한 번만 넣었다.
+     그래서 (1) 세로로 찍은 사진이 누운 채로 들어가고 (2) 대비가 낮은 명함은 글자가
+     배경에 묻히고 (3) 기울어진 사진은 줄이 어긋나고 (4) 페이지 분할 모드가 기본값
+     (자동)이라 명함처럼 글자가 띄엄띄엄 놓인 이미지에서 줄을 엉뚱하게 묶었다.
+     ========================================================================== */
+  // recognize()를 부를 때마다 worker를 새로 만들면(= Tesseract.recognize) pass를 여러 번
+  // 돌릴 수 없을 만큼 느리다. worker 하나를 만들어 두고 재사용한다.
+  let ocrWorkerPromise = null;
+  function getOcrWorker(){
+    if(ocrWorkerPromise) return ocrWorkerPromise;
+    ocrWorkerPromise = loadTesseractSdk().then(T=>{
+      if(typeof T.createWorker !== 'function') return null; // 구버전 SDK면 폴백 경로를 쓴다
+      return T.createWorker('kor+eng');
+    }).catch(()=> null);
+    return ocrWorkerPromise;
+  }
+  function ocrRecognizeOnce(image, psm){
+    return getOcrWorker().then(worker=>{
+      if(!worker){
+        return loadTesseractSdk().then(T=> T.recognize(image, 'kor+eng'));
+      }
+      // tessedit_pageseg_mode — '6'(한 덩어리의 줄글)이 명함에 가장 잘 맞고,
+      // '11'(흩어진 글자)은 로고·여백이 많아 6이 실패할 때의 대안이다.
+      return Promise.resolve()
+        .then(()=> worker.setParameters({ tessedit_pageseg_mode: psm, preserve_interword_spaces: '1' }))
+        .catch(()=>{})
+        .then(()=> worker.recognize(image));
+    }).then(r=> ({
+      text: (r && r.data && r.data.text) || '',
+      confidence: (r && r.data && typeof r.data.confidence === 'number') ? r.data.confidence : 0
+    }));
+  }
+  // 이 점수를 넘으면 남은 pass를 돌리지 않는다 — 첫 pass가 잘 나오면 1회로 끝난다
+  // (§요청 9 "성능이 심하게 느려지지 않게").
+  const OCR_GOOD_ENOUGH_SCORE = 13;
+  // 명함 한 장의 "전체 텍스트"를 뽑는다. 처음부터 회사명/담당자로 나누지 않는다.
+  function extractBusinessCardText(file, onProgress){
+    const M = window.SHIN2_CRM_OCR;
+    return Promise.resolve()
+      .then(()=> (M && M.prepareOcrImages) ? M.prepareOcrImages(file).catch(()=> null) : null)
+      .then(prep=>{
+        const targets = (prep && prep.variants && prep.variants.length)
+          ? prep.variants
+          : [{ key:'raw', label:'원본(전처리 실패)', canvas:file, psm:'6' }];
+        const passes = [];
+        let best = null, lastErr = null;
+        function step(i){
+          if(i >= targets.length) return null;
+          const v = targets[i];
+          if(onProgress) onProgress(i+1, targets.length, v.label);
+          return ocrRecognizeOnce(v.canvas, v.psm)
+            .then(res=>{
+              // 어느 pass가 나은지는 "글자 수"가 아니라 "확실하게 잡힌 필드 수"로 고른다.
+              const asCard = M.parseBusinessCardFields(res.text);
+              const asBiz = M.extractFromBizRegText(res.text);
+              const fieldScore = Math.max(M.scoreParsedFields(asCard), M.scoreParsedFields(asBiz));
+              const score = fieldScore + (res.confidence / 100) * 3;
+              const row = { key:v.key, label:v.label, text:res.text, confidence:res.confidence, score };
+              passes.push(row);
+              if(!best || score > best.score) best = row;
+              if(best.score >= OCR_GOOD_ENOUGH_SCORE) return null;
+              return step(i+1);
+            })
+            .catch(err=>{ lastErr = err; return step(i+1); });
+        }
+        return Promise.resolve(step(0)).then(()=>{
+          // pass가 전부 실패했으면(예: Tesseract를 아예 못 받아옴) 빈 확인창을 띄우지
+          // 않고 오류로 올려보낸다 — 호출부가 "자동 인식 실패, 직접 입력" 안내를 띄운다.
+          if(!best) throw (lastErr || new Error('글자를 인식하지 못했습니다'));
+          return ({
+          text: best ? best.text : '',
+          chosen: best,
+          passes,
+          skew: prep ? prep.skew : 0,
+          preprocessed: !!prep
+          }); });
+      });
+  }
+  /* ==========================================================================
      §고객 진행단계 3단계 라운드(신규) — "체결일 필드만 있던" 등록·수정 화면을
      1차미팅/2차미팅/협약체결 3단계로 확장한다. 새 저장 필드를 따로 만들지 않고
      기존 co.partnerDashboard.newMou(m1Label/m1ScheduledLabel/m1Owner/m2Label/
@@ -38484,11 +38908,24 @@ window.SHIN2_CRM_APP_INIT = function(){
       address:'crmNewF_address', mobile:'crmNewF_mobile', phone:'crmNewF_phone', fax:'crmNewF_fax',
       email:'crmNewF_email', website:'crmNewF_website', repName:'crmNewF_repName', bizRegNo:'crmNewF_bizRegNo'
     };
-    function ocrFieldStatus(field){
-      if(!field || !field.value) return field && field.ambiguous ? 'fail' : 'empty';
-      return field.ambiguous ? 'check' : 'ok';
+    // §명함 OCR 신뢰도 라운드(신규, §요청 11) — 높음 / 보통 / 확인 필요 3단계.
+    // 모듈이 매긴 conf(0~1)를 그대로 쓰고, conf가 없는 옛 결과는 ambiguous로 가늠한다.
+    // 확인창에서 "기존 입력값"을 보여주기 위해 지금 등록폼에 들어 있는 값을 읽는다.
+    // region은 텍스트 칸이 아니라 칩 선택이라 선택된 지역들을 문자열로 돌려준다.
+    function ocrCurrentFormValue(key){
+      if(key === 'region') return Array.from(regionSelected).join(', ');
+      const formId = OCR_FIELD_TO_FORM_ID[key];
+      const el = formId && document.getElementById(formId);
+      return el ? el.value.trim() : '';
     }
-    const OCR_STATUS_LABEL = { ok:'정확도 높음', check:'확인 필요', fail:'인식 실패', empty:'직접 입력 필요' };
+    function ocrFieldStatus(field){
+      if(!field || !field.value) return 'empty';
+      const c = (typeof field.conf === 'number') ? field.conf : (field.ambiguous ? 0.35 : 0.7);
+      if(c >= 0.85) return 'high';
+      if(c >= 0.6) return 'mid';
+      return 'low';
+    }
+    const OCR_STATUS_LABEL = { high:'높음', mid:'보통', low:'확인 필요', empty:'직접 입력' };
     // §업체명 유사 감지 라운드(신규, §요청 [5]) — 이미 저장된 업체명과 "장식·법인표기
     // 제거 후 완전히 같은 문자열"일 때만 유사로 본다(오탐 최소화를 위해 느슨한 유사도
     // 대신 정규화 일치만 사용 — 새 계산 라이브러리 없이 이미 있는 정규화 방식 재사용).
@@ -38512,7 +38949,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       const root = document.getElementById('ocrConfirmModalRoot');
       if(root) root.innerHTML = '';
     }
-    function openOcrConfirmModal(docType, extracted){
+    function openOcrConfirmModal(docType, extracted, ocrMeta){
       let root = document.getElementById('ocrConfirmModalRoot');
       if(!root){
         root = document.createElement('div');
@@ -38533,10 +38970,20 @@ window.SHIN2_CRM_APP_INIT = function(){
               ${fieldDefs.map(([key,label])=>{
                 const field = extracted[key] || { value:'', ambiguous:false };
                 const status = ocrFieldStatus(field);
+                // §요청 13·14 — 이미 사람이 입력해둔 값이 있고 명함 값과 다르면 덮어쓰지
+                // 않고 둘 다 보여준다. 기본 선택은 항상 "기존 값 유지"다.
+                const curVal = ocrCurrentFormValue(key);
+                const conflict = !!(field.value && curVal && curVal !== field.value);
                 return `
                 <div class="co-form-field ocr-confirm-field">
                   <label>${esc(label)} <span class="ocr-status-badge is-${status}">${esc(OCR_STATUS_LABEL[status])}</span></label>
-                  <input type="text" id="ocrConfirm_${key}" value="${esc(field.value || '')}" placeholder="${status==='empty'||status==='fail' ? '직접 입력' : ''}" />
+                  <input type="text" id="ocrConfirm_${key}" value="${esc(field.value || '')}" placeholder="${status==='empty' ? '직접 입력' : ''}" />
+                  ${conflict ? `
+                  <div class="ocr-conflict">
+                    <div class="ocr-conflict-head">이미 입력된 값과 다릅니다 — 어느 쪽을 쓸까요?</div>
+                    <label><input type="radio" name="ocrPick_${key}" value="keep" checked /> 기존: <b>${esc(curVal)}</b></label>
+                    <label><input type="radio" name="ocrPick_${key}" value="ocr" /> 명함: <b>${esc(field.value)}</b></label>
+                  </div>` : ''}
                 </div>`;
               }).join('')}
               ${extracted.extraPhones && extracted.extraPhones.length ? `<div class="ocr-extra-phones">추가 전화번호(자동 분류 못함): ${esc(extracted.extraPhones.join(', '))}</div>` : ''}
@@ -38546,8 +38993,9 @@ window.SHIN2_CRM_APP_INIT = function(){
                   명함 원본을 서류함에 보관(끄면 등록 후 이미지가 저장되지 않습니다)
                 </label>
               </div>
-              <button type="button" class="co-text-action" id="ocrRawToggleBtn">원문 보기</button>
+              <button type="button" class="co-text-action" id="ocrRawToggleBtn">OCR 원문 보기</button>
               <div class="ocr-raw-text" id="ocrRawText" style="display:none;">${esc(extracted.rawOcrText || '')}</div>
+              ${ocrMeta ? `<div class="ocr-pass-note">인식 방식: ${esc((ocrMeta.chosen && ocrMeta.chosen.label) || '원본')} · ${ocrMeta.passes.length}회 시도${ocrMeta.skew ? ` · 기울기 ${esc(String(ocrMeta.skew))}° 보정` : ''}${ocrMeta.preprocessed ? '' : ' · 이미지 보정 실패(원본으로 인식)'}</div>` : ''}
             </div>
             <div class="pi-actions">
               <button type="button" class="co-text-action" id="ocrConfirmCancelBtn">취소</button>
@@ -38572,8 +39020,13 @@ window.SHIN2_CRM_APP_INIT = function(){
         closeOcrConfirmModal();
         if(ocrState.file) runOcr(ocrState.file);
       });
+      // 저장된 pass들을 확인창에서 바로 비교할 수 있게 한다 — 다른 보정본이 더 잘
+      // 읽혔는지 사용자가 직접 보고 "다시 분석" 없이 고를 수 있다.
+
       document.getElementById('ocrApplyBtn').addEventListener('click', ()=>{
-        const filled = [];
+        // §요청 14 — 빈 칸이면 채우고, 같으면 그대로 두고, 다르면 위에서 고른 쪽만 쓴다.
+        // 아무것도 안 고르면(기본값) 기존 값을 지키고 절대 덮어쓰지 않는다.
+        const filled = [], replaced = [], kept = [];
         fieldDefs.forEach(([key,label])=>{
           if(key === 'region'){
             const val = document.getElementById('ocrConfirm_region').value.trim();
@@ -38586,30 +39039,43 @@ window.SHIN2_CRM_APP_INIT = function(){
             return;
           }
           const formId = OCR_FIELD_TO_FORM_ID[key];
+          const el = formId && document.getElementById(formId);
           const val = document.getElementById('ocrConfirm_' + key).value.trim();
-          if(formId && fillIfEmpty(formId, val)) filled.push(label);
+          if(!el || !val) return;
+          const cur = el.value.trim();
+          if(!cur){ el.value = val; filled.push(label); return; }
+          if(cur === val) return; // 이미 같은 값 — 아무것도 하지 않는다
+          const pick = document.querySelector(`input[name="ocrPick_${key}"]:checked`);
+          if(pick && pick.value === 'ocr'){ el.value = val; replaced.push(label); }
+          else kept.push(label);
         });
         ocrState.keepOriginal = document.getElementById('ocrKeepOriginalChk').checked;
         closeOcrConfirmModal();
         const statusEl = document.getElementById('crmNewFOcrStatus');
-        statusEl.textContent = filled.length
-          ? `확인한 값 반영됨 — ${filled.join(', ')}`
-          : '반영할 항목이 없습니다(이미 입력된 필드는 덮어쓰지 않습니다).';
+        const parts = [];
+        if(filled.length) parts.push(`빈 칸 채움 — ${filled.join(', ')}`);
+        if(replaced.length) parts.push(`명함 값으로 바꿈 — ${replaced.join(', ')}`);
+        if(kept.length) parts.push(`기존 값 유지 — ${kept.join(', ')}`);
+        statusEl.textContent = parts.length ? parts.join(' / ') : '반영할 항목이 없습니다.';
       });
     }
+    // §명함 OCR 4단계 라운드(신규) — ① 전처리 ② 전체 텍스트 OCR ③ 필드 구조화
+    // ④ 사용자 확인(openOcrConfirmModal) ⑤ 입력값 적용([입력값에 반영] 버튼).
+    // 원본 파일(ocrState.file)은 그대로 둔다 — 전처리는 OCR용 canvas에만 적용된다.
     function runOcr(file){
       const statusEl = document.getElementById('crmNewFOcrStatus');
       ocrState.status = 'running';
-      statusEl.textContent = '이미지 인식 중… (브라우저 안에서만 처리되며 외부로 전송되지 않습니다)';
-      loadTesseractSdk()
-        .then(Tesseract=> Tesseract.recognize(file, 'kor+eng'))
-        .then(({ data })=>{
-          const rawText = (data && data.text) || '';
+      statusEl.textContent = '이미지 보정 중… (브라우저 안에서만 처리되며 외부로 전송되지 않습니다)';
+      extractBusinessCardText(file, (i, total, label)=>{
+        statusEl.textContent = `글자 인식 중 ${i}/${total} — ${label} (브라우저 안에서만 처리됩니다)`;
+      })
+        .then(result=>{
+          const rawText = result.text || '';
           const docType = OCR.coClassifyDocType(rawText) === 'bizreg' ? 'businessRegistration' : 'businessCard';
-          const extracted = docType === 'businessRegistration' ? OCR.extractFromBizRegText(rawText) : OCR.extractFromCardText(rawText);
-          ocrState.status = 'done'; ocrState.docType = docType; ocrState.extracted = extracted;
+          const extracted = docType === 'businessRegistration' ? OCR.extractFromBizRegText(rawText) : OCR.parseBusinessCardFields(rawText);
+          ocrState.status = 'done'; ocrState.docType = docType; ocrState.extracted = extracted; ocrState.ocrMeta = result;
           statusEl.textContent = '인식 완료 — 결과를 확인해주세요.';
-          openOcrConfirmModal(docType, extracted);
+          openOcrConfirmModal(docType, extracted, result);
         })
         .catch(err=>{
           ocrState.status = 'error';
