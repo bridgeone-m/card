@@ -39,7 +39,11 @@
     --bg-soft-2:#F5F8FC;
     --border-soft:#E4EAF1;
 
-    --bg: #F4F7FB;
+    /* §떠 있는 캔버스 라운드(신규) — 흰 패널(rgba(255,255,255,.92)) 바로 옆에
+       놓이는 바탕이다. #F4F7FB은 흰색과 너무 가까워 프레임을 넓혀도 "바탕이 있다"는
+       느낌이 잘 안 났다. 밝기를 한 단계 낮추고 파랑을 아주 조금 더 넣어, 회색이 아닌
+       연한 blue-gray로 읽히게 한다(여전히 아주 연하다). */
+    --bg: #EDF2F9;
     --surface: #FFFFFF;
     --navy: #082F67;
     --navy-hover: #213D70;
@@ -3169,7 +3173,16 @@ html,body{background:radial-gradient(circle at 75% -10%,rgba(27,68,128,.05),tran
      새어 나가 페이지가 프레임 두께만큼 스크롤됐다(실측 14px). */
   body.crm-fixed-view{
     height:100vh; overflow:hidden; margin:0 !important;
-    padding:var(--crm-frame) !important; --crm-frame:14px;
+    /* §떠 있는 캔버스 라운드(신규) — 흰 패널이 화면을 거의 꽉 채워 바깥 바탕이
+       잘 안 보였다. 네 면 두께를 화면 폭에 따라 자연스럽게 키운다(clamp).
+       좌우를 상하보다 조금 두껍게 두는 쪽이 눈에는 더 균형 있게 보인다 — 화면이
+       세로보다 가로로 넓어서, 같은 px이면 좌우가 상대적으로 얇아 보이기 때문이다.
+       1920px에서 상하 20 / 좌우 28, 1440px에서 상하 16 / 좌우 23, 1101px에서
+       상하 12 / 좌우 18. box-sizing:border-box라 이 padding은 100vh 안에 들어가고
+       세로 스크롤을 만들지 않는다. */
+    padding:var(--crm-frame-y) var(--crm-frame-x) !important;
+    --crm-frame-y:clamp(12px, 1.1vw, 20px);
+    --crm-frame-x:clamp(18px, 1.6vw, 28px);
   }
   body.crm-fixed-view .app{
     height:100%; max-height:none; overflow:hidden;
@@ -3209,7 +3222,9 @@ html,body{background:radial-gradient(circle at 75% -10%,rgba(27,68,128,.05),tran
   /* 낮은 노트북(1366×768)에서는 여백·KPI 높이를 한 단계 줄여 한 화면에 들어오게 한다.
      전체를 transform:scale로 줄이지 않는다 — 글자가 흐려지기 때문이다. */
   @media(max-height:940px){
-    body.crm-fixed-view{ --crm-frame:10px; }
+    /* 낮은 화면에서는 세로 두께만 최소값으로 — 좌우는 그대로 둬서 네 면이
+       한쪽만 확 얇아 보이지 않게 한다(세로 공간이 아쉬운 쪽은 상하뿐이다). */
+    body.crm-fixed-view{ --crm-frame-y:12px; }
     body.crm-fixed-view .gnav-inner{ padding:10px 18px !important; }
     body.crm-fixed-view .crm-main-grid{ margin-top:10px; gap:12px; padding:0 12px 10px !important; }
     body.crm-fixed-view .kpi-strip .kpi-item{ min-height:78px !important; padding:10px 12px !important; }
@@ -7632,7 +7647,16 @@ body{
 @media(min-width:1101px){
   body.crm-page-shell{
     height:100vh; overflow:hidden; margin:0 !important;
-    padding:var(--crm-frame) !important; --crm-frame:14px;
+    /* §떠 있는 캔버스 라운드(신규) — 흰 패널이 화면을 거의 꽉 채워 바깥 바탕이
+       잘 안 보였다. 네 면 두께를 화면 폭에 따라 자연스럽게 키운다(clamp).
+       좌우를 상하보다 조금 두껍게 두는 쪽이 눈에는 더 균형 있게 보인다 — 화면이
+       세로보다 가로로 넓어서, 같은 px이면 좌우가 상대적으로 얇아 보이기 때문이다.
+       1920px에서 상하 20 / 좌우 28, 1440px에서 상하 16 / 좌우 23, 1101px에서
+       상하 12 / 좌우 18. box-sizing:border-box라 이 padding은 100vh 안에 들어가고
+       세로 스크롤을 만들지 않는다. */
+    padding:var(--crm-frame-y) var(--crm-frame-x) !important;
+    --crm-frame-y:clamp(12px, 1.1vw, 20px);
+    --crm-frame-x:clamp(18px, 1.6vw, 28px);
   }
   body.crm-page-shell .app{
     height:100%; max-height:none; overflow:hidden;
@@ -7753,7 +7777,9 @@ body{
     background:#D7DFEA; border-radius:999px;
   }
   @media(max-height:940px){
-    body.crm-page-shell{ --crm-frame:10px; }
+    /* 낮은 화면에서는 세로 두께만 최소값으로 — 좌우는 그대로 둬서 네 면이
+       한쪽만 확 얇아 보이지 않게 한다(세로 공간이 아쉬운 쪽은 상하뿐이다). */
+    body.crm-page-shell{ --crm-frame-y:12px; }
     /* 낮은 화면의 헤더 압축은 예전에 고객관리 탭(.crm-fixed-view)에만 걸려 있어서,
        1440×900에서 탭을 옮기면 헤더가 55 ↔ 59px로 들썩였다. 세 탭에 똑같이 건다. */
     body.crm-page-shell .gnav-inner{ padding:10px 18px !important; }
