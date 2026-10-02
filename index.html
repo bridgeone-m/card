@@ -9534,7 +9534,23 @@ window.SHIN2_CRM_OCR = (function(){
   }
 
   function showGateError(msg){ gateError.textContent = msg; gateError.style.display = msg ? 'block' : 'none'; }
+
+  // §세션 게이트 라운드(신규) — "CRM 입장 게이트" 통과 상태를 sessionStorage(탭 단위)로만
+  // 기억한다. 같은 탭 새로고침 → 값이 남아 있어 바로 입장, 탭/창/브라우저를 닫으면 값이
+  // 사라져 다음 접속은 다시 로그인 화면. Firebase Auth 로그인 유지(browserLocalPersistence)
+  // 자체는 그대로 두고 건드리지 않는다 — Firebase가 "이미 로그인됨"을 알려도 이 탭에서
+  // 게이트를 통과한 적이 없으면 화면을 열지 않을 뿐이다. 예전 localStorage 키
+  // (shin2-crm-unlocked/shin2-crm-gate-passed 등)는 읽지도, 지우지도 않는다.
+  const SESSION_GATE_KEY = 'shin2-crm-session-gate';
+  function hasSessionGate(){ try{ return sessionStorage.getItem(SESSION_GATE_KEY) === '1'; }catch(e){ return false; } }
+  function setSessionGate(){ try{ sessionStorage.setItem(SESSION_GATE_KEY, '1'); }catch(e){} }
+  function clearSessionGate(){ try{ sessionStorage.removeItem(SESSION_GATE_KEY); }catch(e){} }
+  window.SHIN2_CRM_CLEAR_SESSION_GATE = clearSessionGate;
+  // 이 탭에서 사용자가 비밀번호를 직접 입력해 로그인을 시도 중인지(성공 시에만 입장 허용).
+  let explicitLoginPending = false;
+
   function showApp(){
+    if(window.SHIN2_CRM_GATE_PASSED) return; // 이미 열려 있으면 중복 초기화 이벤트를 쏘지 않는다
     gateScreen.style.display = 'none';
     appRoot.style.removeProperty('display');
     showGateError('');
@@ -9545,6 +9561,8 @@ window.SHIN2_CRM_OCR = (function(){
   // 화면으로 되돌린다(§요청 3 "로그아웃 시에만 다시 로그인"). 고객 데이터·화면 상태는
   // 이 함수가 전혀 건드리지 않는다 — 오직 두 화면의 표시 여부만 바꾼다.
   function showGateAgain(){
+    clearSessionGate();
+    explicitLoginPending = false;
     window.SHIN2_CRM_GATE_PASSED = false;
     appRoot.style.display = 'none';
     gateScreen.style.display = '';
@@ -9569,6 +9587,7 @@ window.SHIN2_CRM_OCR = (function(){
     showGateError('');
     if(!pw) return;
     gateEnterBtn.disabled = true;
+    explicitLoginPending = true;
     if(!tryLogin){
       pendingPassword = pw;
       clearTimeout(gateTimeoutTimer);
@@ -9593,12 +9612,29 @@ window.SHIN2_CRM_OCR = (function(){
     gateEnterBtn.disabled = false;
     const ST = window.SHIN2_STORAGE;
     const signedIn = !!(ST && ST.isSignedIn && ST.isSignedIn());
-    if(signedIn) showApp();
-    else if(window.SHIN2_CRM_GATE_PASSED) showGateAgain();
+    // Firebase 로그인 + 이 탭의 세션 게이트(새로고침) 또는 방금 직접 입력한 비밀번호가
+    // 모두 있어야 입장. Firebase 로그인 유지만으로는 자동 입장하지 않는다.
+    if(signedIn && (hasSessionGate() || explicitLoginPending)) enterApp();
+    else if(!signedIn && window.SHIN2_CRM_GATE_PASSED) showGateAgain();
+    else if(!signedIn) clearSessionGate();
+  });
+  function enterApp(){
+    explicitLoginPending = false;
+    setSessionGate();
+    showApp();
+  }
+  // 이미 Firebase에 같은 계정으로 로그인돼 있는 상태에서 비밀번호를 다시 넣으면
+  // onAuthStateChanged가 다시 불리지 않는다(uid가 그대로라서) — 그래서 로그인 함수의
+  // 성공 자체를 알리는 이 이벤트로도 입장시킨다.
+  window.addEventListener('shin2-crm-login-success', ()=>{
+    clearTimeout(gateTimeoutTimer);
+    gateEnterBtn.disabled = false;
+    if(explicitLoginPending) enterApp();
   });
   window.addEventListener('shin2-crm-auth-error', ()=>{
     clearTimeout(gateTimeoutTimer);
     gateEnterBtn.disabled = false;
+    explicitLoginPending = false;
     const ST = window.SHIN2_STORAGE;
     const err = (ST && ST.getAuthError) ? ST.getAuthError() : null;
     showGateError(friendlyAuthMessage(err));
@@ -10439,7 +10475,13 @@ window.SHIN2_CRM_OCR = (function(){
       // 무엇이든 그대로 reportAuthFailure로만 알린다 — 계정 생성·복구 시도는 이 코드
       // 어디에도 없다.
       trySignInWithPassword = (pw) => {
-        signInWithEmailAndPassword(auth, HANSOL2_FIXED_EMAIL, pw).then(()=>{ lastAuthError = null; }).catch((err) => {
+        signInWithEmailAndPassword(auth, HANSOL2_FIXED_EMAIL, pw).then((cred)=>{
+          lastAuthError = null;
+          // §세션 게이트 라운드 — 같은 uid로 재로그인하면 onAuthStateChanged가 다시 안 불리므로
+          // 성공 자체를 게이트에 알린다(currentUid는 onAuthStateChanged가 이미 같은 값으로 채워둠).
+          if(!currentUid && cred && cred.user) currentUid = cred.user.uid;
+          window.dispatchEvent(new CustomEvent('shin2-crm-login-success'));
+        }).catch((err) => {
           console.warn('[CRM/Firebase] 로그인 실패:', err);
           reportAuthFailure(err);
         });
@@ -43904,6 +43946,9 @@ if(!window.__mapxRowDelegated){
   document.getElementById('crmSignOutBtn').addEventListener('click', ()=>{
     closeUpdateMenu();
     if(!confirm('로그아웃할까요? 이 컴퓨터에서 다시 이용하려면 공용 비밀번호를 다시 입력해야 합니다.')) return;
+    // §세션 게이트 라운드 — 탭 세션 게이트 값을 먼저 즉시 지운다(로그아웃 응답을 기다리는
+    // 사이에 새로고침해도 다시 입장하지 않도록).
+    if(window.SHIN2_CRM_CLEAR_SESSION_GATE) window.SHIN2_CRM_CLEAR_SESSION_GATE();
     if(window.SHIN2_CRM_SIGN_OUT) window.SHIN2_CRM_SIGN_OUT().catch(err=> console.warn('[CRM] 로그아웃 실패:', err));
     else if(window.SHIN2_CRM_SHOW_GATE) window.SHIN2_CRM_SHOW_GATE(); // Firebase 모듈이 아직 준비 안 됐으면 화면만이라도 되돌린다
   });
