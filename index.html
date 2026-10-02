@@ -7545,32 +7545,48 @@ body{
 .nf-side-right .nf-card-action{ padding:16px 16px 14px !important; }
 .nf-side-right .sa-map-block{ gap:12px; }
 .nf-side-right .sa-map-wrap{
-  /* 남는 세로 공간은 지도가 흡수한다 — 카드 아래가 비지 않으면서도 예전처럼
-     폭의 1.7배까지 길어지지는 않는다(지역 요약이 아래를 차지하기 때문). */
-  flex:1 1 auto !important; min-height:240px !important; max-height:520px !important;
+  /* 남는 세로 공간은 지도가 흡수한다. 상한을 520 → 760으로 올렸다 — 아래 블록이
+     지역 막대(7줄)에서 알림 줄(최대 5줄)로 바뀌면서 지도가 쓸 수 있는 높이가 늘었고,
+     520에 묶어두면 1920×1080에서 지도가 카드의 절반밖에 못 쓴다(실측 51.7%).
+     §요청 12 "지도 70~75% / 알림 25~30%" 기준이다. */
+  flex:1 1 auto !important; min-height:240px !important; max-height:760px !important;
 }
 .nf-side-right .sa-map-canvas{
   min-height:0 !important; height:100%; border-radius:14px !important;
   border:1px solid var(--border-soft) !important;
 }
 .nf-side-right .sa-map-hit{ border-radius:14px; }
-/* 지도 아래 지역 요약 — 새 통계가 아니라 지도에 이미 찍힌 업체의 지역값을 센 것. */
-.sa-region{ flex:0 0 auto; min-height:0; display:flex; flex-direction:column; gap:7px; overflow:hidden; }
-.sa-region-head{
-  display:flex; align-items:baseline; justify-content:space-between; gap:8px;
-  font-size:11.5px; font-weight:750; color:#5B6B82;
+/* 지도 아래 알림 줄 — 카드 안의 카드를 또 만들지 않는다(§요청 4). 지도와 같은 카드
+   안에서 divider 한 줄로만 나뉘고, 배경·테두리·그림자를 따로 두지 않는다.
+   빨강은 제목 옆 점과 경과일 숫자에만 쓴다(§요청 5). */
+.sa-alert{
+  flex:0 0 auto; min-height:0; display:flex; flex-direction:column; gap:7px;
+  padding-top:10px; border-top:1px solid var(--border-soft); overflow:hidden;
 }
-.sa-region-head span:last-child{ font-weight:600; color:#95A2B4; }
-.sa-region-list{ display:flex; flex-direction:column; gap:6px; min-height:0; overflow:hidden; }
-.sa-region-row{ display:grid; grid-template-columns:52px minmax(0,1fr) 30px; align-items:center; gap:8px; }
-.sa-region-name{ font-size:11.5px; font-weight:650; color:#3D4D64; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.sa-region-bar{ height:6px; border-radius:999px; background:#EEF2F8; overflow:hidden; }
-.sa-region-bar > i{ display:block; height:100%; border-radius:999px; background:var(--navy-200); }
-.sa-region-row:nth-child(1) .sa-region-bar > i{ background:var(--primary-navy); }
-.sa-region-row:nth-child(2) .sa-region-bar > i{ background:var(--navy-500); }
-.sa-region-row:nth-child(3) .sa-region-bar > i{ background:var(--navy-300); }
-.sa-region-num{ font-size:11.5px; font-weight:750; color:#17324D; text-align:right; font-variant-numeric:tabular-nums; }
-.sa-region-empty{ font-size:11px; color:#95A2B4; }
+.sa-alert-head{ display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
+.sa-alert-title{
+  display:flex; align-items:center; gap:6px;
+  font-size:12px; font-weight:750; color:#3D4D64; letter-spacing:-.02em;
+}
+.sa-alert-dot{ flex:none; width:5px; height:5px; border-radius:50%; background:#DC2626; }
+.sa-alert-sub{ font-size:11px; color:#95A2B4; margin-top:2px; }
+.sa-alert-count{ font-size:12px; font-weight:750; color:#17324D; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.sa-alert-list{ display:flex; flex-direction:column; min-height:0; overflow:hidden; }
+.sa-alert-row{
+  display:grid; grid-template-columns:minmax(0,1fr) auto 10px; align-items:center; gap:8px;
+  width:100%; padding:5px 2px; border:0; background:none; cursor:pointer; text-align:left;
+  border-radius:6px; font:inherit;
+}
+.sa-alert-row:hover{ background:var(--bg-soft); }
+.sa-alert-name{ font-size:11.5px; font-weight:650; color:#3D4D64; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sa-alert-days{ font-size:11.5px; font-weight:700; color:#C0392B; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.sa-alert-go{ font-size:12px; color:#B6C0CE; }
+.sa-alert-more{
+  align-self:flex-start; margin-top:1px; padding:0 2px; border:0; background:none; cursor:pointer;
+  font-size:11px; font-weight:650; color:var(--primary-navy); font-family:inherit;
+}
+.sa-alert-more:hover{ text-decoration:underline; }
+.sa-alert-ok{ font-size:11.5px; color:#7E8CA0; }
 
 /* ==========================================================================
    §MOU 진행 뱃지 라운드(신규) — 업체명 옆 작은 단계 뱃지. 전체 톤(화이트 + 딥 네이비)에
@@ -17926,7 +17942,7 @@ window.SHIN2_CRM_APP_INIT = function(){
           <button type="button" class="sa-map-hit" id="crmMiniMapHit"
             aria-label="시공사 지역 분포 전체 지도 열기"></button>
         </div>
-        <div class="sa-region" id="crmMiniMapRegions"></div>
+        <div class="sa-alert" id="crmMiniMapAlert"></div>
       </div>`;
     // 지도·버튼 어디를 눌러도 기존 대형 지도 팝업을 연다(새 팝업을 만들지 않는다).
     const openBig = ()=>{
@@ -17946,37 +17962,123 @@ window.SHIN2_CRM_APP_INIT = function(){
   function miniMapSignature(entries){
     return entries.length + ':' + entries.map(e=> e.co.id).join(',');
   }
-  // 지도 아래 지역 요약 — 새 통계를 만들지 않는다. 지도에 이미 찍은 그 entries의
-  // region 값(buildMapCompanies()가 넣어 둔 기존 값)을 세어 많은 순으로 보여줄 뿐이라
-  // 지역 판정·좌표 계산 로직은 읽기만 하고 전혀 건드리지 않는다. 지역을 못 읽은 건은
-  // 사용자 요청대로 "지역 미확인"으로 묶지 않고 그냥 뺀다.
-  function renderCrmMiniMapRegions(entries){
-    const box = document.getElementById('crmMiniMapRegions');
-    if(!box) return;
-    const counts = new Map();
-    (entries || []).forEach(e=>{
-      const key = e && e.region;
-      if(!key) return;
-      counts.set(key, (counts.get(key) || 0) + 1);
+  /* §지도 카드 하단 교체 라운드(신규) — 사용자 요청: 지도 아래 "지역별 업체 수" 막대는
+     지도만 봐도 알 수 있는 값이라 걷어내고, 그 자리에 바로 움직여야 하는 일을 띄운다.
+     "2차 미팅 제안 메일을 보냈는데 7일 넘게 회신이 없는 업체".
+
+     새 판정을 만들지 않았다 — 아래 네 가지를 그대로 읽기만 한다.
+       buildProgressStages(co)       1차 완료 / 2차 일정·완료 여부(state)
+       isConfirmedPartner(co, prog)  MOU 체결 완료 여부
+       D.isAgreementTerminated(co)   협약 종료 여부
+       mailLogForType(co, type)      co.m1MailLog에서 그 종류의 발송 기록
+     삭제 업체는 D.loadActiveCompanies()가 이미 걸러 준다. 어디에도 저장하지 않고
+     렌더할 때마다 다시 계산하므로, 일정이 등록되거나 회신이 오면 다음 렌더에서
+     저절로 빠진다(buildProgressStages/computeWillpowerBase와 같은 원칙). */
+  const M2_NO_REPLY_DAYS = 7;          // 발송 후 며칠부터 "지연"으로 볼지
+  const M2_NO_REPLY_PREVIEW = 5;       // 메인 카드에 최대 몇 건까지 보여줄지
+
+  // ts(발송 시각)를 한국 날짜 00:00로 내린다 — getSeoulTodayDateOnly와 같은 방식이라
+  // 두 값의 차이가 그대로 "달력일"이 된다. 시각까지 섞어서 빼면 오후에 보낸 메일이
+  // 7일째 되는 날 6일로 계산돼 하루 늦게 뜬다.
+  function seoulDateOnlyFromTs(ts){
+    const fmt = new Intl.DateTimeFormat('en-CA', { timeZone:'Asia/Seoul', year:'numeric', month:'2-digit', day:'2-digit' });
+    const parts = fmt.formatToParts(new Date(ts));
+    const y = parseInt(parts.find(p=> p.type === 'year').value, 10);
+    const mo = parseInt(parts.find(p=> p.type === 'month').value, 10);
+    const d = parseInt(parts.find(p=> p.type === 'day').value, 10);
+    return new Date(y, mo - 1, d).getTime();
+  }
+
+  /* 2차 미팅 제안 메일을 보내고 회신이 없는 업체. 경과일 내림차순.
+     재발송은 "가장 최근 성공 발송일" 하나만 본다 — 다시 보냈으면 거기서부터 다시
+     7일을 센다. 기존 발송 이력은 읽기만 하고 건드리지 않는다. */
+  function buildSecondMeetingNoReplyRows(){
+    const today = getSeoulTodayDateOnly();
+    const rows = [];
+    let list = [];
+    try{ list = D.loadActiveCompanies() || []; }catch(err){ return rows; }
+    list.forEach(co=>{
+      try{
+        if(!co || D.isAgreementTerminated(co)) return;
+        const progress = buildProgressStages(co);
+        if(!progress || !progress.hasAny) return;
+        if(isConfirmedPartner(co, progress)) return;              // MOU 체결 완료 — 제외
+        const byKey = {};
+        progress.stages.forEach(s=> byKey[s.key] = s);
+        if(!byKey.m1 || byKey.m1.state !== 'done') return;         // 1차 미팅 완료만
+        if(byKey.mou && byKey.mou.state === 'done') return;
+        // 2차는 'waiting'일 때만 — 'done'은 미팅 완료, 'scheduled'는 일정이 이미 잡힌
+        // 상태라 둘 다 회신을 받은 셈이다(§요청 4·5 "일정 등록 즉시 제외").
+        if(!byKey.m2 || byKey.m2.state !== 'waiting') return;
+        const sent = mailLogForType(co, 'secondMeetingRequest').filter(l=> l && l.status === 'sent' && l.sentAt);
+        if(!sent.length) return;
+        let lastTs = null;
+        sent.forEach(l=>{
+          const t = new Date(l.sentAt).getTime();
+          if(Number.isFinite(t) && (lastTs == null || t > lastTs)) lastTs = t;
+        });
+        if(lastTs == null) return;
+        const days = Math.round((today - seoulDateOnlyFromTs(lastTs)) / 86400000);
+        if(!Number.isFinite(days) || days < M2_NO_REPLY_DAYS) return;
+        rows.push({ co, days, lastTs });
+      }catch(err){ /* 한 업체의 데이터가 이상해도 카드 전체가 멎지 않게 */ }
     });
-    const rows = Array.from(counts.entries()).sort((a,b)=> b[1]-a[1]);
+    rows.sort((a, b)=> b.days - a.days || String(a.co.name || '').localeCompare(String(b.co.name || ''), 'ko'));
+    return rows;
+  }
+  // 전체 보기에서 쓰는 id 집합 — 같은 함수 결과를 그대로 쓴다(판정 중복 생성 금지).
+  function secondMeetingNoReplyIdSet(){
+    const s = new Set();
+    buildSecondMeetingNoReplyRows().forEach(r=> s.add(String(r.co.id)));
+    return s;
+  }
+  function fmtMailSentDate(ts){
+    try{
+      const d = new Date(ts);
+      const p = n=> String(n).padStart(2, '0');
+      return d.getFullYear() + '.' + p(d.getMonth() + 1) + '.' + p(d.getDate());
+    }catch(err){ return ''; }
+  }
+
+  // 지도 아래 알림 줄. 지도와 같은 카드 안에서 divider 하나로만 나뉜다(§요청 4).
+  function renderCrmMiniMapAlert(){
+    const box = document.getElementById('crmMiniMapAlert');
+    if(!box) return;
+    let rows = [];
+    try{ rows = buildSecondMeetingNoReplyRows(); }
+    catch(err){ rows = []; }
     if(!rows.length){
-      box.innerHTML = '<div class="sa-region-empty">지역 정보를 읽을 수 있는 업체가 없습니다.</div>';
+      box.innerHTML = `<div class="sa-alert-ok">지연된 2차 미팅 회신이 없습니다.</div>`;
       return;
     }
-    const top = rows.slice(0, 7);
-    const max = top[0][1] || 1;
-    const sum = rows.reduce((a, r)=> a + r[1], 0);
+    const shown = rows.slice(0, M2_NO_REPLY_PREVIEW);
     box.innerHTML = `
-      <div class="sa-region-head"><span>지역별 업체 수</span><span>상위 ${top.length}개 지역</span></div>
-      <div class="sa-region-list">${top.map(([name, n])=> `
-        <div class="sa-region-row">
-          <span class="sa-region-name">${esc(name)}</span>
-          <span class="sa-region-bar"><i style="width:${Math.max(6, Math.round(n / max * 100))}%"></i></span>
-          <span class="sa-region-num">${n.toLocaleString('ko-KR')}</span>
-        </div>`).join('')}</div>
-      <div class="sa-region-empty">지도 표시 ${sum.toLocaleString('ko-KR')}곳 기준</div>`;
+      <div class="sa-alert-head">
+        <div class="sa-alert-titles">
+          <div class="sa-alert-title"><i class="sa-alert-dot" aria-hidden="true"></i>2차 미팅 회신 지연</div>
+          <div class="sa-alert-sub">메일 발송 후 ${M2_NO_REPLY_DAYS}일 이상 미회신</div>
+        </div>
+        <div class="sa-alert-count">${rows.length}건</div>
+      </div>
+      <div class="sa-alert-list">${shown.map(r=> `
+        <button type="button" class="sa-alert-row" data-m2delay-co="${esc(String(r.co.id))}"
+          title="${esc(r.co.name || '')} — ${esc(fmtMailSentDate(r.lastTs))} 발송">
+          <span class="sa-alert-name">${esc(r.co.name || '(이름 없음)')}</span>
+          <span class="sa-alert-days">${r.days}일 경과</span>
+          <span class="sa-alert-go" aria-hidden="true">›</span>
+        </button>`).join('')}</div>
+      ${rows.length > shown.length ? `<button type="button" class="sa-alert-more" id="crmM2DelayMore">전체 보기 →</button>` : ''}`;
+    box.querySelectorAll('[data-m2delay-co]').forEach(btn=> btn.addEventListener('click', ()=>{
+      // 새 팝업을 만들지 않는다 — 기존 고객 상세를 "협약 진행" 탭으로 연다.
+      openCustomerDetail(btn.getAttribute('data-m2delay-co'), 'agreement');
+    }));
+    const moreBtn = document.getElementById('crmM2DelayMore');
+    if(moreBtn) moreBtn.addEventListener('click', ()=>{
+      workQueueFilter = 'm2NoReply';
+      showWorkQueueTab();
+    });
   }
+
   function renderCrmMiniMap(){
     const host = document.getElementById('crmMiniMap');
     if(!host) return;
@@ -17989,10 +18091,10 @@ window.SHIN2_CRM_APP_INIT = function(){
       if(!miniMapState || miniMapState.host !== host){
         host.innerHTML = '<div class="sa-map-loading">표시할 시공사 위치가 없습니다.</div>';
       }
-      renderCrmMiniMapRegions(entries);
+      renderCrmMiniMapAlert();
       return;
     }
-    renderCrmMiniMapRegions(entries);
+    renderCrmMiniMapAlert();
     loadKakaoMapSdk().then(kakao=>{
       const live = document.getElementById('crmMiniMap');
       if(!live || live !== host) return;
@@ -25116,7 +25218,10 @@ window.SHIN2_CRM_APP_INIT = function(){
   // 실행형 문구로("1차미팅"→"1차미팅 잡기" 등). 키(m1/m2/mou)·카운트 계산·클릭 필터링
   // 로직은 전혀 안 건드렸다 — label 문자열만 바꿨다.
   const WORKQ_FILTER_DEFS = [
-    ['all','전체'], ['m1','1차미팅 잡기'], ['m2','2차미팅 잡기'], ['mou','MOU체결 진행하기']
+    ['all','전체'], ['m1','1차미팅 잡기'], ['m2','2차미팅 잡기'], ['mou','MOU체결 진행하기'],
+    // §지도 카드 하단 교체 라운드 — 메인 지도 카드의 "전체 보기 →"가 여는 필터.
+    // 판정은 buildSecondMeetingNoReplyRows() 하나만 쓴다(새 기준 만들지 않음).
+    ['m2NoReply','2차 회신 지연']
   ];
   let workQueueFilter = 'all';
   // §MOU 진행상황 개편 라운드(신규) — 사용자 확정 지시: "서류현황 탭은 없애줘"에 따라
@@ -25276,7 +25381,11 @@ window.SHIN2_CRM_APP_INIT = function(){
     // §업무관리 1·2차미팅 탭 분리 라운드 — 'm1'/'m2' 필터는 예정된 미팅(m1Scheduled/
     // m2Scheduled)도 같은 탭에 포함해야 한다(§7 "일정 잡아둔 업체가 어디에도 안 보이는
     // 문제" 방지 원칙과 동일 이유 — 새 판정 아니라 이미 있는 두 type을 한 탭으로 묶어 보는 것).
+    // §지도 카드 하단 교체 라운드 — '2차 회신 지연'은 업체 id 집합으로 좁힌다. 이 화면이
+    // 원래 세우는 list(=업무 대상)를 그대로 쓰고, 그 안에서 지연 업체만 남긴다.
+    const m2NoReplyIds = workQueueFilter === 'm2NoReply' ? secondMeetingNoReplyIdSet() : null;
     const workQueueBaseFiltered = (workQueueFilter === 'all' ? list : list.filter(it=>{
+      if(workQueueFilter === 'm2NoReply') return m2NoReplyIds.has(String(it.co.id));
       if(workQueueFilter === 'm1') return it.type === 'm1' || it.type === 'm1Scheduled';
       if(workQueueFilter === 'm2') return it.type === 'm2' || it.type === 'm2Scheduled';
       return it.category === workQueueFilter || it.type === workQueueFilter;
@@ -25336,7 +25445,14 @@ window.SHIN2_CRM_APP_INIT = function(){
         </div>
       </div>
       <div class="workq-filter-row" id="workqFilterRow">
-        ${WORKQ_FILTER_DEFS.map(([key,label])=> `<button type="button" class="list-filter-chip${workQueueFilter===key?' is-active':''}" data-workq-filter="${esc(key)}">${esc(label)} ${esc(counts[key]||0)}</button>`).join('')}
+        ${WORKQ_FILTER_DEFS.map(([key,label])=>{
+          // m2NoReply 숫자는 counts에 없는 값이라 여기서만 센다 — 표에 실제로 뜨는 행
+          // (list ∩ 지연 업체)과 같은 기준이어야 칩 숫자와 표가 어긋나지 않는다.
+          const n = key === 'm2NoReply'
+            ? (()=>{ const s = secondMeetingNoReplyIdSet(); return list.filter(it=> s.has(String(it.co.id))).length; })()
+            : (counts[key] || 0);
+          return `<button type="button" class="list-filter-chip${workQueueFilter===key?' is-active':''}" data-workq-filter="${esc(key)}">${esc(label)} ${esc(n)}</button>`;
+        }).join('')}
       </div>
       ${filtered.length ? `
         <div class="workq-results-scroll">
