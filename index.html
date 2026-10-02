@@ -8329,6 +8329,740 @@ body.crm-page-shell #mailSettingsView .mail-settings-header-wrap{
   .kpi-strip .kpi-item-value,
   body.crm-fixed-view .kpi-strip .kpi-item-value{ font-size:20px !important; }
 }
+/* ==========================================================================
+   §버튼 디자인 시스템 라운드(신규) — 고객관리카드 안의 모든 버튼/탭/액션을
+   메인 화면 "+ 고객 등록"(#crmAddBtn) 계열 하나로 맞춘다.
+
+   [수정 전 조사 — 버튼/탭 관련 클래스]
+     Primary    .list-add-btn .btn-primary-action .co-text-action.primary .primary-btn
+                .gate-enter-btn #crmMouPdfBtn .workq-btn.primary .agr-meeting-complete-btn
+                .reqmat-send-btn .mail-tab-rename-save
+     Secondary  .co-text-action(171곳) .btn-secondary-action .secondary-btn #crmDataUpdateBtn
+                .workq-btn .agr-meeting-btn .agr-date-chip .mailx-tool-btn .mailx-account-btn
+                .map-modal-retry-btn .cloud-boot-retry-btn .gate-diag-btn .crm-map-btn
+                .map-open-btn .delete-co-modal-cancel-btn .mail-tab-rename-cancel
+                .l2l3v2-criteria-btn .crv-insight-btn .cdash2-header-insight-btn
+                .mail-placeholder-btn .chart-na-complete-btn .workq-copy-btn
+                .co-row-quick-action
+     Danger     .co-text-action.danger .btn-danger-link .delete-co-modal-confirm-btn
+     Ghost      .cdash-mini-edit .chart-tag-del .insight-collapsible-toggle
+                .l2l3v2-analysis-toggle .sa-alarm-more
+     Icon       .chart-close-btn .cdash2-header-close .side-drawer-close .rev-pop-close
+                .map-modal-close .map-embed-panel-close-btn .cdash-header-popover-close
+                .gnav-drawer-close .gnav-hamburger .kpi-trash-summary-btn
+                .list-filter-trash-btn .open-map-modal-btn .cdash2-cosum-edit-btn
+     필터 탭    .list-filter-chip + .chip-count, .sa-alarm-tab
+     상세 탭    .cdash2-tab
+     페이지     .page-btn
+   측정값: "+ 고객 등록"은 #1B4480(--primary-navy) / 34px / radius 11px / 13px·700 였다.
+
+   원칙
+     · 여기서는 모양(높이·radius·여백·글자·상태)만 바꾼다. 클래스명·id·onclick·
+       data-* 속성·JS selector는 하나도 바꾸거나 지우지 않았다.
+     · 앞 라운드들이 !important로 덮어 둔 값이 많아서, 이 레이어도 !important로 이긴다.
+       이 파일 <style>의 맨 끝이라 같은 우선순위에서는 항상 마지막으로 적용된다.
+     · display는 절대 !important로 주지 않는다 — style="display:none"이나 .hidden으로
+       숨겨 둔 버튼이 튀어나오지 않도록, inline-flex는 :where()(우선순위 0)로만 준다.
+     · 행 전체가 버튼인 것(.kpi-item, .co-row 셀, .sa-map-hit, 카드형 버튼),
+       표 셀 안의 숫자 버튼, 상태 badge는 건드리지 않는다.
+   새로 만드는 버튼은 .crm-btn + 변형 클래스를 쓰면 된다.
+   ========================================================================== */
+:root{
+  --crm-btn-h: 36px;          /* 기본 */
+  --crm-btn-h-lg: 38px;       /* 주요 CTA */
+  --crm-btn-h-sm: 32px;       /* compact */
+  --crm-btn-icon: 34px;       /* 아이콘 전용 */
+  --crm-btn-r: 9px;
+  --crm-btn-r-lg: 10px;
+  --crm-btn-r-sm: 8px;
+  --crm-btn-pad: 14px;
+  --crm-btn-pad-sm: 11px;
+  --crm-btn-pad-lg: 16px;
+  --crm-btn-fs: 13px;
+  --crm-btn-fs-sm: 12.5px;
+  --crm-btn-fw: 600;
+  --crm-btn-gap: 6px;
+
+  --crm-btn-blue: var(--primary-navy);          /* #1B4480 — 현재 "+ 고객 등록" 색 */
+  --crm-btn-blue-hover: var(--navy-700);        /* #163A70 — 약 5% 진하게 */
+  --crm-btn-blue-soft: #EAF2FC;
+  --crm-btn-blue-line: #B9D0EE;
+  --crm-btn-line: #D8E1EC;
+  --crm-btn-text: #334155;
+  --crm-btn-text-sub: #475569;
+  --crm-btn-text-muted: #64748B;
+  --crm-btn-hover-bg: #F7F9FC;
+  --crm-btn-active-bg: #F1F5F9;
+  --crm-btn-danger: #C24141;
+  --crm-btn-danger-line: rgba(194,65,65,.25);
+  --crm-btn-danger-soft: #FDF2F2;
+  --crm-btn-shadow: 0 1px 2px rgba(15,23,42,.08);
+  --crm-btn-ring: 0 0 0 3px rgba(27,68,128,.16);
+  --crm-btn-ring-danger: 0 0 0 3px rgba(194,65,65,.16);
+  --crm-btn-transition: background-color .15s ease, border-color .15s ease, color .15s ease, box-shadow .15s ease, transform .1s ease;
+}
+
+/* ---- 0. 공통 골격 — 정렬·글꼴·전환 ---------------------------------------
+   inline-flex는 우선순위 0으로만 준다(위 원칙). */
+:where(
+  .crm-btn, .crm-icon-btn, .crm-filter-tab,
+  .list-add-btn, .btn-primary-action, .btn-secondary-action, .primary-btn, .secondary-btn,
+  .co-text-action, .gate-enter-btn, .gate-diag-btn, .gnav-tool-btn, .workq-btn,
+  .agr-meeting-btn, .agr-meeting-complete-btn, .agr-date-chip, .reqmat-send-btn,
+  .mailx-tool-btn, .mailx-account-btn, .map-modal-retry-btn, .cloud-boot-retry-btn,
+  .crm-map-btn, .map-open-btn, .delete-co-modal-cancel-btn, .delete-co-modal-confirm-btn,
+  .mail-tab-rename-save, .mail-tab-rename-cancel, .l2l3v2-criteria-btn, .crv-insight-btn,
+  .cdash2-header-insight-btn, .btn-danger-link, .list-filter-chip,
+  .cdash2-tab, .page-btn, .chart-close-btn, .cdash2-header-close, .side-drawer-close,
+  .rev-pop-close, .map-modal-close, .map-embed-panel-close-btn, .cdash-header-popover-close,
+  .gnav-drawer-close, .gnav-hamburger, .kpi-trash-summary-btn, .list-filter-trash-btn,
+  .open-map-modal-btn, .cdash2-cosum-edit-btn, .cdash-mini-edit, .chart-tag-del,
+  .chart-na-complete-btn, .workq-copy-btn, .mail-placeholder-btn
+):where(:not([hidden])){
+  display:inline-flex;
+}
+.crm-btn, .crm-icon-btn, .crm-filter-tab,
+.list-add-btn, .btn-primary-action, .btn-secondary-action, .primary-btn, .secondary-btn,
+.co-text-action, .gate-enter-btn, .gate-diag-btn, .gnav-tool-btn, .workq-btn,
+.agr-meeting-btn, .agr-meeting-complete-btn, .agr-date-chip, .reqmat-send-btn,
+.mailx-tool-btn, .mailx-account-btn, .map-modal-retry-btn, .cloud-boot-retry-btn,
+.crm-map-btn, .map-open-btn, .delete-co-modal-cancel-btn, .delete-co-modal-confirm-btn,
+.mail-tab-rename-save, .mail-tab-rename-cancel, .l2l3v2-criteria-btn, .crv-insight-btn,
+.cdash2-header-insight-btn, .btn-danger-link, .list-filter-chip,
+.cdash2-tab, .page-btn, .chart-close-btn, .cdash2-header-close, .side-drawer-close,
+.rev-pop-close, .map-modal-close, .map-embed-panel-close-btn, .cdash-header-popover-close,
+.gnav-drawer-close, .gnav-hamburger, .kpi-trash-summary-btn, .list-filter-trash-btn,
+.open-map-modal-btn, .cdash2-cosum-edit-btn, .cdash-mini-edit, .chart-tag-del,
+.chart-na-complete-btn, .workq-copy-btn, .mail-placeholder-btn{
+  align-items:center !important;
+  justify-content:center !important;
+  gap:var(--crm-btn-gap);
+  box-sizing:border-box !important;
+  line-height:1 !important;
+  vertical-align:middle;
+  font-family:inherit;
+  text-decoration:none !important;
+  white-space:nowrap;
+  cursor:pointer;
+  transition:var(--crm-btn-transition) !important;
+  -webkit-tap-highlight-color:transparent;
+}
+/* 아이콘(svg/img/아이콘 span)은 14~16px, 위아래로 튀지 않게 */
+:is(.crm-btn, .list-add-btn, .btn-primary-action, .btn-secondary-action, .primary-btn,
+    .secondary-btn, .co-text-action, .gnav-tool-btn, .workq-btn, .agr-meeting-btn,
+    .agr-date-chip, .mailx-tool-btn, .map-modal-retry-btn, .crm-map-btn, .map-open-btn,
+    .list-filter-chip, .cdash2-tab) > svg{
+  width:15px; height:15px; flex:none; display:block;
+}
+:is(.crm-icon-btn, .chart-close-btn, .side-drawer-close, .rev-pop-close, .map-modal-close,
+    .map-embed-panel-close-btn, .cdash-header-popover-close, .gnav-drawer-close,
+    .gnav-hamburger, .kpi-trash-summary-btn, .list-filter-trash-btn, .open-map-modal-btn,
+    .cdash2-cosum-edit-btn, .cdash2-header-close) > svg{
+  width:16px !important; height:16px !important; flex:none; display:block;
+}
+
+/* ---- 1. Primary --------------------------------------------------------- */
+.crm-btn--primary,
+.list-add-btn, #crmAddBtn,
+.btn-primary-action,
+.co-text-action.primary,
+.primary-btn,
+.gate-enter-btn,
+.gnav-tool-btn#crmMouPdfBtn,
+.workq-btn.primary,
+.agr-meeting-complete-btn,
+.reqmat-send-btn,
+.mail-tab-rename-save{
+  height:var(--crm-btn-h) !important; min-height:var(--crm-btn-h) !important;
+  padding:0 15px !important;
+  border-radius:var(--crm-btn-r) !important;
+  background:var(--crm-btn-blue) !important;
+  color:#fff !important;
+  border:1px solid transparent !important;
+  box-shadow:var(--crm-btn-shadow) !important;
+  font-size:var(--crm-btn-fs) !important; font-weight:var(--crm-btn-fw) !important;
+  opacity:1;
+}
+.crm-btn--primary:hover,
+.list-add-btn:hover, #crmAddBtn:hover,
+.btn-primary-action:hover,
+.co-text-action.primary:hover,
+.primary-btn:hover,
+.gate-enter-btn:hover,
+.gnav-tool-btn#crmMouPdfBtn:hover,
+.workq-btn.primary:hover,
+.agr-meeting-complete-btn:hover,
+.reqmat-send-btn:hover,
+.mail-tab-rename-save:hover{
+  background:var(--crm-btn-blue-hover) !important; color:#fff !important;
+  border-color:transparent !important; opacity:1 !important;
+}
+/* 화면 대표 CTA — 한 단계 크게(38px / radius 10px / padding 16px).
+   헤더의 PDF 내보내기는 헤더 높이를 늘리지 않도록 기본 36px 그대로 둔다. */
+.crm-btn--lg,
+#crmAddBtn,
+.gate-enter-btn,
+.mail-tpl-save-bar .btn-primary-action{
+  height:var(--crm-btn-h-lg) !important; min-height:var(--crm-btn-h-lg) !important;
+  padding:0 var(--crm-btn-pad-lg) !important;
+  border-radius:var(--crm-btn-r-lg) !important;
+}
+
+/* ---- 2. Secondary ------------------------------------------------------- */
+.crm-btn--secondary,
+.co-text-action,
+.btn-secondary-action,
+.secondary-btn,
+.gnav-tool-btn#crmDataUpdateBtn,
+.gnav-right .gnav-tool-btn#crmDataUpdateBtn,
+.workq-btn,
+.agr-meeting-btn,
+.mailx-tool-btn,
+.mailx-account-btn,
+.map-modal-retry-btn,
+.cloud-boot-retry-btn,
+.gate-diag-btn,
+.delete-co-modal-cancel-btn,
+.mail-tab-rename-cancel,
+.l2l3v2-criteria-btn,
+.crv-insight-btn{
+  height:var(--crm-btn-h) !important; min-height:var(--crm-btn-h) !important;
+  padding:0 var(--crm-btn-pad) !important;
+  border-radius:var(--crm-btn-r) !important;
+  background:#fff !important;
+  color:var(--crm-btn-text) !important;
+  border:1px solid var(--crm-btn-line) !important;
+  box-shadow:none !important;
+  font-size:var(--crm-btn-fs) !important; font-weight:var(--crm-btn-fw) !important;
+  opacity:1;
+}
+.crm-btn--secondary:hover,
+.co-text-action:hover,
+.btn-secondary-action:hover,
+.secondary-btn:hover,
+.gnav-tool-btn#crmDataUpdateBtn:hover,
+.gnav-right .gnav-tool-btn#crmDataUpdateBtn:hover,
+.workq-btn:hover,
+.agr-meeting-btn:hover,
+.mailx-tool-btn:hover,
+.mailx-account-btn:hover,
+.map-modal-retry-btn:hover,
+.cloud-boot-retry-btn:hover,
+.gate-diag-btn:hover,
+.delete-co-modal-cancel-btn:hover,
+.mail-tab-rename-cancel:hover,
+.l2l3v2-criteria-btn:hover,
+.crv-insight-btn:hover{
+  background:var(--crm-btn-hover-bg) !important;
+  border-color:#C5D1E0 !important;
+  color:var(--text, #13243E) !important;
+}
+/* 위 secondary 묶음에 .co-text-action이 있어, primary/danger 변형은 한 번 더 이긴다. */
+.co-text-action.primary, .workq-btn.primary{
+  background:var(--crm-btn-blue) !important; color:#fff !important; border-color:transparent !important;
+  box-shadow:var(--crm-btn-shadow) !important;
+}
+.co-text-action.primary:hover, .workq-btn.primary:hover{
+  background:var(--crm-btn-blue-hover) !important; color:#fff !important; border-color:transparent !important;
+}
+.workq-btn.muted{ color:var(--crm-btn-text-muted) !important; }
+
+/* ---- 3. Danger ---------------------------------------------------------- */
+.crm-btn--danger,
+.co-text-action.danger,
+.co-text-action.is-danger,
+.btn-danger-link,
+.delete-co-modal-confirm-btn{
+  height:var(--crm-btn-h) !important; min-height:var(--crm-btn-h) !important;
+  padding:0 var(--crm-btn-pad) !important;
+  border-radius:var(--crm-btn-r) !important;
+  background:#fff !important;
+  color:var(--crm-btn-danger) !important;
+  border:1px solid var(--crm-btn-danger-line) !important;
+  box-shadow:none !important;
+  font-size:var(--crm-btn-fs) !important; font-weight:var(--crm-btn-fw) !important;
+}
+.crm-btn--danger:hover,
+.co-text-action.danger:hover,
+.co-text-action.is-danger:hover,
+.btn-danger-link:hover,
+.delete-co-modal-confirm-btn:hover{
+  background:var(--crm-btn-danger-soft) !important;
+  border-color:rgba(194,65,65,.4) !important;
+  color:#A93434 !important;
+}
+/* 진짜 마지막 확인 단계(업체 삭제·영구삭제 확인창의 최종 버튼)만 solid red */
+.crm-btn--danger-solid,
+.delete-co-modal-confirm-btn{
+  background:var(--crm-btn-danger) !important; color:#fff !important; border-color:transparent !important;
+}
+.crm-btn--danger-solid:hover,
+.delete-co-modal-confirm-btn:hover{
+  background:#A93434 !important; color:#fff !important; border-color:transparent !important;
+}
+
+/* ---- 4. Ghost — 펼치기·상세보기·인라인 보조 액션 -------------------------- */
+.crm-btn--ghost,
+.cdash-mini-edit,
+.chart-tag-del,
+.chart-na-complete-btn,
+.workq-copy-btn,
+.cdash2-header-insight-btn,
+.mail-placeholder-btn{
+  height:var(--crm-btn-h-sm) !important; min-height:var(--crm-btn-h-sm) !important;
+  padding:0 10px !important;
+  border-radius:var(--crm-btn-r-sm) !important;
+  background:transparent !important;
+  color:var(--crm-btn-text-sub) !important;
+  border:1px solid transparent !important;
+  box-shadow:none !important;
+  font-size:12.5px !important; font-weight:var(--crm-btn-fw) !important;
+}
+.crm-btn--ghost:hover,
+.cdash-mini-edit:hover,
+.chart-tag-del:hover,
+.chart-na-complete-btn:hover,
+.workq-copy-btn:hover,
+.cdash2-header-insight-btn:hover,
+.mail-placeholder-btn:hover{
+  background:var(--crm-btn-active-bg) !important;
+  color:var(--text, #13243E) !important;
+}
+/* 테두리가 있어야 버튼으로 읽히는 것들(헤더 인사이트, 변수 삽입 칩)은 연한 테두리 유지 */
+.cdash2-header-insight-btn,
+.mail-placeholder-btn,
+.chart-na-complete-btn,
+.workq-copy-btn{ border-color:var(--crm-btn-line) !important; background:#fff !important; }
+.cdash2-header-insight-btn:hover,
+.mail-placeholder-btn:hover,
+.chart-na-complete-btn:hover,
+.workq-copy-btn:hover{ background:var(--crm-btn-hover-bg) !important; }
+/* 삭제 성격의 인라인 액션은 hover에서만 붉게 */
+.chart-tag-del:hover,
+.cdash-mini-edit[data-memo-del-confirm]:hover{
+  color:var(--crm-btn-danger) !important; background:var(--crm-btn-danger-soft) !important;
+}
+
+/* ---- 4-1. 고객 상세 팝업 안쪽 — 앞 라운드의 .chart-panel / .cdash2-header 범위 규칙
+   (radius 8 고정, primary hover 시 위로 뜨는 연출, 헤더 버튼 pill)을 같은 체계로 되돌린다. */
+.chart-panel .co-text-action,
+.chart-panel .btn-secondary-action,
+.chart-panel .map-modal-retry-btn,
+.chart-panel .co-text-action.primary,
+.chart-panel .btn-primary-action{ border-radius:var(--crm-btn-r) !important; }
+.chart-panel .co-text-action.primary,
+.chart-panel .btn-primary-action{ box-shadow:var(--crm-btn-shadow) !important; }
+.chart-panel .co-text-action.primary:hover,
+.chart-panel .btn-primary-action:hover{ transform:none; box-shadow:var(--crm-btn-shadow) !important; }
+.chart-panel .co-text-action:not(.primary):hover{ transform:none; }
+.cdash2-header .co-text-action,
+.cdash2-header .cdash2-head-btn,
+.cdash2-header .cdash2-header-doc-btn,
+.cdash2-header .cdash2-map-back-btn,
+.cdash2-map-back-btn{
+  height:var(--crm-btn-h-sm) !important; min-height:var(--crm-btn-h-sm) !important;
+  padding:0 var(--crm-btn-pad-sm) !important;
+  border-radius:var(--crm-btn-r-sm) !important;
+  background:#fff !important; color:var(--crm-btn-text-sub) !important;
+  border:1px solid var(--crm-btn-line) !important;
+  font-size:var(--crm-btn-fs-sm) !important; font-weight:var(--crm-btn-fw) !important;
+  box-shadow:none !important;
+  align-items:center; justify-content:center; gap:var(--crm-btn-gap);
+  line-height:1 !important; box-sizing:border-box;
+}
+.cdash2-header .co-text-action:hover,
+.cdash2-header .cdash2-head-btn:hover,
+.cdash2-header .cdash2-header-doc-btn:hover,
+.cdash2-map-back-btn:hover{ background:var(--crm-btn-hover-bg) !important; color:var(--text, #13243E) !important; }
+.cdash2-header-insight-btn{ border-radius:var(--crm-btn-r-sm) !important; font-weight:var(--crm-btn-fw) !important; }
+.cdash2-header-insight-btn:hover{ border-color:#C5D1E0 !important; color:var(--text, #13243E) !important; }
+/* 카드 머리줄(.cdet-card-head)의 액션, 업체관계 카드의 "협약 종료 처리", 하단 바는 compact */
+.cdet-card-head .co-text-action,
+.cdet-card-head .btn-danger-link,
+.cdet-card-head .workq-btn,
+#cdashRelationsCard .btn-danger-link,
+.cdash2-footer .co-text-action{
+  height:var(--crm-btn-h-sm) !important; min-height:var(--crm-btn-h-sm) !important;
+  padding:0 var(--crm-btn-pad-sm) !important;
+  border-radius:var(--crm-btn-r-sm) !important;
+  font-size:var(--crm-btn-fs-sm) !important; min-width:0;
+}
+
+/* ---- 5. Compact(32px) — 카드 안·행 안처럼 공간이 좁은 곳 -------------------- */
+.crm-btn--sm,
+#cdashRelationsCard .co-text-action,
+#cdashInsightTagsCard .co-text-action,
+.cdash-header-actions .co-text-action,
+.doc-actions .co-text-action,
+.pdf-pick-actions .co-text-action,
+.mail-tpl-preview-row .co-text-action,
+.req-row-actions .co-text-action,
+.req-row-actions .cdash-mini-edit,
+.agr-stage-row-actions .agr-meeting-btn,
+.agr-stage-row-actions .agr-meeting-complete-btn,
+.agr-stage-btn-row .workq-btn,
+.reqmat-row-actions .reqmat-send-btn,
+.map-modal-tabs-actions .map-modal-retry-btn,
+.workq-table .workq-btn,
+.qtab-sec-btn,
+.agr-date-chip,
+.crm-map-btn,
+.map-open-btn,
+.co-row-quick-action,
+#mailSettingsView .mailx-toolbar .mailx-tool-btn{
+  height:var(--crm-btn-h-sm) !important; min-height:var(--crm-btn-h-sm) !important;
+  padding:0 var(--crm-btn-pad-sm) !important;
+  border-radius:var(--crm-btn-r-sm) !important;
+  font-size:var(--crm-btn-fs-sm) !important;
+}
+/* 날짜 칩 — 버튼이므로 pill 대신 같은 사각형. 빈 칸(점선)·메일(초록)의 의미 색은 유지 */
+.agr-date-chip{ background:#fff !important; border:1px solid var(--crm-btn-line) !important; color:var(--crm-btn-text) !important; font-weight:var(--crm-btn-fw) !important; }
+.agr-date-chip.is-empty{ border-style:dashed !important; color:var(--crm-btn-text-muted) !important; background:transparent !important; }
+.agr-date-chip.is-mail{ border-style:dashed !important; border-color:rgba(15,122,66,.45) !important; color:#0F7A42 !important; background:transparent !important; }
+.agr-date-chip:hover{ background:var(--crm-btn-hover-bg) !important; border-color:#C5D1E0 !important; color:var(--text, #13243E) !important; }
+.agr-date-chip.is-empty:hover{ border-color:var(--crm-btn-blue) !important; color:var(--crm-btn-blue) !important; }
+.agr-date-chip.is-mail:hover{ border-style:solid !important; background:#F0FAF4 !important; color:#0B6A39 !important; }
+/* 지도 보기 등 강조가 필요한 보조 버튼 — 글자만 남색 */
+.crm-map-btn, .map-open-btn{
+  background:#fff !important; color:var(--crm-btn-blue) !important;
+  border:1px solid var(--crm-btn-line) !important; font-weight:var(--crm-btn-fw) !important;
+  box-shadow:none !important;
+}
+.crm-map-btn:hover, .map-open-btn:hover{ background:var(--crm-btn-blue-soft) !important; border-color:var(--crm-btn-blue-line) !important; }
+/* MOU 바로가기(행 우측 작은 버튼)는 compact secondary로 — 평소 흐림/hover 시 또렷함은 그대로 */
+.co-row-quick-action{
+  height:26px !important; min-height:26px !important; padding:0 9px !important;
+  border-radius:7px !important; font-size:11px !important; font-weight:var(--crm-btn-fw) !important;
+  border-color:var(--crm-btn-line) !important;
+}
+
+/* ---- 6. 아이콘 단독 버튼 — 34×34 / radius 9 ------------------------------ */
+.crm-icon-btn,
+.chart-close-btn,
+.cdash2-header-close,
+.side-drawer-close,
+.rev-pop-close,
+.map-modal-close,
+.map-embed-panel-close-btn,
+.cdash-header-popover-close,
+.gnav-drawer-close,
+.gnav-hamburger,
+.open-map-modal-btn,
+.cdash2-cosum-edit-btn{
+  width:var(--crm-btn-icon) !important; height:var(--crm-btn-icon) !important;
+  min-width:var(--crm-btn-icon) !important; min-height:var(--crm-btn-icon) !important;
+  padding:0 !important;
+  border-radius:var(--crm-btn-r) !important;
+  background:transparent !important;
+  border:1px solid transparent !important;
+  color:var(--crm-btn-text-muted) !important;
+  box-shadow:none !important;
+  font-size:18px !important;
+}
+.crm-icon-btn:hover,
+.chart-close-btn:hover,
+.cdash2-header-close:hover,
+.side-drawer-close:hover,
+.rev-pop-close:hover,
+.map-modal-close:hover,
+.map-embed-panel-close-btn:hover,
+.cdash-header-popover-close:hover,
+.gnav-drawer-close:hover,
+.gnav-hamburger:hover,
+.open-map-modal-btn:hover,
+.cdash2-cosum-edit-btn:hover{
+  background:var(--crm-btn-active-bg) !important;
+  color:var(--text, #13243E) !important;
+}
+/* 테두리가 있어야 눌리는 곳으로 읽히는 아이콘 버튼(카드 위의 단독 버튼) */
+.gnav-hamburger,
+.open-map-modal-btn,
+.cdash2-cosum-edit-btn,
+.crm-icon-btn--outline{
+  background:#fff !important; border-color:var(--crm-btn-line) !important;
+}
+.cdash2-cosum-edit-btn{ font-size:14px !important; }
+/* 휴지통 — 아이콘 + 건수가 함께 들어가 폭은 내용만큼, 높이·모서리만 맞춘다 */
+.kpi-trash-summary-btn,
+#crmFilterRow .list-filter-trash-btn{
+  height:var(--crm-btn-icon) !important; min-height:var(--crm-btn-icon) !important;
+  min-width:var(--crm-btn-icon) !important;
+  padding:0 9px !important;
+  border-radius:var(--crm-btn-r) !important;
+  background:#fff !important;
+  border:1px solid var(--crm-btn-line) !important;
+  color:var(--crm-btn-text-muted) !important;
+  box-shadow:none !important;
+}
+.kpi-trash-summary-btn:hover,
+#crmFilterRow .list-filter-trash-btn:hover{
+  background:var(--crm-btn-hover-bg) !important; border-color:#C5D1E0 !important; color:var(--text, #13243E) !important;
+}
+#crmFilterRow .list-filter-trash-btn.is-active{
+  background:var(--crm-btn-blue-soft) !important; border-color:var(--crm-btn-blue-line) !important; color:var(--crm-btn-blue) !important;
+}
+
+/* ---- 7. 메인 상단 필터 탭 — pill 대신 "+ 고객 등록"과 같은 사각형 ------------ */
+#crmFilterRow, .list-filter-row{ gap:8px !important; }
+.crm-filter-tab,
+.list-filter-chip{
+  height:34px !important; min-height:34px !important;
+  padding:0 12px !important;
+  border-radius:var(--crm-btn-r) !important;
+  background:#fff !important;
+  border:1px solid #DCE5EF !important;
+  color:var(--crm-btn-text-muted) !important;
+  font-size:12.5px !important; font-weight:600 !important;
+  box-shadow:none !important;
+}
+.crm-filter-tab:hover,
+.list-filter-chip:hover{
+  background:var(--crm-btn-hover-bg) !important; border-color:#C9D5E3 !important; color:var(--crm-btn-text) !important;
+}
+.crm-filter-tab.is-active,
+.list-filter-chip.is-active{
+  background:var(--crm-btn-blue-soft) !important;
+  border-color:var(--crm-btn-blue-line) !important;
+  color:var(--crm-btn-blue) !important;
+  box-shadow:none !important;
+}
+/* 관리 필요(붉은 의미)·휴지통 칩은 의미 색만 남기고 모양은 같은 체계 */
+.list-filter-chip.mgmt-need-chip{ color:var(--crm-btn-danger) !important; border-color:var(--crm-btn-danger-line) !important; background:#fff !important; }
+.list-filter-chip.mgmt-need-chip:hover{ background:var(--crm-btn-danger-soft) !important; }
+/* 탭 안 숫자 — 원형/pill 대신 작은 사각 badge */
+.crm-tab-count,
+.list-filter-chip .chip-count{
+  display:inline-flex; align-items:center; justify-content:center;
+  height:20px !important; min-width:20px !important; padding:0 6px !important;
+  margin-left:6px !important;
+  border-radius:6px !important;
+  background:#F1F5F9 !important; color:var(--crm-btn-text-muted) !important;
+  font-size:11.5px !important; font-weight:700 !important; line-height:1 !important;
+  box-sizing:border-box; box-shadow:none !important;
+}
+.crm-filter-tab.is-active .crm-tab-count,
+.list-filter-chip.is-active .chip-count{
+  background:rgba(27,68,128,.10) !important; color:var(--crm-btn-blue) !important;
+}
+/* 지도 아래 알람 탭(.sa-alarm-tab)은 후속 미팅 3탭 라운드에서 이미 같은 체계(30px/r8/연한 블루
+   active, 건수 badge r6)로 그려진다. 좁은 열용 @container 축소가 막히지 않게 여기서는 덮지 않는다. */
+
+/* ---- 8. 고객 상세 팝업 탭 — 34px / radius 8 / active 명확 -------------------- */
+.cdash2-tabbar, #chartTabBar{ gap:4px !important; }
+.cdash2-tab,
+#chartTabBar .cdash2-tab{
+  height:34px !important; min-height:34px !important;
+  padding:0 12px !important;
+  border-radius:var(--crm-btn-r-sm) !important;
+  border:1px solid transparent !important;
+  background:transparent !important;
+  color:var(--crm-btn-text-muted) !important;
+  font-size:12.5px !important; font-weight:600 !important;
+  box-shadow:none !important;
+}
+.cdash2-tab:hover,
+#chartTabBar .cdash2-tab:hover{ background:var(--crm-btn-hover-bg) !important; color:var(--crm-btn-text) !important; }
+.cdash2-tab.is-active,
+#chartTabBar .cdash2-tab.is-active{
+  background:var(--crm-btn-blue-soft) !important;
+  border-color:var(--crm-btn-blue-line) !important;
+  color:var(--crm-btn-blue) !important;
+}
+#chartTabBar .chip-count{ border-radius:6px !important; }
+
+/* ---- 9. 페이지네이션 — 32px / radius 8 ------------------------------------ */
+.page-btn,
+.crm-list-col .list-pagination .page-btn{
+  height:32px !important; min-height:32px !important; min-width:32px !important;
+  padding:0 8px !important;
+  border-radius:var(--crm-btn-r-sm) !important;
+  background:#fff !important; border:1px solid #DCE5EF !important;
+  color:var(--crm-btn-text) !important;
+  font-size:12.5px !important; font-weight:600 !important; box-shadow:none !important;
+}
+.page-btn:hover{ background:var(--crm-btn-hover-bg) !important; }
+.page-btn.active,
+.crm-list-col .list-pagination .page-btn.active{
+  background:var(--crm-btn-blue) !important; border-color:transparent !important; color:#fff !important;
+}
+
+/* ---- 10. 저장/취소처럼 나란히 놓인 버튼 — 폭 차이가 극단적이지 않게 --------- */
+.co-text-action, .btn-primary-action, .btn-secondary-action, .primary-btn, .secondary-btn,
+.delete-co-modal-cancel-btn, .delete-co-modal-confirm-btn, .crm-btn{ min-width:64px; }
+.crm-btn--sm,
+#cdashRelationsCard .co-text-action, #cdashInsightTagsCard .co-text-action,
+.cdash-header-actions .co-text-action, .doc-actions .co-text-action,
+.req-row-actions .co-text-action, .qtab-sec-btn{ min-width:0; }
+
+/* ---- 11. 상태 — hover/active/focus/disabled 한 규칙 ------------------------ */
+:is(.crm-btn, .crm-icon-btn, .crm-filter-tab, .list-add-btn, .btn-primary-action,
+    .btn-secondary-action, .primary-btn, .secondary-btn, .co-text-action, .gate-enter-btn,
+    .gate-diag-btn, .gnav-tool-btn, .workq-btn, .agr-meeting-btn, .agr-meeting-complete-btn,
+    .agr-date-chip, .reqmat-send-btn, .mailx-tool-btn, .mailx-account-btn,
+    .map-modal-retry-btn, .cloud-boot-retry-btn, .crm-map-btn, .map-open-btn,
+    .delete-co-modal-cancel-btn, .delete-co-modal-confirm-btn, .mail-tab-rename-save,
+    .mail-tab-rename-cancel, .l2l3v2-criteria-btn, .crv-insight-btn, .btn-danger-link,
+    .list-filter-chip, .sa-alarm-tab, .page-btn, .cdash-mini-edit, .chart-tag-del,
+    .chart-na-complete-btn, .workq-copy-btn, .mail-placeholder-btn,
+    .cdash2-header-insight-btn):active:not(:disabled){
+  transform:translateY(1px) !important;
+}
+:is(.crm-btn, .crm-icon-btn, .crm-filter-tab, .list-add-btn, .btn-primary-action,
+    .btn-secondary-action, .primary-btn, .secondary-btn, .co-text-action, .gate-enter-btn,
+    .gate-diag-btn, .gnav-tool-btn, .workq-btn, .agr-meeting-btn, .agr-meeting-complete-btn,
+    .agr-date-chip, .reqmat-send-btn, .mailx-tool-btn, .mailx-account-btn,
+    .map-modal-retry-btn, .cloud-boot-retry-btn, .crm-map-btn, .map-open-btn,
+    .delete-co-modal-cancel-btn, .mail-tab-rename-save, .mail-tab-rename-cancel,
+    .l2l3v2-criteria-btn, .crv-insight-btn, .list-filter-chip, .sa-alarm-tab, .cdash2-tab,
+    .page-btn, .chart-close-btn, .cdash2-header-close, .side-drawer-close, .rev-pop-close,
+    .map-modal-close, .map-embed-panel-close-btn, .cdash-header-popover-close,
+    .gnav-drawer-close, .gnav-hamburger, .kpi-trash-summary-btn, .list-filter-trash-btn,
+    .open-map-modal-btn, .cdash2-cosum-edit-btn, .cdash-mini-edit, .chart-tag-del,
+    .chart-na-complete-btn, .workq-copy-btn, .mail-placeholder-btn,
+    .cdash2-header-insight-btn):focus-visible{
+  outline:none !important;
+  box-shadow:var(--crm-btn-ring) !important;
+}
+:is(.crm-btn--danger, .co-text-action.danger, .co-text-action.is-danger, .btn-danger-link,
+    .delete-co-modal-confirm-btn):focus-visible{
+  outline:none !important;
+  box-shadow:var(--crm-btn-ring-danger) !important;
+}
+:is(.crm-btn, .crm-icon-btn, .crm-filter-tab, .list-add-btn, .btn-primary-action,
+    .btn-secondary-action, .primary-btn, .secondary-btn, .co-text-action, .gate-enter-btn,
+    .gate-diag-btn, .gnav-tool-btn, .workq-btn, .agr-meeting-btn, .agr-meeting-complete-btn,
+    .agr-date-chip, .reqmat-send-btn, .mailx-tool-btn, .mailx-account-btn,
+    .map-modal-retry-btn, .cloud-boot-retry-btn, .crm-map-btn, .map-open-btn,
+    .delete-co-modal-cancel-btn, .delete-co-modal-confirm-btn, .mail-tab-rename-save,
+    .mail-tab-rename-cancel, .l2l3v2-criteria-btn, .crv-insight-btn, .btn-danger-link,
+    .list-filter-chip, .sa-alarm-tab, .page-btn, .cdash-mini-edit, .chart-tag-del,
+    .chart-na-complete-btn, .workq-copy-btn, .mail-placeholder-btn,
+    .cdash2-header-insight-btn):disabled{
+  opacity:.5 !important;
+  cursor:not-allowed !important;
+  transform:none !important;
+  pointer-events:auto;
+}
+/* disabled면 hover에서 색이 바뀌지 않게 — 각 변형의 평상시 색으로 고정 */
+:is(.list-add-btn, .btn-primary-action, .co-text-action.primary, .primary-btn, .gate-enter-btn,
+    .workq-btn.primary, .agr-meeting-complete-btn, .reqmat-send-btn, .mail-tab-rename-save):disabled:hover{
+  background:var(--crm-btn-blue) !important;
+}
+:is(.co-text-action:not(.primary):not(.danger):not(.is-danger), .btn-secondary-action, .secondary-btn,
+    .workq-btn:not(.primary), .agr-meeting-btn, .mailx-tool-btn, .mailx-account-btn,
+    .map-modal-retry-btn, .cloud-boot-retry-btn, .gate-diag-btn, .delete-co-modal-cancel-btn,
+    .l2l3v2-criteria-btn, .crv-insight-btn, .page-btn, .list-filter-chip):disabled:hover{
+  background:#fff !important; border-color:var(--crm-btn-line) !important;
+}
+.delete-co-modal-confirm-btn:disabled:hover{ background:var(--crm-btn-danger) !important; }
+
+/* ---- 11-1. 범위(id/부모)로 더 강하게 걸려 있던 옛 규칙들 — 같은 체계로 맞춘다 ---- */
+/* 메일 설정: 앞 라운드의 #mailSettingsView 규칙이 34px / radius 11 / 700을 고정하고 있었다 */
+#mailSettingsView .btn-primary-action,
+#mailSettingsView .mailx-account-btn,
+#mailSettingsView .mailx-actionbar .mailx-tool-btn,
+.mail-tpl-save-bar .btn-primary-action{
+  height:var(--crm-btn-h) !important; min-height:var(--crm-btn-h) !important;
+  padding:0 15px !important;
+  border-radius:var(--crm-btn-r) !important;
+  font-size:var(--crm-btn-fs) !important; font-weight:var(--crm-btn-fw) !important;
+}
+#mailSettingsView .btn-primary-action{
+  background:var(--crm-btn-blue) !important; border-color:transparent !important; box-shadow:var(--crm-btn-shadow) !important;
+}
+#mailSettingsView .btn-primary-action:hover{ background:var(--crm-btn-blue-hover) !important; }
+/* 본문 변수 삽입 버튼 — pill 대신 compact 사각형 */
+.mailx-vars .mail-placeholder-btn,
+#mailSettingsView .mailx-toolbar .mail-placeholder-btn{
+  height:30px !important; min-height:30px !important; padding:0 10px !important;
+  border-radius:var(--crm-btn-r-sm) !important;
+  background:#fff !important; border:1px solid var(--crm-btn-line) !important; color:var(--crm-btn-text-sub) !important;
+  font-size:12px !important; font-weight:var(--crm-btn-fw) !important;
+}
+.mailx-vars .mail-placeholder-btn:hover,
+#mailSettingsView .mailx-toolbar .mail-placeholder-btn:hover{
+  background:var(--crm-btn-blue-soft) !important; border-color:var(--crm-btn-blue-line) !important; color:var(--crm-btn-blue) !important;
+}
+/* 지도 팝업 재시도 버튼 */
+.map-modal-overlay .map-modal-retry-btn{ border-radius:var(--crm-btn-r-sm) !important; }
+/* 필터 줄의 "더보기" 원형 버튼 → 아이콘 버튼 체계 */
+#crmFilterRow .list-filter-more-btn{
+  width:var(--crm-btn-icon) !important; height:var(--crm-btn-icon) !important;
+  border-radius:var(--crm-btn-r) !important;
+  border:1px solid var(--crm-btn-line) !important; background:#fff !important;
+  color:var(--crm-btn-text-muted) !important;
+}
+#crmFilterRow .list-filter-more-btn:hover,
+#crmFilterRow .list-filter-more-btn.is-open{
+  background:var(--crm-btn-blue-soft) !important; border-color:var(--crm-btn-blue-line) !important; color:var(--crm-btn-blue) !important;
+}
+/* 질문서 메일 발송 — 발송 성격이라 primary(§13). 클래스·data 속성은 그대로, 모양만. */
+.workq-btn[data-agr-do="mail-questionnaire"]{
+  background:var(--crm-btn-blue) !important; color:#fff !important; border-color:transparent !important;
+  box-shadow:var(--crm-btn-shadow) !important;
+}
+.workq-btn[data-agr-do="mail-questionnaire"]:hover{ background:var(--crm-btn-blue-hover) !important; color:#fff !important; }
+
+/* ---- 11-2. 선택형 작은 버튼(연도 탭·평가·요청자료 칩·지도 보기 전환) ----
+   pill/원형을 같은 사각 체계(compact)로. 선택 상태 색은 필터 탭과 같은 연한 블루. */
+.cdash-pour-year-tab,
+.reqmat-chip,
+.qsec-rate-btn,
+.crv-rate-btn{
+  display:inline-flex; align-items:center; justify-content:center; box-sizing:border-box;
+  height:28px !important; min-height:28px !important;
+  padding:0 10px !important;
+  border-radius:7px !important;
+  font-size:12px !important; font-weight:var(--crm-btn-fw) !important; line-height:1 !important;
+  font-family:inherit; cursor:pointer;
+  transition:var(--crm-btn-transition);
+}
+.crv-rate-btn{ width:auto !important; min-width:38px; }
+.cdash-pour-year-tab,
+.reqmat-chip,
+.qsec-rate-btn,
+.crv-rate-btn:not(.is-on){
+  background:#fff !important; border:1px solid #DCE5EF !important; color:var(--crm-btn-text-muted) !important;
+}
+.cdash-pour-year-tab:hover,
+.reqmat-chip:hover,
+.qsec-rate-btn:hover,
+.crv-rate-btn:not(.is-on):hover{ background:var(--crm-btn-hover-bg) !important; border-color:#C9D5E3 !important; color:var(--crm-btn-text) !important; }
+.cdash-pour-year-tab.active{
+  background:var(--crm-btn-blue-soft) !important; border-color:var(--crm-btn-blue-line) !important; color:var(--crm-btn-blue) !important;
+}
+.reqmat-chip{ color:var(--crm-btn-blue) !important; }
+.mapx-seg-btn{ border-radius:7px !important; font-weight:var(--crm-btn-fw) !important; transition:var(--crm-btn-transition); }
+.mapx-zoom-btn{ border-radius:var(--crm-btn-r-sm) !important; }
+:is(.cdash-pour-year-tab, .reqmat-chip, .qsec-rate-btn, .crv-rate-btn, .mapx-seg-btn, .mapx-zoom-btn,
+    #crmFilterRow .list-filter-more-btn):focus-visible{
+  outline:none !important; box-shadow:var(--crm-btn-ring) !important;
+}
+
+/* ---- 12. 작은 화면 — 잘림·겹침 없이, 주요 CTA는 터치 높이 확보 --------------- */
+@media (max-width: 640px){
+  .co-text-action, .btn-primary-action, .btn-secondary-action, .primary-btn, .secondary-btn,
+  .workq-btn, .agr-meeting-btn, .agr-meeting-complete-btn, .agr-date-chip, .mailx-tool-btn,
+  .delete-co-modal-cancel-btn, .delete-co-modal-confirm-btn, .crm-btn{
+    height:auto !important;
+    white-space:normal;
+    text-align:center;
+    line-height:1.25 !important;
+    padding-top:6px !important; padding-bottom:6px !important;
+  }
+  .list-add-btn, #crmAddBtn, .btn-primary-action, .co-text-action.primary, .primary-btn,
+  .crm-btn--primary{ min-height:40px !important; }
+  .list-filter-chip{ flex:none; }
+}
+
+/* ---- 13. 새 마크업용 공통 클래스 — 위 변형과 같은 값 ------------------------ */
+.crm-btn{
+  height:var(--crm-btn-h); padding:0 var(--crm-btn-pad);
+  border-radius:var(--crm-btn-r); border:1px solid var(--crm-btn-line);
+  background:#fff; color:var(--crm-btn-text);
+  font-size:var(--crm-btn-fs); font-weight:var(--crm-btn-fw);
+}
+.crm-btn:hover{ background:var(--crm-btn-hover-bg); }
 
 /* ==========================================================================
    §상단 헤더 미세조정 라운드(신규) — 로고와 메뉴가 헤더 공간에 비해 작아 보였다.
