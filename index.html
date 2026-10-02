@@ -3181,8 +3181,8 @@ html,body{background:radial-gradient(circle at 75% -10%,rgba(27,68,128,.05),tran
        상하 12 / 좌우 18. box-sizing:border-box라 이 padding은 100vh 안에 들어가고
        세로 스크롤을 만들지 않는다. */
     padding:var(--crm-frame-y) var(--crm-frame-x) !important;
-    --crm-frame-y:clamp(12px, 1.1vw, 20px);
-    --crm-frame-x:clamp(18px, 1.6vw, 28px);
+    --crm-frame-y:clamp(20px, calc(1.1vw + 8px), 28px); /* §배경 여백 미세조정: 기존 대비 +8px */
+    --crm-frame-x:clamp(26px, calc(1.6vw + 8px), 36px); /* §배경 여백 미세조정: 기존 대비 +8px */
   }
   body.crm-fixed-view .app{
     height:100%; max-height:none; overflow:hidden;
@@ -3224,7 +3224,7 @@ html,body{background:radial-gradient(circle at 75% -10%,rgba(27,68,128,.05),tran
   @media(max-height:940px){
     /* 낮은 화면에서는 세로 두께만 최소값으로 — 좌우는 그대로 둬서 네 면이
        한쪽만 확 얇아 보이지 않게 한다(세로 공간이 아쉬운 쪽은 상하뿐이다). */
-    body.crm-fixed-view{ --crm-frame-y:12px; }
+    body.crm-fixed-view{ --crm-frame-y:20px; } /* 기존 12px +8px */
     body.crm-fixed-view .gnav-inner{ padding:10px 18px !important; }
     body.crm-fixed-view .crm-main-grid{ margin-top:10px; gap:12px; padding:0 12px 10px !important; }
     body.crm-fixed-view .kpi-strip .kpi-item{ min-height:78px !important; padding:10px 12px !important; }
@@ -7671,8 +7671,8 @@ body{
        상하 12 / 좌우 18. box-sizing:border-box라 이 padding은 100vh 안에 들어가고
        세로 스크롤을 만들지 않는다. */
     padding:var(--crm-frame-y) var(--crm-frame-x) !important;
-    --crm-frame-y:clamp(12px, 1.1vw, 20px);
-    --crm-frame-x:clamp(18px, 1.6vw, 28px);
+    --crm-frame-y:clamp(20px, calc(1.1vw + 8px), 28px); /* §배경 여백 미세조정: 기존 대비 +8px */
+    --crm-frame-x:clamp(26px, calc(1.6vw + 8px), 36px); /* §배경 여백 미세조정: 기존 대비 +8px */
   }
   body.crm-page-shell .app{
     height:100%; max-height:none; overflow:hidden;
@@ -7795,7 +7795,7 @@ body{
   @media(max-height:940px){
     /* 낮은 화면에서는 세로 두께만 최소값으로 — 좌우는 그대로 둬서 네 면이
        한쪽만 확 얇아 보이지 않게 한다(세로 공간이 아쉬운 쪽은 상하뿐이다). */
-    body.crm-page-shell{ --crm-frame-y:12px; }
+    body.crm-page-shell{ --crm-frame-y:20px; } /* 기존 12px +8px */
     /* 낮은 화면의 헤더 압축은 예전에 고객관리 탭(.crm-fixed-view)에만 걸려 있어서,
        1440×900에서 탭을 옮기면 헤더가 55 ↔ 59px로 들썩였다. 세 탭에 똑같이 건다. */
     body.crm-page-shell .gnav-inner{ padding:10px 18px !important; }
