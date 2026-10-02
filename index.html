@@ -17727,6 +17727,115 @@ window.SHIN2_CRM_APP_INIT = function(){
   // 경우)의 실제 업체명으로도 찾을 수 있게(§요청 7 예시 "효덕산업"→샤인하우징) 호출부가
   // 이미 만들어 둔 relationIndex에서 O(1)로 조회해 넘긴다 — 매 행마다 전체 companies를
   // 다시 훑지 않는다(§성능 원칙).
+  /* §검색 표기 흔들림 라운드 — 영문 약칭 상호를 한글 발음으로도 찾게 한다.
+     "SH(주)"를 "에스에이치"로, "SJ건설"을 "에스제이건설"로 검색할 수 있게 하는
+     검색 전용 계층이다. 중요한 전제 두 가지:
+       (1) 원본 co.name / co.formerNames / companyId는 절대 안 건드린다. 별칭은
+           전부 런타임 계산이고 어디에도 저장하지 않는다(Firebase 쓰기 0).
+       (2) 업체 동일성 판정과는 완전히 분리한다. 여기서 같이 검색된다고 해서
+           같은 업체가 되는 게 아니다 — MOU/매출/시공실적 매칭은 기존 기준 그대로다. */
+  const COMPANY_SEARCH_LATIN_HANGUL = {
+    a:'에이', b:'비', c:'씨', d:'디', e:'이', f:'에프', g:'지', h:'에이치', i:'아이',
+    j:'제이', k:'케이', l:'엘', m:'엠', n:'엔', o:'오', p:'피', q:'큐', r:'알',
+    s:'에스', t:'티', u:'유', v:'브이', w:'더블유', x:'엑스', y:'와이', z:'지'
+  };
+  // 실제 데이터에 있는 표기 변형. 생성 규칙으로 이미 대부분 나오지만, 규칙이
+  // 건너뛰는 경우까지 확실히 덮으려고 명시해 둔다(검색 별칭 용도 한정).
+  const COMPANY_SEARCH_KNOWN_ALIASES = {
+    ing:['아이엔지'], nc:['엔씨'], enc:['이엔씨'], sh:['에스에이치'],
+    sj:['에스제이'], hj:['에이치제이'], msk:['엠에스케이']
+  };
+  /* 음차하면 안 되는 일반 영문 단어(§요청 6). TOP/POUR처럼 길이만 보면 약칭과
+     구분이 안 되는 것들만 막는다. NETFORM은 6자 이상이라 길이에서 이미 걸러진다. */
+  const COMPANY_SEARCH_LATIN_SKIP = new Set([
+    'top','pour','net','form','new','one','two','pro','plus','tech','home','city',
+    'land','best','gold','king','star','sun','air','eco','bio','max','art','win',
+    'and','the','for','inc','ltd','co','corp','group','soft','line','life','well'
+  ]);
+
+  // 검색 비교용으로만 쓰는 단순화. 법인 표기·공백·특수문자를 걷어내고 소문자로
+  // 맞춘다. 검색어와 업체명 양쪽에 똑같이 적용하므로 기존 검색 결과가 줄어들지 않는다.
+  function normalizeCompanySearchText(text){
+    let s = String(text == null ? '' : text);
+    try{ s = s.normalize('NFKC'); }catch(err){ /* 구형 브라우저 — 원문 그대로 진행 */ }
+    s = s.toLowerCase();
+    s = s.replace(/주식회사|유한회사|합자회사|합명회사/g, '');
+    s = s.replace(/[(\[{（［｛][주유재사부합][)\]}）］｝]/g, '');   // (주) (유) (재) …
+    s = s.replace(/[^0-9a-z가-힣]/g, '');
+    s = s.replace(/주$/, '');                                      // "SH주" → "sh"
+    return s;
+  }
+
+  // 영문 약칭 한 덩어리를 한글 발음으로. 약칭이 아니라고 판단하면 null.
+  function koreanizeLatinAcronym(token){
+    const t = String(token || '').toLowerCase();
+    if(!/^[a-z]{1,5}$/.test(t)) return null;
+    if(COMPANY_SEARCH_LATIN_SKIP.has(t)) return null;
+    let out = '';
+    for(const ch of t){
+      const k = COMPANY_SEARCH_LATIN_HANGUL[ch];
+      if(!k) return null;
+      out += k;
+    }
+    return out;
+  }
+
+  /* 업체명 한 개에서 검색 별칭 후보를 뽑는다. 원문의 연속 대문자 구간(SH, ENC)과
+     2자 이하 영문만 약칭으로 본다 — 소문자로 섞여 쓰인 일반 단어까지 음차하면
+     오탐만 늘기 때문이다. */
+  function collectCompanySearchAliasesFromName(name, bucket){
+    const raw = String(name == null ? '' : name).trim();
+    if(!raw) return;
+    const base = normalizeCompanySearchText(raw);
+    if(base) bucket.add(base);
+    let replaced = raw;
+    let changed = false;
+    const runs = raw.match(/[A-Za-z]+/g) || [];
+    runs.forEach(run=>{
+      const isAcronym = (run === run.toUpperCase() && run.length >= 2 && run.length <= 5) || run.length <= 2;
+      if(!isAcronym) return;
+      const low = run.toLowerCase();
+      const ko = koreanizeLatinAcronym(low);
+      const known = COMPANY_SEARCH_KNOWN_ALIASES[low] || [];
+      const readings = known.concat(ko ? [ko] : []);
+      if(!readings.length) return;
+      bucket.add(low);
+      readings.forEach(r=> bucket.add(normalizeCompanySearchText(r)));
+      // 업체명 전체를 음차한 형태도 넣는다 — "SJ건설" → "에스제이건설"
+      replaced = replaced.split(run).join(readings[0]);
+      changed = true;
+    });
+    if(changed){
+      const full = normalizeCompanySearchText(replaced);
+      if(full) bucket.add(full);
+    }
+  }
+
+  /* 업체 하나의 검색 별칭 배열. 원본명 + formerNames를 모두 같은 규칙으로 처리한다. */
+  function buildCompanySearchAliases(co){
+    const bucket = new Set();
+    if(!co) return [];
+    collectCompanySearchAliasesFromName(co.name, bucket);
+    (Array.isArray(co.formerNames) ? co.formerNames : []).forEach(n=> collectCompanySearchAliasesFromName(n, bucket));
+    bucket.delete('');
+    return Array.from(bucket);
+  }
+
+  /* 별칭 인덱스 캐시(§요청 10) — keypress마다 다시 만들지 않는다. 업체명이나
+     formerNames가 바뀐 업체만 다시 계산한다(이름 서명이 캐시 키). */
+  const companySearchAliasCache = new Map();
+  function companySearchAliasesFor(co){
+    if(!co) return [];
+    const id = String(co.id == null ? '' : co.id);
+    const sig = String(co.name || '') + '\u0001' + (Array.isArray(co.formerNames) ? co.formerNames.join('\u0002') : '');
+    if(!id) return buildCompanySearchAliases(co);
+    const hit = companySearchAliasCache.get(id);
+    if(hit && hit.sig === sig) return hit.aliases;
+    const aliases = buildCompanySearchAliases(co);
+    companySearchAliasCache.set(id, { sig, aliases });
+    return aliases;
+  }
+
   function matchesSearch(co, acts, q, parentNameHint){
     if(!q) return true;
     q = q.toLowerCase();
@@ -17735,7 +17844,12 @@ window.SHIN2_CRM_APP_INIT = function(){
       .concat(co.parentCompanyNameUnconfirmed ? [co.parentCompanyNameUnconfirmed] : [])
       .concat(parentNameHint ? [parentNameHint] : [])
       .concat(acts.map(a=> a.activityText)).join(' ').toLowerCase();
-    return hay.includes(q);
+    if(hay.includes(q)) return true;
+    // 기존 판정으로 못 찾은 경우에만 표기 변형(영문 약칭 ↔ 한글 발음)을 한 번 더 본다.
+    // 뒤에 덧붙이기만 하므로 지금까지 걸리던 검색 결과는 그대로 유지된다.
+    const nq = normalizeCompanySearchText(q);
+    if(!nq) return false;
+    return companySearchAliasesFor(co).some(alias=> alias.includes(nq));
   }
 
   // 엑셀 기준으로 분류됐지만 아직 CRM에는 등록되지 않은 업체를 기존 탭 안에 표시하는
@@ -23004,7 +23118,10 @@ window.SHIN2_CRM_APP_INIT = function(){
     return ymd;
   }
   window.SHIN2_CRM_DIAG = Object.assign(window.SHIN2_CRM_DIAG, {
-    mapCategoryAudit, mapRegionUnknownAudit, regionUnknownReportHtml, openRegionUnknownPdf
+    mapCategoryAudit, mapRegionUnknownAudit, regionUnknownReportHtml, openRegionUnknownPdf,
+    // 검색 표기 변형 확인용(읽기 전용). 예: SHIN2_CRM_DIAG.companySearchAliases({name:'SH(주)'})
+    normalizeCompanySearchText, buildCompanySearchAliases,
+    companySearchAliases: buildCompanySearchAliases
   });
   window.SHIN2_CRM_RESOLVE = Object.assign(window.SHIN2_CRM_RESOLVE || {}, {
     agreementProgress: resolveAgreementProgress,
@@ -24569,6 +24686,10 @@ window.SHIN2_CRM_APP_INIT = function(){
     const nameLower = name.toLowerCase();
     if(nameLower.startsWith(q)) return { entry, score:0, matchLabel:'업체명', matchValue:name };
     if(nameLower.includes(q)) return { entry, score:1, matchLabel:'업체명', matchValue:name };
+    const nq = normalizeCompanySearchText(q);
+    if(nq && companySearchAliasesFor(co).some(alias=> alias.includes(nq))){
+      return { entry, score:1.5, matchLabel:'영문/한글 표기', matchValue:name };
+    }
     const contacts = [co.repName, co.contactName].filter(Boolean).map(String);
     const contact = contacts.find(v=> v.toLowerCase().includes(q));
     if(contact) return { entry, score:2, matchLabel:'담당자', matchValue:contact };
