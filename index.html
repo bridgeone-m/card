@@ -446,7 +446,8 @@
   .npcmp-head{ display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:12px; }
   .npcmp-title-wrap{ display:flex; align-items:center; gap:6px; }
   .npcmp-title{ font-size:14.5px; font-weight:800; color:var(--text); }
-  .npcmp-info-btn{ display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; border:1px solid var(--line); background:#f4f7fb; color:var(--text-muted); font-size:11px; font-weight:700; cursor:pointer; padding:0; line-height:1; }
+  /* §버튼 모양 통일 라운드(신규) — 원형 → 둥근 네모(위 .col-help-btn과 같은 안내 버튼). */
+  .npcmp-info-btn{ display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:4px; border:1px solid var(--line); background:#f4f7fb; color:var(--text-muted); font-size:11px; font-weight:700; cursor:pointer; padding:0; line-height:1; }
   .npcmp-info-btn:hover{ background:var(--bg); }
   .npcmp-info-pop{ margin:0 0 12px; padding:10px 12px; background:#f4f7fb; border:1px solid var(--line); border-radius:8px; font-size:12px; color:var(--text-muted); line-height:1.55; }
   .npcmp-period-group{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
@@ -2695,7 +2696,8 @@
   .cdash-header-popover-close{
     position:fixed; top:24px; right:28px; z-index:361; border:0; background:#fff;
     color:var(--text-muted); font-size:19px; cursor:pointer; width:32px; height:32px;
-    border-radius:50%; display:flex; align-items:center; justify-content:center;
+    /* §버튼 모양 통일 라운드(신규) — 원형 → 둥근 네모(다른 닫기 버튼과 같게). */
+    border-radius:7px; display:flex; align-items:center; justify-content:center;
     box-shadow:0 2px 8px rgba(15,23,42,.18);
   }
   .cdash-header-popover-close:hover{ color:var(--text); }
@@ -3009,7 +3011,9 @@ html,body{background:radial-gradient(circle at 75% -10%,rgba(27,68,128,.05),tran
 .map-modal-overlay .map-modal-title{ font-size:17px !important; font-weight:800 !important; color:#142033 !important; line-height:1.3; }
 .map-modal-overlay .map-modal-subtitle{ font-size:12.5px !important; color:#6B778C !important; margin-top:2px; }
 .map-modal-overlay .map-modal-close{
-  margin-left:auto; flex:none; width:34px; height:34px; border-radius:50% !important;
+  /* §버튼 모양 통일 라운드(신규) — 이 버튼만 원형이라 앱의 다른 모든 닫기 버튼
+     (.chart-close-btn, radius 6px)과 따로 놀았다. 둥근 네모로 맞춘다. */
+  margin-left:auto; flex:none; width:34px; height:34px; border-radius:7px !important;
   border:1px solid #E6ECF3 !important; background:#fff !important; color:#6B778C !important;
   font-size:18px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center;
 }
@@ -3095,7 +3099,8 @@ html,body{background:radial-gradient(circle at 75% -10%,rgba(27,68,128,.05),tran
 .nf-card-action .nf-card-title{ font-size:16.5px; font-weight:700; color:#10233F; letter-spacing:-.02em; }
 .nf-card-action .nf-card-sub{ margin-top:2px; font-size:11.5px; font-weight:500; color:#7C899D; }
 .nf-card-action .open-map-modal-btn{
-  flex:none; width:34px; height:34px; padding:0 !important; border-radius:50%;
+  /* §버튼 모양 통일 라운드(신규) — 원형 → 둥근 네모. .kpi-trash-summary-btn과 같은 7px. */
+  flex:none; width:34px; height:34px; padding:0 !important; border-radius:7px;
   background-color:#FFFFFF !important;
   background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231B4480' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M7 17 17 7M7 7h10v10'/></svg>") !important;
   background-repeat:no-repeat !important; background-position:center !important; background-size:16px 16px !important;
@@ -5074,7 +5079,9 @@ table.pdf-doc-table thead{ background:var(--bg); }
 .mailx-tool-btn:hover{ background:#F5F9FF; border-color:#BFD2EC; color:var(--navy); }
 .mailx-hint{
   display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px;
-  border:1px solid #C9D6E8; border-radius:50%; background:#fff;
+  /* §버튼 모양 통일 라운드(신규) — 위 .col-help-btn과 같은 작은 안내 표시다.
+     16px 상자라 4px로 맞춘다(버튼이 아니라 <span>이라 버튼 점검에서 빠져 있었다). */
+  border:1px solid #C9D6E8; border-radius:4px; background:#fff;
   font-size:10px; font-weight:700; color:#7A8AA3; cursor:help;
 }
 .mail-body-editor{ min-height:260px!important; }
@@ -6505,7 +6512,9 @@ table.sales-import-table td{ padding:5px 8px; border-bottom:1px solid #EEF2F7; v
   display:inline-flex; align-items:center; justify-content:center;
   width:14px; height:14px; margin-left:4px; padding:0; flex:0 0 auto;
   vertical-align:middle; box-sizing:border-box;
-  border:1px solid #C9D6E8; border-radius:50%;
+  /* §버튼 모양 통일 라운드(신규) — 원형 → 둥근 네모. 14px 상자라 7px를 주면
+     다시 원이 되므로 비율을 맞춰 4px로 둔다. */
+  border:1px solid #C9D6E8; border-radius:4px;
   background:#fff; color:#7A8AA3;
   font-family:inherit; font-size:9.5px; font-weight:700; line-height:1;
   cursor:pointer; transition:background .15s ease, color .15s ease, border-color .15s ease;
