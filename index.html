@@ -9275,6 +9275,124 @@ body.crm-page-shell #mailSettingsView .mail-settings-header-wrap{
   .gate-card{ animation:none; }
   .gate-card .gate-enter-btn{ transition:none !important; }
 }
+
+/* ==========================================================================
+   §PDF 내보내기 레이아웃 개편 라운드(신규) — MOU 체결 업체 PDF 모달(.pdfx-wide)만.
+   왼쪽 지역 칩 컬럼 + 오른쪽 좁은 미리보기 → 상단 컨트롤 한 줄 + 아래 대형 미리보기.
+   같은 .pdf-export-* 클래스를 쓰는 "시공 아파트 PDF" 모달은 건드리지 않도록 전부
+   .pdfx-wide 범위로만 적는다. 문서 자체(pdfExportDocCss)는 이 규칙과 무관하다.
+   ========================================================================== */
+.pdfx-wide.pdf-export-panel{
+  width:100%; max-width:1480px;
+  height:calc(100vh - 40px); max-height:none !important;
+}
+.pdfx-wide .pdf-type-tabs{ padding:12px 20px 0; }
+.pdfx-wide .pdf-type-card{ padding:8px 12px; border-radius:10px; }
+.pdfx-wide .pdf-export-body{
+  flex:1 1 auto; min-height:0;
+  display:flex !important; flex-direction:column !important; align-items:stretch !important;
+  gap:8px; padding:12px 20px 16px !important; overflow:hidden !important;
+}
+
+/* 컨트롤 한 줄: [지역 ▾] [업체 선택 ▾] [업체 포함 여부 검색 …… 찾기] [PDF 저장] */
+.pdfx-wide .pdf-export-controls{
+  flex:none; display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+}
+.pdfx-wide .pdf-export-save{ margin-left:auto; }
+.pdfx-wide .pdf-confirm-inline{
+  flex:1 1 320px; min-width:220px; max-width:560px;
+  display:flex; align-items:center; gap:6px;
+}
+.pdfx-wide .pdf-confirm-inline input{
+  flex:1 1 auto; min-width:0; height:36px; box-sizing:border-box;
+  padding:0 12px; border:1px solid #D8E1EC; border-radius:9px;
+  font:inherit; font-size:13px; color:var(--text); background:#fff; outline:none;
+  transition:border-color .15s ease, box-shadow .15s ease;
+}
+.pdfx-wide .pdf-confirm-inline input::placeholder{ color:#97A4B6; }
+.pdfx-wide .pdf-confirm-inline input:focus{ border-color:#7FA5D6; box-shadow:0 0 0 3px rgba(27,68,128,.12); }
+
+/* 드롭다운(지역 / 업체 선택) */
+.pdfx-wide .pdf-dd{ position:relative; flex:none; }
+.pdfx-wide .pdf-dd-btn{
+  display:inline-flex; align-items:center; gap:7px;
+  height:36px; padding:0 11px 0 12px; box-sizing:border-box; max-width:300px;
+  background:#fff; border:1px solid #D8E1EC; border-radius:9px; cursor:pointer;
+  font:inherit; font-size:13px; font-weight:600; color:#334155; white-space:nowrap;
+  transition:background-color .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+.pdfx-wide .pdf-dd-btn:hover{ background:#F7F9FC; border-color:#C5D1E0; }
+.pdfx-wide .pdf-dd-btn:focus-visible{ outline:none; box-shadow:0 0 0 3px rgba(27,68,128,.16); }
+.pdfx-wide .pdf-dd.is-open .pdf-dd-btn{ border-color:#B9D0EE; background:#F4F8FD; }
+.pdfx-wide .pdf-dd-key{ color:#7C8BA1; font-weight:600; }
+.pdfx-wide .pdf-dd-val{ color:#17345F; overflow:hidden; text-overflow:ellipsis; }
+.pdfx-wide .pdf-dd-caret{ font-size:11px; color:#8494A8; transition:transform .15s ease; }
+.pdfx-wide .pdf-dd.is-open .pdf-dd-caret{ transform:rotate(180deg); }
+.pdfx-wide .pdf-dd-menu{
+  display:none; position:absolute; left:0; top:calc(100% + 6px); z-index:20;
+  background:#fff; border:1px solid #DCE5EF; border-radius:12px;
+  box-shadow:0 12px 32px rgba(23,52,95,.14), 0 2px 6px rgba(23,52,95,.06);
+  padding:10px; box-sizing:border-box;
+}
+.pdfx-wide .pdf-dd.is-open .pdf-dd-menu{ display:block; }
+.pdfx-wide .pdf-dd-menu-region{ width:300px; }
+.pdfx-wide .pdf-dd-menu-head{
+  display:flex; align-items:center; justify-content:space-between; gap:8px;
+  padding:0 2px 8px; margin-bottom:6px; border-bottom:1px solid #EEF2F7;
+  font-size:11.5px; color:#7C8BA1;
+}
+.pdfx-wide .pdf-dd-clear{
+  flex:none; height:26px; padding:0 9px; border-radius:7px; cursor:pointer;
+  border:1px solid #D8E1EC; background:#fff; color:#1B4480; font:inherit; font-size:11.5px; font-weight:600;
+}
+.pdfx-wide .pdf-dd-clear:hover:not(:disabled){ background:#EAF2FC; border-color:#B9D0EE; }
+.pdfx-wide .pdf-dd-clear:disabled{ opacity:.45; cursor:default; }
+.pdfx-wide .pdf-dd-checks{ display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:2px; }
+.pdfx-wide .pdf-dd-check{
+  display:flex; align-items:center; gap:7px; padding:6px 7px; border-radius:7px; cursor:pointer;
+  font-size:12.5px; color:#334155;
+}
+.pdfx-wide .pdf-dd-check:hover{ background:#F4F8FD; }
+.pdfx-wide .pdf-dd-check input{ margin:0; width:15px; height:15px; accent-color:#1B4480; cursor:pointer; }
+/* 내부용 업체 선택 — 기존 선택 블록을 그대로 넣고 폭·높이만 맞춘다 */
+.pdfx-wide .pdf-dd-menu-pick{ width:min(520px, calc(100vw - 72px)); }
+.pdfx-wide .pdf-dd-menu-pick .pdf-pick-block{ margin:0; }
+.pdfx-wide .pdf-dd-menu-pick .pdf-pick-list{ max-height:min(46vh, 380px); }
+
+/* 안내 한 줄 */
+.pdfx-wide .pdf-export-note{
+  flex:none; font-size:11.5px; line-height:1.45; color:#7C8BA1;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.pdfx-wide .pdf-export-note-warn{ color:#A15C07; font-weight:600; }
+.pdfx-wide .pdf-export-note-sub{ color:#9AA7B8; }
+.pdfx-wide #pdfExportConfirmResult{ flex:none; }
+.pdfx-wide #pdfExportConfirmResult:empty{ display:none; }
+/* 검색어가 없을 때 뜨는 기본 안내("왼쪽 조건…")는 위 안내 한 줄과 겹쳐 이 화면에서만 숨긴다. 결과는 그대로 보인다. */
+.pdfx-wide #pdfExportConfirmResult > .mail-settings-help:only-child{ display:none; }
+.pdfx-wide #pdfExportConfirmResult .pdf-confirm-result{ margin-top:0; max-height:120px; overflow:auto; }
+
+/* 대형 미리보기 — 남은 높이 전부, 내부 스크롤 */
+.pdfx-wide .pdf-preview-wrap{
+  flex:1 1 auto; min-height:0; width:100%; max-width:none; box-sizing:border-box;
+  max-height:none !important; overflow:auto !important;
+  border:1px solid #DCE5EF; border-radius:12px; background:#EDF0F5;
+}
+
+/* 작은 화면 — 컨트롤은 줄바꿈, 미리보기는 폭 100% + 충분한 높이, 모달 본문이 스크롤 */
+@media (max-width: 900px){
+  .pdfx-wide.pdf-export-panel{ height:calc(100vh - 24px); }
+  .pdfx-wide .pdf-export-body{ overflow-y:auto !important; padding:10px 14px 14px !important; }
+  .pdfx-wide .pdf-confirm-inline{ flex:1 1 100%; max-width:none; order:3; }
+  .pdfx-wide .pdf-export-save{ margin-left:auto; }
+  .pdfx-wide .pdf-export-note{ white-space:normal; }
+  .pdfx-wide .pdf-preview-wrap{ flex:none; height:auto; min-height:70vh; overflow:auto !important; }
+}
+@media (max-width: 560px){
+  .pdfx-wide .pdf-dd{ flex:1 1 auto; }
+  .pdfx-wide .pdf-dd-btn{ width:100%; max-width:none; }
+  .pdfx-wide .pdf-dd-menu-region{ width:min(300px, calc(100vw - 56px)); }
+}
 </style>
 </head>
 <body>
@@ -44249,61 +44367,84 @@ if(!window.__mapxRowDelegated){
         <div class="pdf-pick-meta">이 목록 ${cands.length}곳 중 ${selectedInView}곳 선택 · 전체 선택 ${pdfExportInternalSelected.size}곳 (삭제업체 제외)</div>
       </div>`;
   }
+  // §PDF 내보내기 레이아웃 개편 라운드(신규) — "상단 컨트롤 한 줄 + 아래 대형 미리보기".
+  // 왼쪽 지역 칩 17개(여러 줄 + 아래 큰 빈 공간)를 작은 체크박스 드롭다운으로 줄이고,
+  // 내부용 업체 선택 블록도 같은 드롭다운 안으로 옮겼다. 상태(pdfExportState.regions /
+  // pdfExportInternalSelected)·필터·PDF 생성 함수는 그대로이고, 바뀐 건 배치와 입력 방식뿐이다.
+  // 드롭다운이 열린 채로 체크하면 모달 전체를 다시 그리므로(기존과 같은 갱신 방식), 어느
+  // 드롭다운이 열려 있었는지만 기억했다가 다시 연다.
+  let pdfExportOpenDd = null;   // 'region' | 'pick' | null
+  function pdfExportRegionLabel(){
+    const picked = COMPANY_REGIONS.filter(r=> pdfExportState.regions.has(r));
+    if(!picked.length) return '전체 지역';
+    if(picked.length <= 2) return picked.join(', ');
+    return `${picked.slice(0, 2).join(', ')} +${picked.length - 2}`;
+  }
+  function pdfExportPickLabel(){
+    return `업체 선택 · ${pdfExportInternalSelected.size}곳`;
+  }
   function pdfExportModalHtml(){
-    const all = pdfExportBasePool();
-    const filtered = pdfExportFilteredCompanies();
     const typeCardsHtml = PDF_EXPORT_TYPES.map(t=> `
       <button type="button" class="pdf-type-card${pdfExportState.type===t.key?' is-active':''}" data-pdf-type="${t.key}">
         <div class="pdf-type-name">${esc(t.label)}</div>
         <div class="pdf-type-desc">${esc(t.desc)}</div>
       </button>`).join('');
-    const regionChipsHtml = COMPANY_REGIONS.map(r=> `
-      <button type="button" class="list-filter-chip${pdfExportState.regions.has(r)?' is-active':''}" data-pdf-region="${esc(r)}">${esc(r)}</button>`).join('');
+    const regionChecksHtml = COMPANY_REGIONS.map(r=> `
+      <label class="pdf-dd-check"><input type="checkbox" data-pdf-region-check="${esc(r)}" ${pdfExportState.regions.has(r) ? 'checked' : ''} /><span>${esc(r)}</span></label>`).join('');
+    const isInternal = pdfExportState.type === 'internal';
+    const noteHtml = isInternal
+      ? `<span class="pdf-export-note-warn">내부용 문서에는 사업자번호·이메일 등 개인정보가 포함될 수 있습니다. 외부 공유에 사용하지 마세요.</span>`
+      : `외부 발송용은 MOU 체결 업체만 대상이며(KPI "MOU 체결"과 같은 기준), FAX·이메일·사업자번호·협약일·자본금·비고·내부 메모 등 민감정보는 자동 제외됩니다.`;
     return `
       <div class="pi-overlay" id="pdfExportOverlay">
-        <div class="pi-panel pdf-export-panel" role="dialog" aria-modal="true" aria-label="PDF 내보내기">
+        <div class="pi-panel pdf-export-panel pdfx-wide" role="dialog" aria-modal="true" aria-label="PDF 내보내기">
           <div class="pi-head">
             <div class="pi-title">PDF 내보내기</div>
             <button type="button" class="chart-close-btn" id="pdfExportCloseBtn" aria-label="닫기">&times;</button>
           </div>
-          <!-- §PDF 내보내기 화면 정리 라운드(신규) — 사용자 요청: "내부용 / 외부 발송용
-               두 탭은 상단으로, 그리고 지역 · 오른쪽 업체 포함 여부 확인 검색 · 미리보기
-               이렇게만 필요하다." 출력 유형을 좌우 2단 바깥(제목 바로 아래)으로 빼서 가로
-               탭 2개로 놓고, 왼쪽 컬럼에서는 별도 검색창과 건수 줄을 뺐다.
-               대상 판정(pdfExportFilteredCompanies / getMouSignedCompanies)은 그대로다. -->
           <div class="pdf-type-tabs" role="tablist" aria-label="출력 유형">${typeCardsHtml}</div>
           <div class="pi-body pdf-export-body">
-            <div class="pdf-export-left">
-              <div class="co-form-field"><label>지역(복수 선택 가능, 선택 안 하면 전체)</label><div class="list-filter-row">${regionChipsHtml}</div></div>
-              ${pdfExportState.type === 'internal' ? pdfExportInternalPickerHtml() : ''}
-              ${pdfExportState.type === 'internal' ? `<div class="dist-list-warn">내부용 문서에는 사업자번호·이메일 등 개인정보가 포함될 수 있습니다. 외부 공유에 사용하지 마세요.</div>` : ''}
-              ${pdfExportState.type === 'external' ? `<div class="mail-settings-help">외부 발송용은 MOU 체결 업체만 대상이며(위 KPI "MOU 체결" 숫자와 같은 기준), FAX·이메일·사업자번호·협약일·자본금·비고·내부 메모 등 민감정보가 자동으로 제외됩니다. 이 지역 조건은 이 출력 화면에서만 적용되며, 창을 닫아도 뒤의 고객 목록에는 영향이 없습니다.</div>` : ''}
-            </div>
-            <div class="pdf-export-right">
-              <div class="pdf-export-actions">
-                <div class="pdf-preview-heading">미리보기</div>
-                <button type="button" class="co-text-action primary" id="pdfExportSaveBtn">PDF 저장</button>
-              </div>
-              <!-- §요청 6/7/16 "업체 포함 여부 검색" — 왼쪽 출력 조건(pdfExportState)과
-                   완전히 분리된 별도 상태(pdfExportConfirmQuery)로만 동작한다. 이 검색은
-                   출력 대상을 절대 바꾸지 않고(runPdfExportConfirmSearch는 pdfExportState를
-                   읽기만 하고 쓰지 않음), 미리보기 표에서 해당 행을 찾아 스크롤+강조만 한다. -->
-              <div class="pdf-confirm-box">
-                <div class="pdf-confirm-label">업체 포함 여부 확인 검색 <span class="pdf-confirm-label-sub">(이 검색은 출력 대상을 바꾸지 않습니다)</span></div>
-                <div class="pdf-confirm-input-row">
-                  <input type="text" id="pdfExportConfirmInput" value="${esc(pdfExportConfirmQuery)}" placeholder="예: 한솔시공사" />
-                  <button type="button" class="co-text-action" id="pdfExportConfirmBtn">찾기</button>
+            <div class="pdf-export-controls">
+              <!-- 지역 — 복수 선택, 선택 안 하면 전체(기존 pdfExportState.regions 그대로) -->
+              <div class="pdf-dd${pdfExportOpenDd === 'region' ? ' is-open' : ''}" data-pdf-dd="region">
+                <button type="button" class="pdf-dd-btn" data-pdf-dd-toggle="region" aria-haspopup="true" aria-expanded="${pdfExportOpenDd === 'region' ? 'true' : 'false'}" title="지역 선택(복수 선택 가능, 선택 안 하면 전체)">
+                  <span class="pdf-dd-key">지역</span><span class="pdf-dd-val">${esc(pdfExportRegionLabel())}</span><span class="pdf-dd-caret" aria-hidden="true">▾</span>
+                </button>
+                <div class="pdf-dd-menu pdf-dd-menu-region" role="group" aria-label="지역 선택">
+                  <div class="pdf-dd-menu-head">
+                    <span>복수 선택 가능 · 선택 안 하면 전체</span>
+                    <button type="button" class="pdf-dd-clear" data-pdf-region-clear="1" ${pdfExportState.regions.size ? '' : 'disabled'}>전체 지역</button>
+                  </div>
+                  <div class="pdf-dd-checks">${regionChecksHtml}</div>
                 </div>
-                <div id="pdfExportConfirmResult"></div>
               </div>
-              <div class="pdf-preview-wrap" id="pdfExportPreviewWrap"></div>
+              ${isInternal ? `
+              <!-- 내부용 업체 선택 — 기존 선택 블록(pdfExportInternalPickerHtml)을 그대로 넣는다 -->
+              <div class="pdf-dd${pdfExportOpenDd === 'pick' ? ' is-open' : ''}" data-pdf-dd="pick">
+                <button type="button" class="pdf-dd-btn" data-pdf-dd-toggle="pick" aria-haspopup="true" aria-expanded="${pdfExportOpenDd === 'pick' ? 'true' : 'false'}" title="내부용에 포함할 업체 선택(체크한 업체만 출력)">
+                  <span class="pdf-dd-val" id="pdfExportPickLabel">${esc(pdfExportPickLabel())}</span><span class="pdf-dd-caret" aria-hidden="true">▾</span>
+                </button>
+                <div class="pdf-dd-menu pdf-dd-menu-pick">${pdfExportInternalPickerHtml()}</div>
+              </div>` : ''}
+              <!-- §요청 6/7/16 "업체 포함 여부 검색" — 출력 조건(pdfExportState)과 완전히 분리된
+                   별도 상태(pdfExportConfirmQuery). 출력 대상을 바꾸지 않고, 미리보기에서 해당
+                   행을 찾아 스크롤+강조만 한다. -->
+              <div class="pdf-confirm-inline">
+                <input type="text" id="pdfExportConfirmInput" value="${esc(pdfExportConfirmQuery)}" placeholder="업체 포함 여부 확인 검색 (예: 한솔시공사)" aria-label="업체 포함 여부 확인 검색" />
+                <button type="button" class="co-text-action" id="pdfExportConfirmBtn">찾기</button>
+              </div>
+              <button type="button" class="co-text-action primary pdf-export-save" id="pdfExportSaveBtn">PDF 저장</button>
             </div>
+            <div class="pdf-export-note">${noteHtml} <span class="pdf-export-note-sub">· 업체 포함 여부 검색은 출력 대상을 바꾸지 않습니다 · 지역 조건은 이 화면에서만 적용됩니다</span></div>
+            <div id="pdfExportConfirmResult"></div>
+            <div class="pdf-preview-wrap" id="pdfExportPreviewWrap"></div>
           </div>
         </div>
       </div>`;
   }
   function closePdfExportModal(){
     const el = document.getElementById('pdfExportModalRoot');
+    pdfExportOpenDd = null;
     if(el) el.innerHTML = '';
   }
   function refreshPdfExportCount(){
@@ -44374,6 +44515,13 @@ if(!window.__mapxRowDelegated){
   }
   // 미리보기 축소 배율 — A4 폭이 모달 안에 들어가도록 줄이고, 줄어든 만큼 액자 높이를
   // 다시 잡아준다(transform은 레이아웃 크기를 바꾸지 않기 때문).
+  const PDF_PREVIEW_MAX_SCALE = 1.3;   // 미리보기 화면 배율 상한(실제 PDF 크기와 무관)
+  let pdfPreviewResizeTimer = null;
+  window.addEventListener('resize', ()=>{
+    if(!document.getElementById('pdfExportPreviewCanvas')) return;
+    clearTimeout(pdfPreviewResizeTimer);
+    pdfPreviewResizeTimer = setTimeout(()=>{ if(document.getElementById('pdfExportPreviewCanvas')) renderPdfExportPreview(); }, 200);
+  });
   function pdfExportFitPreview(ctx){
     const canvas = document.getElementById('pdfExportPreviewCanvas');
     const scaler = document.getElementById('pdfExportPreviewScaler');
@@ -44381,7 +44529,7 @@ if(!window.__mapxRowDelegated){
     const pageW = ctx.geo.w * pdfExportPxPerMm();
     const avail = canvas.clientWidth - 24;
     if(!(pageW > 0) || !(avail > 0)) return;
-    const k = Math.min(1, avail / pageW);
+    const k = Math.min(PDF_PREVIEW_MAX_SCALE, avail / pageW);
     scaler.style.transform = `scale(${k})`;
     scaler.style.left = Math.max(12, (canvas.clientWidth - pageW * k) / 2) + 'px';
     canvas.style.height = (scaler.scrollHeight * k + 32) + 'px';
@@ -44478,6 +44626,35 @@ if(!window.__mapxRowDelegated){
       pdfExportHighlightRow(result.companies[0].id);
     }
   }
+  // 지역/업체 선택 드롭다운 열고 닫기. 오버레이는 렌더할 때마다 새로 만들어지므로 여기 붙인
+  // 리스너는 쌓이지 않는다. 출력 상태는 건드리지 않고 화면 표시만 바꾼다.
+  function bindPdfExportDropdowns(root){
+    const overlay = document.getElementById('pdfExportOverlay');
+    const sync = ()=> root.querySelectorAll('[data-pdf-dd]').forEach(dd=>{
+      const on = dd.getAttribute('data-pdf-dd') === pdfExportOpenDd;
+      dd.classList.toggle('is-open', on);
+      const b = dd.querySelector('[data-pdf-dd-toggle]');
+      if(b) b.setAttribute('aria-expanded', on ? 'true' : 'false');
+    });
+    root.querySelectorAll('[data-pdf-dd-toggle]').forEach(btn=> btn.addEventListener('click', ()=>{
+      const key = btn.getAttribute('data-pdf-dd-toggle');
+      pdfExportOpenDd = pdfExportOpenDd === key ? null : key;
+      sync();
+    }));
+    if(!overlay) return;
+    overlay.addEventListener('mousedown', (e)=>{
+      if(!pdfExportOpenDd || e.target.closest('[data-pdf-dd]')) return;
+      pdfExportOpenDd = null;
+      sync();
+    });
+    // 내부용 업체 체크 — 기존 핸들러(bindPdfExportPickControls)가 상태·미리보기를 갱신하고,
+    // 여기서는 드롭다운 버튼의 "N곳" 글자만 맞춘다.
+    overlay.addEventListener('change', (e)=>{
+      if(!e.target.closest('[data-pdf-pick]')) return;
+      const label = document.getElementById('pdfExportPickLabel');
+      if(label) label.textContent = pdfExportPickLabel();
+    });
+  }
   function renderPdfExportModal(){
     const root = document.getElementById('pdfExportModalRoot');
     if(!root) return;
@@ -44487,13 +44664,21 @@ if(!window.__mapxRowDelegated){
     bindEscClose(closePdfExportModal);
     root.querySelectorAll('[data-pdf-type]').forEach(btn=> btn.addEventListener('click', ()=>{
       pdfExportState.type = btn.getAttribute('data-pdf-type');
+      pdfExportOpenDd = null;
       renderPdfExportModal();
     }));
-    root.querySelectorAll('[data-pdf-region]').forEach(btn=> btn.addEventListener('click', ()=>{
-      const r = btn.getAttribute('data-pdf-region');
-      if(pdfExportState.regions.has(r)) pdfExportState.regions.delete(r); else pdfExportState.regions.add(r);
+    // 지역 — 예전 칩 클릭과 같은 상태 변경(pdfExportState.regions 추가/삭제) + 같은 전체 재렌더.
+    root.querySelectorAll('[data-pdf-region-check]').forEach(box=> box.addEventListener('change', ()=>{
+      const r = box.getAttribute('data-pdf-region-check');
+      if(box.checked) pdfExportState.regions.add(r); else pdfExportState.regions.delete(r);
       renderPdfExportModal();
     }));
+    const regionClearBtn = root.querySelector('[data-pdf-region-clear]');
+    if(regionClearBtn) regionClearBtn.addEventListener('click', ()=>{
+      pdfExportState.regions.clear();   // 선택 안 함 = 전체(기존 의미 그대로)
+      renderPdfExportModal();
+    });
+    bindPdfExportDropdowns(root);
     // §PDF 대상 선정 재구성 라운드(신규) — 내부용 업체 체크. 체크 하나로 목록 전체를
     // 다시 그리면 스크롤 위치가 튀므로, 개별 체크는 상태만 바꾸고 건수·미리보기만 갱신한다.
     bindPdfExportPickControls(root);
@@ -44536,6 +44721,7 @@ if(!window.__mapxRowDelegated){
     // 내부용 선택은 이 창에서만 쓰는 상태라 열 때마다 비운다(저장하지 않음).
     pdfExportInternalSelected = new Set();
     pdfExportConfirmQuery = '';
+    pdfExportOpenDd = null;
     renderPdfExportModal();
   }
   // §4 "미리보기는 저장/발송/업로드를 실행하면 안 됨" — PDF 저장은 완전히 별도 함수이며,
