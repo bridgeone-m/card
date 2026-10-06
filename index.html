@@ -9981,49 +9981,6 @@ body.crm-page-shell #mailSettingsView .mail-settings-header-wrap{
   #mapDistributionModalRoot .map-modal-infocol{ grid-column:1 !important; grid-row:4 !important; min-height:220px !important; }
 }
 
-
-/* ===== 지도 왼쪽 + 검색결과 오른쪽 목록형 최종 보정 ===== */
-.sa-map-searchbar{display:flex;gap:8px;align-items:center;margin-top:2px;}
-.sa-map-search-input{flex:1 1 auto;min-width:0;height:40px;padding:0 12px;border:1px solid var(--border-soft);border-radius:10px;background:#fff;color:var(--text);font-size:12.5px;outline:none;}
-.sa-map-search-input:focus{border-color:var(--navy-300);box-shadow:0 0 0 3px rgba(27,68,128,.08);}
-.sa-map-search-btn{flex:none;height:40px;padding:0 14px;border:0;border-radius:10px;background:var(--navy-700);color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;}
-
-@media(min-width:1101px){
-  body.crm-fixed-view .crm-main-grid,.crm-main-grid{grid-template-columns:minmax(340px,32%) minmax(0,1fr)!important;}
-  .crm-main-grid .nf-side-right{grid-column:1!important;grid-row:2!important;}
-  .crm-main-grid .crm-list-col{grid-column:2!important;grid-row:2!important;}
-}
-
-/* 검색 결과는 별도 큰 팝업처럼 보이지 않고, 오른쪽 업체목록 자리를 덮는 결과 패널처럼 표시 */
-#mapDistributionModalRoot .map-modal-overlay{
-  position:fixed!important;inset:0!important;background:transparent!important;padding:0!important;
-  display:block!important;pointer-events:none!important;z-index:var(--z-modal)!important;
-}
-#mapDistributionModalRoot .map-modal-panel{
-  pointer-events:auto!important;position:absolute!important;
-  top:176px!important;right:max(34px,calc((100vw - 1650px)/2 + 36px))!important;bottom:28px!important;
-  width:min(1080px,64vw)!important;height:auto!important;max-height:none!important;margin:0!important;
-  border:1px solid var(--border-soft)!important;border-radius:16px!important;background:#fff!important;
-  box-shadow:0 14px 34px rgba(20,43,78,.12)!important;overflow:hidden!important;
-}
-#mapDistributionModalRoot .map-modal-head{padding:14px 18px 10px!important;}
-#mapDistributionModalRoot .map-modal-tabs{display:none!important;}
-#mapDistributionModalRoot .map-modal-panel > #mapModalBody{
-  display:flex!important;flex-direction:column!important;padding:10px 16px 16px!important;overflow:hidden!important;gap:8px!important;
-}
-#mapDistributionModalRoot .map-modal-body-main{display:block!important;min-height:0!important;overflow:hidden!important;flex:1 1 auto!important;}
-#mapDistributionModalRoot .map-modal-mapcol{display:none!important;}
-#mapDistributionModalRoot .map-modal-infocol{
-  display:flex!important;flex-direction:column!important;width:100%!important;height:100%!important;overflow:hidden!important;padding:0!important;gap:10px!important;
-}
-#mapDistributionModalRoot .map-sidelist-block{flex:1 1 auto!important;min-height:0!important;overflow:hidden!important;}
-#mapDistributionModalRoot .map-sidelist-body{flex:1 1 auto!important;min-height:0!important;overflow-y:auto!important;padding-right:4px!important;}
-#mapDistributionModalRoot .map-modal-filters{display:flex!important;flex-wrap:wrap!important;gap:8px!important;padding:0 0 10px!important;border-bottom:1px solid #EEF2F7!important;background:#fff!important;}
-#mapDistributionModalRoot .map-modal-filters .map-search-field{display:none!important;}
-#mapDistributionModalRoot .map-apt-summary{flex:none!important;}
-@media(max-width:1100px){
-  #mapDistributionModalRoot .map-modal-panel{top:110px!important;left:10px!important;right:10px!important;bottom:10px!important;width:auto!important;}
-}
 </style>
 </head>
 <body>
@@ -19847,10 +19804,6 @@ window.SHIN2_CRM_APP_INIT = function(){
           <button type="button" class="sa-map-mode-btn" data-mini-map-tab="apartment" role="tab">아파트 시공</button>
           <button type="button" class="sa-map-mode-btn" data-mini-map-tab="near" role="tab">근처 시공</button>
         </div>
-        <div class="sa-map-searchbar">
-          <input type="text" id="crmMiniMapSearch" class="sa-map-search-input" placeholder="시공사명 · 지역 검색" autocomplete="off" />
-          <button type="button" id="crmMiniMapSearchBtn" class="sa-map-search-btn">검색</button>
-        </div>
         <div class="sa-map-wrap">
           <div class="sa-map-canvas" id="crmMiniMap">
             <div class="sa-map-loading">지도를 불러오는 중…</div>
@@ -19864,51 +19817,25 @@ window.SHIN2_CRM_APP_INIT = function(){
 
     // 기존 지도 검색 로직을 그대로 재사용한다. 메인에서는 검색 종류만 고르고,
     // 결과가 많아도 본문을 밀지 않도록 오른쪽 드로어(기존 map modal)에 표시한다.
-    let miniMapMode = 'company';
-    const miniSearch = document.getElementById('crmMiniMapSearch');
-    const setMiniMode = (mode)=>{
-      miniMapMode = mode || 'company';
-      wrap.querySelectorAll('[data-mini-map-tab]').forEach(b=> b.classList.toggle('is-active', b.getAttribute('data-mini-map-tab') === miniMapMode));
-      if(miniSearch){
-        miniSearch.value = '';
-        miniSearch.placeholder = miniMapMode === 'company' ? '시공사명 · 지역 검색'
-          : (miniMapMode === 'apartment' ? '아파트명 · 지역 검색' : '주소 · 장소명으로 근처 시공 검색');
-      }
-    };
-    const openMapMode = (mode, query='')=>{
+    const openMapMode = (mode)=>{
       try{
         openMapDistributionModal();
+        // modal shell은 동기적으로 먼저 만들어지므로 기존 탭 버튼을 클릭해
+        // 기존 데이터/필터/지오코딩/거리 계산 로직을 그대로 탄다.
         requestAnimationFrame(()=>{
           const target = document.querySelector(`#mapDistributionModalRoot [data-map-tab="${mode}"]`);
           if(target && !target.classList.contains('is-active')) target.click();
-          requestAnimationFrame(()=>{
-            const q = String(query || '').trim();
-            if(mode === 'company'){
-              const input = document.getElementById('mapFilterSearch');
-              if(input){ input.value = q; input.dispatchEvent(new Event('input',{bubbles:true})); }
-            }else if(mode === 'apartment'){
-              const input = document.getElementById('aptFilterSearch');
-              if(input){ input.value = q; input.dispatchEvent(new Event('input',{bubbles:true})); }
-            }else if(mode === 'near'){
-              const input = document.getElementById('aptNearSearchInput');
-              if(input){ input.value = q; }
-              if(q){ const go = document.getElementById('aptNearSearchBtn'); if(go) go.click(); }
-            }
-          });
         });
       }catch(err){ console.warn('지도 검색 열기 실패:', err); }
     };
     wrap.querySelectorAll('[data-mini-map-tab]').forEach(btn=> btn.addEventListener('click', ()=>{
-      setMiniMode(btn.getAttribute('data-mini-map-tab') || 'company');
+      wrap.querySelectorAll('[data-mini-map-tab]').forEach(b=> b.classList.toggle('is-active', b === btn));
+      openMapMode(btn.getAttribute('data-mini-map-tab') || 'company');
     }));
-    const runMiniSearch = ()=> openMapMode(miniMapMode, miniSearch ? miniSearch.value : '');
-    const miniSearchBtn = document.getElementById('crmMiniMapSearchBtn');
-    if(miniSearchBtn) miniSearchBtn.addEventListener('click', runMiniSearch);
-    if(miniSearch) miniSearch.addEventListener('keydown', e=>{ if(e.key === 'Enter'){ e.preventDefault(); runMiniSearch(); } });
     const openBtn = document.getElementById('crmMiniMapOpen');
-    if(openBtn) openBtn.addEventListener('click', ()=> openMapMode(miniMapMode, miniSearch ? miniSearch.value : ''));
+    if(openBtn) openBtn.addEventListener('click', ()=> openMapMode('company'));
     const hit = document.getElementById('crmMiniMapHit');
-    if(hit) hit.addEventListener('click', ()=> openMapMode(miniMapMode, miniSearch ? miniSearch.value : ''));
+    if(hit) hit.addEventListener('click', ()=> openMapMode('company'));
   }
 
   // ---- 미니 지도 ----------------------------------------------------------
@@ -42638,13 +42565,25 @@ window.SHIN2_CRM_APP_INIT = function(){
     // 그대로 재사용한다(§요청 "기존 계산 함수 재사용, 새 판정 기준 금지").
     return matchesFilter(entry.co, entry.progress, key);
   }
+  // §지도 지역검색 보정 — 메인 지도 검색에서 "수원"처럼 시/군/구를 검색했을 때
+  // 업체명이 아니라 위치 기준으로도 목록이 나와야 한다. 기존에는 상호명/원문 주소만
+  // 비교해서, 주소 표기가 비어 있거나 정규화된 region/sigungu만 가진 업체가 0건으로
+  // 떨어질 수 있었다. 저장 데이터는 건드리지 않고 지도 entry가 이미 계산한 지역값과
+  // 고객 원본의 지역 보조 필드까지 검색 대상에 포함한다.
+  function normalizeMapSearchText(v){
+    return String(v == null ? '' : v).trim().toLowerCase().replace(/\s+/g, '');
+  }
   function mapEntryMatchesSearch(entry, q){
     if(!q) return true;
-    const norm = q.trim().toLowerCase();
+    const norm = normalizeMapSearchText(q);
     if(!norm) return true;
-    const name = String(entry.co.name || '').toLowerCase();
-    const addr = String(entry.co.address || '').toLowerCase();
-    return name.includes(norm) || addr.includes(norm);
+    const co = (entry && entry.co) || {};
+    const haystacks = [
+      co.name, co.address,
+      entry && entry.region, entry && entry.sigungu,
+      co.region, co.city, co.area, co.sido, co.sigungu, co.district
+    ];
+    return haystacks.some(v=> normalizeMapSearchText(v).includes(norm));
   }
   function applyMapFilters(entries){
     return entries.filter(e=>
