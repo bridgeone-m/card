@@ -7555,31 +7555,59 @@ body{
   flex:0 0 auto; min-height:0; display:flex; flex-direction:column; gap:8px;
   padding-top:10px; border-top:1px solid var(--border-soft); overflow:hidden;
 }
-.sa-alarm-tabs{ display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
+/* §후속 미팅 3탭 라운드 — 탭 3개를 한 줄에(rounded rectangle, pill 아님). 폭은 글자 길이
+   + 남는 폭을 고르게 나누고, 열이 좁으면(@container) 글자·여백만 한 단계 줄인다.
+   그래도 모자라면 라벨만 말줄임되고 건수는 항상 보인다. 지연 탭만 아주 약한 red 점. */
+.sa-alarm{ container-type:inline-size; }
+.sa-alarm-tabs{ display:flex; gap:4px; }
 .sa-alarm-tab{
-  display:inline-flex; align-items:center; gap:5px;
-  padding:4px 10px; border:1px solid transparent; border-radius:999px;
-  background:none; cursor:pointer; font-family:inherit;
-  font-size:11.5px; font-weight:700; color:#8494A8; letter-spacing:-.02em; white-space:nowrap;
+  flex:1 1 auto; display:inline-flex; align-items:center; justify-content:center; gap:5px; min-width:0;
+  height:30px; padding:0 8px; box-sizing:border-box;
+  border:1px solid #DCE5EF; border-radius:8px;
+  background:#fff; cursor:pointer; font-family:inherit;
+  font-size:11.5px; font-weight:600; color:#64748B; letter-spacing:-.02em; white-space:nowrap;
+  transition:background-color .15s ease, border-color .15s ease, color .15s ease;
 }
-.sa-alarm-tab:hover{ background:var(--bg-soft); }
+.sa-alarm-tab:hover{ background:#F7F9FC; border-color:#C9D5E3; color:#334155; }
 .sa-alarm-tab.is-active{
-  color:var(--navy-text); background:var(--navy-100); border-color:var(--navy-200);
+  color:var(--primary-navy); background:#EAF2FC; border-color:#B9D0EE;
 }
-.sa-alarm-dot{ flex:none; width:5px; height:5px; border-radius:50%; background:#DC2626; }
-.sa-alarm-tab-num{ font-variant-numeric:tabular-nums; font-weight:750; color:#17324D; }
-.sa-alarm-tab:not(.is-active) .sa-alarm-tab-num{ color:#8494A8; }
+.sa-alarm-tab:focus-visible{ outline:none; box-shadow:0 0 0 3px rgba(27,68,128,.16); }
+.sa-alarm-tab-label{ min-width:0; overflow:hidden; text-overflow:ellipsis; }
+.sa-alarm-dot{ flex:none; width:5px; height:5px; border-radius:50%; background:#D9534F; opacity:.85; }
+.sa-alarm-tab-num{
+  flex:none; display:inline-flex; align-items:center; justify-content:center;
+  min-width:18px; height:18px; padding:0 5px; box-sizing:border-box; border-radius:6px;
+  background:#F1F5F9; color:#64748B;
+  font-size:11px; font-weight:700; font-variant-numeric:tabular-nums; line-height:1;
+}
+.sa-alarm-tab.is-active .sa-alarm-tab-num{ background:rgba(27,68,128,.10); color:var(--primary-navy); }
+@container (max-width: 372px){
+  .sa-alarm-tabs{ gap:3px; }
+  .sa-alarm-tab{ padding:0 5px; gap:3px; font-size:11px; letter-spacing:-.04em; }
+  .sa-alarm-tab-num{ min-width:16px; padding:0 4px; font-size:10.5px; }
+}
+.sa-alarm-tab.is-delay.is-active .sa-alarm-tab-num{ background:rgba(194,65,65,.09); color:#B03A3A; }
 .sa-alarm-body{ display:flex; flex-direction:column; gap:5px; min-height:0; overflow:hidden; }
 .sa-alarm-desc{ font-size:11px; color:#95A2B4; }
 .sa-alarm-list{ display:flex; flex-direction:column; min-height:0; overflow:hidden; }
 .sa-alarm-row{
   display:grid; grid-template-columns:minmax(0,1fr) auto 10px; align-items:center; gap:8px;
-  width:100%; padding:5px 2px; border:0; background:none; cursor:pointer; text-align:left;
-  border-radius:6px; font:inherit;
+  width:100%; min-height:0; padding:4px 4px; border:0; background:none; cursor:pointer; text-align:left;
+  border-radius:7px; font:inherit; line-height:1.25;
 }
-.sa-alarm-row:hover{ background:var(--bg-soft); }
-.sa-alarm-name{ font-size:11.5px; font-weight:650; color:#3D4D64; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.sa-alarm-days{ font-size:11.5px; font-weight:700; color:#C0392B; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.sa-alarm-row + .sa-alarm-row{ border-top:1px solid #F1F4F8; }
+.sa-alarm-row:hover{ background:#F7F9FC; }
+.sa-alarm-row:focus-visible{ outline:none; box-shadow:0 0 0 3px rgba(27,68,128,.16); }
+.sa-alarm-main{ display:flex; flex-direction:column; gap:1px; min-width:0; }
+.sa-alarm-name{ font-size:12px; font-weight:650; color:#24364F; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sa-alarm-sub{
+  display:block; font-size:10.5px; line-height:1.2; color:#7E8CA0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  font-variant-numeric:tabular-nums;
+}
+.sa-alarm-sub i{ font-style:normal; margin:0 4px; color:#C3CCD8; }
+.sa-alarm-days{ font-size:11px; font-weight:650; color:#64748B; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.sa-alarm-days.is-delay{ color:#B03A3A; font-weight:700; }
 .sa-alarm-go{ font-size:12px; color:#B6C0CE; }
 .sa-alarm-more{
   align-self:flex-start; margin-top:1px; padding:0 2px; border:0; background:none; cursor:pointer;
@@ -18058,7 +18086,6 @@ window.SHIN2_CRM_APP_INIT = function(){
      렌더할 때마다 다시 계산하므로, 일정이 등록되거나 회신이 오면 다음 렌더에서
      저절로 빠진다(buildProgressStages/computeWillpowerBase와 같은 원칙). */
   const M2_NO_REPLY_DAYS = 7;          // 발송 후 며칠부터 "지연"으로 볼지
-  const M2_NO_REPLY_PREVIEW = 5;       // 메인 카드에 최대 몇 건까지 보여줄지
 
   // ts(발송 시각)를 한국 날짜 00:00로 내린다 — getSeoulTodayDateOnly와 같은 방식이라
   // 두 값의 차이가 그대로 "달력일"이 된다. 시각까지 섞어서 빼면 오후에 보낸 메일이
@@ -18125,50 +18152,167 @@ window.SHIN2_CRM_APP_INIT = function(){
 
   /* 지도 아래 알람 탭 — 지도와는 별개 영역이다. 지역 막대를 걷어낸 자리를 그대로
      쓰고, 위에는 지도만 남는다. 탭 머리글 + 그 아래 내용 한 칸 구조라 알람 종류가
-     늘어도 ALARM_TABS에 한 줄만 더하면 된다(지금은 한 종류).
-     0건 문구도 이 탭 안에서만 뜬다 — 지도 바로 밑에 맨 문장이 떠 있지 않다. */
+     늘어도 ALARM_TABS에 한 줄만 더하면 된다.
+     0건 문구도 이 탭 안에서만 뜬다 — 지도 바로 밑에 맨 문장이 떠 있지 않다.
+
+     §후속 미팅 3탭 라운드(신규) — "2차 미팅 회신 지연" 하나였던 것을 1차 미팅 필요 /
+     2차 미팅 필요 / 2차 미팅 회신 지연 세 탭으로 넓혔다. 판정은 새로 만들지 않았다:
+       · 1차/2차 미팅 필요 = MOU 진행상황 화면의 computeWorkQueue() 결과 중
+         type==='m1'(1차미팅 잡기) / type==='m2'(2차미팅 잡기) 항목 그대로.
+         (삭제 업체는 loadActiveCompanies, 협약 종료는 buildWorkQueueItem 첫 줄,
+          MOU 완료·미팅 완료·일정 등록(m1Scheduled/m2Scheduled로 분리)은
+          classifyWorkQueueMeeting이 이미 걸러낸다.)
+       · 2차 미팅 회신 지연 = 기존 buildSecondMeetingNoReplyRows() 그대로.
+     메일 발송일은 mailLogForType(기존 발송 기록)을 읽기만 하고, 최근 접촉일은
+     D.buildActivitiesIndex()(업체별 최신순)의 첫 기록을 읽기만 한다. 아무것도 쓰지 않는다. */
+  const ALARM_PREVIEW = 4;             // 탭마다 메인에 보여줄 최대 건수(나머지는 "전체 보기")
+
+  // MM.DD — 행 안에서 짧게 쓰는 날짜
+  function fmtAlarmMd(ts){
+    if(ts == null || !Number.isFinite(ts)) return '';
+    const d = new Date(ts);
+    return String(d.getMonth() + 1).padStart(2, '0') + '.' + String(d.getDate()).padStart(2, '0');
+  }
+  // 해당 유형 메일의 "가장 최근 성공 발송" 시각. 없으면 null.
+  function latestSentMailTs(co, types){
+    let last = null;
+    types.forEach(t=>{
+      mailLogForType(co, t).forEach(l=>{
+        if(!l || l.status !== 'sent' || !l.sentAt) return;
+        const ts = new Date(l.sentAt).getTime();
+        if(Number.isFinite(ts) && (last == null || ts > last)) last = ts;
+      });
+    });
+    return last;
+  }
+  function latestContactTs(actsIdx, co){
+    const acts = actsIdx ? (actsIdx.get(String(co.id)) || []) : [];
+    const ts = acts.length ? new Date(acts[0].createdAt).getTime() : NaN;
+    return Number.isFinite(ts) ? ts : null;
+  }
+  // 오래 기다린 업체가 위로. 날짜를 알 수 없는 업체(days===null)는 순서를 지어내지 않고 맨 아래.
+  function sortAlarmByDaysDesc(a, b){
+    if(a.days === null && b.days === null) return String(a.co.name || '').localeCompare(String(b.co.name || ''), 'ko');
+    if(a.days === null) return 1;
+    if(b.days === null) return -1;
+    return b.days - a.days || String(a.co.name || '').localeCompare(String(b.co.name || ''), 'ko');
+  }
+  // 1차 미팅 필요 — 1차미팅 잡기(type 'm1') 항목. days는 질문서 회신 후 경과일(기존 값).
+  function buildFirstMeetingNeededRows(ctx){
+    return ctx.workQueue().filter(it=> it.type === 'm1').map(it=>{
+      const contactTs = latestContactTs(ctx.actsIdx(), it.co);
+      // 1차 미팅 제안 메일 — m1MailButtonInfo와 같은 기준(firstMeeting + 옛 m1Invite)
+      const mailTs = latestSentMailTs(it.co, ['firstMeeting', 'm1Invite']);
+      return {
+        co: it.co, days: it.days,
+        sub: [
+          '1차 미팅 미정',
+          contactTs != null ? `최근 접촉 ${fmtAlarmMd(contactTs)}` : '접촉 기록 없음',
+          mailTs != null ? `제안 메일 ${fmtAlarmMd(mailTs)}` : '제안 메일 미발송'
+        ],
+        right: it.days !== null ? `${it.days}일 대기` : '',
+        tone: 'muted'
+      };
+    }).sort(sortAlarmByDaysDesc);
+  }
+  // 2차 미팅 필요 — 2차미팅 잡기(type 'm2') 항목. days는 1차 미팅 완료 후 경과일(기존 값)이라
+  // 내림차순이면 1차 미팅이 오래된 업체가 위로 온다.
+  function buildSecondMeetingNeededRows(ctx){
+    return ctx.workQueue().filter(it=> it.type === 'm2').map(it=>{
+      let m1Ts = null;
+      try{
+        const st = buildProgressStages(it.co).stages.find(s=> s.key === 'm1');
+        if(st && typeof st.ts === 'number') m1Ts = st.ts;
+      }catch(err){ m1Ts = null; }
+      const mailTs = latestSentMailTs(it.co, ['secondMeetingRequest']);
+      const contactTs = latestContactTs(ctx.actsIdx(), it.co);
+      return {
+        co: it.co, days: it.days,
+        sub: [
+          m1Ts != null ? `1차 ${fmtAlarmMd(m1Ts)}` : '1차 완료',
+          mailTs != null ? `2차 제안 메일 ${fmtAlarmMd(mailTs)}` : '2차 제안 메일 미발송',
+          contactTs != null ? `최근 접촉 ${fmtAlarmMd(contactTs)}` : '접촉 기록 없음'
+        ],
+        right: it.days !== null ? `${it.days}일 경과` : '',
+        tone: 'muted'
+      };
+    }).sort(sortAlarmByDaysDesc);
+  }
+  // 2차 미팅 회신 지연 — 기존 판정·정렬(경과일 내림차순) 그대로, 표시 문구만 맞춘다.
+  function buildSecondMeetingDelayAlarmRows(){
+    return buildSecondMeetingNoReplyRows().map(r=> ({
+      co: r.co, days: r.days,
+      sub: [`2차 제안 메일 ${fmtAlarmMd(r.lastTs)} 발송`],
+      right: `${r.days}일 지연`,
+      tone: 'delay'
+    }));
+  }
+
   const ALARM_TABS = [
-    { key:'m2NoReply', label:'2차 미팅 회신 지연',
-      desc:`메일 발송 후 ${M2_NO_REPLY_DAYS}일 이상 미회신`,
+    { key:'m1Needed', label:'1차 미팅 필요', workqFilter:'m1',
+      desc:'질문서 회신 후 1차 미팅 일정이 없는 업체',
+      empty:'현재 1차 미팅을 잡아야 할 업체가 없습니다.',
+      rows: ctx=> buildFirstMeetingNeededRows(ctx) },
+    { key:'m2Needed', label:'2차 미팅 필요', workqFilter:'m2',
+      desc:'1차 미팅 완료 후 2차 미팅 일정이 없는 업체',
+      empty:'현재 2차 미팅을 잡아야 할 업체가 없습니다.',
+      rows: ctx=> buildSecondMeetingNeededRows(ctx) },
+    { key:'m2NoReply', label:'2차 미팅 회신 지연', workqFilter:'m2NoReply', isDelay:true,
+      desc:`2차 미팅 제안 메일 발송 후 ${M2_NO_REPLY_DAYS}일 이상 미회신`,
       empty:'지연된 2차 미팅 회신이 없습니다.',
-      rows: ()=> buildSecondMeetingNoReplyRows() }
+      rows: ()=> buildSecondMeetingDelayAlarmRows() }
   ];
   let crmAlarmTab = ALARM_TABS[0].key;
 
   function renderCrmMiniMapAlarm(){
     const box = document.getElementById('crmMiniMapAlarm');
     if(!box) return;
+    // 업무 목록·활동 인덱스는 한 번 그릴 때 한 번만 계산해서 세 탭이 같이 쓴다.
+    let wqCache = null, actsCache = null;
+    const ctx = {
+      workQueue: ()=>{
+        if(!wqCache){ try{ wqCache = computeWorkQueue().list || []; }catch(err){ wqCache = []; } }
+        return wqCache;
+      },
+      actsIdx: ()=>{
+        if(!actsCache){ try{ actsCache = D.buildActivitiesIndex(); }catch(err){ actsCache = new Map(); } }
+        return actsCache;
+      }
+    };
     // 탭별 건수를 먼저 구한다 — 머리글 숫자와 아래 내용이 같은 계산에서 나와야 한다.
     const data = ALARM_TABS.map(t=>{
       let rows = [];
-      try{ rows = t.rows() || []; }
+      try{ rows = t.rows(ctx) || []; }
       catch(err){ rows = []; }
       return { tab:t, rows };
     });
     if(!data.some(d=> d.tab.key === crmAlarmTab)) crmAlarmTab = data[0].tab.key;
     const cur = data.find(d=> d.tab.key === crmAlarmTab);
-    const shown = cur.rows.slice(0, M2_NO_REPLY_PREVIEW);
+    const shown = cur.rows.slice(0, ALARM_PREVIEW);
     box.innerHTML = `
-      <div class="sa-alarm-tabs" role="tablist" aria-label="알람">
+      <div class="sa-alarm-tabs" role="tablist" aria-label="후속 미팅 알람">
         ${data.map(d=> `
-          <button type="button" class="sa-alarm-tab${d.tab.key === crmAlarmTab ? ' is-active' : ''}"
+          <button type="button" class="sa-alarm-tab${d.tab.key === crmAlarmTab ? ' is-active' : ''}${d.tab.isDelay ? ' is-delay' : ''}"
             role="tab" aria-selected="${d.tab.key === crmAlarmTab ? 'true' : 'false'}"
-            data-alarm-tab="${esc(d.tab.key)}">
-            ${d.rows.length ? '<i class="sa-alarm-dot" aria-hidden="true"></i>' : ''}${esc(d.tab.label)}
+            data-alarm-tab="${esc(d.tab.key)}" title="${esc(d.tab.label)} ${d.rows.length}건">
+            ${d.tab.isDelay && d.rows.length ? '<i class="sa-alarm-dot" aria-hidden="true"></i>' : ''}<span class="sa-alarm-tab-label">${esc(d.tab.label)}</span>
             <span class="sa-alarm-tab-num">${d.rows.length}</span>
           </button>`).join('')}
       </div>
-      <div class="sa-alarm-body">
+      <div class="sa-alarm-body" role="tabpanel">
         ${cur.rows.length ? `
           <div class="sa-alarm-desc">${esc(cur.tab.desc)}</div>
           <div class="sa-alarm-list">${shown.map(r=> `
-            <button type="button" class="sa-alarm-row" data-m2delay-co="${esc(String(r.co.id))}"
-              title="${esc(r.co.name || '')} — ${esc(fmtMailSentDate(r.lastTs))} 발송">
-              <span class="sa-alarm-name">${esc(r.co.name || '(이름 없음)')}</span>
-              <span class="sa-alarm-days">${r.days}일 경과</span>
+            <button type="button" class="sa-alarm-row" data-alarm-co="${esc(String(r.co.id))}"
+              title="${esc([r.co.name || ''].concat(r.sub).join(' · '))}">
+              <span class="sa-alarm-main">
+                <span class="sa-alarm-name">${esc(r.co.name || '(이름 없음)')}</span>
+                <span class="sa-alarm-sub">${r.sub.map(s=> `<span>${esc(s)}</span>`).join('<i aria-hidden="true">·</i>')}</span>
+              </span>
+              <span class="sa-alarm-days${r.tone === 'delay' ? ' is-delay' : ''}">${esc(r.right)}</span>
               <span class="sa-alarm-go" aria-hidden="true">›</span>
             </button>`).join('')}</div>
-          ${cur.rows.length > shown.length ? `<button type="button" class="sa-alarm-more" id="crmM2DelayMore">전체 보기 →</button>` : ''}
+          ${cur.rows.length > shown.length ? `<button type="button" class="sa-alarm-more" id="crmAlarmMore">전체 보기 (${cur.rows.length}) →</button>` : ''}
         ` : `<div class="sa-alarm-ok">${esc(cur.tab.empty)}</div>`}
       </div>`;
     box.querySelectorAll('[data-alarm-tab]').forEach(btn=> btn.addEventListener('click', ()=>{
@@ -18177,13 +18321,14 @@ window.SHIN2_CRM_APP_INIT = function(){
       crmAlarmTab = key;
       renderCrmMiniMapAlarm();
     }));
-    box.querySelectorAll('[data-m2delay-co]').forEach(btn=> btn.addEventListener('click', ()=>{
+    box.querySelectorAll('[data-alarm-co]').forEach(btn=> btn.addEventListener('click', ()=>{
       // 새 팝업을 만들지 않는다 — 기존 고객 상세를 "협약 진행" 탭으로 연다.
-      openCustomerDetail(btn.getAttribute('data-m2delay-co'), 'agreement');
+      openCustomerDetail(btn.getAttribute('data-alarm-co'), 'agreement');
     }));
-    const moreBtn = document.getElementById('crmM2DelayMore');
+    const moreBtn = document.getElementById('crmAlarmMore');
     if(moreBtn) moreBtn.addEventListener('click', ()=>{
-      workQueueFilter = 'm2NoReply';
+      // MOU 진행상황 화면의 같은 판정 필터로 연다(1차미팅 잡기 / 2차미팅 잡기 / 2차 회신 지연).
+      workQueueFilter = cur.tab.workqFilter;
       showWorkQueueTab();
     });
   }
