@@ -9632,6 +9632,33 @@ body.crm-page-shell #mailSettingsView .mail-settings-header-wrap{
 #agreementDocSection .doc-check-row:has(.doc-check-box:checked){ background:#F4F8FD !important; border-color:#C9D9EE !important; }
 #agreementDocSection .doc-check-name{ font-size:12.5px !important; }
 @media(max-width:520px){ #agreementDocSection .doc-check-list{ grid-template-columns:1fr 1fr !important; } }
+
+/* ==========================================================================
+   §고객 상세 팝업 폭 축소 라운드(신규) — 1120px(min(1120px, 88vw)) → 920px(약 -18%).
+   모든 탭이 같은 팝업 shell(.chart-panel)을 쓰므로 여기 한 곳만 바꾸면 탭마다 폭이 같다.
+   541px 이상에서만 적용 — 작은 화면은 기존 반응형(calc(100vw - 16px)) 그대로.
+   폭이 줄어든 만큼 안쪽 배치만 보정한다(정보·기능 삭제 없음).
+   ========================================================================== */
+@media (min-width: 541px){
+  .chart-overlay .chart-panel, .chart-panel{
+    width:min(920px, calc(100vw - 24px)) !important;
+    max-width:min(920px, calc(100vw - 24px)) !important;
+  }
+}
+/* 기본정보 기업 요약 — 2열 카드 안 한 칸(약 430px)이라 4열은 값이 잘린다 → 라벨·값 2열 */
+.cdet-panel[data-cdet-panel="overview"] .cdash2-cosum-card .cdet-kv{
+  grid-template-columns:64px minmax(0,1fr) !important;
+  gap:5px 12px !important;
+}
+.cdet-panel[data-cdet-panel="overview"] .cdet-kv-v{ white-space:normal; }
+/* 매출 지표 3칸 — 간격만 살짝 좁혀 퍼져 보이지 않게, 그래프는 폭에 자동 맞춤(viewBox) */
+.cdash2-revenue-stats .cdash2-revenue-kpi{ padding:4px 12px !important; }
+.cdash2-revenue-stats .cdash2-revenue-stat-value{ font-size:16px !important; }
+/* 협약 진행 — 좁아진 폭에서 버튼이 넘치면 자연스럽게 다음 줄로 */
+#agreementPopupBody .agr-stage-row{ flex-wrap:wrap; row-gap:6px; }
+#agreementPopupBody .agr-stage-row-actions{ flex-wrap:wrap; justify-content:flex-end; margin-left:auto; }
+/* 서류 체크 3열×2행 유지, 항목 간격만 자연스럽게 */
+#agreementDocSection .doc-check-list{ gap:8px !important; }
 </style>
 </head>
 <body>
