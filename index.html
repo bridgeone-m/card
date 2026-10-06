@@ -25623,6 +25623,9 @@ window.SHIN2_CRM_APP_INIT = function(){
       if(reply) return { state:'done', dateDisplay: reply.display, ts: reply.ts };
       const sent = parsePartnerDateLabel(nm.qSentLabel);
       if(sent) return { state:'waiting', dateDisplay: sent.display, ts: sent.ts }; // 발송만 되고 회신 대기
+      // §질문서 발송 상태 연결 — 동기화 발송일이 없으면 CRM에서 성공 발송한 질문서 메일 기록.
+      const mailSent = parsePartnerDateLabel(questionnaireMailSentLabel(co));
+      if(mailSent) return { state:'waiting', dateDisplay: mailSent.display, ts: mailSent.ts, viaMail:true };
       return { state:'waiting', dateDisplay:'—', ts:null };
     })();
     // §협력사 동기화 라운드 §6: m1Scheduled/m2Scheduled(예정일, 완료일 m1Label/m2Label과는
@@ -25713,7 +25716,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     // §업무관리 협약체결 판정 누락 라운드: sourceNm(newMou)이 아예 없어도 agreementDateLabel
     // (실제 협약체결일)만 있는 업체도 "데이터 없음"으로 취급하지 않는다 — 진행정보 자체가
     // 존재하는데도 이 값 하나만으로 progress 전체가 무시되는 걸 막는다.
-    return { stages: correctedStages, currentIdx, hasAny: !!sourceNm || !!agreementDateLabel };
+    return { stages: correctedStages, currentIdx, hasAny: !!sourceNm || !!agreementDateLabel || !!q.viaMail };
   }
   const PROGRESS_STATUS_LABEL = { done:'완료', scheduled:'예정', waiting:'대기' };
 
@@ -29065,6 +29068,31 @@ window.SHIN2_CRM_APP_INIT = function(){
   function mailLogForType(co, mailType){
     return Array.isArray(co.m1MailLog) ? co.m1MailLog.filter(l=> l.mailType === mailType) : [];
   }
+  /* §질문서 발송 상태 연결 라운드(신규) — 원인: "질문서 발송" 상태는 지금까지
+     partnerDashboard.newMou.qSentLabel(partner-dashboard 동기화가 채우는 값) 하나만 보고
+     판정했고, CRM에서 실제로 보낸 질문서 메일의 성공 기록(co.m1MailLog, mailType
+     'questionnaire', status 'sent' — doSend가 EmailJS 2xx 응답 "뒤에만" 남김)은 어디서도
+     읽지 않았다. 동기화 값이 있는 기존 업체는 그 값 덕분에 발송으로 보였고, 신규 등록
+     업체는 동기화 값이 없어 메일을 보내도 계속 "미발송"이었다.
+     기록 경로는 원래부터 하나(doSend → appendM1MailLog)라 그대로 두고, 판정 쪽에서 이
+     성공 기록을 발송 근거로 함께 읽는다. 재발송이면 가장 최근 성공 발송일을 쓴다
+     (회신 대기 경과일도 거기서부터 — 2차 미팅 회신 지연과 같은 원칙). 실패·취소·검증
+     실패는 로그 자체가 없으므로 여기서도 발송으로 잡히지 않는다. */
+  function questionnaireMailSentTs(co){
+    if(!co || (D.isAgreementInvalidated && D.isAgreementInvalidated(co))) return null;
+    let last = null;
+    mailLogForType(co, 'questionnaire').forEach(l=>{
+      if(!l || l.status !== 'sent' || !l.sentAt) return;
+      const t = new Date(l.sentAt).getTime();
+      if(Number.isFinite(t) && (last == null || t > last)) last = t;
+    });
+    return last;
+  }
+  // parsePartnerDateLabel이 그대로 읽는 'YYYY.MM.DD' 라벨로 돌려준다(qSentLabel과 같은 형식).
+  function questionnaireMailSentLabel(co){
+    const ts = questionnaireMailSentTs(co);
+    return ts == null ? null : fmtMailSentDate(ts);
+  }
   function mailAlreadySentInfo(co, mailType){
     const log = mailLogForType(co, mailType);
     const sent = log.filter(l=> l.status === 'sent');
@@ -29519,6 +29547,12 @@ window.SHIN2_CRM_APP_INIT = function(){
           emailjsStatus: res.status
         });
         D.addActivity(co.id, `${MAIL_TYPE_SUCCESS_LOG_TEXT[mailType]} (받는사람: ${toEmail})`);
+        if(mailType === 'questionnaire'){
+          const savedCo = D.findCompany(co.id);
+          console.info('[questionnaire-mail]', { companyId: co.id, companyName: co.name, sendSuccess: true,
+            logSaved: !!(savedCo && mailLogForType(savedCo, 'questionnaire').some(l=> l.status === 'sent' && l.emailjsStatus === res.status)),
+            sentAt: savedCo ? questionnaireMailSentLabel(savedCo) : null });
+        }
         perf.mark('history(local)');
         // §메일 발송 속도 라운드 — 이력은 이미 로컬(appendM1MailLog/addActivity)에 저장돼
         // 있다. 남은 건 클라우드 저장 "확인"뿐인데, 예전에는 이걸 await하느라 메일이
@@ -29858,7 +29892,8 @@ window.SHIN2_CRM_APP_INIT = function(){
     const nm = resolveNewMouForCompany(co) || {};
     const progress = buildProgressStages(co);
     const byKey = {}; progress.stages.forEach(s=> byKey[s.key] = s);
-    const qSentP = parsePartnerDateLabel(nm.qSentLabel);
+    // §질문서 발송 상태 연결 — 동기화 발송일이 없으면 CRM 발송 성공 기록(엔진과 같은 기준).
+    const qSentP = parsePartnerDateLabel(nm.qSentLabel) || parsePartnerDateLabel(questionnaireMailSentLabel(co));
     const qReplyP = parsePartnerDateLabel(nm.qReplyLabel);
     const postMailInfo = mailAlreadySentInfo(co, 'postSecondMeeting');
     const isMouDone = isConfirmedPartner(co, progress);
