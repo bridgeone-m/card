@@ -9859,6 +9859,128 @@ body.crm-page-shell #mailSettingsView .mail-settings-header-wrap{
 #addCoOverlay #crmNewFSave .addco-ico .agr-ico{ width:14px; height:14px; }
 /* 섹션 머리말이 라벨인 칸(지역·첨부)은 선이 끝까지 닿게 칸 폭을 꽉 채운다 */
 #addCoOverlay .co-form-field:has(> .addco-sec-head.is-label){ width:100%; max-width:none; }
+
+
+/* ==========================================================================
+   §2026-10 지도 좌측 + 검색결과 우측 드로어 라운드
+   - 고객관리 메인: 지도 32% / 업체목록 68%
+   - 지도 상단: 시공사 지역분포 / 아파트 시공 / 근처 시공 3분할
+   - 검색 결과: 화면을 늘리지 않고 오른쪽 드로어 내부만 스크롤
+   데이터·Firebase·지도 집계·필터·지오코딩·거리 계산 로직은 기존 함수를 그대로 사용한다.
+   ========================================================================== */
+.sa-map-mode-tabs{
+  display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px;
+  padding:4px; border:1px solid var(--border-soft); border-radius:12px;
+  background:var(--bg-soft-2); flex:none;
+}
+.sa-map-mode-btn{
+  min-width:0; height:40px; padding:0 8px; border:1px solid transparent; border-radius:9px;
+  background:transparent; color:#5F6F86; font-size:12.5px; font-weight:700; letter-spacing:-.02em;
+  cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  transition:background-color .14s,border-color .14s,color .14s,box-shadow .14s;
+}
+.sa-map-mode-btn:hover{ background:#fff; color:var(--navy-700); border-color:#DDE6F1; }
+.sa-map-mode-btn.is-active{
+  background:#fff; color:var(--navy-700); border-color:var(--navy-200);
+  box-shadow:0 3px 10px rgba(22,58,112,.08);
+}
+
+@media(min-width:1101px){
+  body.crm-fixed-view .crm-main-grid,
+  .crm-main-grid{
+    grid-template-columns:minmax(330px,32%) minmax(0,1fr) !important;
+    grid-template-rows:auto minmax(0,1fr) !important;
+    align-items:stretch !important;
+  }
+  .crm-main-grid .kpi-strip-row.crm-kpi-cell{
+    grid-column:1 / -1 !important; grid-row:1 !important;
+  }
+  .crm-main-grid .nf-side-right{
+    grid-column:1 !important; grid-row:2 !important; min-width:0 !important;
+  }
+  .crm-main-grid .crm-list-col{
+    grid-column:2 !important; grid-row:2 !important; min-width:0 !important;
+  }
+  .nf-side-right > .nf-card-action{
+    height:100%; padding:14px 14px 12px; border-radius:16px;
+    box-shadow:0 6px 20px rgba(31,54,90,.05);
+  }
+  .sa-map-wrap{ min-height:300px; }
+  .sa-map-canvas{ min-height:300px; border-radius:13px; }
+  .sa-map-hit{ border-radius:13px; }
+}
+
+/* 기존 중앙 지도 모달을 '오른쪽 검색 결과 드로어'로 보이게만 바꾼다. */
+#mapDistributionModalRoot .map-modal-overlay{
+  justify-content:flex-end !important; align-items:stretch !important;
+  padding:12px !important; background:rgba(15,23,42,.16) !important;
+  backdrop-filter:none !important; -webkit-backdrop-filter:none !important;
+}
+#mapDistributionModalRoot .map-modal-panel{
+  width:min(1280px,74vw) !important; max-width:none !important;
+  height:calc(100vh - 24px) !important; max-height:none !important;
+  margin:0 !important; border-radius:20px !important;
+  box-shadow:-18px 0 50px rgba(15,23,42,.16) !important;
+  animation:crmMapDrawerIn .20s ease-out both;
+}
+@keyframes crmMapDrawerIn{
+  from{ transform:translateX(28px); opacity:.55; }
+  to{ transform:translateX(0); opacity:1; }
+}
+
+/* 드로어 안은 '큰 지도 왼쪽 / 검색·결과 오른쪽'. 결과가 많아도 오른쪽 목록만 스크롤. */
+#mapDistributionModalRoot .map-modal-panel > #mapModalBody{
+  grid-template-columns:minmax(0,1fr) minmax(340px,400px) !important;
+  grid-template-rows:auto auto minmax(0,1fr) !important;
+  gap:0 16px !important;
+}
+#mapDistributionModalRoot .map-modal-filters{
+  grid-column:2 !important; grid-row:1 !important;
+}
+#mapDistributionModalRoot .map-apt-summary{
+  grid-column:2 !important; grid-row:2 !important;
+}
+#mapDistributionModalRoot .map-modal-infocol{
+  grid-column:2 !important; grid-row:3 !important;
+  overflow:hidden !important; min-height:0 !important;
+}
+#mapDistributionModalRoot .map-sidelist-block{
+  min-height:0 !important; overflow:hidden !important;
+}
+#mapDistributionModalRoot .map-sidelist-body{
+  min-height:0 !important; overflow-y:auto !important; overscroll-behavior:contain;
+}
+#mapDistributionModalRoot .map-modal-mapcol{
+  grid-column:1 !important; grid-row:1 / span 3 !important;
+}
+#mapDistributionModalRoot .map-modal-tabs-list{
+  display:grid !important; grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:6px !important; width:min(620px,100%);
+}
+#mapDistributionModalRoot .map-modal-tab-btn{
+  margin:0 !important; padding:0 12px !important; height:40px !important;
+  border:1px solid transparent !important; border-radius:9px !important;
+  white-space:nowrap; text-align:center;
+}
+#mapDistributionModalRoot .map-modal-tab-btn.is-active{
+  background:var(--navy-100) !important; border-color:var(--navy-200) !important;
+  border-bottom-color:var(--navy-200) !important;
+}
+
+@media(max-width:1100px){
+  .crm-main-grid .nf-side-right{ grid-column:1 !important; grid-row:2 !important; }
+  .crm-main-grid .crm-list-col{ grid-column:1 !important; grid-row:3 !important; }
+  #mapDistributionModalRoot .map-modal-panel{ width:calc(100vw - 16px) !important; height:calc(100vh - 16px) !important; }
+  #mapDistributionModalRoot .map-modal-panel > #mapModalBody{
+    grid-template-columns:1fr !important; grid-template-rows:auto auto minmax(320px,45vh) minmax(220px,1fr) !important;
+    overflow-y:auto !important;
+  }
+  #mapDistributionModalRoot .map-modal-filters{ grid-column:1 !important; grid-row:1 !important; }
+  #mapDistributionModalRoot .map-apt-summary{ grid-column:1 !important; grid-row:2 !important; }
+  #mapDistributionModalRoot .map-modal-mapcol{ grid-column:1 !important; grid-row:3 !important; min-height:320px !important; }
+  #mapDistributionModalRoot .map-modal-infocol{ grid-column:1 !important; grid-row:4 !important; min-height:220px !important; }
+}
+
 </style>
 </head>
 <body>
@@ -46244,125 +46366,6 @@ if(!window.__mapxRowDelegated){
         .pdf-doc-footer-warn{ color:#B91C1C; font-weight:700; }
       
 
-/* ==========================================================================
-   §2026-10 지도 좌측 + 검색결과 우측 드로어 라운드
-   - 고객관리 메인: 지도 32% / 업체목록 68%
-   - 지도 상단: 시공사 지역분포 / 아파트 시공 / 근처 시공 3분할
-   - 검색 결과: 화면을 늘리지 않고 오른쪽 드로어 내부만 스크롤
-   데이터·Firebase·지도 집계·필터·지오코딩·거리 계산 로직은 기존 함수를 그대로 사용한다.
-   ========================================================================== */
-.sa-map-mode-tabs{
-  display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px;
-  padding:4px; border:1px solid var(--border-soft); border-radius:12px;
-  background:var(--bg-soft-2); flex:none;
-}
-.sa-map-mode-btn{
-  min-width:0; height:40px; padding:0 8px; border:1px solid transparent; border-radius:9px;
-  background:transparent; color:#5F6F86; font-size:12.5px; font-weight:700; letter-spacing:-.02em;
-  cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-  transition:background-color .14s,border-color .14s,color .14s,box-shadow .14s;
-}
-.sa-map-mode-btn:hover{ background:#fff; color:var(--navy-700); border-color:#DDE6F1; }
-.sa-map-mode-btn.is-active{
-  background:#fff; color:var(--navy-700); border-color:var(--navy-200);
-  box-shadow:0 3px 10px rgba(22,58,112,.08);
-}
-
-@media(min-width:1101px){
-  body.crm-fixed-view .crm-main-grid,
-  .crm-main-grid{
-    grid-template-columns:minmax(330px,32%) minmax(0,1fr) !important;
-    grid-template-rows:auto minmax(0,1fr) !important;
-    align-items:stretch !important;
-  }
-  .crm-main-grid .kpi-strip-row.crm-kpi-cell{
-    grid-column:1 / -1 !important; grid-row:1 !important;
-  }
-  .crm-main-grid .nf-side-right{
-    grid-column:1 !important; grid-row:2 !important; min-width:0 !important;
-  }
-  .crm-main-grid .crm-list-col{
-    grid-column:2 !important; grid-row:2 !important; min-width:0 !important;
-  }
-  .nf-side-right > .nf-card-action{
-    height:100%; padding:14px 14px 12px; border-radius:16px;
-    box-shadow:0 6px 20px rgba(31,54,90,.05);
-  }
-  .sa-map-wrap{ min-height:300px; }
-  .sa-map-canvas{ min-height:300px; border-radius:13px; }
-  .sa-map-hit{ border-radius:13px; }
-}
-
-/* 기존 중앙 지도 모달을 '오른쪽 검색 결과 드로어'로 보이게만 바꾼다. */
-#mapDistributionModalRoot .map-modal-overlay{
-  justify-content:flex-end !important; align-items:stretch !important;
-  padding:12px !important; background:rgba(15,23,42,.16) !important;
-  backdrop-filter:none !important; -webkit-backdrop-filter:none !important;
-}
-#mapDistributionModalRoot .map-modal-panel{
-  width:min(1280px,74vw) !important; max-width:none !important;
-  height:calc(100vh - 24px) !important; max-height:none !important;
-  margin:0 !important; border-radius:20px !important;
-  box-shadow:-18px 0 50px rgba(15,23,42,.16) !important;
-  animation:crmMapDrawerIn .20s ease-out both;
-}
-@keyframes crmMapDrawerIn{
-  from{ transform:translateX(28px); opacity:.55; }
-  to{ transform:translateX(0); opacity:1; }
-}
-
-/* 드로어 안은 '큰 지도 왼쪽 / 검색·결과 오른쪽'. 결과가 많아도 오른쪽 목록만 스크롤. */
-#mapDistributionModalRoot .map-modal-panel > #mapModalBody{
-  grid-template-columns:minmax(0,1fr) minmax(340px,400px) !important;
-  grid-template-rows:auto auto minmax(0,1fr) !important;
-  gap:0 16px !important;
-}
-#mapDistributionModalRoot .map-modal-filters{
-  grid-column:2 !important; grid-row:1 !important;
-}
-#mapDistributionModalRoot .map-apt-summary{
-  grid-column:2 !important; grid-row:2 !important;
-}
-#mapDistributionModalRoot .map-modal-infocol{
-  grid-column:2 !important; grid-row:3 !important;
-  overflow:hidden !important; min-height:0 !important;
-}
-#mapDistributionModalRoot .map-sidelist-block{
-  min-height:0 !important; overflow:hidden !important;
-}
-#mapDistributionModalRoot .map-sidelist-body{
-  min-height:0 !important; overflow-y:auto !important; overscroll-behavior:contain;
-}
-#mapDistributionModalRoot .map-modal-mapcol{
-  grid-column:1 !important; grid-row:1 / span 3 !important;
-}
-#mapDistributionModalRoot .map-modal-tabs-list{
-  display:grid !important; grid-template-columns:repeat(3,minmax(0,1fr));
-  gap:6px !important; width:min(620px,100%);
-}
-#mapDistributionModalRoot .map-modal-tab-btn{
-  margin:0 !important; padding:0 12px !important; height:40px !important;
-  border:1px solid transparent !important; border-radius:9px !important;
-  white-space:nowrap; text-align:center;
-}
-#mapDistributionModalRoot .map-modal-tab-btn.is-active{
-  background:var(--navy-100) !important; border-color:var(--navy-200) !important;
-  border-bottom-color:var(--navy-200) !important;
-}
-
-@media(max-width:1100px){
-  .crm-main-grid .nf-side-right{ grid-column:1 !important; grid-row:2 !important; }
-  .crm-main-grid .crm-list-col{ grid-column:1 !important; grid-row:3 !important; }
-  #mapDistributionModalRoot .map-modal-panel{ width:calc(100vw - 16px) !important; height:calc(100vh - 16px) !important; }
-  #mapDistributionModalRoot .map-modal-panel > #mapModalBody{
-    grid-template-columns:1fr !important; grid-template-rows:auto auto minmax(320px,45vh) minmax(220px,1fr) !important;
-    overflow-y:auto !important;
-  }
-  #mapDistributionModalRoot .map-modal-filters{ grid-column:1 !important; grid-row:1 !important; }
-  #mapDistributionModalRoot .map-apt-summary{ grid-column:1 !important; grid-row:2 !important; }
-  #mapDistributionModalRoot .map-modal-mapcol{ grid-column:1 !important; grid-row:3 !important; min-height:320px !important; }
-  #mapDistributionModalRoot .map-modal-infocol{ grid-column:1 !important; grid-row:4 !important; min-height:220px !important; }
-}
 </style>
     </head><body>${html}</body></html>`);
     printWin.document.close();
