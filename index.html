@@ -9078,6 +9078,42 @@ body.crm-page-shell #mailSettingsView .mail-settings-header-wrap{
 .brand-sub{ font-size:13px !important; }                        /* 12 → 13 */
 .gnav-menu .top-tab{ font-size:14px !important; font-weight:600 !important; }   /* 13 → 14 */
 .gnav-menu .top-tab.is-active{ font-weight:650 !important; }
+
+/* ==========================================================================
+   §고객 목록 글자 +1px 라운드(신규) — 목록 표(머리줄 + 행)의 글자를 전부 1px씩 키운다.
+   실측(1440px) 값에 +1만 했다 — 굵기·색·열 비율·정렬·클릭 동작은 그대로다.
+   머리줄의 [i] 도움말 버튼은 아이콘이라 그대로 둔다.
+   ========================================================================== */
+/* 머리줄 */
+.crm-list-col .co-table-head > .col-name{ font-size:14px !important; }                 /* 13 */
+.crm-list-col .co-table-head > .col-pour{ font-size:14px !important; }                 /* 13 */
+.crm-list-col .co-table-head > .col-revenue-combo{ font-size:11.5px !important; }      /* 10.5 */
+.crm-list-col .co-table-head > .col-request{ font-size:12px !important; }             /* 11 */
+.crm-list-col .co-table-head > .col-trend{ font-size:13px !important; }               /* 12 */
+.crm-list-col .co-table-head > .col-contrib{ font-size:13px !important; }             /* 12 */
+/* 업체명 칸 */
+.crm-list-col .co-row .co-name-badges .co-name-text{ font-size:13.5px !important; }         /* 12.5 */
+.crm-list-col .co-row .co-name-badges .co-stage-badge{ font-size:12px !important; }         /* 11 */
+.crm-list-col .co-row .co-name-badges .agreement-status-badge{ font-size:10.5px !important; } /* 9.5 */
+.crm-list-col .co-row .col-name .co-former-name-sub{ font-size:11.5px !important; }         /* 10.5 */
+/* 최근 실적 칸 */
+.crm-list-col .co-row .lastpour-total-box .lastpour-total-num{ font-size:17px !important; } /* 16 */
+.crm-list-col .co-row .lastpour-detail .lastpour-main{ font-size:12px !important; }         /* 11 */
+.crm-list-col .co-row .lastpour-detail .lastpour-site{ font-size:10.5px !important; }       /* 9.5 */
+.crm-list-col .co-row .col-pour .lastpour-cell.lastpour-empty{ font-size:13px !important; } /* 12 */
+.crm-list-col .co-row .lastpour-detail .data-none{ font-size:12px !important; }             /* 11 */
+/* 총매출 칸 */
+.crm-list-col .co-row .revenue-combo-total .revenue-cell-btn,
+.crm-list-col .co-row .revenue-combo-total .data-none{ font-size:13.5px !important; }       /* 12.5 */
+.crm-list-col .co-row .revenue-combo-yr .revenue-cell-btn,
+.crm-list-col .co-row .revenue-combo-yr .data-none{ font-size:11.5px !important; }          /* 10.5 */
+.crm-list-col .co-row .revenue-combo-yr .revenue-combo-yr-label{ font-size:10.5px !important; } /* 9.5 */
+/* 최근 요청 칸 */
+.crm-list-col .co-row .request-cell .request-gsheet-text{ font-size:12.5px !important; }    /* 11.5 */
+.crm-list-col .co-row .request-cell .request-date{ font-size:13px !important; }             /* 12 */
+/* 최근 흐름 · 실적-매출 칸 */
+.crm-list-col .co-row .col-trend .trend-cell{ font-size:12px !important; }                  /* 11 */
+.crm-list-col .co-row .contrib-cell .contrib-level{ font-size:11.5px !important; }          /* 10.5 */
 </style>
 </head>
 <body>
