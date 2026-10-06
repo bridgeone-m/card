@@ -9824,6 +9824,41 @@ body.crm-page-shell #mailSettingsView .mail-settings-header-wrap{
 #chartBody .cdet-panel.is-active{ animation:cdetFade .14s ease-out; }
 @keyframes cdetFade{ from{ opacity:.4; } to{ opacity:1; } }
 @media (prefers-reduced-motion: reduce){ #chartBody .cdet-panel.is-active{ animation:none; } }
+
+/* ==========================================================================
+   §신규 고객 등록 아이콘 라운드(신규) — 섹션 머리말(아이콘 + 13px/700 + 얇은 선),
+   주요 라벨 앞 작은 아이콘(blue-gray), 등록 버튼만 아이콘. 큰 카드로 감싸지 않는다.
+   ========================================================================== */
+.addco-ico{ display:inline-flex; align-items:center; justify-content:center; flex:none; color:#7D8FA9; }
+.addco-ico .agr-ico{ width:15px; height:15px; }
+#addCoOverlay .addco-sec-head{
+  display:flex !important; align-items:center; gap:7px;
+  margin:16px 0 10px !important; padding:0 0 7px !important;
+  border-bottom:1px solid #EEF2F7;
+  font-size:13px !important; font-weight:700 !important; color:#17345F !important; letter-spacing:-.01em;
+}
+#addCoOverlay .addco-sec-head .addco-ico{ color:#6B85B0; }
+#addCoOverlay .addco-sec-head em{ font-style:normal; font-size:11.5px; font-weight:500; color:#94A3B8; margin-left:2px; }
+#addCoOverlay .addco-sec-head.is-label{ width:100%; box-sizing:border-box; }
+#addCoOverlay .co-form-field:first-child > .addco-sec-head{ margin-top:2px !important; }
+#addCoOverlay .addco-sec-head.is-in-grid{ grid-column:1 / -1; margin:6px 0 2px !important; }
+/* 주요 라벨 — 아이콘 + 글자, 아이콘은 작고 흐리게 */
+#addCoOverlay .co-form-field > label.addco-label{ display:inline-flex !important; align-items:center; gap:5px; color:#5B6B82; font-weight:600; }
+#addCoOverlay .co-form-field > label.addco-label .addco-ico .agr-ico{ width:14px; height:14px; }
+/* 추가 정보(접힘) — 아이콘 + 짧은 말 */
+#addCoOverlay .co-form-more > summary{ display:flex; align-items:center; gap:6px; list-style:none; cursor:pointer; font-size:12.5px; font-weight:600; color:#475569; padding:6px 0; }
+#addCoOverlay .co-form-more > summary::-webkit-details-marker{ display:none; }
+#addCoOverlay .co-form-more > summary em{ font-style:normal; font-size:11.5px; font-weight:500; color:#94A3B8; }
+#addCoOverlay .co-form-more[open] > summary .addco-ico{ transform:rotate(45deg); transition:transform .15s ease; }
+/* 진행단계 제목 앞 아이콘 */
+#addCoOverlay .deal-stage-title{ display:inline-flex; align-items:center; gap:5px; }
+#addCoOverlay .deal-stage-title .addco-ico .agr-ico{ width:14px; height:14px; }
+/* 등록 버튼 — 아이콘은 흰색(글자색 따름) */
+#addCoOverlay #crmNewFSave{ gap:6px !important; }
+#addCoOverlay #crmNewFSave .addco-ico{ color:inherit; }
+#addCoOverlay #crmNewFSave .addco-ico .agr-ico{ width:14px; height:14px; }
+/* 섹션 머리말이 라벨인 칸(지역·첨부)은 선이 끝까지 닿게 칸 폭을 꽉 채운다 */
+#addCoOverlay .co-form-field:has(> .addco-sec-head.is-label){ width:100%; max-width:none; }
 </style>
 </head>
 <body>
@@ -30662,7 +30697,21 @@ window.SHIN2_CRM_APP_INIT = function(){
     edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>',
     check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
     more: '<circle cx="5.5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="18.5" cy="12" r="1.3"/>',
-    doc: '<path d="M7 3h7l5 5v12a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v5h5M9 13h6M9 17h4"/>'
+    doc: '<path d="M7 3h7l5 5v12a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v5h5M9 13h6M9 17h4"/>',
+    // §신규 고객 등록 아이콘 라운드 — 같은 규격(24 격자, 1.9 선)으로 추가
+    pin: '<path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0C18.5 15.4 12 21 12 21z"/><circle cx="12" cy="10" r="2.3"/>',
+    building: '<rect x="4" y="3.5" width="11" height="17" rx="1"/><path d="M15 9h4a1 1 0 0 1 1 1v10.5M8 7.5h3M8 11h3M8 14.5h3M3 20.5h18"/>',
+    tag: '<path d="M3.5 12.5V4.5a1 1 0 0 1 1-1h8l8 8-9 9z"/><circle cx="8" cy="8" r="1.4"/>',
+    user: '<circle cx="12" cy="8" r="3.6"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/>',
+    userCheck: '<circle cx="10" cy="8" r="3.4"/><path d="M3.5 20a6.5 6.5 0 0 1 11.5-4.2M15.5 18l2 2 4-4.5"/>',
+    badge: '<rect x="3.5" y="5" width="17" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M6 16a3.2 3.2 0 0 1 6 0M14.5 10h3.5M14.5 13.5h3.5"/>',
+    mobile: '<rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M11 18.5h2"/>',
+    phone: '<path d="M5 4h3.5l1.7 4.3-2.2 1.4a11 11 0 0 0 6.3 6.3l1.4-2.2L20 15.5V19a1.5 1.5 0 0 1-1.6 1.5A16 16 0 0 1 3.5 5.6 1.5 1.5 0 0 1 5 4z"/>',
+    idcard: '<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M7 9.5h6M7 13h10M7 16.5h7"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    calendarCheck: '<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4M9 14.5l2 2 4-4"/>',
+    signature: '<path d="M14.5 4.5l5 5L9 20H4v-5z"/><path d="M3 22h18"/>',
+    paperclip: '<path d="M20 11.5l-7.8 7.8a5 5 0 0 1-7.1-7.1l8.1-8.1a3.4 3.4 0 0 1 4.8 4.8l-8.1 8.1a1.7 1.7 0 0 1-2.4-2.4L15 7.1"/>'
   };
   function agrIcon(name){
     return `<svg class="agr-ico" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${AGR_ICON_PATHS[name] || ''}</svg>`;
@@ -41289,6 +41338,66 @@ window.SHIN2_CRM_APP_INIT = function(){
     const root = document.getElementById('addCompanyModalRoot');
     if(root) root.innerHTML = '';
   }
+  /* §신규 고객 등록 아이콘 라운드(신규) — 글자·입력칸만 길게 늘어선 느낌을 줄이려고, 정보
+     구분(섹션 머리말·주요 라벨)과 주요 액션(등록)에만 작은 선 아이콘을 단다. 아이콘은 협약
+     진행에서 쓰는 agrIcon(같은 SVG 묶음) 그대로이고 색은 blue-gray 하나다. 지역 칩·select·
+     날짜칸 안에는 넣지 않는다. 모양만 바뀌고 입력·저장·OCR 동작은 그대로다. */
+  const ADDCO_LABEL_ICONS = [
+    ['상호','building'], ['업체코드','tag'], ['대표자','user'], ['담당자','userCheck'], ['직급','badge'],
+    ['휴대전화','mobile'], ['연락처','phone'], ['Email','mail'], ['주소','pin'], ['사업자번호','idcard']
+  ];
+  function decorateAddCompanyForm(wrap){
+    if(!wrap) return;
+    const icon = name=> `<span class="addco-ico">${agrIcon(name)}</span>`;
+    // 섹션 머리말 — 지역 / 업체 정보 / 담당자·연락처 / 고객 진행단계 / 첨부
+    const makeSection = (iconName, title)=>{
+      const h = document.createElement('div');
+      h.className = 'addco-sec-head';
+      h.innerHTML = icon(iconName) + '<span>' + esc(title) + '</span>';
+      return h;
+    };
+    const regionField = wrap.querySelector('#crmNewFRegions') && wrap.querySelector('#crmNewFRegions').closest('.co-form-field');
+    if(regionField){
+      const lb = regionField.querySelector(':scope > label');
+      if(lb){ lb.classList.add('addco-sec-head', 'is-label'); lb.innerHTML = icon('pin') + '<span>지역</span><em>복수 선택 가능</em>'; }
+    }
+    const grid = wrap.querySelector(':scope > .co-form-grid2');
+    if(grid){
+      grid.parentNode.insertBefore(makeSection('building', '업체 정보'), grid);
+      const firstRow3 = grid.querySelector(':scope > .co-form-row3');
+      if(firstRow3){ const h = makeSection('userCheck', '담당자 · 연락처'); h.classList.add('is-in-grid'); grid.insertBefore(h, firstRow3); }
+    }
+    // 주요 라벨 앞 아이콘(라벨 글자는 그대로)
+    wrap.querySelectorAll('.co-form-grid2 .co-form-field > label').forEach(lb=>{
+      const txt = lb.textContent.trim();
+      const hit = ADDCO_LABEL_ICONS.find(([k])=> txt.indexOf(k) === 0);
+      if(hit && !lb.querySelector('.addco-ico')){ lb.classList.add('addco-label'); lb.insertAdjacentHTML('afterbegin', icon(hit[1])); }
+    });
+    // 추가 정보(접힘)
+    const more = wrap.querySelector('.co-form-more > summary');
+    if(more) more.innerHTML = icon('plus') + '<span>추가 정보</span><em>FAX · 홈페이지 · 자본금 · 비고</em>';
+    // 고객 진행단계 — 머리말 + 단계 제목 아이콘
+    const deal = wrap.querySelector('.deal-stage-block');
+    if(deal){
+      const lb = deal.querySelector(':scope > label');
+      if(lb){ lb.classList.add('addco-sec-head', 'is-label'); lb.innerHTML = icon('calendar') + '<span>고객 진행단계</span>'; }
+      const stageIcons = { '1차 미팅':'calendar', '2차 미팅':'calendarCheck', '협약 체결':'signature' };
+      deal.querySelectorAll('.deal-stage-title').forEach(t=>{
+        const name = stageIcons[t.textContent.trim()];
+        if(name) t.insertAdjacentHTML('afterbegin', icon(name));
+      });
+    }
+    // 첨부
+    const box = wrap.querySelector('#crmNewFImageBox');
+    const attachField = box && box.closest('.co-form-field');
+    if(attachField){
+      const lb = attachField.querySelector(':scope > label');
+      if(lb){ lb.classList.add('addco-sec-head', 'is-label'); lb.innerHTML = icon('paperclip') + '<span>첨부</span><em>사업자등록증 · 명함 이미지(선택)</em>'; }
+    }
+    // 주요 액션 — 등록에만 아이콘
+    const save = wrap.querySelector('#crmNewFSave');
+    if(save && !save.querySelector('.addco-ico')) save.insertAdjacentHTML('afterbegin', icon('check'));
+  }
   function openAddCompanyForm(prefillName){
     addingNewCompany = true;
     const regionSelected = new Set();
@@ -41388,6 +41497,7 @@ window.SHIN2_CRM_APP_INIT = function(){
         </div>
       </div>
     `;
+    decorateAddCompanyForm(wrap);
     document.getElementById('crmNewF_code').value = genCompanyCode();
     if(prefillName) document.getElementById('crmNewF_name').value = prefillName;
     bindDealStageBlock('addco');
@@ -41738,7 +41848,7 @@ window.SHIN2_CRM_APP_INIT = function(){
         await window.SHIN2_CRM_SHARED_SYNC.pushAsync('companies', D.loadCompanies());
       }catch(err){
         saveBtn.disabled = false;
-        saveBtn.textContent = '등록';
+        saveBtn.innerHTML = '<span class="addco-ico">' + agrIcon('check') + '</span>등록'; // 아이콘 포함 원래 모양으로
         // §요청 7 "고객정보 저장에 실패했습니다" — 기술적 오류를 그대로 노출하지 않는다.
         // 로컬에는 이미 저장돼 있어(위 rec) 입력한 내용 자체는 사라지지 않는다 — 폼도
         // 계속 열려 있어 사용자가 값을 다시 손댈 필요가 없다(§요청 "입력한 내용 유지").
