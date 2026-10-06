@@ -9659,6 +9659,115 @@ body.crm-page-shell #mailSettingsView .mail-settings-header-wrap{
 #agreementPopupBody .agr-stage-row-actions{ flex-wrap:wrap; justify-content:flex-end; margin-left:auto; }
 /* 서류 체크 3열×2행 유지, 항목 간격만 자연스럽게 */
 #agreementDocSection .doc-check-list{ gap:8px !important; }
+
+/* ==========================================================================
+   §협약 진행 아이콘 액션 · 질문지 상담 compact 라운드(신규)
+   협약 진행 행의 버튼을 "아이콘 + 짧은 말" 28px 둥근 버튼 하나의 모양으로 통일한다.
+     메인(메일·발송·회신)  연한 블루 바탕 + 남색 글자
+     보조(수정·날짜 값·더보기·완료) 흰 바탕 + 회색 테두리
+   색은 남색 계열 하나만 쓴다. 모양만 바뀌고 동작·데이터는 그대로다.
+   ========================================================================== */
+#agreementPopupBody .agr-stage-row{ padding:6px 12px !important; }
+#agreementPopupBody .agr-stage-row-actions,
+#agreementPopupBody .agr-meeting-row{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; justify-content:flex-end; }
+#agreementPopupBody .agr-meeting-status{ display:none; }   /* 상태는 왼쪽 열(agr-stage-row-status)에 이미 있다 */
+.agr-ico{ flex:none; display:block; }
+
+#agreementPopupBody .agr-stage-row-actions .agr-date-chip,
+#agreementPopupBody .agr-stage-row-actions .agr-meeting-btn,
+#agreementPopupBody .agr-stage-row-actions .agr-meeting-complete-btn,
+#agreementPopupBody .agr-stage-row-actions .workq-btn,
+#agreementPopupBody .agr-more-btn,
+.agr-more-menu .agr-date-chip,
+.agr-more-menu .agr-meeting-btn,
+.agr-more-menu .agr-meeting-complete-btn{
+  display:inline-flex !important; align-items:center !important; justify-content:center; gap:5px !important;
+  height:28px !important; min-height:28px !important; padding:0 11px !important; box-sizing:border-box;
+  border-radius:999px !important;
+  border:1px solid #D8E1EC !important; border-style:solid !important;
+  background:#fff !important; color:#475569 !important;
+  font-size:12px !important; font-weight:600 !important; line-height:1 !important; white-space:nowrap;
+  box-shadow:none !important; min-width:0 !important;
+}
+#agreementPopupBody .agr-stage-row-actions .agr-date-chip:hover,
+#agreementPopupBody .agr-stage-row-actions .agr-meeting-btn:hover,
+#agreementPopupBody .agr-stage-row-actions .agr-meeting-complete-btn:hover,
+#agreementPopupBody .agr-more-btn:hover,
+.agr-more-menu .agr-date-chip:hover,
+.agr-more-menu .agr-meeting-btn:hover{ background:#F7F9FC !important; border-color:#C5D1E0 !important; color:#24364F !important; }
+/* 메인 액션 — 메일 / 발송 / 회신(빈 날짜) */
+#agreementPopupBody .agr-date-chip.is-mail,
+#agreementPopupBody .agr-meeting-btn.is-mail,
+#agreementPopupBody .agr-date-chip.is-empty,
+.agr-more-menu .agr-date-chip.is-mail,
+.agr-more-menu .agr-meeting-btn.is-mail,
+.agr-more-menu .agr-date-chip.is-empty{
+  background:#EEF4FC !important; border-color:#C9D9EE !important; color:#1B4480 !important;
+}
+#agreementPopupBody .agr-date-chip.is-mail:hover,
+#agreementPopupBody .agr-meeting-btn.is-mail:hover,
+#agreementPopupBody .agr-date-chip.is-empty:hover,
+.agr-more-menu .agr-date-chip.is-empty:hover{ background:#E2ECF9 !important; border-color:#A9C3E4 !important; color:#163A70 !important; }
+/* 채워진 날짜 칩 — 값은 남색, ✎는 흐리게 */
+#agreementPopupBody .agr-date-chip.is-filled .agr-date-chip-value{ color:#17345F; font-weight:700; font-variant-numeric:tabular-nums; }
+#agreementPopupBody .agr-date-chip.is-filled .agr-date-chip-edit{ display:inline-flex; color:#94A3B8; }
+#agreementPopupBody .agr-date-chip.is-filled:hover .agr-date-chip-edit{ color:#1B4480; }
+#agreementPopupBody .agr-date-chip-sublabel{ font-weight:600; color:#7C8BA1; }
+/* MOU 확정 칩 — 켜져 있으면 연한 초록 글자만(바탕은 흰색 유지) */
+#agreementPopupBody .agr-mou-manual-chip.is-on{ color:#0F7A42 !important; border-color:rgba(15,122,66,.3) !important; }
+/* 더보기 */
+#agreementPopupBody .agr-more-btn::after{ content:none !important; }
+#agreementPopupBody .agr-more-btn{ color:#64748B !important; }
+.agr-more-menu{ padding:6px !important; gap:4px !important; min-width:0 !important; }
+.agr-more-menu > *{ justify-content:flex-start !important; }
+/* 질문서 메일 발송 등 행 아래 액션 줄 */
+#agreementPopupBody .agr-stage-btn-row .workq-btn{ height:30px !important; min-height:30px !important; border-radius:999px !important; padding:0 13px !important; font-size:12px !important; }
+
+/* ---- 질문지 상담 탭 — 카드 높이·여백 축소 ---- */
+.cdet-panel[data-cdet-panel="questionnaire"] .cdet-stack{ gap:8px !important; }
+.cdet-panel[data-cdet-panel="questionnaire"] .qtab-card{ padding:8px 12px !important; border-radius:10px !important; }
+.cdet-panel[data-cdet-panel="questionnaire"] .qtab-sec{ padding:6px 0 !important; margin:0 !important; }
+.cdet-panel[data-cdet-panel="questionnaire"] .qtab-sec + .qtab-sec{ border-top:1px solid #F1F4F8; }
+/* 상단: 제목·설명 한 덩어리, 버튼은 오른쪽 위 작게 */
+.cdet-panel[data-cdet-panel="questionnaire"] .qtab-file{ display:flex !important; align-items:center !important; justify-content:space-between; gap:12px; }
+.cdet-panel[data-cdet-panel="questionnaire"] .qtab-file-main{ min-width:0; }
+.cdet-panel[data-cdet-panel="questionnaire"] .qtab-sec-label{ font-size:12.5px !important; font-weight:700 !important; margin:0 !important; }
+.cdet-panel[data-cdet-panel="questionnaire"] .qtab-file-meta,
+.cdet-panel[data-cdet-panel="questionnaire"] .qtab-file-name{ font-size:11.5px !important; color:#7C8BA1 !important; margin-top:1px !important; }
+.cdet-panel[data-cdet-panel="questionnaire"] .qtab-file-actions{ display:flex; align-items:center; gap:6px; flex:none; }
+.cdet-panel[data-cdet-panel="questionnaire"] .qtab-file-actions .co-text-action{
+  height:30px !important; min-height:30px !important; padding:0 12px !important; gap:5px !important;
+  border-radius:999px !important; font-size:12px !important; min-width:0 !important;
+}
+/* 요청자료: 비어 있으면 한 줄(제목 · 없음 · 수정) */
+.cdet-panel[data-cdet-panel="questionnaire"] #cdashMaterialsBlock:has(> .qtab-sec-empty){
+  display:flex !important; align-items:center; gap:10px;
+}
+.cdet-panel[data-cdet-panel="questionnaire"] #cdashMaterialsBlock:has(> .qtab-sec-empty) .qtab-sec-head{ display:contents !important; }
+.cdet-panel[data-cdet-panel="questionnaire"] #cdashMaterialsBlock:has(> .qtab-sec-empty) .qtab-sec-label{ order:1; }
+.cdet-panel[data-cdet-panel="questionnaire"] #cdashMaterialsBlock:has(> .qtab-sec-empty) .qtab-sec-empty{ order:2; flex:1; }
+.cdet-panel[data-cdet-panel="questionnaire"] #cdashMaterialsBlock:has(> .qtab-sec-empty) .qtab-sec-btn{ order:3; }
+.cdet-panel[data-cdet-panel="questionnaire"] .qtab-sec-btn{
+  height:26px !important; min-height:26px !important; padding:0 10px !important; border-radius:999px !important;
+  font-size:11.5px !important; color:#64748B !important; background:#fff !important; border-color:#E2E8F0 !important;
+}
+/* 추가 고객 메모 — 72px에서 시작, 누르면 넓게 */
+.cdet-panel[data-cdet-panel="questionnaire"] .insight-note-block{ padding:8px 12px !important; }
+.cdet-panel[data-cdet-panel="questionnaire"] .insight-note-head{ margin-bottom:2px !important; }
+.cdet-panel[data-cdet-panel="questionnaire"] .insight-note-title{ font-size:12.5px !important; }
+.cdet-panel[data-cdet-panel="questionnaire"] .insight-note-desc{ font-size:11px !important; margin:0 0 5px !important; color:#94A3B8 !important; }
+.cdet-panel[data-cdet-panel="questionnaire"] .insight-note-input{
+  min-height:72px !important; height:72px; padding:8px 10px !important; font-size:12.5px !important; line-height:1.5;
+  transition:min-height .15s ease;
+}
+.cdet-panel[data-cdet-panel="questionnaire"] .insight-note-input:focus{ min-height:130px !important; }
+
+/* ---- 하단 공통 바 — 한 줄 높이 더 낮게 ---- */
+#cdashFooterBar{ padding:4px 14px !important; }
+#cdashFooterBar #cdashFooterMemoBtn{
+  height:30px !important; min-height:30px !important; padding:0 12px !important; border-radius:999px !important; font-size:12px !important;
+}
+#cdashFooterBar .cdash-danger-fold-head{ padding:4px !important; }
 </style>
 </head>
 <body>
@@ -30449,6 +30558,21 @@ window.SHIN2_CRM_APP_INIT = function(){
   // §협약 진행관리 compact 패널 라운드 — displayLabel(선택)은 칩에 "보이는" 서브라벨만
   // 바꾼다. 날짜 팝업 제목으로 넘어가는 data-agr-date-label은 sr.label 그대로다
   // ("발송"만 뜨는 팝업 제목은 무슨 날짜인지 알 수 없으므로 축약하지 않는다).
+  // §협약 진행 아이콘 액션 라운드(신규) — 버튼 라벨을 "아이콘 + 짧은 말"로. 표시만 바뀌고
+  // class·data-agr-* 속성·핸들러는 그대로다. 긴 원래 뜻은 title/aria-label로 남긴다.
+  const AGR_ICON_PATHS = {
+    mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3.5 6.5 8.5 6 8.5-6"/>',
+    send: '<path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>',
+    inbox: '<path d="M12 4v12"/><path d="m7 11 5 5 5-5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>',
+    calendar: '<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
+    edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>',
+    check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
+    more: '<circle cx="5.5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="18.5" cy="12" r="1.3"/>',
+    doc: '<path d="M7 3h7l5 5v12a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v5h5M9 13h6M9 17h4"/>'
+  };
+  function agrIcon(name){
+    return `<svg class="agr-ico" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${AGR_ICON_PATHS[name] || ''}</svg>`;
+  }
   function agrStageDateChipHtml(sr, showLabel, displayLabel){
     const r = sr.row;
     const hasDate = !!(r.dateText && r.dateText !== '—');
@@ -30456,12 +30580,14 @@ window.SHIN2_CRM_APP_INIT = function(){
     if(hasDate){
       // §미팅 시각 라운드 — 1차/2차 미팅 예정 행만 시각을 함께 보여준다(저장값은 분리 보관).
       const shown = fmtScheduleWithTime(r.dateText, r.timeText);
-      return `<button type="button" class="agr-date-chip is-filled" data-agr-date-key="${esc(r.key)}" data-agr-date-label="${esc(sr.label)}">
-        ${labelHtml}<span class="agr-date-chip-value">${esc(shown)}</span><span class="agr-date-chip-edit">수정</span>
+      return `<button type="button" class="agr-date-chip is-filled" data-agr-date-key="${esc(r.key)}" data-agr-date-label="${esc(sr.label)}" title="${esc(sr.label)} 날짜 수정" aria-label="${esc(sr.label)} ${esc(shown)} — 날짜 수정">
+        ${labelHtml}<span class="agr-date-chip-value">${esc(shown)}</span><span class="agr-date-chip-edit">${agrIcon('edit')}</span>
       </button>`;
     }
-    return `<button type="button" class="agr-date-chip is-empty" data-agr-date-key="${esc(r.key)}" data-agr-date-label="${esc(sr.label)}">
-      ${labelHtml}<span class="agr-date-chip-add">+ 날짜 등록</span>
+    const shortLabel = showLabel ? (displayLabel || sr.label) : '날짜';
+    const iconName = shortLabel === '발송' ? 'send' : (shortLabel === '회신' ? 'inbox' : 'calendar');
+    return `<button type="button" class="agr-date-chip is-empty" data-agr-date-key="${esc(r.key)}" data-agr-date-label="${esc(sr.label)}" title="${esc(sr.label)} 날짜 등록" aria-label="${esc(sr.label)} 날짜 등록">
+      ${agrIcon(iconName)}<span class="agr-date-chip-add">${esc(shortLabel)}</span>
     </button>`;
   }
   // §수동 MOU 체결 확정 라운드(신규) — "MOU 체결 완료" 줄에만 붙는 확정 토글 칩.
@@ -30471,8 +30597,8 @@ window.SHIN2_CRM_APP_INIT = function(){
     const on = !!(D.isMouManuallyConfirmed && D.isMouManuallyConfirmed(co));
     return `<button type="button" class="agr-date-chip agr-mou-manual-chip${on ? ' is-on' : ''}"
       data-agr-mou-manual="${on ? 'off' : 'on'}"
-      title="진행단계는 그대로 두고 'MOU 체결 업체'로만 확정합니다.">
-      <span class="agr-date-chip-add">${on ? '✓ MOU 체결 확정됨 (해제)' : 'MOU 체결로 확정'}</span>
+      title="${on ? 'MOU 체결 확정됨 — 누르면 확정을 해제합니다' : '진행단계는 그대로 두고 MOU 체결 업체로만 확정합니다'}">
+      ${agrIcon('check')}<span class="agr-date-chip-add">${on ? '확정됨 · 해제' : 'MOU 확정'}</span>
     </button>`;
   }
   // §1차/2차미팅 예정·완료 탭 통합 라운드(신규) — 사용자 요청: "1차미팅/2차미팅이 예정 탭·
@@ -30493,11 +30619,11 @@ window.SHIN2_CRM_APP_INIT = function(){
     // 그대로 부른다 — 새 메일 로직 없음. 완료 이후에도 다시 보낼 수 있게 항상 노출한다
     // (§요청 "메일 발송과 완료는 별개").
     const mailAction = meetingNo === 1 ? 'mail-m1-stage' : 'mail-m2-stage';
-    const mailBtnHtml = `<button type="button" class="agr-meeting-btn" data-agr-do="${mailAction}">메일 보내기</button>`;
+    const mailBtnHtml = `<button type="button" class="agr-meeting-btn is-mail" data-agr-do="${mailAction}" title="${esc(meetingLabel)} 메일 보내기" aria-label="${esc(meetingLabel)} 메일 보내기">${agrIcon('mail')}메일</button>`;
     if(done.done){
       return `<div class="agr-meeting-row is-done">
         <span class="agr-meeting-status">✓ ${esc(meetingLabel)} 완료 ${esc(done.dateText)}</span>
-        <button type="button" class="agr-meeting-btn" data-agr-date-key="${esc(done.key)}" data-agr-date-label="${esc(doneSr.label)}">수정</button>
+        <button type="button" class="agr-meeting-btn" data-agr-date-key="${esc(done.key)}" data-agr-date-label="${esc(doneSr.label)}" title="${esc(doneSr.label)} 수정">${agrIcon('edit')}수정</button>
         ${mailBtnHtml}
       </div>`;
     }
@@ -30505,14 +30631,14 @@ window.SHIN2_CRM_APP_INIT = function(){
     if(!hasSchedDate){
       return `<div class="agr-meeting-row">
         <span class="agr-meeting-status">${esc(meetingLabel)} 예정 · 날짜 등록</span>
-        <button type="button" class="agr-meeting-btn" data-agr-date-key="${esc(sched.key)}" data-agr-date-label="${esc(schedSr.label)}">날짜 등록</button>
+        <button type="button" class="agr-meeting-btn" data-agr-date-key="${esc(sched.key)}" data-agr-date-label="${esc(schedSr.label)}" title="${esc(schedSr.label)} 날짜 등록">${agrIcon('calendar')}날짜</button>
         ${mailBtnHtml}
       </div>`;
     }
     return `<div class="agr-meeting-row">
       <span class="agr-meeting-status">${esc(meetingLabel)} 예정 ${esc(sched.dateText)}</span>
-      <button type="button" class="agr-meeting-btn" data-agr-date-key="${esc(sched.key)}" data-agr-date-label="${esc(schedSr.label)}">수정</button>
-      <button type="button" class="agr-meeting-complete-btn" data-agr-meeting-complete="${esc(done.key)}" data-agr-meeting-complete-label="${esc(doneSr.label)}" data-agr-meeting-complete-date="${esc(sched.dateText)}" data-agr-meeting-owner="${esc(sched.owner || '')}">완료</button>
+      <button type="button" class="agr-meeting-btn" data-agr-date-key="${esc(sched.key)}" data-agr-date-label="${esc(schedSr.label)}" title="${esc(schedSr.label)} 수정">${agrIcon('edit')}수정</button>
+      <button type="button" class="agr-meeting-complete-btn" title="${esc(doneSr.label)} 처리" data-agr-meeting-complete="${esc(done.key)}" data-agr-meeting-complete-label="${esc(doneSr.label)}" data-agr-meeting-complete-date="${esc(sched.dateText)}" data-agr-meeting-owner="${esc(sched.owner || '')}">${agrIcon('check')}완료</button>
       ${mailBtnHtml}
     </div>`;
   }
@@ -30521,7 +30647,7 @@ window.SHIN2_CRM_APP_INIT = function(){
   // 그대로 넘겨받는다(질문서=mail-questionnaire, MOU=mail-post-second — "협약 후속
   // 메일" 템플릿을 그대로 재사용, 새 메일 종류를 만들지 않았다).
   function agrStageMailBtnHtml(action){
-    return `<button type="button" class="agr-date-chip is-mail" data-agr-do="${esc(action)}"><span class="agr-date-chip-add">메일 보내기</span></button>`;
+    return `<button type="button" class="agr-date-chip is-mail" data-agr-do="${esc(action)}" title="메일 보내기" aria-label="메일 보내기">${agrIcon('mail')}<span class="agr-date-chip-add">메일</span></button>`;
   }
   // §요청 [3] "다음 해야 할 일" — 미완료 단계 중 첫 번째를 그대로 안내 문구로 쓴다(새 판정
   // 아님, 위 rows의 순서/완료여부만 본다).
@@ -32273,8 +32399,8 @@ window.SHIN2_CRM_APP_INIT = function(){
     // §질문지 상담 탭 통합 라운드(신규) — 큰 박스 대신 한 줄. 평가 줄·종합 인사이트
     // 한 줄·요청자료 경고(consultWorkCardHtml)를 여기서 뺐다 — 바로 아래 "상담 평가"와
     // "종합 고객 인사이트" 섹션이 같은 내용을 이미 보여주고 있었다(중복 제거).
-    if(!doc) return `<div class="qtab-sec qtab-file"><div class="qtab-file-main"><div class="qtab-sec-label">질문지 상담</div><div class="qtab-file-meta">질문서를 등록하면, 문서를 보면서 상담 메모를 바로 저장할 수 있습니다.</div></div><div class="qtab-file-actions">${inputHtml}<label for="agreementQuestionnaireInput" class="co-text-action primary questionnaire-file-label">질문지 등록</label></div></div>`;
-    return `<div class="qtab-sec qtab-file"><div class="qtab-file-main"><div class="qtab-sec-label">질문지 상담${reqMatBadgeHtml(doc)}<span class="qtab-mini-badge">등록됨</span></div><div class="qtab-file-name">${esc(doc.fileName || doc.originalFileName || '질문서')}</div><div class="qtab-file-meta">${esc(fmtDate(doc.createdAt))} 등록${doc.localOnly ? ' · 이 브라우저에만 저장됨' : ''}</div></div><div class="qtab-file-actions">${inputHtml}<button type="button" class="co-text-action primary" data-questionnaire-session="${esc(doc.id)}">질문지 열기</button><label for="agreementQuestionnaireInput" class="co-text-action questionnaire-file-label">교체</label></div></div>`;
+    if(!doc) return `<div class="qtab-sec qtab-file"><div class="qtab-file-main"><div class="qtab-sec-label">질문지 상담</div><div class="qtab-file-meta">질문서를 올리면 보면서 바로 상담 기록을 남길 수 있습니다.</div></div><div class="qtab-file-actions">${inputHtml}<label for="agreementQuestionnaireInput" class="co-text-action primary questionnaire-file-label" title="질문서 파일 등록">${agrIcon('doc')}질문지 등록</label></div></div>`;
+    return `<div class="qtab-sec qtab-file"><div class="qtab-file-main"><div class="qtab-sec-label">질문지 상담${reqMatBadgeHtml(doc)}<span class="qtab-mini-badge">등록됨</span></div><div class="qtab-file-name">${esc(doc.fileName || doc.originalFileName || '질문서')}</div><div class="qtab-file-meta">${esc(fmtDate(doc.createdAt))} 등록${doc.localOnly ? ' · 이 브라우저에만 저장됨' : ''}</div></div><div class="qtab-file-actions">${inputHtml}<button type="button" class="co-text-action primary" data-questionnaire-session="${esc(doc.id)}" title="질문서를 보면서 상담 기록">${agrIcon('doc')}질문지 열기</button><label for="agreementQuestionnaireInput" class="co-text-action questionnaire-file-label">교체</label></div></div>`;
   }
   // §질문지 상담 탭 통합 라운드(신규) — 질문지 파일 줄 안에 평가·종합 인사이트·요청자료를
   // 한 번 더 넣던 consultWorkCardHtml은 지웠다. 같은 내용을 "상담 평가" / "종합 고객
@@ -32332,7 +32458,9 @@ window.SHIN2_CRM_APP_INIT = function(){
   // 그대로 옮기므로(복제 아님) 이미 붙은 클릭 핸들러·data 속성이 전부 유지된다. 화면 배치만 바뀐다.
   function compactAgreementRowActions(body){
     if(!body) return;
-    body.querySelectorAll('.agr-stage-row-actions').forEach(actions=>{
+    body.querySelectorAll('.agr-stage-row-actions').forEach(rowActions=>{
+      // 1·2차 미팅 행은 버튼이 .agr-meeting-row 안에 한 겹 더 들어 있다 — 그 안을 기준으로 본다.
+      const actions = rowActions.querySelector(':scope > .agr-meeting-row') || rowActions;
       const items = Array.from(actions.children).filter(el=> el.matches('button, .agr-more') === true && !el.classList.contains('agr-more'));
       if(items.length <= 2) return;
       const isMail = el=> /mail/.test(el.getAttribute('data-agr-do') || '') || el.classList.contains('is-mail');
@@ -32344,7 +32472,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       if(!rest.length) return;
       const more = document.createElement('details');
       more.className = 'agr-more';
-      more.innerHTML = '<summary class="agr-more-btn">더보기</summary><div class="agr-more-menu"></div>';
+      more.innerHTML = '<summary class="agr-more-btn" title="다른 작업 더보기" aria-label="다른 작업 더보기">' + agrIcon('more') + '더보기</summary><div class="agr-more-menu"></div>';
       const menu = more.querySelector('.agr-more-menu');
       rest.forEach(el=> menu.appendChild(el));
       actions.appendChild(more);
