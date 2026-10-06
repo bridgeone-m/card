@@ -9457,6 +9457,181 @@ body.crm-page-shell #mailSettingsView .mail-settings-header-wrap{
   .questionnaire-viewer iframe, .questionnaire-viewer img{ min-height:70vh; }
   .questionnaire-wide-toggle{ display:none !important; }
 }
+
+/* ==========================================================================
+   §고객 상세 탭 재정리 라운드(신규) — 정보량·사용 빈도 기준으로 탭별 밀도를 다시 맞춘다.
+   [빈 공간 원인] 각 탭 본문(.cdet-panel)은 원래 내용 높이였지만, 그 바깥 #chartBody에
+   min-height:min(360px, 42vh)가 걸려 짧은 탭(서류 체크 181px·시공실적 150px·접촉기록
+   225px)이 360px까지 늘어나 아래 120~200px가 비었다. 하단 공통 바(상담 메모 + 위험
+   영역)도 두 줄 84px로 항상 펼쳐져 있었다.
+   여기서는 모양·배치만 바꾼다 — 저장·계산·데이터·핸들러는 그대로다.
+   ========================================================================== */
+
+/* ---- 팝업: 내용 높이 + 상한 88vh, 내용이 많을 때만 본문 스크롤 ---- */
+#chartBody{ min-height:0 !important; }
+.chart-overlay .chart-panel, .chart-panel{ max-height:88vh !important; }
+@media(max-width:540px){ .chart-overlay .chart-panel, .chart-panel{ max-height:94vh !important; } }
+
+/* ---- 탭 바: active만 연한 블루, 나머지는 글자 중심 / 건수는 작게 ---- */
+#chartTabBar{ gap:2px !important; }
+#chartTabBar .cdash2-tab{ height:34px !important; min-height:34px !important; padding:0 11px !important; }
+#chartTabBar .cdash2-tab:not(.is-active){ border-color:transparent !important; background:transparent !important; }
+#chartTabBar .chip-count,
+#chartTabBar .cdash2-tab .cdash2-tab-count{
+  margin-left:4px !important; padding:0 !important; min-width:0 !important; height:auto !important;
+  background:none !important; border:0 !important;
+  font-size:10.5px !important; font-weight:600 !important; color:#94A3B8 !important;
+}
+#chartTabBar .cdash2-tab.is-active .chip-count{ color:#6B85B0 !important; }
+
+/* ---- 하단 공통 바: 한 줄 — [상담 메모] … [위험 영역 ▸] (펼치면 아래로) ---- */
+#cdashFooterBar{
+  display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:6px 10px;
+  padding:6px 16px !important; border-top:1px solid #EEF2F7;
+}
+#cdashFooterBar .cdash2-footer{ padding:0 !important; border:0 !important; background:none !important; margin:0 !important; order:1; }
+#cdashFooterBar .cdash-danger-fold{ border-top:0 !important; order:2; margin:0; }
+#cdashFooterBar .cdash-danger-fold-head{ padding:6px 4px !important; font-size:11.5px !important; color:#94A3B8 !important; cursor:pointer; }
+#cdashFooterBar .cdash-danger-fold[open]{ flex:1 1 100%; order:3; }
+#cdashFooterBar .cdash-danger-fold[open] > .cdash-danger-fold-head{ display:inline-block; }
+#cdashFooterBar .cdash-danger-zone{ padding:8px 10px !important; border:1px solid rgba(194,65,65,.18) !important; border-radius:9px; background:#FDF7F7; }
+
+/* ---- 공통: 카드 여백 축소(카드 남발 대신 얇은 묶음) ---- */
+.cdet-panel .cdash2-card{ padding:12px 14px !important; }
+.cdet-panel .cdet-stack{ gap:10px !important; }
+.cdet-panel .cdash2-card-title{ font-size:13px !important; }
+
+/* ---- 1순위 · 기본정보: 기업 요약을 4열(라벨·값·라벨·값) compact grid로 ---- */
+.cdet-panel[data-cdet-panel="overview"] .cdash2-cosum-card .cdet-kv{
+  grid-template-columns:64px minmax(0,1fr) 64px minmax(0,1fr) !important;
+  gap:6px 12px !important;
+}
+.cdet-panel[data-cdet-panel="overview"] .cdet-kv-k{ font-size:11.5px; color:#7C8BA1; }
+.cdet-panel[data-cdet-panel="overview"] .cdet-kv-v{ font-size:12.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+@media(max-width:820px){
+  .cdet-panel[data-cdet-panel="overview"] .cdash2-cosum-card .cdet-kv{ grid-template-columns:64px minmax(0,1fr) !important; }
+}
+
+/* ---- 1순위 · 최근 접촉기록: 날짜·유형·내용 한 줄씩 촘촘한 목록 ---- */
+.cdet-panel[data-cdet-panel="activity"] .cdash2-timeline-item{
+  display:grid !important; grid-template-columns:44px auto minmax(0,1fr); align-items:baseline; column-gap:10px;
+  padding:7px 6px !important; border-left:0 !important; border-bottom:1px solid #F1F4F8; border-radius:6px;
+}
+.cdet-panel[data-cdet-panel="activity"] .cdash2-timeline-item:last-child{ border-bottom:0; }
+.cdet-panel[data-cdet-panel="activity"] .cdash2-timeline-item:hover{ background:#F7F9FC; }
+.cdet-panel[data-cdet-panel="activity"] .cdash2-timeline-dot{ display:none !important; }
+.cdet-panel[data-cdet-panel="activity"] .cdash2-timeline-row{ display:contents !important; }
+.cdet-panel[data-cdet-panel="activity"] .cdash2-timeline-date{ font-size:11.5px; color:#7C8BA1; font-variant-numeric:tabular-nums; }
+.cdet-panel[data-cdet-panel="activity"] .cdash2-timeline-type{ font-size:11px; font-weight:600; color:#4A5D7A; background:#F1F5F9; border-radius:5px; padding:1px 6px; white-space:nowrap; }
+.cdet-panel[data-cdet-panel="activity"] .cdash2-timeline-text{ font-size:12.5px; color:#24364F; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin:0 !important; }
+.cdet-panel[data-cdet-panel="activity"] #cdashMemoPreviewCard .chart-empty{ padding:4px 0 !important; font-size:12px; }
+
+/* ---- 2순위 · 매출현황: 한 줄 지표 3칸 + 작은 막대 ---- */
+.cdash2-revenue-stats{
+  display:grid !important; grid-template-columns:repeat(3, minmax(0,1fr)) !important; gap:0 !important;
+  margin:8px 0 6px !important; padding:6px 0 !important;
+  border-top:1px solid #EEF2F7; border-bottom:1px solid #EEF2F7;
+}
+.cdash2-revenue-stats .cdash2-revenue-kpi{
+  background:none !important; border:0 !important; border-radius:0 !important; box-shadow:none !important;
+  padding:4px 14px !important; min-height:0 !important;
+}
+.cdash2-revenue-stats .cdash2-revenue-kpi + .cdash2-revenue-kpi{ border-left:1px solid #EEF2F7 !important; }
+.cdash2-revenue-stats .cdash2-revenue-stat-label{ font-size:11px !important; color:#7C8BA1 !important; margin-bottom:2px; }
+.cdash2-revenue-stats .cdash2-revenue-stat-value{ font-size:17px !important; font-weight:800 !important; color:#17345F !important; line-height:1.25; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.cdash2-revenue-stats .is-peak .cdash2-revenue-stat-value{ font-size:14px !important; font-weight:700 !important; color:#1B4480 !important; padding-top:3px; }
+.cdash2-revenue-card .cdash2-chart-outer,
+.cdet-stack .cdash2-revenue-card .cdash2-chart-outer{ width:100% !important; min-height:0 !important; margin-top:4px !important; }
+.cdash2-revenue-card .cdash2-chart-wrap{ height:150px !important; min-height:0 !important; }
+@media(max-width:560px){
+  .cdash2-revenue-stats{ grid-template-columns:1fr 1fr !important; }
+  .cdash2-revenue-stats .is-peak{ grid-column:1 / -1; border-left:0 !important; border-top:1px solid #EEF2F7; }
+}
+
+/* ---- 2순위 · 최근 시공실적: 연도·공종·현장 compact 목록(세대수는 "전체 실적"에서) ---- */
+.cdet-panel[data-cdet-panel="pour"] .cdash-pour-table th,
+.cdet-panel[data-cdet-panel="pour"] .cdash-pour-table td{ padding:6px 8px !important; font-size:12px !important; }
+.cdet-panel[data-cdet-panel="pour"] .cdash-pour-table th{ font-size:11px !important; color:#7C8BA1 !important; background:#F8FAFC !important; }
+.cdet-panel[data-cdet-panel="pour"] .cdash-pour-table th:nth-child(4),
+.cdet-panel[data-cdet-panel="pour"] .cdash-pour-table td:nth-child(4){ display:none; }
+.cdet-panel[data-cdet-panel="pour"] .cdash-pour-table td:nth-child(3){ max-width:0; width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.cdet-panel[data-cdet-panel="pour"] .cdash2-table-scroll{ max-height:none !important; }
+.cdet-panel[data-cdet-panel="pour"] .cdash2-view-all-btn{ margin-top:8px !important; }
+
+/* ---- 1순위 · 협약 진행: 행 높이 축소, 단계명·상태 한 덩어리, 버튼 2개 + 더보기 ---- */
+#agreementPopupBody .agr-stage-list{ gap:0 !important; border:1px solid #EEF2F7; border-radius:10px; overflow:visible; }
+#agreementPopupBody .agr-stage-row{
+  min-height:0 !important; padding:7px 12px !important; margin:0 !important;
+  border:0 !important; border-bottom:1px solid #F1F4F8 !important; border-radius:0 !important; background:#fff !important;
+  display:flex !important; align-items:center !important; justify-content:space-between; gap:10px;
+}
+#agreementPopupBody .agr-stage-row:last-child{ border-bottom:0 !important; }
+#agreementPopupBody .agr-stage-row-main{ display:flex; align-items:baseline; gap:10px; min-width:0; }
+#agreementPopupBody .agr-stage-row-label{ font-size:12.5px !important; font-weight:700 !important; min-width:80px; }
+#agreementPopupBody .agr-stage-row-status{ font-size:12px !important; color:#7C8BA1 !important; }
+#agreementPopupBody .agr-stage-row-actions{ display:flex; align-items:center; gap:6px; flex-wrap:nowrap; flex:none; }
+#agreementPopupBody .agr-stage-row-actions .agr-date-chip,
+#agreementPopupBody .agr-stage-row-actions .agr-meeting-btn,
+#agreementPopupBody .agr-stage-row-actions .workq-btn{ height:30px !important; min-height:30px !important; padding:0 10px !important; font-size:12px !important; }
+.agr-more{ position:relative; }
+.agr-more-btn{
+  list-style:none; display:inline-flex; align-items:center; height:30px; padding:0 10px; box-sizing:border-box;
+  border:1px solid #D8E1EC; border-radius:8px; background:#fff; cursor:pointer;
+  font-size:12px; font-weight:600; color:#475569; white-space:nowrap;
+}
+.agr-more-btn::-webkit-details-marker{ display:none; }
+.agr-more-btn::after{ content:'▾'; font-size:10px; margin-left:4px; color:#94A3B8; }
+.agr-more-btn:hover{ background:#F7F9FC; }
+.agr-more[open] > .agr-more-btn{ background:#F1F5F9; }
+.agr-more-menu{
+  position:absolute; right:0; top:calc(100% + 4px); z-index:30;
+  display:flex; flex-direction:column; align-items:stretch; gap:4px;
+  padding:6px; min-width:150px; background:#fff; border:1px solid #DCE5EF; border-radius:10px;
+  box-shadow:0 10px 26px rgba(23,52,95,.14);
+}
+.agr-more-menu > *{ justify-content:flex-start !important; width:100%; }
+#agreementPopupBody .agr-stage-btn-row{ margin-top:8px !important; }
+#agreementPopupBody .agr-section-title-row{ margin-bottom:6px !important; }
+@media(max-width:640px){
+  #agreementPopupBody .agr-stage-row{ flex-wrap:wrap; }
+  #agreementPopupBody .agr-stage-row-actions{ flex-wrap:wrap; }
+}
+/* 협약 관리(무효 처리) — 작은 danger notice 한 줄(높이 50~60px) */
+.agr-danger-zone{ margin-top:10px !important; padding:8px 12px !important; gap:12px !important; border-style:solid !important; border-color:#F0E1E1 !important; }
+.agr-danger-zone-text{ display:flex; align-items:baseline; gap:8px; min-width:0; }
+.agr-danger-zone-title{ margin:0 !important; font-size:12px !important; white-space:nowrap; }
+.agr-danger-zone-desc{ font-size:11.5px !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.agr-danger-zone .co-text-action.danger{ height:32px !important; min-height:32px !important; font-size:12px !important; }
+
+/* ---- 3순위 · 질문지 상담: 섹션 간격·빈 상태 축소, 메모 입력은 80px에서 시작 ---- */
+.cdet-panel[data-cdet-panel="questionnaire"] .qtab-card{ padding:10px 12px !important; }
+.cdet-panel[data-cdet-panel="questionnaire"] .qtab-sec{ padding:8px 0 !important; }
+.cdet-panel[data-cdet-panel="questionnaire"] .qtab-sec-head{ margin-bottom:2px !important; }
+.cdet-panel[data-cdet-panel="questionnaire"] .qtab-sec-empty{ padding:2px 0 !important; font-size:12px !important; color:#94A3B8 !important; }
+.cdet-panel[data-cdet-panel="questionnaire"] .insight-note-desc{ font-size:11px !important; margin:0 0 6px !important; }
+.cdet-panel[data-cdet-panel="questionnaire"] .insight-note-input{ min-height:80px !important; height:80px; resize:vertical; }
+.cdet-panel[data-cdet-panel="questionnaire"] .insight-note-input:focus{ min-height:120px !important; }
+
+/* ---- 3순위 · 서류 체크: 3열 × 2행, 항목 36px, 6/6이면 "서류 확인 완료" ---- */
+.cdet-panel[data-cdet-panel="documents"] .cdash2-docs-section{ padding:12px 14px !important; }
+.cdet-panel[data-cdet-panel="documents"] .cdet-sec-title{ display:none; }
+#agreementDocSection .agr-doc-summary{
+  display:flex; align-items:center; gap:8px; margin:0 0 8px !important;
+  font-size:13px !important; font-weight:700; color:#17345F !important;
+}
+#agreementDocSection:not(:has(.doc-check-box:not(:checked))) .agr-doc-summary::after{
+  content:'서류 확인 완료'; font-size:11px; font-weight:700; color:#0F7A42;
+  background:#EAF8EF; border-radius:6px; padding:2px 7px;
+}
+#agreementDocSection .doc-check-list{ display:grid !important; grid-template-columns:repeat(3, minmax(0,1fr)) !important; gap:6px !important; }
+#agreementDocSection .doc-check-row{
+  min-height:36px !important; height:36px; padding:0 10px !important; box-sizing:border-box;
+  display:flex !important; align-items:center !important; gap:8px !important;
+  border:1px solid #E4EAF1 !important; border-radius:8px !important; background:#fff !important; cursor:pointer;
+}
+#agreementDocSection .doc-check-row:has(.doc-check-box:checked){ background:#F4F8FD !important; border-color:#C9D9EE !important; }
+#agreementDocSection .doc-check-name{ font-size:12.5px !important; }
+@media(max-width:520px){ #agreementDocSection .doc-check-list{ grid-template-columns:1fr 1fr !important; } }
 </style>
 </head>
 <body>
@@ -23901,16 +24076,20 @@ window.SHIN2_CRM_APP_INIT = function(){
     // renderPourResultsCard)에 이미 그대로 나오므로 정보가 사라지지 않는다. pourCount/
     // latestYear 계산 자체(D.getAllPourRecordsForCompany)는 그대로 두되(§ 다른 곳에서
     // 재사용 가능하도록 계산 로직은 삭제하지 않음), 이 카드에서만 그리지 않는다.
+    // §고객 상세 탭 재정리 라운드 — 최고월은 머리 배지 대신 지표 줄의 세 번째 칸으로(같은 값).
+    const peakText = (maxIdx >= 0 && monthly && monthly.points[maxIdx])
+      ? `${monthly.points[maxIdx].month}월 · ${fmtKrwCompact(monthly.points[maxIdx].total)}`
+      : (maxBadgeText || '—');
     wrap.innerHTML = `
       <div class="cdash2-summary-row">
         <div class="cdash2-card cdash2-revenue-card">
           <div class="cdash2-revenue-card-head">
-            <div class="cdash2-card-title" style="margin-bottom:0;"><span aria-hidden="true">📊</span> 매출 현황 ${revenueInfoIconHtml('cdash')}</div>
-            ${maxBadgeText ? `<div class="cdash2-revenue-max-badge">${esc(maxBadgeText)}</div>` : ''}
+            <div class="cdash2-card-title" style="margin-bottom:0;">매출 현황 ${revenueInfoIconHtml('cdash')}</div>
           </div>
-          <div class="cdash2-revenue-head">
+          <div class="cdash2-revenue-head cdash2-revenue-stats">
             <div class="cdash2-revenue-kpi"><div class="cdash2-revenue-stat-label">총 매출</div><div class="cdash2-revenue-stat-value">${esc(totalRevenueText)}</div></div>
             <div class="cdash2-revenue-kpi"><div class="cdash2-revenue-stat-label">${esc(currentYear)}년 매출</div><div class="cdash2-revenue-stat-value">${esc(yearRevenueText)}</div></div>
+            <div class="cdash2-revenue-kpi is-peak"><div class="cdash2-revenue-stat-label">최고월</div><div class="cdash2-revenue-stat-value">${esc(peakText)}</div></div>
           </div>
           <div class="cdash2-chart-outer"><div class="cdash2-chart-wrap" id="cdashRevenueChartWrap">${chartHtml}</div></div>
         </div>
@@ -24028,82 +24207,70 @@ window.SHIN2_CRM_APP_INIT = function(){
   // 받는다(동률 최고월 전부 표시). 전체 svg 높이(H)와 막대 폭(barW 상한)을 키워 카드
   // 안에서 그래프가 더 중심적으로 보이게 했다(§17). 데이터/계산 방식(buildMonthlyRevenueForCurrentYear,
   // 색상 네이비/블루 두 톤)은 그대로 두고 크기·왕관 표시만 추가했다.
+  // §고객 상세 탭 재정리 라운드 — 엑셀 그래프 느낌을 덜고 대시보드 보조 차트로: 높이 축소,
+  // 막대 폭 축소, 안내선 제거(기준선 하나만 아주 연하게), 왕관 이모지 대신 작은 "TOP" 표시,
+  // 숫자는 값이 있는 달만 작고 흐리게(최고월만 진하게), 정확한 금액은 hover 툴팁(기존 그대로).
+  // 0원인 달은 기준선 위 작은 '–'. 색은 한 계열(남색)만 — 최고월만 더 진하다.
+  // 입력(points/maxIdxList)과 hit 영역·툴팁 연결(wireRevenueChartHover)은 그대로다.
   function buildRevenueBarChart(points, maxIdxList){
     maxIdxList = Array.isArray(maxIdxList) ? maxIdxList : (maxIdxList >= 0 ? [maxIdxList] : []);
     const maxIdxSet = new Set(maxIdxList);
-    const W = 560, H = 190, padX = 26, padTop = 42, padBottom = 26;
+    const W = 560, H = 150, padX = 18, padTop = 30, padBottom = 22;
     const axisY = H - padBottom;
     const plotH = axisY - padTop;
     const values = points.map(p=> p.total);
     const maxV = Math.max.apply(null, values.concat([1]));
     const n = points.length;
     const slotW = (W - padX*2) / Math.max(1, n);
-    // Chart.js의 categoryPercentage/barPercentage에 해당 — §14 "막대 너비 증가"를 반영해
-    // 상한을 26→34px로 키웠다(슬롯이 좁은 달이 많을 땐 여전히 비율로 줄어든다).
-    const barW = Math.max(12, Math.min(34, slotW * 0.58));
+    const barW = Math.max(8, Math.min(20, slotW * 0.4));
     const xCenter = i=> padX + slotW * (i + 0.5);
     const yAt = v=> axisY - (v / maxV) * plotH;
-
-    // §7 가로 안내선 2개(연한 회색 점선), 세로 안내선 없음, Y축 숫자/축 제목 없음.
-    const guideLines = [0.33, 0.66].map(f=>{
-      const y = (padTop + f * plotH).toFixed(1);
-      return `<line x1="${padX}" y1="${y}" x2="${W-padX}" y2="${y}" stroke="#EEF2F7" stroke-width="1" stroke-dasharray="3,3"/>`;
-    }).join('');
-    // §1/§10 왼쪽 위 단위 표시(만원) — 막대 라벨에는 반복해서 안 붙인다.
-    const unitLabel = `<text x="${padX}" y="13" font-size="10" font-weight="600" fill="#94A3B8" text-anchor="start">만원</text>`;
-
+    const unitLabel = `<text x="${padX}" y="10" font-size="9.5" font-weight="600" fill="#A3AFC0" text-anchor="start">만원</text>`;
     const isNarrow = (typeof window !== 'undefined') && window.innerWidth <= 760;
-    const minRawPositive = (()=>{ const pos = values.filter(v=>v>0); return pos.length ? Math.min.apply(null, pos) : null; })();
-    const minIdx = minRawPositive != null ? values.indexOf(minRawPositive) : -1;
-    const keyIdx = new Set([n-1]); // §11 좁은 화면: 최근 월은 항상 표시
-    maxIdxSet.forEach(idx=> keyIdx.add(idx));
-    if(minIdx >= 0) keyIdx.add(minIdx);
 
     const bars = points.map((p,i)=>{
       const cx = xCenter(i);
       if(!(p.total > 0)){
-        // §5 0원인 달 — 막대 없이 기준선 위 작은 회색 '–'만 표시(말풍선/큰 회색 막대 금지).
-        return `<text x="${cx.toFixed(1)}" y="${(axisY-4).toFixed(1)}" font-size="13" font-weight="700" fill="#B7C0CD" text-anchor="middle">–</text>`;
+        return `<text x="${cx.toFixed(1)}" y="${(axisY-3).toFixed(1)}" font-size="11" font-weight="600" fill="#C9D1DC" text-anchor="middle">–</text>`;
       }
       const isMax = maxIdxSet.has(i);
       const barTop = yAt(p.total);
       const barH = Math.max(1, axisY - barTop);
-      const r = Math.min(5, barW/2, barH); // §3 상단 모서리만 4~6px 라운드
+      const r = Math.min(3, barW/2, barH);
       const x0 = cx - barW/2, x1 = cx + barW/2;
       const path = `M${x0.toFixed(1)},${axisY.toFixed(1)} `
         + `L${x0.toFixed(1)},${(barTop+r).toFixed(1)} `
         + `Q${x0.toFixed(1)},${barTop.toFixed(1)} ${(x0+r).toFixed(1)},${barTop.toFixed(1)} `
         + `L${(x1-r).toFixed(1)},${barTop.toFixed(1)} `
         + `Q${x1.toFixed(1)},${barTop.toFixed(1)} ${x1.toFixed(1)},${(barTop+r).toFixed(1)} `
-        + `L${x1.toFixed(1)},${axisY.toFixed(1)} Z`; // 아래쪽은 기준선에 정확히 붙음(§3)
-      const color = isMax ? '#1B4480' : '#17305C'; // §3 일반=진한 남색, 최고=선명한 파란색, 그라데이션/3D 없음
-      const manwonLabel = Math.round(p.total / 10000).toLocaleString('ko-KR'); // §4 "만원"은 반복하지 않음, 천단위 쉼표만
-      const labelY = Math.max(24, barTop - 8); // §4 막대 위 6~10px, 최고 막대가 상단에서 안 잘리게 클램프(왕관 자리만큼 여유 12→24)
-      const showLabel = !isNarrow || keyIdx.has(i); // §11 좁은 화면에서는 주요 지점만(글자를 줄이지 않고 개수를 줄임)
-      // §요청 15 최고 매출 월 왕관 — 작은 골드 이모지, <title>로 네이티브 툴팁("최고 매출 월").
-      const crownHtml = isMax ? `<text x="${cx.toFixed(1)}" y="${Math.max(12, labelY - 13).toFixed(1)}" text-anchor="middle" class="cdash2-chart-crown"><title>최고 매출 월</title>👑</text>` : '';
-      return `<path d="${path}" fill="${color}"/>`
-        + (showLabel ? `<text x="${cx.toFixed(1)}" y="${labelY.toFixed(1)}" font-size="11.5" font-weight="700" fill="${color}" text-anchor="middle">${esc(manwonLabel)}</text>` : '')
-        + (showLabel ? crownHtml : '');
+        + `L${x1.toFixed(1)},${axisY.toFixed(1)} Z`;
+      const color = isMax ? '#1B4480' : '#7D96BC';
+      const manwonLabel = Math.round(p.total / 10000).toLocaleString('ko-KR');
+      const labelY = Math.max(18, barTop - 5);
+      const label = (!isNarrow || isMax)
+        ? `<text x="${cx.toFixed(1)}" y="${labelY.toFixed(1)}" font-size="${isMax ? 10.5 : 9.5}" font-weight="${isMax ? 700 : 500}" fill="${isMax ? '#1B4480' : '#8A97AA'}" text-anchor="middle">${esc(manwonLabel)}</text>`
+        : '';
+      const top = isMax
+        ? `<text x="${cx.toFixed(1)}" y="${Math.max(8, labelY - 11).toFixed(1)}" font-size="8.5" font-weight="800" letter-spacing=".04em" fill="#1B4480" text-anchor="middle"><title>최고 매출 월</title>TOP</text>`
+        : '';
+      return `<path d="${path}" fill="${color}"/>` + label + top;
     }).join('');
 
     const monthLabels = points.map((p,i)=>{
       const cx = xCenter(i);
-      const anchor = i === 0 ? 'start' : (i === n-1 ? 'end' : 'middle'); // §6 좌표는 막대 중심 그대로, 앵커만 바꿔 잘림 방지
-      return `<text x="${cx.toFixed(1)}" y="${(H-8).toFixed(1)}" font-size="10.5" font-weight="600" fill="#475569" text-anchor="${anchor}">${esc(p.month)}월</text>`;
+      return `<text x="${cx.toFixed(1)}" y="${(H-6).toFixed(1)}" font-size="9.5" font-weight="500" fill="#94A3B8" text-anchor="middle">${esc(p.month)}월</text>`;
     }).join('');
 
     const hitAreas = points.map((p,i)=>{
       const cx = xCenter(i);
       const cy = p.total > 0 ? Math.max(12, yAt(p.total) - 8) : axisY - 4;
-      return `<rect class="cdash2-chart-hitdot" data-idx="${i}" data-cx="${cx.toFixed(1)}" data-cy="${cy.toFixed(1)}" x="${(cx - slotW/2).toFixed(1)}" y="${padTop}" width="${slotW.toFixed(1)}" height="${(axisY - padTop).toFixed(1)}" fill="transparent"/>`;
+      return `<rect class="cdash2-chart-hitdot" data-idx="${i}" data-cx="${cx.toFixed(1)}" data-cy="${cy.toFixed(1)}" x="${(cx - slotW/2).toFixed(1)}" y="${padTop - 10}" width="${slotW.toFixed(1)}" height="${(axisY - padTop + 10).toFixed(1)}" fill="transparent" style="cursor:pointer;"></rect>`;
     }).join('');
 
     return `
       <svg viewBox="0 0 ${W} ${H}" width="100%" height="100%" preserveAspectRatio="none" style="overflow:visible;display:block;">
-        ${guideLines}
         ${unitLabel}
-        <line x1="${padX}" y1="${axisY.toFixed(1)}" x2="${W-padX}" y2="${axisY.toFixed(1)}" stroke="#8CA0C4" stroke-width="1"/>
+        <line x1="${padX}" y1="${axisY.toFixed(1)}" x2="${W-padX}" y2="${axisY.toFixed(1)}" stroke="#E2E8F0" stroke-width="1"/>
         ${bars}
         ${monthLabels}
         ${hitAreas}
@@ -32133,6 +32300,31 @@ window.SHIN2_CRM_APP_INIT = function(){
     });
     document.querySelectorAll('[data-questionnaire-session]').forEach(btn=> btn.addEventListener('click', ()=> openQuestionnaireSession(companyId, btn.getAttribute('data-questionnaire-session'))));
   }
+  // §고객 상세 탭 재정리 라운드 — 진행 단계 한 줄에 버튼이 3개 이상 몰리지 않게, 2개만 바로
+  // 보이고 나머지는 "더보기" 안으로 옮긴다. 메일 버튼이 있으면 그것을 먼저 남긴다. 버튼 노드를
+  // 그대로 옮기므로(복제 아님) 이미 붙은 클릭 핸들러·data 속성이 전부 유지된다. 화면 배치만 바뀐다.
+  function compactAgreementRowActions(body){
+    if(!body) return;
+    body.querySelectorAll('.agr-stage-row-actions').forEach(actions=>{
+      const items = Array.from(actions.children).filter(el=> el.matches('button, .agr-more') === true && !el.classList.contains('agr-more'));
+      if(items.length <= 2) return;
+      const isMail = el=> /mail/.test(el.getAttribute('data-agr-do') || '') || el.classList.contains('is-mail');
+      const keep = [];
+      const mail = items.find(isMail);
+      if(mail) keep.push(mail);
+      items.forEach(el=>{ if(keep.length < 2 && keep.indexOf(el) < 0) keep.push(el); });
+      const rest = items.filter(el=> keep.indexOf(el) < 0);
+      if(!rest.length) return;
+      const more = document.createElement('details');
+      more.className = 'agr-more';
+      more.innerHTML = '<summary class="agr-more-btn">더보기</summary><div class="agr-more-menu"></div>';
+      const menu = more.querySelector('.agr-more-menu');
+      rest.forEach(el=> menu.appendChild(el));
+      actions.appendChild(more);
+      // 메뉴 안 버튼을 누르면 접는다(동작은 각 버튼의 기존 핸들러가 그대로 처리).
+      menu.addEventListener('click', ()=>{ more.open = false; });
+    });
+  }
   // §협약 무효 처리 라운드 — 자주 쓰는 기능이 아니라 탭 맨 아래 조용한 관리 영역에 둔다.
   // 협약/MOU 신호(진행 단계 원본·수동 확정·협약사 등재·협약 종료)가 하나라도 있을 때만 보인다.
   function agreementInvalidateZoneHtml(co){
@@ -32148,7 +32340,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       <div class="agr-danger-zone">
         <div class="agr-danger-zone-text">
           <div class="agr-danger-zone-title">협약 관리</div>
-          <div class="agr-danger-zone-desc">실제 협약사가 아니었거나 잘못 협약으로 등록된 업체라면 협약 상태를 무효 처리하고 쓰레기통으로 옮깁니다. "협약 종료"와는 다릅니다.</div>
+          <div class="agr-danger-zone-desc">실제 협약사가 아니거나 잘못 협약 등록된 업체만 사용합니다.</div>
         </div>
         <button type="button" class="co-text-action danger" id="agrInvalidateBtn">협약 무효 처리</button>
       </div>`;
@@ -32202,6 +32394,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     `;
     const invalidateBtn = body.querySelector('#agrInvalidateBtn');
     if(invalidateBtn) invalidateBtn.addEventListener('click', ()=> openAgreementInvalidateModal(co.id));
+    compactAgreementRowActions(body);
     // 질문지 상담 탭 — 질문지 등록/교체 카드(상/중/하 배지·메모 포함). 통합 팝업이 아닌
     // 곳에서 불려도 안전하도록 컨테이너가 없으면 조용히 건너뛴다(이 파일의 기존 관례).
     const qWrap = document.getElementById('cdashQuestionnaireWork');
