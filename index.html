@@ -9768,6 +9768,62 @@ body.crm-page-shell #mailSettingsView .mail-settings-header-wrap{
   height:30px !important; min-height:30px !important; padding:0 12px !important; border-radius:999px !important; font-size:12px !important;
 }
 #cdashFooterBar .cdash-danger-fold-head{ padding:4px !important; }
+
+/* ==========================================================================
+   §디자인 완성도 라운드(신규) — 덜어내기·묶기·우선순위. 모양만 바꾼다.
+   ========================================================================== */
+
+/* ---- 상세 팝업: 묶음 탭(매출·실적 / 상담·서류) — 두 패널이 한 탭에 이어 보인다 ---- */
+#chartBody .cdet-panel.is-active + .cdet-panel.is-active{ margin-top:12px; }
+/* 안쪽 카드 겹침 줄이기 — 큰 카드(12px)만 두고 그 안은 선(divider) 위주 */
+.cdet-panel .cdash2-card,
+.cdet-panel .qtab-card,
+.cdet-panel .cdash2-docs-section{ border-radius:12px !important; box-shadow:none !important; border:1px solid #E7ECF3 !important; }
+/* 한 줄 액션: [주 액션] [보조 액션] [⋯] — 더보기는 아이콘만(ghost) */
+#agreementPopupBody .agr-more-btn.is-icon{ width:28px !important; padding:0 !important; border-color:transparent !important; background:transparent !important; }
+#agreementPopupBody .agr-more-btn.is-icon:hover,
+#agreementPopupBody .agr-more[open] > .agr-more-btn.is-icon{ background:#F1F5F9 !important; border-color:#E2E8F0 !important; }
+#agreementPopupBody .agr-stage-btn-row .workq-btn{ gap:5px !important; }
+/* 매출·실적: 숫자 4칸(총 매출 · 올해 매출 · 시공실적 · 최고월), 그래프는 보조(130px) */
+.cdash2-revenue-stats{ grid-template-columns:repeat(4, minmax(0,1fr)) !important; }
+.cdash2-revenue-card .cdash2-chart-wrap{ height:130px !important; }
+@media(max-width:700px){
+  .cdash2-revenue-stats{ grid-template-columns:1fr 1fr !important; }
+  .cdash2-revenue-stats .cdash2-revenue-kpi:nth-child(3){ border-left:0 !important; }
+  .cdash2-revenue-stats .is-peak{ grid-column:auto; border-top:0; }
+}
+/* 팝업 헤더 — 최근 접촉 */
+.cdet-head-contact.is-recent b{ color:#0F7A42; }
+
+/* ---- 메인: 업체 목록이 주인공(약 75%), 지도는 보조 패널(약 25%) ---- */
+@media (min-width:1101px){
+  .crm-main-grid{ grid-template-columns:minmax(0,1fr) minmax(300px,25%) !important; }
+}
+/* 지도 카드 — 테두리·그림자·제목을 한 단계 가볍게 */
+.nf-side-right .nf-card-action{
+  box-shadow:none !important; border-color:#E9EEF4 !important;
+  padding:12px 12px 10px !important;
+}
+.nf-side-right .sa-map-title{ font-size:13.5px !important; }
+.nf-side-right .sa-map-canvas{ border-color:#EEF2F7 !important; }
+
+/* ---- 헤더 — 로고 +12%(26→29px), 메뉴 15px·600, 메뉴 사이 약 28px, 높이는 그대로(56~60px) ---- */
+.gnav-brand .brand-logo, .brand-logo{ height:29px !important; }
+.gnav-menu{ gap:4px !important; }
+.gnav-menu .top-tab{ font-size:15px !important; font-weight:600 !important; padding:0 12px !important; }
+.gnav-menu .top-tab.is-active{ font-weight:700 !important; }
+
+/* ---- KPI — 장식은 더 은은하게, 숫자·제목이 먼저 ---- */
+.kpi-strip .kpi-item::before{ opacity:.055 !important; }
+
+/* ---- 메인 필터 탭 — 조용하게(비활성 흰 바탕 + 연한 테두리), 활성만 확실히 ---- */
+.list-filter-chip:not(.is-active){ border-color:#E3E9F1 !important; color:#6B7A90 !important; }
+.list-filter-chip:not(.is-active) .chip-count{ background:#F3F6FA !important; color:#8A97AA !important; }
+
+/* ---- 움직임 — 호버 전환 150ms, 탭 전환은 아주 짧은 페이드만 ---- */
+#chartBody .cdet-panel.is-active{ animation:cdetFade .14s ease-out; }
+@keyframes cdetFade{ from{ opacity:.4; } to{ opacity:1; } }
+@media (prefers-reduced-motion: reduce){ #chartBody .cdet-panel.is-active{ animation:none; } }
 </style>
 </head>
 <body>
@@ -19749,7 +19805,7 @@ window.SHIN2_CRM_APP_INIT = function(){
         co: it.co, days: it.days,
         sub: [
           '1차 미팅 미정',
-          contactTs != null ? `최근 접촉 ${fmtAlarmMd(contactTs)}` : '접촉 기록 없음',
+          contactTs != null ? `최근 연락 ${relativeDaysText(contactTs)}` : '접촉 기록 없음',
           mailTs != null ? `제안 메일 ${fmtAlarmMd(mailTs)}` : '제안 메일 미발송'
         ],
         right: it.days !== null ? `${it.days}일 대기` : '',
@@ -19773,7 +19829,7 @@ window.SHIN2_CRM_APP_INIT = function(){
         sub: [
           m1Ts != null ? `1차 ${fmtAlarmMd(m1Ts)}` : '1차 완료',
           mailTs != null ? `2차 제안 메일 ${fmtAlarmMd(mailTs)}` : '2차 제안 메일 미발송',
-          contactTs != null ? `최근 접촉 ${fmtAlarmMd(contactTs)}` : '접촉 기록 없음'
+          contactTs != null ? `최근 연락 ${relativeDaysText(contactTs)}` : '접촉 기록 없음'
         ],
         right: it.days !== null ? `${it.days}일 경과` : '',
         tone: 'muted'
@@ -22986,8 +23042,26 @@ window.SHIN2_CRM_APP_INIT = function(){
     ['documents','서류 체크']
   ];
   const CUSTOMER_DETAIL_TAB_KEYS = CUSTOMER_DETAIL_TABS.map(t=> t[0]);
+  /* §상세 탭 5개 묶음 라운드(신규) — 위 7개 패널은 그대로 DOM에 두고(렌더 함수가 자기
+     컨테이너를 찾아 그리고 이벤트가 그대로 붙는 구조 유지), 탭 바에는 5개만 보인다.
+       매출·실적 = 매출현황(sales) + 최근 시공실적(pour)
+       상담·서류 = 질문지 상담(questionnaire) + 서류 체크(documents)
+     예전 키로 들어와도(openCustomerDetail(id,'pour') 등) 묶음 탭으로 바꿔 연다. */
+  const CUSTOMER_DETAIL_TAB_GROUPS = [
+    ['overview', '기본정보', ['overview']],
+    ['activity', '활동', ['activity']],
+    ['sales', '매출·실적', ['sales','pour']],
+    ['agreement', '협약 진행', ['agreement']],
+    ['questionnaire', '상담·서류', ['questionnaire','documents']]
+  ];
+  const CUSTOMER_DETAIL_TAB_ALIAS = { pour:'sales', documents:'questionnaire' };
   function normalizeCustomerDetailTab(tab){
-    return CUSTOMER_DETAIL_TAB_KEYS.includes(tab) ? tab : 'overview';
+    const t = CUSTOMER_DETAIL_TAB_ALIAS[tab] || tab;
+    return CUSTOMER_DETAIL_TAB_GROUPS.some(g=> g[0] === t) ? t : 'overview';
+  }
+  function customerDetailTabPanels(tab){
+    const g = CUSTOMER_DETAIL_TAB_GROUPS.find(x=> x[0] === tab);
+    return g ? g[2] : [tab];
   }
   /* 통합 진입점(§11) — 어느 화면에서 열든 같은 팝업을 열고, 처음 열리는 탭만 다르다(§9).
        openCustomerDetail(id)                  고객관리·검색 등 → 기본정보
@@ -23467,6 +23541,16 @@ window.SHIN2_CRM_APP_INIT = function(){
   //    자체가 "상호간의 매출 동반상승"을 뜻해 "핵심 고객" 의미와 실제로 맞는다, §요청
   //    "샘플 숫자를 하드코딩하지 말고 선택한 업체의 데이터를 사용" — 등급 없는/낮은 업체는
   //    이 태그 자체를 아예 안 그린다, 가짜 배지 금지). ----
+  // "오늘 / 어제 / N일 전" — 화면 표시용(날짜 원본은 그대로).
+  function relativeDaysText(raw){
+    const t = new Date(raw).getTime();
+    if(!Number.isFinite(t)) return '—';
+    const startOf = d=> new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    const days = Math.round((startOf(new Date()) - startOf(new Date(t))) / 86400000);
+    if(days <= 0) return '오늘';
+    if(days === 1) return '어제';
+    return days + '일 전';
+  }
   function renderChartHeader(co){
     const wrap = document.getElementById('chartHeader');
     const stageText = buildGlanceStats(co).stageText; // '협약 완료' | '질문서 대기' 등 | '미확인'
@@ -23542,6 +23626,13 @@ window.SHIN2_CRM_APP_INIT = function(){
               <span class="cdet-head-contact">담당자<b>${esc(co.contactName || '—')}</b></span>
               <span class="cdet-head-contact">연락처<b>${esc(co.phone || co.mobile || '—')}</b></span>
               <span class="cdet-head-contact">이메일<b>${esc(co.email || '—')}</b></span>
+              ${(()=>{ // §디자인 완성도 라운드 — 최근 접촉(읽기만, 새 계산 없음)
+                try{
+                  const last = buildContactHistoryItems(co)[0];
+                  if(!last) return '';
+                  return `<span class="cdet-head-contact is-recent" title="${esc(fmtDate(last.raw))}">최근 접촉<b>${esc(relativeDaysText(last.raw))}</b></span>`;
+                }catch(e){ return ''; }
+              })()}
             </div>
           </div>
           <span class="cdash2-tag${isDone ? ' is-done' : ''}">${esc(stageText)}</span>
@@ -23587,8 +23678,9 @@ window.SHIN2_CRM_APP_INIT = function(){
     const cur = normalizeCustomerDetailTab(cardState.detailTab);
     wrap.innerHTML = `
       <div class="cdash2-tabbar" role="tablist" aria-label="고객 상세 탭">
-        ${CUSTOMER_DETAIL_TABS.map(([key,label])=>{
-          const badge = customerDetailTabBadge(key, co);
+        ${CUSTOMER_DETAIL_TAB_GROUPS.map(([key,label,panelKeys])=>{
+          // 묶음 탭의 배지는 안에 든 패널 배지 중 있는 것(활동 건수 / 서류 n/6)을 쓴다.
+          const badge = panelKeys.map(k=> customerDetailTabBadge(k, co)).find(Boolean) || '';
           return `<button type="button" class="cdash2-tab${key===cur?' is-active':''}" role="tab"
             aria-selected="${key===cur?'true':'false'}" data-cdet-tab="${esc(key)}">${esc(label)}${
             badge ? ` <span class="chip-count">${esc(badge)}</span>` : ''}</button>`;
@@ -23603,8 +23695,9 @@ window.SHIN2_CRM_APP_INIT = function(){
      전환 비용이 없고, 어떤 이벤트 핸들러도 다시 붙일 필요가 없다. */
   function applyCustomerDetailTab(){
     const cur = normalizeCustomerDetailTab(cardState.detailTab);
+    const panels = customerDetailTabPanels(cur);
     document.querySelectorAll('#chartBody [data-cdet-panel]').forEach(el=>{
-      el.classList.toggle('is-active', el.getAttribute('data-cdet-panel') === cur);
+      el.classList.toggle('is-active', panels.includes(el.getAttribute('data-cdet-panel')));
     });
     document.querySelectorAll('#chartTabBar [data-cdet-tab]').forEach(btn=>{
       const on = btn.getAttribute('data-cdet-tab') === cur;
@@ -24094,7 +24187,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     let topCats = null, region = null;
     try{ topCats = buildTopCategoriesText(co, 2); }catch(e){}
     try{ region = parseMapRegion(co.address); }catch(e){}
-    push('업체명', co.name);
+    // §디자인 완성도 라운드 — 업체명은 팝업 헤더 제목에 이미 있어 반복하지 않는다.
     push('대표', co.repName);
     push('주소', co.address);
     push('주요 공종', topCats);
@@ -24225,6 +24318,7 @@ window.SHIN2_CRM_APP_INIT = function(){
           <div class="cdash2-revenue-head cdash2-revenue-stats">
             <div class="cdash2-revenue-kpi"><div class="cdash2-revenue-stat-label">총 매출</div><div class="cdash2-revenue-stat-value">${esc(totalRevenueText)}</div></div>
             <div class="cdash2-revenue-kpi"><div class="cdash2-revenue-stat-label">${esc(currentYear)}년 매출</div><div class="cdash2-revenue-stat-value">${esc(yearRevenueText)}</div></div>
+            <div class="cdash2-revenue-kpi"><div class="cdash2-revenue-stat-label">시공실적</div><div class="cdash2-revenue-stat-value">${pourCount ? esc(pourCount.toLocaleString("ko-KR")) + "건" : "—"}</div></div>
             <div class="cdash2-revenue-kpi is-peak"><div class="cdash2-revenue-stat-label">최고월</div><div class="cdash2-revenue-stat-value">${esc(peakText)}</div></div>
           </div>
           <div class="cdash2-chart-outer"><div class="cdash2-chart-wrap" id="cdashRevenueChartWrap">${chartHtml}</div></div>
@@ -30917,7 +31011,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     const html = [];
     // 질문서 단계
     if(!byKeyRow.qSend.done){
-      html.push(`<button type="button" class="workq-btn" data-agr-do="mail-questionnaire">질문서 메일 발송</button>`);
+      html.push(`<button type="button" class="workq-btn" data-agr-do="mail-questionnaire" title="질문서 메일 발송" aria-label="질문서 메일 발송">${agrIcon('mail')}질문서</button>`);
     }
     if(byKeyRow.qSend.done && !byKeyRow.qReply.done){
       html.push(`<button type="button" class="workq-btn" data-agr-do="q-reply-confirm">질문서 회신 확인</button>`);
@@ -31065,7 +31159,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       // 고객 상세 탭바의 서류 배지도 같은 값으로. 예전에는 서류 업로드 모달을 닫을 때
       // renderCustomerDetailTabBar가 다시 그려 줬는데 그 모달을 없앴으므로, 체크한
       // 자리에서 숫자만 바꿔 준다(전체 재렌더를 하면 포커스가 날아간다).
-      const tabBadgeEl = document.querySelector('#chartTabBar [data-cdet-tab="documents"] .chip-count');
+      const tabBadgeEl = document.querySelector('#chartTabBar [data-cdet-tab="documents"] .chip-count, #chartTabBar [data-cdet-tab="questionnaire"] .chip-count');
       if(tabBadgeEl) tabBadgeEl.textContent = `${wrap.querySelectorAll('[data-doc-check]:checked').length}/${wrap.querySelectorAll('[data-doc-check]').length}`;
       renderAgreementDocFilterCount();
       // 클라우드 저장 실패 시에도 로컬 값과 화면은 되돌리지 않는다 — 이 파일의 다른 서류
@@ -32472,7 +32566,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       if(!rest.length) return;
       const more = document.createElement('details');
       more.className = 'agr-more';
-      more.innerHTML = '<summary class="agr-more-btn" title="다른 작업 더보기" aria-label="다른 작업 더보기">' + agrIcon('more') + '더보기</summary><div class="agr-more-menu"></div>';
+      more.innerHTML = '<summary class="agr-more-btn is-icon" title="다른 작업 더보기" aria-label="다른 작업 더보기">' + agrIcon('more') + '</summary><div class="agr-more-menu"></div>';
       const menu = more.querySelector('.agr-more-menu');
       rest.forEach(el=> menu.appendChild(el));
       actions.appendChild(more);
