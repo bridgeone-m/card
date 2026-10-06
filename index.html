@@ -9114,6 +9114,167 @@ body.crm-page-shell #mailSettingsView .mail-settings-header-wrap{
 /* 최근 흐름 · 실적-매출 칸 */
 .crm-list-col .co-row .col-trend .trend-cell{ font-size:12px !important; }                  /* 11 */
 .crm-list-col .co-row .contrib-cell .contrib-level{ font-size:11.5px !important; }          /* 10.5 */
+
+/* ==========================================================================
+   §로그인 화면 리디자인 라운드(신규) — 앞단 로그인 게이트의 모양만 바꾼다.
+   비밀번호 확인·sessionStorage 게이트·Firebase 로직은 그대로이고, JS가 쓰는
+   id/class도 그대로다(#gateScreen은 JS가 style.display로만 켜고 끈다).
+     배경  흰색 + 아주 연한 하늘빛 그라데이션, 빛 번짐 2개, N 마크 대형 워터마크
+     카드  반투명 흰 카드(블러), 얇은 테두리, 얕은 2단 그림자, 윗면 광택 한 줄
+     로고  첨부 N 마크(assets/netform-mark.png) — 원본 비율 그대로(height만 지정)
+   앞쪽 버튼 시스템 레이어가 .gate-enter-btn/.gate-diag-btn을 !important로 잡고
+   있어서, 여기서는 .gate-card 범위 + !important로 로그인 화면만 따로 맞춘다.
+   ========================================================================== */
+.gate-screen{
+  position:fixed; inset:0; z-index:100;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0;
+  padding:24px 16px; box-sizing:border-box; overflow:hidden;
+  background:
+    radial-gradient(1200px 620px at 12% -8%, rgba(214,232,252,.95) 0%, rgba(214,232,252,0) 60%),
+    radial-gradient(900px 560px at 108% 112%, rgba(204,224,248,.85) 0%, rgba(204,224,248,0) 62%),
+    linear-gradient(160deg, #FBFDFF 0%, #F2F7FD 46%, #EAF2FB 100%);
+}
+.gate-bg{ position:absolute; inset:0; pointer-events:none; overflow:hidden; }
+/* 은은한 빛 번짐 — 카드 뒤가 비어 보이지 않게만 */
+.gate-bg-glow{ position:absolute; border-radius:50%; filter:blur(60px); opacity:.55; }
+.gate-bg-glow-a{ width:520px; height:520px; left:-140px; top:18%; background:radial-gradient(circle, #DCEBFD 0%, rgba(220,235,253,0) 70%); }
+.gate-bg-glow-b{ width:620px; height:620px; right:-180px; bottom:-200px; background:radial-gradient(circle, #D3E4F9 0%, rgba(211,228,249,0) 70%); }
+/* 대형 워터마크 — 오른쪽 아래로 크게, 아주 연하게 */
+.gate-bg-mark{
+  position:absolute; right:-6vmin; bottom:-10vmin;
+  height:min(92vmin, 860px); width:auto;
+  opacity:.055; filter:saturate(.6);
+  user-select:none; -webkit-user-drag:none;
+}
+
+/* 로그인 카드 */
+.gate-card{
+  position:relative; z-index:1;
+  width:min(420px, 100%); box-sizing:border-box;
+  display:flex; flex-direction:column; align-items:stretch;
+  padding:40px 40px 34px;
+  background:linear-gradient(180deg, rgba(255,255,255,.94) 0%, rgba(255,255,255,.86) 100%);
+  -webkit-backdrop-filter:blur(14px) saturate(1.2); backdrop-filter:blur(14px) saturate(1.2);
+  border:1px solid rgba(214,226,241,.9);
+  border-radius:22px;
+  box-shadow:
+    0 1px 0 rgba(255,255,255,.9) inset,
+    0 1px 2px rgba(16,38,74,.04),
+    0 18px 50px rgba(23,52,95,.10);
+  animation:gateCardIn .55s cubic-bezier(.2,.7,.2,1) both;
+}
+/* 윗면 광택 — 카드 위 가장자리에만 얇게 */
+.gate-card::before{
+  content:''; position:absolute; left:22px; right:22px; top:0; height:1px;
+  background:linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,1) 50%, rgba(255,255,255,0));
+}
+@keyframes gateCardIn{
+  from{ opacity:0; transform:translateY(10px) scale(.99); }
+  to{ opacity:1; transform:none; }
+}
+
+/* 로고 — 연한 블루 타일 위에 N 마크. 원본 PNG 여백이 있어 높이만 주고 비율은 그대로 둔다. */
+.gate-logo-wrap{
+  align-self:center;
+  width:96px; height:96px; margin-bottom:20px;
+  display:flex; align-items:center; justify-content:center;
+  border-radius:24px;
+  background:linear-gradient(160deg, #FFFFFF 0%, #EEF4FC 100%);
+  border:1px solid #E1EAF5;
+  box-shadow:0 1px 0 #fff inset, 0 8px 22px rgba(23,52,95,.08);
+}
+.gate-logo{ display:block; height:104px; width:auto; max-width:none; margin:-4px; }
+
+.gate-brand{
+  text-align:center; margin:0 0 6px;
+  font-size:24px; line-height:1.25; font-weight:800; letter-spacing:-.02em;
+  color:#10223F;
+}
+.gate-desc{
+  text-align:center; margin:0 0 26px;
+  font-size:14px; line-height:1.5; font-weight:500; color:#6B7B92;
+}
+
+/* 비밀번호 입력 — 왼쪽 자물쇠 아이콘 */
+.gate-field{ position:relative; width:100%; }
+.gate-field-icon{
+  position:absolute; left:16px; top:50%; transform:translateY(-50%);
+  width:18px; height:18px; color:#8A9AB1; pointer-events:none;
+  transition:color .15s ease;
+}
+.gate-card .gate-input{
+  display:block; width:100%; max-width:none; height:50px; box-sizing:border-box;
+  padding:0 16px 0 46px;
+  font-size:15px; letter-spacing:.02em; text-align:left; color:#13243E;
+  background:#FFFFFF; border:1px solid #D7E1EE; border-radius:13px; outline:none;
+  box-shadow:0 1px 2px rgba(16,38,74,.03) inset;
+  transition:border-color .15s ease, box-shadow .15s ease, background-color .15s ease;
+}
+.gate-card .gate-input::placeholder{ color:#9AA8BB; letter-spacing:0; }
+.gate-card .gate-input:hover{ border-color:#C6D4E6; }
+.gate-card .gate-input:focus{
+  border-color:#7FA5D6;
+  box-shadow:0 0 0 4px rgba(27,68,128,.10);
+}
+.gate-field:focus-within .gate-field-icon{ color:var(--primary-navy, #1B4480); }
+
+.gate-card .gate-error{
+  margin:10px 0 0; padding:9px 12px; border-radius:10px;
+  background:#FDF2F2; border:1px solid rgba(194,65,65,.18);
+  font-size:12.5px; line-height:1.45; color:#B03A3A; text-align:center;
+}
+
+/* 로그인 버튼 */
+.gate-card .gate-enter-btn{
+  display:flex !important; align-items:center !important; justify-content:center !important;
+  width:100% !important; max-width:none !important; min-width:0 !important;
+  height:50px !important; min-height:50px !important; margin-top:14px;
+  padding:0 16px !important; border-radius:13px !important;
+  border:1px solid transparent !important;
+  background:linear-gradient(180deg, #22508F 0%, #1B4480 100%) !important;
+  color:#fff !important;
+  font-size:15px !important; font-weight:700 !important; letter-spacing:.02em;
+  box-shadow:0 1px 0 rgba(255,255,255,.14) inset, 0 8px 20px rgba(27,68,128,.22) !important;
+  transition:background .18s ease, box-shadow .18s ease, transform .18s ease !important;
+}
+.gate-card .gate-enter-btn:hover:not(:disabled){
+  background:linear-gradient(180deg, #2A5C9E 0%, #1F4D8E 100%) !important;
+  box-shadow:0 1px 0 rgba(255,255,255,.16) inset, 0 12px 26px rgba(27,68,128,.28) !important;
+  transform:translateY(-1px) !important;
+}
+.gate-card .gate-enter-btn:active:not(:disabled){ transform:translateY(0) !important; }
+.gate-card .gate-enter-btn:focus-visible{
+  outline:none !important;
+  box-shadow:0 0 0 4px rgba(27,68,128,.18), 0 8px 20px rgba(27,68,128,.22) !important;
+}
+.gate-card .gate-enter-btn:disabled{ opacity:.6 !important; cursor:default !important; transform:none !important; }
+
+/* 계정 진단(로그인 실패 시에만 보임) — 카드 안에서 조용하게 */
+.gate-card .gate-diag-toggle{
+  align-self:center; margin-top:14px; padding:4px 6px;
+  font-size:12px; color:#7C8BA1; text-decoration:underline; text-underline-offset:2px;
+}
+.gate-card .gate-diag-toggle:hover{ color:#1B4480; }
+.gate-card .gate-diag-panel{ max-width:none; margin-top:10px; gap:8px; }
+.gate-card .gate-diag-btn{ width:100% !important; }
+.gate-card .gate-diag-result{ margin-top:2px; }
+
+/* 모바일 — 카드 폭 자동, 좌우 여백 16px, 로고·입력·버튼 비율 유지 */
+@media (max-width: 480px){
+  .gate-card{ padding:32px 22px 26px; border-radius:20px; }
+  .gate-logo-wrap{ width:84px; height:84px; border-radius:21px; margin-bottom:18px; }
+  .gate-logo{ height:90px; }
+  .gate-brand{ font-size:22px; }
+  .gate-desc{ margin-bottom:22px; }
+  .gate-bg-mark{ right:-28vmin; bottom:-14vmin; height:110vmin; }
+}
+@media (max-height: 560px){
+  .gate-screen{ justify-content:flex-start; overflow-y:auto; }
+}
+@media (prefers-reduced-motion: reduce){
+  .gate-card{ animation:none; }
+  .gate-card .gate-enter-btn{ transition:none !important; }
+}
 </style>
 </head>
 <body>
@@ -9129,19 +9290,36 @@ body.crm-page-shell #mailSettingsView .mail-settings-header-wrap{
 <script src="kakaoMapConfig.js" onerror="console.warn('kakaoMapConfig.js 없음 — 지도 분포 팝업이 설정 안내만 표시합니다')"></script>
 
 <div class="gate-screen" id="gateScreen">
-  <div class="gate-brand">고객관리카드</div>
-  <div class="gate-desc" id="gateDesc">비밀번호를 입력해주세요</div>
-  <input type="password" id="gatePasswordInput" class="gate-input" placeholder="비밀번호" autocomplete="current-password" />
-  <div class="gate-error" id="gateError" style="display:none;"></div>
-  <button type="button" id="gateEnterBtn" class="gate-enter-btn">로그인</button>
-  <!-- §계정 진단 라운드(신규) — §요청 1. 로그인에 실패했을 때만 나타난다(평소엔 숨김).
-       비밀번호를 몰라도 "계정이 있는지"와 "재설정 메일 보내기"만 안전하게 시도할 수
-       있다 — 둘 다 비밀번호를 요구하거나 노출하지 않는다. -->
-  <button type="button" id="gateDiagToggleBtn" class="gate-diag-toggle" style="display:none;">계정 진단 · 비밀번호 재설정</button>
-  <div class="gate-diag-panel" id="gateDiagPanel" style="display:none;">
-    <button type="button" id="gateDiagCheckBtn" class="gate-diag-btn">계정 존재 확인</button>
-    <button type="button" id="gateDiagResetBtn" class="gate-diag-btn">비밀번호 재설정 메일 보내기</button>
-    <div class="gate-diag-result" id="gateDiagResult"></div>
+  <!-- §로그인 화면 리디자인 라운드(신규) — 화면(마크업·스타일)만 바꿨다. JS가 쓰는 id
+       (gateScreen/gateDesc/gatePasswordInput/gateError/gateEnterBtn/gateDiag*)와 기존
+       class는 전부 그대로이고, 카드·배경·아이콘 같은 장식용 요소만 감쌌다/더했다.
+       로고는 첨부받은 NETFORM N 마크(assets/netform-mark.png, 투명 배경)를 그대로 쓴다. -->
+  <div class="gate-bg" aria-hidden="true">
+    <span class="gate-bg-glow gate-bg-glow-a"></span>
+    <span class="gate-bg-glow gate-bg-glow-b"></span>
+    <img class="gate-bg-mark" src="assets/netform-mark.png" alt="" />
+  </div>
+  <div class="gate-card" role="group" aria-labelledby="gateBrandTitle">
+    <div class="gate-logo-wrap">
+      <img class="gate-logo" src="assets/netform-mark.png" alt="NETFORM" width="780" height="752" />
+    </div>
+    <div class="gate-brand" id="gateBrandTitle">고객관리카드</div>
+    <div class="gate-desc" id="gateDesc">비밀번호를 입력해 주세요</div>
+    <div class="gate-field">
+      <svg class="gate-field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15.5" r="1.2" fill="currentColor" stroke="none"/></svg>
+      <input type="password" id="gatePasswordInput" class="gate-input" placeholder="비밀번호" autocomplete="current-password" aria-label="비밀번호" />
+    </div>
+    <div class="gate-error" id="gateError" style="display:none;"></div>
+    <button type="button" id="gateEnterBtn" class="gate-enter-btn">로그인</button>
+    <!-- §계정 진단 라운드(신규) — §요청 1. 로그인에 실패했을 때만 나타난다(평소엔 숨김).
+         비밀번호를 몰라도 "계정이 있는지"와 "재설정 메일 보내기"만 안전하게 시도할 수
+         있다 — 둘 다 비밀번호를 요구하거나 노출하지 않는다. -->
+    <button type="button" id="gateDiagToggleBtn" class="gate-diag-toggle" style="display:none;">계정 진단 · 비밀번호 재설정</button>
+    <div class="gate-diag-panel" id="gateDiagPanel" style="display:none;">
+      <button type="button" id="gateDiagCheckBtn" class="gate-diag-btn">계정 존재 확인</button>
+      <button type="button" id="gateDiagResetBtn" class="gate-diag-btn">비밀번호 재설정 메일 보내기</button>
+      <div class="gate-diag-result" id="gateDiagResult"></div>
+    </div>
   </div>
 </div>
 
