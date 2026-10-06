@@ -8301,6 +8301,21 @@ body.crm-page-shell #mailSettingsView .mail-settings-header-wrap{
   .kpi-strip .kpi-item-value,
   body.crm-fixed-view .kpi-strip .kpi-item-value{ font-size:20px !important; }
 }
+
+/* ==========================================================================
+   §상단 헤더 미세조정 라운드(신규) — 로고와 메뉴가 헤더 공간에 비해 작아 보였다.
+   실측(1280px): 헤더 55px / 로고 22px / 메뉴 13px·650(활성 750) / "업무관리" 12px.
+   크기만 조금 키운다. 헤더 높이는 메뉴 버튼(34px)+위아래 여백(10px)이 정하고
+   로고 26px은 그 안에 들어가므로 높이는 그대로다. 메뉴 좌우 padding·간격은
+   건드리지 않아(글자가 커진 만큼 버튼만 넓어짐) 간격이 좁아지지 않는다.
+   활성 탭의 밑줄·색은 앞 규칙 그대로 두고 굵기만 한 단계 낮췄다.
+   ========================================================================== */
+.gnav-brand .brand-logo,
+.brand-logo{ height:26px !important; width:auto !important; }   /* 22 → 26 (+18%) */
+.gnav-brand .brand-sub,
+.brand-sub{ font-size:13px !important; }                        /* 12 → 13 */
+.gnav-menu .top-tab{ font-size:14px !important; font-weight:600 !important; }   /* 13 → 14 */
+.gnav-menu .top-tab.is-active{ font-weight:650 !important; }
 </style>
 </head>
 <body>
