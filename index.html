@@ -9423,6 +9423,40 @@ body.crm-page-shell #mailSettingsView .mail-settings-header-wrap{
 }
 .agr-invalidate-check input{ margin:2px 0 0; width:15px; height:15px; flex:none; accent-color:#C24141; cursor:pointer; }
 .trash-status-badge.is-agreementInvalidated{ color:#A33A3A; background:#FBE9E9; }
+
+/* ==========================================================================
+   §질문지 상담 기록 크게 보기 라운드(신규) — 팝업을 화면 거의 전체로 키우고, 질문지 칸을
+   약 70%로 넓힌다. 머리줄 "질문지 크게 보기"를 누르면 기록 칸을 접고 질문지만 전체 폭.
+   표시만 바뀐다 — 상담 기록 입력·저장·요약 갱신 로직은 그대로다.
+   ========================================================================== */
+#questionnaireSessionOverlay{ padding:12px !important; }
+.questionnaire-session-panel{
+  max-width:none !important; width:calc(100vw - 24px) !important;
+  height:calc(100vh - 24px) !important; max-height:none !important;
+}
+.questionnaire-session-panel .pi-head{ gap:12px; }
+.questionnaire-head-actions{ display:flex; align-items:center; gap:8px; flex:none; }
+.questionnaire-session-body{
+  grid-template-columns:minmax(0, 2.3fr) minmax(340px, 1fr) !important;
+  gap:12px !important; padding:12px 14px 14px !important; overflow:hidden !important;
+}
+.questionnaire-viewer{ border-radius:10px; }
+.questionnaire-viewer iframe,
+.questionnaire-viewer img{ min-height:0; height:100%; }
+/* 질문지만 크게 — 기록 칸은 숨기기만 한다(입력 중이던 값은 그대로 남아 있음) */
+.questionnaire-session-panel.is-viewer-wide .questionnaire-session-body{ grid-template-columns:minmax(0, 1fr) !important; }
+.questionnaire-session-panel.is-viewer-wide .questionnaire-note-pane{ display:none; }
+@media (max-width:1100px){
+  .questionnaire-session-body{ grid-template-columns:minmax(0, 1.6fr) minmax(300px, 1fr) !important; }
+}
+@media (max-width:760px){
+  #questionnaireSessionOverlay{ padding:8px !important; }
+  .questionnaire-session-panel{ width:calc(100vw - 16px) !important; height:calc(100vh - 16px) !important; }
+  .questionnaire-session-body{ grid-template-columns:1fr !important; overflow:auto !important; }
+  .questionnaire-viewer{ min-height:70vh; }
+  .questionnaire-viewer iframe, .questionnaire-viewer img{ min-height:70vh; }
+  .questionnaire-wide-toggle{ display:none !important; }
+}
 </style>
 </head>
 <body>
@@ -31678,7 +31712,10 @@ window.SHIN2_CRM_APP_INIT = function(){
         <div class="pi-panel questionnaire-session-panel" role="dialog" aria-modal="true" aria-label="질문지 상담 기록">
           <div class="pi-head">
             <div class="pi-title">질문지 상담 기록 — ${esc(co.name)}</div>
-            <button type="button" class="chart-close-btn" id="questionnaireSessionClose" aria-label="닫기">&times;</button>
+            <div class="questionnaire-head-actions">
+              <button type="button" class="co-text-action questionnaire-wide-toggle" id="questionnaireWideToggle" aria-pressed="false">질문지 크게 보기</button>
+              <button type="button" class="chart-close-btn" id="questionnaireSessionClose" aria-label="닫기">&times;</button>
+            </div>
           </div>
           <div class="pi-body questionnaire-session-body">
             <section class="questionnaire-viewer" id="questionnaireViewer"><div class="doc-preview-loading">질문서를 불러오는 중…</div></section>
@@ -31997,6 +32034,14 @@ window.SHIN2_CRM_APP_INIT = function(){
     // 중…"이 즉시 뜨고, 여기서는 그 뒤 실제 로딩만 담당한다. loadQuestionnaireFile을 이름
     // 붙은 함수로 빼서 재시도 버튼이 같은 로직을 다시 부를 수 있게 했다 — getDocUrl은 실패를
     // 캐시하지 않으므로(§요청 4 캐시 추가와 별개로) 재시도가 그대로 새 요청으로 이어진다.
+    const wideToggle = document.getElementById('questionnaireWideToggle');
+    if(wideToggle) wideToggle.addEventListener('click', ()=>{
+      const panel = wideToggle.closest('.questionnaire-session-panel');
+      const on = !panel.classList.contains('is-viewer-wide');
+      panel.classList.toggle('is-viewer-wide', on);
+      wideToggle.setAttribute('aria-pressed', on ? 'true' : 'false');
+      wideToggle.textContent = on ? '상담 기록 같이 보기' : '질문지 크게 보기';
+    });
     function loadQuestionnaireFile(){
       const viewer = document.getElementById('questionnaireViewer');
       if(viewer) viewer.innerHTML = `<div class="doc-preview-loading">질문서를 불러오는 중…</div>`;
@@ -32004,7 +32049,7 @@ window.SHIN2_CRM_APP_INIT = function(){
         const viewer = document.getElementById('questionnaireViewer');
         if(!url || !viewer) return;
         if(isImage) viewer.innerHTML = `<img src="${esc(url)}" alt="${esc(fileName)}" />`;
-        else if(isPdf) viewer.innerHTML = `<iframe src="${esc(url)}" title="질문지 미리보기"></iframe>`;
+        else if(isPdf) viewer.innerHTML = `<iframe src="${esc(String(url).indexOf('#') < 0 ? url + '#view=FitH' : url)}" title="질문지 미리보기"></iframe>`;
         else viewer.innerHTML = `<div class="questionnaire-viewer-fallback">이 파일 형식은 화면에서 바로 볼 수 없습니다.<br/><a href="${esc(url)}" target="_blank" rel="noopener" download="${esc(fileName)}">질문서 열기 또는 다운로드</a></div>`;
       }).catch(err=>{
         const viewer = document.getElementById('questionnaireViewer');
