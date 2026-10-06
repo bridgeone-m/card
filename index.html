@@ -9393,6 +9393,37 @@ body.crm-page-shell #mailSettingsView .mail-settings-header-wrap{
   .pdfx-wide .pdf-dd-btn{ width:100%; max-width:none; }
   .pdfx-wide .pdf-dd-menu-region{ width:min(300px, calc(100vw - 56px)); }
 }
+
+/* ==========================================================================
+   §협약 무효 처리 라운드(신규) — 협약 진행 탭 맨 아래 관리 영역, 확인 모달, 쓰레기통 배지.
+   자주 쓰는 기능이 아니라 Primary가 아닌 danger outline + 조용한 회색 영역으로 둔다.
+   ========================================================================== */
+.agr-danger-zone{
+  display:flex; align-items:center; justify-content:space-between; gap:14px;
+  margin-top:18px; padding:12px 14px;
+  border:1px dashed #E7D3D3; border-radius:10px; background:#FCFAFA;
+}
+.agr-danger-zone-text{ min-width:0; }
+.agr-danger-zone-title{ font-size:12.5px; font-weight:700; color:#5B6678; margin-bottom:2px; }
+.agr-danger-zone-desc{ font-size:11.5px; line-height:1.5; color:#7C8BA1; }
+.agr-danger-zone .co-text-action.danger{ flex:none; }
+@media (max-width:640px){
+  .agr-danger-zone{ flex-direction:column; align-items:stretch; }
+}
+.agr-invalidate-panel{ max-width:480px !important; }
+.agr-invalidate-desc{
+  margin:8px 0 10px; padding:10px 12px; border-radius:9px;
+  background:#FDF2F2; border:1px solid rgba(194,65,65,.18);
+  font-size:12.5px; line-height:1.6; color:#7A2E2E;
+}
+.agr-invalidate-list{ margin:0 0 12px; padding-left:18px; font-size:12px; line-height:1.65; color:#5B6678; }
+.agr-invalidate-check{
+  display:flex; align-items:flex-start; gap:8px; margin:0 0 12px; padding:10px 12px;
+  border:1px solid #E4EAF1; border-radius:9px; cursor:pointer;
+  font-size:12.5px; line-height:1.5; color:#24364F;
+}
+.agr-invalidate-check input{ margin:2px 0 0; width:15px; height:15px; flex:none; accent-color:#C24141; cursor:pointer; }
+.trash-status-badge.is-agreementInvalidated{ color:#A33A3A; background:#FBE9E9; }
 </style>
 </head>
 <body>
@@ -9765,6 +9796,8 @@ body.crm-page-shell #mailSettingsView .mail-settings-header-wrap{
        전용 root. 같은 .pi-overlay/.pi-panel 패턴. -->
   <div id="deleteCompanyModalRoot"></div>
   <div id="permDeleteModalRoot"></div>
+  <!-- §협약 무효 처리 라운드(신규) — 협약 진행 탭 "협약 무효 처리" 확인 모달 root. -->
+  <div id="agreementInvalidateModalRoot"></div>
   <!-- §고객 요청 Google Sheets 연동 라운드(신규) — "신규 협약사" 탭의 [요청 전체 보기]
        버튼이 여는 전용 root. 같은 .pi-overlay/.pi-panel 패턴. -->
   <div id="gsheetReqListModalRoot"></div>
@@ -13979,9 +14012,14 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
     const v = co && co.mouManualConfirm;
     return (v && typeof v === 'object') ? v : null;
   }
-  function isMouManuallyConfirmed(co){
+  function isMouManuallyConfirmedRaw(co){
     const v = getMouManualConfirm(co);
     return !!(v && v.confirmed === true);
+  }
+  // §협약 무효 처리 라운드 — 무효 처리된 업체는 수동 확정 값이 남아 있어도 MOU로 보지 않는다.
+  function isMouManuallyConfirmed(co){
+    if(isAgreementInvalidated(co)) return false;
+    return isMouManuallyConfirmedRaw(co);
   }
   // confirmed=false로 부르면 확정을 해제한다(레코드는 남기고 confirmed만 false).
   // 진행단계 필드(partnerDashboard.newMou / stageCorrections)는 한 글자도 건드리지 않는다.
@@ -13999,7 +14037,15 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
     const log = (Array.isArray(co.mouManualConfirmLog) ? co.mouManualConfirmLog : []).slice();
     log.push({ id: 'moumc_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,8),
       before: before, after: after, at: after.at, by: after.by, reason: after.reason });
-    return updateCompany(companyId, { mouManualConfirm: after, mouManualConfirmLog: log });
+    const confirmPatch = { mouManualConfirm: after, mouManualConfirmLog: log };
+    // §협약 무효 처리 라운드 — 무효 처리됐던 업체를 사용자가 직접 MOU 확정하면 무효 표시를 푼다
+    // (기록은 agreementInvalidatedLog에 남는다).
+    if(confirmed && isAgreementInvalidated(co)){
+      confirmPatch.agreementInvalidated = null;
+      confirmPatch.agreementInvalidatedLog = (Array.isArray(co.agreementInvalidatedLog) ? co.agreementInvalidatedLog : [])
+        .concat([{ action:'lift', at: after.at, by: after.by, reason:'MOU 체결 확정으로 무효 표시 해제' }]);
+    }
+    return updateCompany(companyId, confirmPatch);
   }
   function terminateAgreement(companyId, opts){
     const co = findCompany(companyId); if(!co) return null;
@@ -14040,6 +14086,89 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
     const rec = updateCompany(companyId, { agreementStatus: null, agreementEndedAt: null, agreementEndReason: null, agreementEndNote: null });
     addActivity(companyId, '[협약 종료 취소] 이전 체결 상태로 복구');
     return rec;
+  }
+  /* §협약 무효 처리 라운드(신규) ------------------------------------------------------
+     "협약 종료"(실제 협약사였다가 관계가 끝남, agreementStatus='terminated')와 완전히
+     다른 상태 — 애초에 협약사가 아니었는데 잘못 MOU/협약으로 잡힌 업체를 바로잡는다.
+
+     [왜 새 필드가 필요한가]
+     MOU 체결 판정(isConfirmedPartner)의 근거는 두 갈래다.
+       ① co.mouManualConfirm.confirmed — 사용자가 직접 켠 값. 끄면 된다.
+       ② buildProgressStages의 mou 단계 — co.partnerDashboard.newMou/mouDate 또는
+          partner-dashboard 스냅샷을 "업체명"으로 찾아 붙인 값(findPartnerRecordForCompany).
+     ②는 동기화가 통째로 다시 쓰거나(partnerDashboard), co에 아예 저장돼 있지 않아서
+     (이름 매칭 스냅샷) 필드를 지우는 방식으로는 되돌릴 수 없다 — 다음 동기화나 다음 렌더에서
+     그대로 다시 살아난다. 그래서 동기화가 건드리지 않는 최상위 필드 하나로 "이 업체에는
+     협약 원본을 붙이지 않는다"를 표시한다:
+       co.agreementInvalidated = { at, by, reason, type, note, previous }
+     없거나 null이면 지금과 완전히 같은 동작(기존 데이터 호환). 원본 partnerDashboard·
+     스냅샷·stageCorrections 데이터는 지우지 않고 audit용으로 그대로 둔다 — 판정에서만 뺀다.
+
+     [판정에서 빼는 곳 — 4곳, 다른 화면은 전부 이 함수들을 거친다]
+       isMouManuallyConfirmed / resolveNewMouForCompany / resolvePartnerAgreementDate /
+       findStageCorrection(['mouDone'])
+     → mou 단계·진행 단계(hasAny)·MOU KPI·협약사 필터·업무관리·신규 협약사 탭에서 빠진다.
+
+     [쓰레기통] 새 삭제 체계를 만들지 않고 softDeleteCompany(사유 '협약 무효 처리')를
+     그대로 쓴다. deleteType='agreementInvalidated'로 쓰레기통 표에서만 구분한다.
+     복구(restoreDeletedCompany)는 deletedAt만 풀고 agreementInvalidated는 남긴다 —
+     그래서 복구하면 MOU/협약사가 아닌 일반 고객으로 돌아온다. 나중에 실제로 협약을
+     맺으면 "MOU 체결 확정"(setMouManualConfirm(true))을 켜는 순간 이 표시가 풀린다. */
+  function isAgreementInvalidated(co){
+    const v = co && co.agreementInvalidated;
+    return !!(v && typeof v === 'object' && v.at);
+  }
+  function invalidateAgreementAndTrash(companyId, meta){
+    const co = findCompany(companyId);
+    if(!co) return { ok:false, reason:'NOT_FOUND' };
+    if(co.deletedAt) return { ok:false, reason:'ALREADY_DELETED' };
+    meta = meta || {};
+    const now = nowIso();
+    const by = currentUserLabel();
+    // 되돌린 값은 지우지 않고 previous에 그대로 남긴다(audit).
+    const previous = {
+      mouManualConfirm: co.mouManualConfirm || null,
+      partnerStatus: co.partnerStatus || null,
+      agreementStatus: co.agreementStatus || null,
+      agreementEndedAt: co.agreementEndedAt || null,
+      agreementEndReason: co.agreementEndReason || null,
+      agreementEndNote: co.agreementEndNote || null,
+      wasConfirmedPartner: !!meta.wasConfirmedPartner
+    };
+    const record = {
+      at: now, by,
+      reason: '협약 무효 처리',
+      type: '잘못 등록된 협약사',
+      note: String(meta.note || '').trim(),
+      previous
+    };
+    const patch = {
+      agreementInvalidated: record,
+      agreementInvalidatedLog: (Array.isArray(co.agreementInvalidatedLog) ? co.agreementInvalidatedLog : [])
+        .concat([Object.assign({ action:'invalidate' }, record)]),
+      deleteType: 'agreementInvalidated'
+    };
+    // ① 수동 MOU 확정 해제 — setMouManualConfirm과 같은 기록 형식(이전/이후)으로 남긴다.
+    if(isMouManuallyConfirmedRaw(co)){
+      const after = { confirmed:false, at: now, by, reason:'협약 무효 처리', source:'agreementInvalidate' };
+      patch.mouManualConfirm = after;
+      patch.mouManualConfirmLog = (Array.isArray(co.mouManualConfirmLog) ? co.mouManualConfirmLog : []).concat([{
+        id: 'moumc_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,8),
+        before: getMouManualConfirm(co), after, at: now, by, reason: after.reason
+      }]);
+    }
+    // 협약사 등재 표시 해제(지도·사실 요약의 "협력업체" 표시가 이 값을 읽는다).
+    if(co.partnerStatus === 'partner') patch.partnerStatus = null;
+    // 협약 종료로 잡혀 있었다면 그것도 사실이 아니므로 푼다 — 협약 종료 탭으로 가지 않게.
+    if(co.agreementStatus === 'terminated'){
+      patch.agreementStatus = null; patch.agreementEndedAt = null;
+      patch.agreementEndReason = null; patch.agreementEndNote = null;
+    }
+    const rec = updateCompany(companyId, patch);
+    if(!rec) return { ok:false, reason:'SAVE_FAILED' };
+    addActivity(companyId, `[협약 무효 처리] 실제 협약사가 아니거나 잘못 등록된 협약 — 협약 상태를 무효화하고 쓰레기통으로 이동${record.note ? ' · ' + record.note : ''}`);
+    softDeleteCompany(companyId, '협약 무효 처리');
+    return { ok:true };
   }
 
   // §업체 삭제(휴지통) 라운드(신규) — "완전 삭제"가 아니라 co.deletedAt/deletedBy/
@@ -14180,8 +14309,10 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
     // 영구삭제 대기 표시도 같이 지운다 — 복구된 업체가 대기 딱지를 들고 활성 목록에
     // 돌아가는 상태를 애초에 만들지 않는다(대기 중인 업체는 삭제업체 탭에 안 나오므로
     // 이 경로로 올 일은 없지만, 방어적으로).
-    const rec = updateCompany(companyId, { deletedAt: null, deletedBy: null, deleteReason: null, permanentDeletePending: null });
-    addActivity(companyId, '[업체 복구] 삭제를 취소했습니다 — 이전 데이터가 그대로 유지됩니다.');
+    const rec = updateCompany(companyId, { deletedAt: null, deletedBy: null, deleteReason: null, deleteType: null, permanentDeletePending: null });
+    addActivity(companyId, isAgreementInvalidated(co)
+      ? '[업체 복구] 일반 고객업체로 복구했습니다 — 협약 무효 처리된 업체라 MOU/협약 상태는 복구하지 않습니다.'
+      : '[업체 복구] 삭제를 취소했습니다 — 이전 데이터가 그대로 유지됩니다.');
     return rec;
   }
 
@@ -16153,6 +16284,7 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
     RELATION_TYPES, addCompanyRelation, removeCompanyRelation, buildRelationIndex,
     isSubsidiary, resolveParentCompanyDisplay, addFormerName, removeFormerName,
     isAgreementTerminated, terminateAgreement, restoreAgreement, renameCompanyKeepId,
+    isAgreementInvalidated, invalidateAgreementAndTrash,
     getMouManualConfirm, isMouManuallyConfirmed, setMouManualConfirm,
     isCompanyDeleted, loadActiveCompanies, loadDeletedCompanies, softDeleteCompany, restoreDeletedCompany,
     isPermanentDeletePending, loadPermanentDeletePendingCompanies, markPermanentDeletePending, cancelPermanentDeletePending,
@@ -21918,7 +22050,12 @@ window.SHIN2_CRM_APP_INIT = function(){
     const deletedList = D.loadDeletedCompanies();
     if(trashSubTab === 'permdel'){ renderTrashPermDelTab(deletedList.length); return; }
     const deletedItems = deletedList.map(co=> ({
-      co, status:'deleted', dateVal: co.deletedAt || '', reason: co.deleteReason || '사유 미기재'
+      co,
+      status: co.deleteType === 'agreementInvalidated' ? 'agreementInvalidated' : 'deleted',
+      dateVal: co.deletedAt || '',
+      reason: co.deleteType === 'agreementInvalidated'
+        ? `${co.deleteReason || '협약 무효 처리'} · 잘못 등록된 협약사`
+        : (co.deleteReason || '사유 미기재')
     }));
     const terminatedItems = (enriched || [])
       .filter(r=> matchesFilter(r.co, r.progress, 'agreementTerminated', relationIndex))
@@ -21936,7 +22073,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     // 빠르게 찾아 쓰기 위한 Map(위 computeOrphanedDeletedCompanies 결과를 companyId로 색인).
     // 소프트삭제 업체에만 의미 있는 경고라 협약종료 업체에는 자연히 안 붙는다.
     const orphanedByCoId = new Map(computeOrphanedDeletedCompanies().map(o=> [o.company.id, o.count]));
-    const STATUS_BADGE = { deleted:'삭제됨', agreementTerminated:'협약종료' };
+    const STATUS_BADGE = { deleted:'삭제됨', agreementTerminated:'협약종료', agreementInvalidated:'협약무효' };
     listEl.innerHTML = trashSubTabsHtml(deletedItems.length, pendingCount) + `
       <div class="deleted-co-table has-exclude-cols is-trash">
         <div class="deleted-co-head">
@@ -21951,7 +22088,7 @@ window.SHIN2_CRM_APP_INIT = function(){
             <span class="deleted-co-source">${esc(co.excludeSourceSheet || '—')}</span>
             <span class="deleted-co-note">${esc(co.excludeNote || '—')}</span>
             <span class="deleted-co-actions">
-              ${status === 'deleted' ? `<button type="button" class="co-text-action primary" data-restore-co="${esc(co.id)}">복구</button>
+              ${(status === 'deleted' || status === 'agreementInvalidated') ? `<button type="button" class="co-text-action primary" data-restore-co="${esc(co.id)}">복구</button>
               <button type="button" class="co-text-action danger" data-mark-permdel="${esc(co.id)}">영구삭제 대상</button>
               <span class="cdash-cloud-save-status" id="restoreStatus_${esc(co.id)}"></span>` : ''}
             </span>
@@ -23284,6 +23421,118 @@ window.SHIN2_CRM_APP_INIT = function(){
     // §요청 10 "삭제된 업체는 일반 목록에서 제외" — 카드가 이 업체를 보여주고 있었으므로
     // 그대로 두면 이미 숨겨진 업체 화면이 남는다. 목록으로 돌아가 즉시 반영을 보여준다.
     closeChart();
+  }
+  /* ==========================================================================
+     §협약 무효 처리 라운드(신규) — 확인 모달. 협약 종료(terminateAgreement)·영구삭제와
+     섞이지 않는 별도 경로다. 실행은 D.invalidateAgreementAndTrash 하나(협약 상태 무효화 +
+     기존 쓰레기통 이동)이고, 실수 방지는 세 겹이다: 체크박스 + "협약무효" 정확히 입력 +
+     처리 중 버튼 잠금. 로컬 반영은 모달 인스턴스당 한 번만(applied) — 클라우드 저장이
+     실패해 다시 누르면 저장만 다시 시도하고 기록이 중복되지 않는다(업체 삭제 모달과 같은 규칙).
+     ========================================================================== */
+  const AGREEMENT_INVALIDATE_PHRASE = '협약무효';
+  let agreementInvalidateState = null;  // { companyId, checked, typed, saving, err, applied }
+  function closeAgreementInvalidateModal(){
+    agreementInvalidateState = null;
+    const root = document.getElementById('agreementInvalidateModalRoot');
+    if(root) root.innerHTML = '';
+  }
+  function agreementInvalidateCanConfirm(s){
+    return !!s && s.checked && s.typed.trim() === AGREEMENT_INVALIDATE_PHRASE && !s.saving;
+  }
+  function openAgreementInvalidateModal(companyId){
+    const co = D.findCompany(companyId);
+    if(!co || co.deletedAt) return;
+    agreementInvalidateState = { companyId, checked:false, typed:'', saving:false, err:null, applied:false };
+    renderAgreementInvalidateModal();
+  }
+  function renderAgreementInvalidateModal(){
+    let root = document.getElementById('agreementInvalidateModalRoot');
+    if(!root){
+      root = document.createElement('div');
+      root.id = 'agreementInvalidateModalRoot';
+      document.body.appendChild(root);
+    }
+    const s = agreementInvalidateState;
+    if(!s){ root.innerHTML = ''; return; }
+    const co = D.findCompany(s.companyId);
+    if(!co){ closeAgreementInvalidateModal(); return; }
+    root.innerHTML = `
+      <div class="pi-overlay agr-invalidate-overlay" id="agreementInvalidateOverlay">
+        <div class="pi-panel agr-invalidate-panel" role="dialog" aria-modal="true" aria-labelledby="agrInvalidateTitle">
+          <div class="pi-head">
+            <div class="pi-title" id="agrInvalidateTitle">협약 무효 처리</div>
+            <button type="button" class="chart-close-btn" id="agrInvalidateCloseBtn" aria-label="닫기">&times;</button>
+          </div>
+          <div class="pi-body">
+            <div class="delete-co-modal-name">${esc(co.name || '(업체명 없음)')}</div>
+            <div class="agr-invalidate-desc">
+              이 업체의 협약 상태를 무효 처리하고 쓰레기통으로 이동합니다.<br>
+              이 작업은 <b>"협약 종료"가 아니라</b>, 잘못 등록된 협약 관계를 제거하는 작업입니다.
+            </div>
+            <ul class="agr-invalidate-list">
+              <li>MOU 체결·협약사 집계와 협약 진행 단계에서 빠집니다.</li>
+              <li>쓰레기통에서 복구하면 <b>일반 고객업체</b>로 돌아옵니다(MOU/협약 상태는 복구되지 않음).</li>
+              <li>매출·실적·최근 요청·활동이력은 지우지 않습니다.</li>
+            </ul>
+            <label class="agr-invalidate-check">
+              <input type="checkbox" id="agrInvalidateCheck" ${s.checked ? 'checked' : ''} />
+              <span>이 업체는 실제 협약사가 아니었거나 잘못 협약 등록된 업체입니다.</span>
+            </label>
+            <div class="delete-co-modal-field">
+              <label for="agrInvalidateInput">확인을 위해 <b>${AGREEMENT_INVALIDATE_PHRASE}</b>를 입력해주세요</label>
+              <input type="text" id="agrInvalidateInput" value="${esc(s.typed)}" placeholder="${AGREEMENT_INVALIDATE_PHRASE}" autocomplete="off" />
+            </div>
+            ${s.err ? `<div class="delete-co-modal-err">${esc(s.err)}</div>` : ''}
+          </div>
+          <div class="pi-actions">
+            <button type="button" class="delete-co-modal-cancel-btn" id="agrInvalidateCancelBtn">취소</button>
+            <button type="button" class="delete-co-modal-confirm-btn" id="agrInvalidateConfirmBtn" ${agreementInvalidateCanConfirm(s) ? '' : 'disabled'}>${s.saving ? '처리 중…' : (s.applied ? '저장 다시 시도' : '협약 무효 처리 후 쓰레기통 이동')}</button>
+          </div>
+        </div>
+      </div>`;
+    const close = ()=>{ if(!s.saving) closeAgreementInvalidateModal(); };
+    document.getElementById('agrInvalidateCloseBtn').addEventListener('click', close);
+    document.getElementById('agrInvalidateCancelBtn').addEventListener('click', close);
+    bindSafeBackdropClose(document.getElementById('agreementInvalidateOverlay'), close);
+    const confirmBtn = document.getElementById('agrInvalidateConfirmBtn');
+    const sync = ()=>{ confirmBtn.disabled = !agreementInvalidateCanConfirm(s); };
+    document.getElementById('agrInvalidateCheck').addEventListener('change', (e)=>{ s.checked = e.target.checked; sync(); });
+    document.getElementById('agrInvalidateInput').addEventListener('input', (e)=>{ s.typed = e.target.value; sync(); });
+    confirmBtn.addEventListener('click', confirmAgreementInvalidate);
+  }
+  async function confirmAgreementInvalidate(){
+    const s = agreementInvalidateState;
+    if(!agreementInvalidateCanConfirm(s)) return;   // 체크·문구를 한 번 더 확인(버튼 잠금과 별개)
+    const co = D.findCompany(s.companyId);
+    if(!co) return;
+    s.saving = true; s.err = null;
+    renderAgreementInvalidateModal();
+    if(!s.applied){
+      let wasConfirmedPartner = false;
+      try{ wasConfirmedPartner = isConfirmedPartner(co, buildProgressStages(co)); }catch(err){}
+      let r;
+      try{ r = D.invalidateAgreementAndTrash(s.companyId, { wasConfirmedPartner }); }
+      catch(err){ r = { ok:false, reason: (err && err.message) || 'ERROR' }; }
+      if(!r || !r.ok){
+        // 데이터 계층이 실패하면 아무 것도 바뀌지 않은 상태다 — 모달을 그대로 두고 알린다.
+        s.saving = false;
+        s.err = r && r.reason === 'ALREADY_DELETED' ? '이미 쓰레기통에 있는 업체입니다.' : '처리하지 못했습니다. 기존 상태는 그대로입니다.';
+        renderAgreementInvalidateModal();
+        return;
+      }
+      s.applied = true;
+    }
+    const cr = await confirmCloudSave('companies');
+    if(!agreementInvalidateState) return;
+    if(!cr.ok){
+      s.saving = false;
+      s.err = cloudSaveErrorMessage(cr.err) + ' — 이 기기에는 반영됐습니다. "저장 다시 시도"를 눌러주세요.';
+      renderAgreementInvalidateModal();
+      return;
+    }
+    closeAgreementInvalidateModal();
+    showMiniSaveToast('협약 무효 처리 — 쓰레기통으로 이동했습니다');
+    closeChart();   // 쓰레기통으로 간 업체 카드를 닫고 목록으로(업체 삭제와 같은 흐름)
   }
 
   /* ==========================================================================
@@ -25158,6 +25407,7 @@ window.SHIN2_CRM_APP_INIT = function(){
   // 직접 읽던 곳이 여러 곳이라 그중 한 곳(renderMeetingRecordSection)이 co.partnerDashboard가
   // 아예 없는 업체에서 실제로 크래시했던 것을 재현/확인 후 이렇게 통합했다).
   function resolveNewMouForCompany(co){
+    if(D.isAgreementInvalidated(co)) return null;   // §협약 무효 처리 — 원본은 남기고 판정에서만 뺀다
     if(co.partnerDashboard && co.partnerDashboard.newMou) return co.partnerDashboard.newMou;
     const rec = findPartnerRecordForCompany(co);
     return (rec && rec.newMou) || null;
@@ -25178,6 +25428,7 @@ window.SHIN2_CRM_APP_INIT = function(){
   // mouDate를 실시간 조회해 반환한다 — resolveNewMouForCompany와 완전히 같은 패턴, co에는
   // 다시 저장하지 않는다.
   function resolvePartnerAgreementDate(co){
+    if(D.isAgreementInvalidated(co)) return null;   // §협약 무효 처리
     if(co.partnerDashboard && co.partnerDashboard.progressSyncedAt){
       const nm = co.partnerDashboard.newMou || {};
       return nm.mouDone ? (nm.mouLabel || nm.mou || null) : null;
@@ -25298,6 +25549,8 @@ window.SHIN2_CRM_APP_INIT = function(){
     return (co.partnerDashboard && co.partnerDashboard.stageCorrectionLog) || [];
   }
   function findStageCorrection(co, keys){
+    // §협약 무효 처리 — MOU 체결 정정도 무효 처리 업체에는 적용하지 않는다(정정 기록 자체는 보존).
+    if(keys.indexOf('mouDone') >= 0 && D.isAgreementInvalidated(co)) return null;
     const corrections = getStageCorrections(co);
     for(let i=0;i<keys.length;i++){ if(corrections[keys[i]]) return corrections[keys[i]]; }
     return null;
@@ -31765,6 +32018,26 @@ window.SHIN2_CRM_APP_INIT = function(){
     });
     document.querySelectorAll('[data-questionnaire-session]').forEach(btn=> btn.addEventListener('click', ()=> openQuestionnaireSession(companyId, btn.getAttribute('data-questionnaire-session'))));
   }
+  // §협약 무효 처리 라운드 — 자주 쓰는 기능이 아니라 탭 맨 아래 조용한 관리 영역에 둔다.
+  // 협약/MOU 신호(진행 단계 원본·수동 확정·협약사 등재·협약 종료)가 하나라도 있을 때만 보인다.
+  function agreementInvalidateZoneHtml(co){
+    if(!co || co.deletedAt || D.isAgreementInvalidated(co)) return '';
+    let hasSignal = false;
+    try{
+      const progress = buildProgressStages(co);
+      hasSignal = !!progress.hasAny || isConfirmedPartner(co, progress)
+        || co.partnerStatus === 'partner' || D.isAgreementTerminated(co);
+    }catch(err){ hasSignal = false; }
+    if(!hasSignal) return '';
+    return `
+      <div class="agr-danger-zone">
+        <div class="agr-danger-zone-text">
+          <div class="agr-danger-zone-title">협약 관리</div>
+          <div class="agr-danger-zone-desc">실제 협약사가 아니었거나 잘못 협약으로 등록된 업체라면 협약 상태를 무효 처리하고 쓰레기통으로 옮깁니다. "협약 종료"와는 다릅니다.</div>
+        </div>
+        <button type="button" class="co-text-action danger" id="agrInvalidateBtn">협약 무효 처리</button>
+      </div>`;
+  }
   function renderAgreementPopupBody(companyId){
     const co = D.findCompany(companyId);
     const body = document.getElementById('agreementPopupBody');
@@ -31810,7 +32083,10 @@ window.SHIN2_CRM_APP_INIT = function(){
           </div>`).join('')}
       </div>
       ${extraActionsHtml ? `<div class="agr-stage-btn-row">${extraActionsHtml}</div>` : ''}
+      ${agreementInvalidateZoneHtml(co)}
     `;
+    const invalidateBtn = body.querySelector('#agrInvalidateBtn');
+    if(invalidateBtn) invalidateBtn.addEventListener('click', ()=> openAgreementInvalidateModal(co.id));
     // 질문지 상담 탭 — 질문지 등록/교체 카드(상/중/하 배지·메모 포함). 통합 팝업이 아닌
     // 곳에서 불려도 안전하도록 컨테이너가 없으면 조용히 건너뛴다(이 파일의 기존 관례).
     const qWrap = document.getElementById('cdashQuestionnaireWork');
