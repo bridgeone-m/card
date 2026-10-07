@@ -10495,6 +10495,11 @@ body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-filters > .map
 .workq-alert-co-name{ font-size:11.5px; font-weight:700; color:#7C2D12; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .workq-alert-co-days{ font-size:11px; font-weight:800; color:#C2410C; font-variant-numeric:tabular-nums; }
 
+
+/* §업무관리 머리 정리 라운드(신규) — 정렬 버튼을 필터 칩 줄 오른쪽 끝에 */
+#workQueueView .workq-filter-row{ align-items:center; }
+#workQueueView .workq-sort-chip{ margin-left:auto; }
+#workQueueView .workq-task-section{ margin-top:4px; }
 </style>
 </head>
 <body>
@@ -28431,15 +28436,10 @@ window.SHIN2_CRM_APP_INIT = function(){
         </button>`;
     }
     wrap.innerHTML = `
-      <div class="workq-header-row">
-        <div class="workq-header">
-          <div class="workq-title">업무관리</div>
-          <div class="workq-subtitle">오늘 확인해야 할 업체를 단계별로 확인합니다.</div>
-        </div>
-        <button type="button" class="list-filter-chip" id="workqSortToggle">${workQueueSortAsc ? '경과일 적은 순 ▾' : '경과일 많은 순 ▾'}</button>
-      </div>
+      <!-- §업무관리 머리 정리 라운드(신규) — 사용자 요청으로 "업무관리" 제목·부제와
+           "지금 해야 할 업무" 섹션 제목을 뺐다. 정렬 버튼(#workqSortToggle)은 필터 칩 줄
+           오른쪽 끝으로 옮겼다(id·동작 그대로). -->
       <div class="workq-task-section">
-        <div class="workq-task-section-title">지금 해야 할 업무</div>
         <div class="workq-task-row">
           ${heroItems.map(h=> workqTaskCard(h)).join('')}
           ${alertHtml}
@@ -28465,6 +28465,7 @@ window.SHIN2_CRM_APP_INIT = function(){
             : (counts[key] || 0);
           return `<button type="button" class="list-filter-chip${workQueueFilter===key?' is-active':''}" data-workq-filter="${esc(key)}">${esc(label)} ${esc(n)}</button>`;
         }).join('')}
+        <button type="button" class="list-filter-chip workq-sort-chip" id="workqSortToggle">${workQueueSortAsc ? '경과일 적은 순 ▾' : '경과일 많은 순 ▾'}</button>
       </div>
       ${filtered.length ? `
         <div class="workq-results-scroll">
