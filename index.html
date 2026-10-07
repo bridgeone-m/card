@@ -9981,6 +9981,91 @@ body.crm-page-shell #mailSettingsView .mail-settings-header-wrap{
   #mapDistributionModalRoot .map-modal-infocol{ grid-column:1 !important; grid-row:4 !important; min-height:220px !important; }
 }
 
+
+/* ==========================================================================
+   §지도 검색 연결 · 결과 드로어 폭 · 상태 필터 드롭다운 라운드(신규)
+   ========================================================================== */
+
+/* ---- C. 오른쪽 검색 결과 드로어 — 74vw(약 1066px) → min(500px, 32vw), 최소 400px ----
+   좁아진 폭에 맞춰 안을 위→아래로: 검색·필터 / (아파트 요약) / 지도 / 결과 목록(여기만 스크롤).
+   뒤 고객 목록이 보이도록 dim은 아주 옅게. */
+#mapDistributionModalRoot .map-modal-overlay{ background:rgba(15,23,42,.06) !important; }
+#mapDistributionModalRoot .map-modal-panel{
+  width:min(500px, 32vw) !important; min-width:400px !important;
+  border-radius:16px !important;
+  border-left:1px solid #E3EAF3 !important;
+  box-shadow:-12px 0 36px rgba(15,23,42,.12) !important;
+}
+#mapDistributionModalRoot .map-modal-panel > #mapModalBody{
+  grid-template-columns:minmax(0,1fr) !important;
+  grid-template-rows:auto auto minmax(200px, 34vh) minmax(0,1fr) !important;
+  gap:10px 0 !important; overflow:hidden !important;
+}
+#mapDistributionModalRoot .map-modal-filters{ grid-column:1 !important; grid-row:1 !important; flex-wrap:wrap; gap:6px !important; }
+#mapDistributionModalRoot .map-apt-summary{ grid-column:1 !important; grid-row:2 !important; }
+#mapDistributionModalRoot .map-modal-mapcol{ grid-column:1 !important; grid-row:3 !important; min-height:200px !important; border-radius:12px; overflow:hidden; }
+#mapDistributionModalRoot .map-modal-infocol{ grid-column:1 !important; grid-row:4 !important; min-height:0 !important; overflow:hidden !important; }
+#mapDistributionModalRoot .map-modal-filters .map-search-field{ flex:1 1 100%; }
+#mapDistributionModalRoot .map-modal-tabs-list{ width:100% !important; }
+#mapDistributionModalRoot .map-modal-tab-btn{ height:36px !important; font-size:12.5px !important; padding:0 6px !important; }
+/* 결과 머리 — [수원 검색결과]  총 23개 */
+#mapDistributionModalRoot .map-sidelist-head{ position:sticky; top:0; background:#fff; z-index:1; padding:6px 0 8px !important; }
+#mapDistributionModalRoot .map-sidelist-count{ font-weight:700; color:#1B4480; }
+@media (max-width:1100px){
+  #mapDistributionModalRoot .map-modal-panel{ width:calc(100vw - 16px) !important; min-width:0 !important; }
+  #mapDistributionModalRoot .map-modal-panel > #mapModalBody{
+    grid-template-rows:auto auto minmax(220px, 38vh) minmax(220px, 1fr) !important; overflow-y:auto !important;
+  }
+}
+
+/* ---- A. 상태 필터 드롭다운 — [전체 업체 355 ▾] [검색] [정렬] 한 줄 ---- */
+#crmFilterRow.is-dropdown{ display:contents !important; }
+body.crm-fixed-view #crmFilterRow.is-dropdown > .crm-status-dd{ height:auto !important; }
+.crm-status-dd{ position:relative; flex:none; }
+.crm-status-dd-btn{
+  display:inline-flex; align-items:center; gap:8px;
+  height:40px; padding:0 12px 0 14px; box-sizing:border-box; min-width:170px;
+  background:#fff; border:1px solid #DCE5EF; border-radius:11px; cursor:pointer;
+  font:inherit; font-size:13px; font-weight:700; color:#17345F; white-space:nowrap;
+  transition:background-color .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+.crm-status-dd-btn:hover{ background:#F7F9FC; border-color:#C9D5E3; }
+.crm-status-dd-btn:focus-visible{ outline:none; box-shadow:0 0 0 3px rgba(27,68,128,.16); }
+.crm-status-dd-btn[aria-expanded="true"]{ border-color:#B9D0EE; background:#F4F8FD; }
+.crm-status-dd-label{ flex:1; text-align:left; }
+.crm-status-dd-count{
+  display:inline-flex; align-items:center; justify-content:center; min-width:20px; height:20px; padding:0 6px; box-sizing:border-box;
+  border-radius:6px; background:rgba(27,68,128,.10); color:#1B4480; font-size:11.5px; font-weight:700; font-variant-numeric:tabular-nums;
+}
+.crm-status-dd-caret{ font-size:11px; color:#8494A8; transition:transform .15s ease; }
+.crm-status-dd-btn[aria-expanded="true"] .crm-status-dd-caret{ transform:rotate(180deg); }
+.crm-status-dd-menu{
+  position:absolute; left:0; top:calc(100% + 6px); z-index:var(--z-dropdown, 200);
+  width:260px; padding:6px; box-sizing:border-box;
+  background:#fff; border:1px solid #DCE5EF; border-radius:12px;
+  box-shadow:0 14px 34px rgba(23,52,95,.14), 0 2px 6px rgba(23,52,95,.06);
+}
+.crm-status-dd-menu[hidden]{ display:none !important; }
+.crm-status-dd-item{
+  display:grid; grid-template-columns:16px minmax(0,1fr) auto; align-items:center; gap:6px;
+  width:100%; height:36px; padding:0 10px; box-sizing:border-box;
+  background:none; border:0; border-radius:8px; cursor:pointer; text-align:left;
+  font:inherit; font-size:13px; font-weight:600; color:#334155;
+}
+.crm-status-dd-item:hover{ background:#F4F8FD; }
+.crm-status-dd-item.is-active{ background:#EAF2FC; color:#1B4480; }
+.crm-status-dd-check{ font-size:12px; font-weight:800; color:#1B4480; }
+.crm-status-dd-item-label{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.crm-status-dd-item-count{ font-size:12px; font-weight:700; color:#7C8BA1; font-variant-numeric:tabular-nums; }
+.crm-status-dd-item.is-active .crm-status-dd-item-count{ color:#1B4480; }
+.crm-status-dd-item.is-trash{ margin-top:4px; border-top:1px solid #F1F4F8; border-radius:0 0 8px 8px; color:#64748B; }
+/* 검색 행 — 드롭다운 · 검색창 · 정렬이 한 줄, 검색창이 남는 폭을 가진다 */
+#listView .list-search-row{ display:flex !important; align-items:center; gap:8px !important; flex-wrap:nowrap; }
+#listView .list-search-row > .search-box{ flex:1 1 auto; min-width:0; }
+@media (max-width:640px){
+  #listView .list-search-row{ flex-wrap:wrap; }
+  .crm-status-dd, .crm-status-dd-btn{ width:100%; }
+}
 </style>
 </head>
 <body>
@@ -19559,11 +19644,52 @@ window.SHIN2_CRM_APP_INIT = function(){
     if(!wrap) return;
     const chipHtml = ([key,label])=>
       `<button type="button" class="list-filter-chip${filterKey===key?' is-active':''}" data-filter="${esc(key)}">${FILTER_ICON_SVG[key]||''}<span>${esc(label)}</span><span class="chip-count">${pillCount(key, counts)}</span></button>`;
+    /* §상태 필터 드롭다운 라운드(신규) — 가로 칩 대신 드롭다운 하나. 항목·키(filterKey)·건수
+       (pillCount / counts.trash)·클릭 처리(아래 [data-filter] 핸들러)는 칩과 완전히 같고,
+       표현만 바뀐다. 삭제업체는 쓰레기통 아이콘과 같은 filterKey 'trash' 경로. chipHtml은
+       다른 곳에서 쓸 수 있게 남겨 둔다. */
+    void chipHtml;
+    const DROPDOWN_DEFS = MAIN_PILL_DEFS.concat([['trash','삭제업체']]);
+    const countOf = key=> key === 'trash' ? (counts.trash || 0) : pillCount(key, counts);
+    const labelOf = key=> key === 'all' ? '전체 업체' : ((DROPDOWN_DEFS.find(d=> d[0] === key) || [key, ''])[1] || '전체 업체');
+    const curKey = DROPDOWN_DEFS.some(d=> d[0] === filterKey) ? filterKey : 'all';
+    const searchRow = document.querySelector('#listView .list-search-row');
+    if(searchRow && wrap.parentElement !== searchRow) searchRow.insertBefore(wrap, searchRow.firstElementChild);
+    wrap.classList.add('is-dropdown');
     wrap.innerHTML = `
-      <div class="list-filter-group list-filter-group-state">
-        ${MAIN_PILL_DEFS.map(chipHtml).join('')}
+      <div class="crm-status-dd" id="crmStatusDd">
+        <button type="button" class="crm-status-dd-btn" id="crmStatusDdBtn" aria-haspopup="listbox" aria-expanded="false">
+          <span class="crm-status-dd-label">${esc(labelOf(curKey))}</span>
+          <span class="crm-status-dd-count">${esc(String(countOf(curKey)))}</span>
+          <span class="crm-status-dd-caret" aria-hidden="true">▾</span>
+        </button>
+        <div class="crm-status-dd-menu" id="crmStatusDdMenu" role="listbox" hidden>
+          ${DROPDOWN_DEFS.map(([key,label])=> `
+            <button type="button" class="crm-status-dd-item${key===curKey?' is-active':''}${key==='trash'?' is-trash':''}" role="option" aria-selected="${key===curKey?'true':'false'}" data-filter="${esc(key)}">
+              <span class="crm-status-dd-check" aria-hidden="true">${key===curKey?'✓':''}</span>
+              <span class="crm-status-dd-item-label">${esc(key === 'all' ? '전체 업체' : label)}</span>
+              <span class="crm-status-dd-item-count">${esc(String(countOf(key)))}</span>
+            </button>`).join('')}
+        </div>
       </div>
     `;
+    const ddBtn = wrap.querySelector('#crmStatusDdBtn');
+    const ddMenu = wrap.querySelector('#crmStatusDdMenu');
+    if(ddBtn && ddMenu) ddBtn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      const open = ddMenu.hasAttribute('hidden');
+      if(open){ ddMenu.removeAttribute('hidden'); ddBtn.setAttribute('aria-expanded','true'); }
+      else { ddMenu.setAttribute('hidden',''); ddBtn.setAttribute('aria-expanded','false'); }
+    });
+    if(!window.__crmStatusDdBound){
+      window.__crmStatusDdBound = true;
+      const closeDd = ()=>{
+        const m = document.getElementById('crmStatusDdMenu'), b = document.getElementById('crmStatusDdBtn');
+        if(m && !m.hasAttribute('hidden')){ m.setAttribute('hidden',''); if(b) b.setAttribute('aria-expanded','false'); }
+      };
+      document.addEventListener('click', (e)=>{ const dd = document.getElementById('crmStatusDd'); if(dd && !dd.contains(e.target)) closeDd(); });
+      document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape') closeDd(); });
+    }
     wrap.querySelectorAll('[data-filter]').forEach(btn=> btn.addEventListener('click', ()=>{
       const nextKey = btn.getAttribute('data-filter');
       // §신규 협약사 탭 라운드(신규) — "신규 협약사" 탭에 들어가면 기본 정렬을 "90일
@@ -42571,7 +42697,23 @@ window.SHIN2_CRM_APP_INIT = function(){
   // 떨어질 수 있었다. 저장 데이터는 건드리지 않고 지도 entry가 이미 계산한 지역값과
   // 고객 원본의 지역 보조 필드까지 검색 대상에 포함한다.
   function normalizeMapSearchText(v){
-    return String(v == null ? '' : v).trim().toLowerCase().replace(/\s+/g, '');
+    // §지도 검색 연결 라운드 — 공백·괄호·문장부호를 모두 지우고 비교한다("(주)수원" / "수원시," 등).
+    return String(v == null ? '' : v).trim().toLowerCase().replace(/[^0-9a-z가-힣]/g, '');
+  }
+  // 검색어가 "시/도 이름만"인지(서울·서울특별시·경기도·전라북도·전북특별자치도 …). 맞으면 기존
+  // parseMapRegion(MAP_REGION_PATTERNS)으로 같은 지역명으로 바꿔 업체의 region과 비교한다 —
+  // 새 지역 판정 체계를 만들지 않고, 주소 파싱과 같은 규칙을 검색어에 한 번 더 쓰는 것이다.
+  const MAP_SIDO_ONLY_RE = /^(서울(특별시)?|부산(광역시)?|대구(광역시)?|인천(광역시)?|광주(광역시)?|대전(광역시)?|울산(광역시)?|세종(특별자치시)?|경기(도)?|강원(도|특별자치도)?|충청?북(도)?|충청?남(도)?|전라?북(도)?|전북특별자치도|전라?남(도)?|경상?북(도)?|경상?남(도)?|제주(도|특별자치도)?)$/;
+  let mapSearchRegionMemo = { q:null, region:null };
+  function mapSearchQueryRegion(norm){
+    if(mapSearchRegionMemo.q === norm) return mapSearchRegionMemo.region;
+    let region = null;
+    if(norm && MAP_SIDO_ONLY_RE.test(norm)){
+      const r = parseMapRegion(norm);
+      region = (r && r !== '기타') ? r : null;
+    }
+    mapSearchRegionMemo = { q:norm, region };
+    return region;
   }
   function mapEntryMatchesSearch(entry, q){
     if(!q) return true;
@@ -42583,7 +42725,10 @@ window.SHIN2_CRM_APP_INIT = function(){
       entry && entry.region, entry && entry.sigungu,
       co.region, co.city, co.area, co.sido, co.sigungu, co.district
     ];
-    return haystacks.some(v=> normalizeMapSearchText(v).includes(norm));
+    if(haystacks.some(v=> normalizeMapSearchText(Array.isArray(v) ? v.join(' ') : v).includes(norm))) return true;
+    // "서울특별시" / "경기도"처럼 시·도 이름만 넣었으면 같은 시·도로 분류된 업체도 포함
+    const qRegion = mapSearchQueryRegion(norm);
+    return !!(qRegion && entry && entry.region === qRegion);
   }
   function applyMapFilters(entries){
     return entries.filter(e=>
@@ -42864,11 +43009,12 @@ window.SHIN2_CRM_APP_INIT = function(){
   }
   function aptEntryMatchesSearch(e, q){
     if(!q) return true;
-    const norm = q.trim().toLowerCase();
+    // §지도 검색 연결 라운드 — 공백·문장부호 차이를 흡수하는 같은 정규화(normalizeMapSearchText)
+    const norm = normalizeMapSearchText(q);
     if(!norm) return true;
-    const name = String(e.name || '').toLowerCase();
-    const region = [e.region, e.city].filter(Boolean).join(' ').toLowerCase();
-    const companyNames = e.companies.map(c=> c.name).join(' ').toLowerCase();
+    const name = normalizeMapSearchText(e.name);
+    const region = normalizeMapSearchText([e.region, e.city].filter(Boolean).join(' '));
+    const companyNames = normalizeMapSearchText(e.companies.map(c=> c.name).join(' '));
     return name.includes(norm) || region.includes(norm) || companyNames.includes(norm);
   }
   function aptEntryMatchesFilter(e, state){
@@ -43138,9 +43284,20 @@ if(!window.__mapxRowDelegated){
         <div class="map-modal-infocol" id="mapModalInfoCol"></div>
       </div>
     `;
+    let mapSearchFitTimer = null;
     document.getElementById('mapFilterSearch').addEventListener('input', (e)=>{
       mapFilterState.search = e.target.value;
       refreshMapInfoAndMarkers();
+      // 입력이 멈추면(350ms) 검색 결과가 모두 보이게 지도를 옮긴다 — 목록과 지도가 같은 결과.
+      clearTimeout(mapSearchFitTimer);
+      mapSearchFitTimer = setTimeout(()=>{
+        if(!String(mapFilterState.search || '').trim()) return;
+        try{
+          if(mapCanvasState && typeof mapCanvasState.fitToEntries === 'function'){
+            mapCanvasState.fitToEntries(applyMapFilters(buildMapCompanies()));
+          }
+        }catch(err){ console.warn('지도 검색 이동 실패:', err); }
+      }, 350);
     });
     // §지도분포4: 칩/토글 클릭은 활성 표시만 그 자리에서 바꾸고 refreshMapInfoAndMarkers()로
     // 마커·정보 패널만 갱신한다 — 이전처럼 renderMapModalMain(kakao)를 다시 부르면
@@ -43261,13 +43418,18 @@ if(!window.__mapxRowDelegated){
     const focusedEntries = mapFocusedCompanyList
       ? mapFocusedCompanyList.companyIds.map(id=> filteredById.get(id)).filter(Boolean)
       : null;
-    const listEntries = mapFilterState.listView === 'unlocated' ? unlocated : (focusedEntries || visibleEntries);
+    const searchQ = String(mapFilterState.search || '').trim();
+    const searchActive = !!searchQ && mapFilterState.listView !== 'unlocated' && !focusedEntries;
+    const searchEntries = searchActive
+      ? filtered.slice().sort((a,b)=> (b.hasCoords - a.hasCoords) || String(a.co.name || '').localeCompare(String(b.co.name || ''), 'ko'))
+      : null;
+    const listEntries = mapFilterState.listView === 'unlocated' ? unlocated : (focusedEntries || searchEntries || visibleEntries);
     // §지도 팝업 전환 라운드(신규) §7 — 오른쪽 칼럼의 목록 제목을 "시공사 목록 · 총 N개"로
     // 맞춘다. 건수는 지금 실제로 그려지는 목록(listEntries)의 수라 화면과 항상 일치한다
     // (§8). 지역/미확인/포커스 상태일 때는 무엇을 보고 있는지 제목에 그대로 남긴다.
     const listTitle = mapFilterState.listView === 'unlocated'
       ? '위치 미확인 업체'
-      : (mapFocusedCompanyList ? `${mapFocusedCompanyList.label} 시공사` : '시공사 목록');
+      : (mapFocusedCompanyList ? `${mapFocusedCompanyList.label} 시공사` : (searchActive ? `${searchQ} 검색결과` : '시공사 목록'));
     const listCountText = `총 ${listEntries.length.toLocaleString('ko-KR')}개`;
     infoCol.innerHTML = `
       <button type="button" class="map-embed-panel-close-btn" id="mapEmbedPanelCloseBtn" aria-label="지역 요약 패널 닫기">&times;</button>
@@ -43304,6 +43466,9 @@ if(!window.__mapxRowDelegated){
     infoCol.querySelectorAll('[data-map-company]').forEach(row=> row.addEventListener('click', ()=>{
       const companyId = row.getAttribute('data-map-company');
       if(typeof focusMapCompany === 'function') focusMapCompany(companyId);
+      // §지도 검색 연결 라운드 — 행을 누르면 기존 고객 상세를 연다(지도에서 연 것으로 표시해 닫으면
+      // 이 드로어로 돌아온다). 위치 미확인 업체도 상세는 열린다.
+      openCard(companyId, { source:'map' });
     }));
     const showUnlocatedBtn = document.getElementById('mapShowUnlocatedBtn');
     if(showUnlocatedBtn) showUnlocatedBtn.addEventListener('click', ()=>{
@@ -43686,6 +43851,15 @@ if(!window.__mapxRowDelegated){
     mapCanvasState = {
       map, clusterer,
       relayout: relayoutToFit,
+      // §지도 검색 연결 라운드 — 주어진 업체들(좌표 있는 것만)이 다 보이게 지도 범위를 맞춘다.
+      fitToEntries(entries){
+        const pts = (entries || []).filter(e=> e.hasCoords);
+        if(!pts.length) return false;
+        const b = new kakao.maps.LatLngBounds();
+        pts.forEach(e=> b.extend(new kakao.maps.LatLng(e.co.latitude, e.co.longitude)));
+        map.setBounds(b);
+        return true;
+      },
       getVisibleEntries(){
         const bounds = map.getBounds();
         if(!bounds) return [];
@@ -44319,7 +44493,7 @@ if(!window.__mapxRowDelegated){
       <div class="map-modal-filters${mapAptViewMode === 'near' ? ' is-near-mode' : ''}">
         <label class="map-search-field">
           ${MAP_SEARCH_ICO}
-          <input type="text" class="map-modal-search" id="aptFilterSearch" placeholder="아파트명 · 지역 검색" value="${esc(aptFilterState.search)}" aria-label="아파트명 · 지역 검색" />
+          <input type="text" class="map-modal-search" id="aptFilterSearch" placeholder="아파트명 · 지역 · 시공사 검색" value="${esc(aptFilterState.search)}" aria-label="아파트명 · 지역 · 시공사 검색" />
         </label>
         <!-- §근처검색 검색창 분리 라운드(신규) — 사용자 요청: "근처검색 탭을 따로 두지 말고
              검색창을 따로 만들어줘." 탭 줄의 초록 토글 버튼 + 플로팅 팝오버를 없애고,
