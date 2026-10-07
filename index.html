@@ -10083,6 +10083,53 @@ body.crm-fixed-view #crmFilterRow.is-dropdown > .crm-status-dd{ height:auto !imp
   #listView .list-search-row{ flex-wrap:wrap; }
   .crm-status-dd, .crm-status-dd-btn{ width:100%; }
 }
+
+/* ==========================================================================
+   §시공 아파트 PDF 레이아웃 라운드(신규) — 시공 아파트 PDF 모달(.aptpdf-wide)만.
+   왼쪽 "출력 범위" 3개 → 제목 아래 가로 탭, 미리보기는 그 자리까지 전체 폭.
+   MOU 모달(.pdfx-wide)과 같은 틀이며, 문서 자체(출력 내용)는 그대로다.
+   ========================================================================== */
+.aptpdf-wide.pdf-export-panel{
+  width:100%; max-width:1480px;
+  height:calc(100vh - 40px); max-height:none !important;
+  display:flex; flex-direction:column;
+}
+.aptpdf-wide .pdf-type-tabs{ flex:none; padding:12px 20px 0; }
+.aptpdf-wide .pdf-type-card{ padding:8px 12px; border-radius:10px; }
+.aptpdf-wide .pdf-export-body{
+  flex:1 1 auto; min-height:0;
+  display:flex !important; flex-direction:column !important; align-items:stretch !important;
+  gap:8px; padding:12px 20px 16px !important; overflow:hidden !important;
+}
+/* 건수 · 안내 한 줄 */
+.aptpdf-wide .aptpdf-meta{
+  flex:none !important; width:auto !important; min-width:0 !important;
+  display:flex; align-items:baseline; gap:12px;
+}
+.aptpdf-wide .aptpdf-meta .pdf-export-count{ flex:none; margin:0; }
+.aptpdf-wide .aptpdf-meta .mail-settings-help{
+  flex:1 1 auto; min-width:0; margin:0; font-size:11.5px; color:#7C8BA1;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+/* 미리보기 — 전체 폭, 남은 높이 전부, 내부 스크롤 */
+.aptpdf-wide .pdf-export-right{
+  flex:1 1 auto; min-height:0; width:100%;
+  display:flex; flex-direction:column; gap:8px;
+}
+.aptpdf-wide .pdf-export-actions{ flex:none; margin:0; }
+.aptpdf-wide .pdf-preview-wrap{
+  flex:1 1 auto; min-height:0; width:100%; max-width:none; box-sizing:border-box;
+  max-height:none !important; overflow:auto !important;
+  border:1px solid #DCE5EF; border-radius:12px; background:#EDF0F5;
+}
+@media (max-width: 900px){
+  .aptpdf-wide.pdf-export-panel{ height:calc(100vh - 24px); }
+  .aptpdf-wide .pdf-export-body{ overflow-y:auto !important; padding:10px 14px 14px !important; }
+  .aptpdf-wide .aptpdf-meta{ flex-wrap:wrap; }
+  .aptpdf-wide .aptpdf-meta .mail-settings-help{ white-space:normal; }
+  .aptpdf-wide .pdf-export-right{ flex:none; }
+  .aptpdf-wide .pdf-preview-wrap{ flex:none; height:70vh; min-height:360px; }
+}
 </style>
 </head>
 <body>
@@ -44847,17 +44894,16 @@ if(!window.__mapxRowDelegated){
       </button>`).join('');
     return `
       <div class="pi-overlay" id="aptPdfExportOverlay">
-        <div class="pi-panel pdf-export-panel" role="dialog" aria-modal="true" aria-label="시공 아파트 PDF 내보내기">
+        <div class="pi-panel pdf-export-panel aptpdf-wide" role="dialog" aria-modal="true" aria-label="시공 아파트 PDF 내보내기">
           <div class="pi-head">
             <div class="pi-title">시공 아파트 PDF 내보내기</div>
             <button type="button" class="chart-close-btn" id="aptPdfExportCloseBtn" aria-label="닫기">&times;</button>
           </div>
+          <!-- §시공 아파트 PDF 레이아웃 라운드(신규) — 왼쪽 "출력 범위" 3개를 상단 탭으로 올리고,
+               미리보기를 그 자리까지 넓혔다. 버튼·id·출력 로직은 그대로다. -->
+          <div class="pdf-type-tabs aptpdf-tabs" role="tablist" aria-label="출력 범위">${optsHtml}</div>
           <div class="pi-body pdf-export-body">
-            <div class="pdf-export-left">
-              <div class="co-form-field">
-                <label>출력 범위</label>
-                <div class="pdf-type-row">${optsHtml}</div>
-              </div>
+            <div class="pdf-export-left aptpdf-meta">
               <div class="pdf-export-count">출력 대상 <b id="aptPdfCountVal">0</b>개 · <span id="aptPdfFilterVal"></span></div>
               <div class="mail-settings-help">현재 지도 화면의 검색·필터 조건을 그대로 씁니다. 이 창은 조회만 하며 화면 상태(검색어·지도 위치)를 바꾸지 않습니다. 브라우저 인쇄로 PDF를 저장합니다(외부 전송·업로드 없음).</div>
             </div>
@@ -44896,11 +44942,18 @@ if(!window.__mapxRowDelegated){
     const pageW = ctx.geo.w * pdfExportPxPerMm();
     const avail = canvas.clientWidth - 24;
     if(!(pageW > 0) || !(avail > 0)) return;
-    const k = Math.min(1, avail / pageW);
+    const k = Math.min(PDF_PREVIEW_MAX_SCALE, avail / pageW);
     scaler.style.transform = `scale(${k})`;
     scaler.style.left = Math.max(12, (canvas.clientWidth - pageW * k) / 2) + 'px';
     canvas.style.height = (scaler.scrollHeight * k + 32) + 'px';
   }
+  // 창 크기가 바뀌면 시공 아파트 미리보기도 다시 맞춘다(열려 있을 때만).
+  let aptPdfResizeTimer = null;
+  window.addEventListener('resize', ()=>{
+    if(!document.getElementById('aptPdfPreviewCanvas')) return;
+    clearTimeout(aptPdfResizeTimer);
+    aptPdfResizeTimer = setTimeout(()=>{ if(document.getElementById('aptPdfPreviewCanvas')) renderAptPdfPreview(); }, 200);
+  });
   function closeAptPdfExportModal(){
     const root = document.getElementById('aptPdfExportModalRoot');
     if(root) root.innerHTML = '';
