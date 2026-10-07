@@ -10238,6 +10238,13 @@ body.crm-mapdock[data-crm-view="listView"] #crmMiniMapAlarm .sa-alarm-list > *{ 
 body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-tabs{
   padding-top:8px !important; padding-bottom:8px !important;
 }
+
+/* §지도 필터 드롭다운 잘림 수정(신규) — 근처 시공 탭에서 연도·공법 드롭다운이 min-width:0이라
+   검색칸 옆으로 46px까지 눌려 "연"/"공"만 보였다. 최소 폭을 줘서 자리가 모자라면 다음 줄로
+   내려가게 한다(근처 검색칸 한 줄 / 연도·공법·지역·세대수 다음 줄). 필터 동작은 그대로다. */
+body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-filters > .map-modal-select{
+  flex:1 1 120px !important; min-width:120px !important;
+}
 </style>
 </head>
 <body>
