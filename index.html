@@ -10327,6 +10327,19 @@ body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-filters > .map
   background:var(--primary-navy, #1B4480); opacity:.55;
 }
 .qtab-insight-box .qtab-insight-text{ font-size:13px; line-height:1.65; }
+
+/* §고객 인사이트 연결 라운드(신규) — 헤더 "고객 인사이트" 팝업: 자동 정리 / 추가 메모 / 이전 인사이트 */
+.hins-body{ display:flex; flex-direction:column; gap:12px; max-height:min(60vh, 520px); overflow:auto; }
+.hins-sec + .hins-sec{ border-top:1px solid #EEF2F7; padding-top:10px; }
+.hins-sec-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:6px; }
+.hins-sec-label{ font-size:12px; font-weight:800; color:#17345F; }
+.hins-sec-meta{ font-size:11px; color:#93A1B5; }
+/* 자동 인사이트 태그 칩 — 정의가 없어 글자가 붙어 보였다. 모든 화면(기본정보 카드·상담 기록·헤더 팝업) 공통 */
+.crv-insight-tags{ display:flex; flex-wrap:wrap; gap:5px; margin-bottom:8px; }
+.crv-insight-tag{ display:inline-flex; align-items:center; height:22px; padding:0 9px; border-radius:999px; background:#EEF3FA; border:1px solid #DCE5EF; color:#1B4480; font-size:11px; font-weight:700; }
+.hins-note{ font-size:12.5px; line-height:1.6; color:#23364F; white-space:pre-wrap; word-break:break-word; }
+.hins-actions{ display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
+.hins-actions .header-insight-pop-edit-btn{ margin-top:0 !important; }
 </style>
 </head>
 <body>
@@ -24315,25 +24328,64 @@ window.SHIN2_CRM_APP_INIT = function(){
     if(!root) return;
     const s = buildInsightPopoverSummary(co);
     const row = (label, value)=> value ? `<div class="contact-detail-row"><span class="contact-detail-label">${esc(label)}</span><span class="contact-detail-value">${esc(value)}</span></div>` : '';
-    const bodyHtml = s ? `
-      <div class="header-insight-pop-body">
-        ${s.oneLiner ? `<div class="insight-pop-oneliner" style="white-space:normal;">${esc(s.oneLiner)}</div>` : ''}
-        ${row('관심', s.interestText)}
-        ${row('공법', s.methodText)}
-        ${row('관계', s.relationText)}
-        ${s.nextAction ? row('핵심', s.nextAction) : ''}
-      </div>
-    ` : `<div class="insight-pop-empty">등록된 고객 인사이트가 없습니다.</div>`;
+    // §고객 인사이트 연결 라운드(신규) — 질문지 상담(질문지 옆 평가·메모)에서 자동 정리된
+    // "종합 고객 인사이트"가 이 팝업에 안 나왔다(예전 customerInsight 필드만 읽었음). 가장 최근
+    // 질문지의 consultReview.autoInsight를 그대로 읽어 맨 위에 보여준다 — 저장값 조회만 하고,
+    // 정리 로직(buildConsultAutoInsight)·저장 경로는 그대로다. 직접 쓴 추가 메모와 예전 인사이트도
+    // 있으면 아래에 함께 보여준다.
+    let autoHtml = '';
+    try{
+      const qDoc = D.documentsForCompany(co.id, 'questionnaire')[0];
+      if(qDoc){
+        const r = D.readConsultReview(qDoc);
+        const verdict = r.autoInsight.verdict || parseConsultInsightSummary(r.autoInsight.summary).verdict;
+        if(verdict){
+          const tags = r.autoInsight.tags || [];
+          autoHtml = `
+            <div class="hins-sec">
+              <div class="hins-sec-head">
+                <span class="hins-sec-label">질문지 상담 자동 정리</span>
+                ${r.autoInsight.updatedAt ? `<span class="hins-sec-meta">${esc(fmtDate(r.autoInsight.updatedAt))} 정리</span>` : ''}
+              </div>
+              ${tags.length ? `<div class="crv-insight-tags">${tags.map(t=> `<span class="crv-insight-tag">${esc(t)}</span>`).join('')}</div>` : ''}
+              ${qtabInsightListHtml(verdict)}
+            </div>`;
+        }
+      }
+    }catch(err){ autoHtml = ''; }
+    const manualNote = customerInsightNote(co);
+    const manualHtml = manualNote ? `
+      <div class="hins-sec">
+        <div class="hins-sec-head"><span class="hins-sec-label">추가 고객 메모</span></div>
+        <div class="hins-note">${esc(manualNote)}</div>
+      </div>` : '';
+    const legacyHtml = s ? `
+      <div class="hins-sec">
+        ${(autoHtml || manualHtml) ? `<div class="hins-sec-head"><span class="hins-sec-label">이전 고객 인사이트</span></div>` : ''}
+        <div class="header-insight-pop-body">
+          ${s.oneLiner ? `<div class="insight-pop-oneliner" style="white-space:normal;">${esc(s.oneLiner)}</div>` : ''}
+          ${row('관심', s.interestText)}
+          ${row('공법', s.methodText)}
+          ${row('관계', s.relationText)}
+          ${s.nextAction ? row('핵심', s.nextAction) : ''}
+        </div>
+      </div>` : '';
+    const bodyHtml = (autoHtml || manualHtml || legacyHtml)
+      ? `<div class="hins-body">${autoHtml}${manualHtml}${legacyHtml}</div>`
+      : `<div class="insight-pop-empty">등록된 고객 인사이트가 없습니다 — 질문지 상담에서 평가·메모를 입력하면 자동으로 정리됩니다.</div>`;
     root.innerHTML = `
       <div class="pi-overlay" id="headerInsightOverlay">
-        <div class="pi-panel" style="max-width:420px;" role="dialog" aria-modal="true" aria-label="고객 인사이트">
+        <div class="pi-panel" style="max-width:540px;" role="dialog" aria-modal="true" aria-label="고객 인사이트">
           <div class="pi-head">
             <div class="pi-title">고객 인사이트</div>
             <button type="button" class="chart-close-btn" id="headerInsightCloseBtn" aria-label="닫기">&times;</button>
           </div>
           <div class="pi-body">
             ${bodyHtml}
-            <button type="button" class="co-text-action primary header-insight-pop-edit-btn" id="headerInsightEditBtn">✎ 고객 인사이트 수정</button>
+            <div class="hins-actions">
+              <button type="button" class="co-text-action primary" id="headerInsightConsultBtn">상담 탭에서 보기·수정</button>
+              <button type="button" class="co-text-action header-insight-pop-edit-btn" id="headerInsightEditBtn">✎ 이전 인사이트 수정</button>
+            </div>
           </div>
         </div>
       </div>`;
@@ -24341,6 +24393,11 @@ window.SHIN2_CRM_APP_INIT = function(){
     bindSafeBackdropClose(document.getElementById('headerInsightOverlay'), closeHeaderInsightModal);
     const onEsc = (e)=>{ if(e.key === 'Escape'){ e.stopImmediatePropagation(); closeHeaderInsightModal(); } };
     document.addEventListener('keydown', onEsc, { once:true, capture:true });
+    const consultBtn = document.getElementById('headerInsightConsultBtn');
+    if(consultBtn) consultBtn.addEventListener('click', ()=>{
+      closeHeaderInsightModal();
+      setCustomerDetailTab('questionnaire');
+    });
     document.getElementById('headerInsightEditBtn').addEventListener('click', ()=>{
       closeHeaderInsightModal();
       cardState.accordionOpen.insight = true;
