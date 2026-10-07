@@ -10500,6 +10500,29 @@ body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-filters > .map
 #workQueueView .workq-filter-row{ align-items:center; }
 #workQueueView .workq-sort-chip{ margin-left:auto; }
 #workQueueView .workq-task-section{ margin-top:4px; }
+
+/* §메일 직접 추가 라운드(신규) */
+.mail-tab-add-btn{
+  flex:none; align-self:center; height:30px; padding:0 12px; margin-left:4px;
+  border:1px dashed #B9C6D8; border-radius:8px; background:#fff; color:#1B4480;
+  font:inherit; font-size:12.5px; font-weight:700; cursor:pointer; white-space:nowrap;
+}
+.mail-tab-add-btn:hover{ background:#F4F8FD; border-color:#7FA5D6; }
+.mailx-name-input{
+  flex:1 1 auto; min-width:0; max-width:360px; height:34px; padding:0 10px; box-sizing:border-box;
+  border:1px solid #DCE5EF; border-radius:8px; font:inherit; font-size:15px; font-weight:800; color:#13243E;
+}
+.mailx-name-input:focus{ outline:none; border-color:#7FA5D6; box-shadow:0 0 0 3px rgba(27,68,128,.10); }
+.mailx-del-btn{ color:#B42318 !important; border-color:#F3C7C2 !important; margin-right:auto; }
+.agr-custom-mail{ position:relative; display:inline-block; }
+.agr-custom-mail > summary{ list-style:none; display:inline-flex; align-items:center; gap:4px; cursor:pointer; }
+.agr-custom-mail > summary::-webkit-details-marker{ display:none; }
+.agr-custom-mail .agr-more-menu{ min-width:180px; }
+.agr-custom-mail-item{
+  display:block; width:100%; padding:7px 10px; border:0; border-radius:6px; background:none;
+  font:inherit; font-size:12.5px; text-align:left; cursor:pointer; color:#1F2A3C;
+}
+.agr-custom-mail-item:hover{ background:#F4F8FD; color:#1B4480; }
 </style>
 </head>
 <body>
@@ -13413,6 +13436,15 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
     MAIL_TEMPLATE_KEYS.forEach(key=>{
       templates[key] = Object.assign({}, DEFAULT_MAIL_TEMPLATES[key], storedTemplates[key]);
     });
+    // §메일 직접 추가 라운드(신규) — 사용자가 [+ 메일 추가]로 만든 메일(키 custom_*)은 같은
+    // mailTemplates 안에 저장한다. 삭제는 deleted:true 표시만 남겨(다른 브라우저/클라우드
+    // 동기화가 지운 메일을 되살리지 않도록) 화면에서만 뺀다.
+    Object.keys(storedTemplates).forEach(key=>{
+      if(!/^custom_/.test(key)) return;
+      const t = storedTemplates[key];
+      if(!t || typeof t !== 'object') return;
+      templates[key] = Object.assign({ enabled:true, subjectTemplate:'', bodyTemplate:'', attachmentDocType:null, videoUrl:'', updatedAt:null, custom:true, displayName:'새 메일' }, t);
+    });
     // §8 호환 처리: firstMeeting이 아직 한 번도 새 구조로 저장된 적 없으면(=stored.mailTemplates.
     // firstMeeting 없음), 기존 평면 subjectTemplate/bodyTemplate(사용자가 예전에 실제로
     // 저장해 둔 값일 수 있음)을 firstMeeting의 초기값으로 그대로 읽어온다 — 새 구조가 한 번
@@ -13511,7 +13543,8 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
     });
     const cloudTemplates = (cloudData.mailTemplates && typeof cloudData.mailTemplates === 'object') ? cloudData.mailTemplates : {};
     const mergedTemplates = Object.assign({}, localFull.mailTemplates);
-    MAIL_TEMPLATE_KEYS.forEach(key=>{
+    const mergeKeys = MAIL_TEMPLATE_KEYS.concat(Object.keys(cloudTemplates).filter(k=> /^custom_/.test(k)));
+    mergeKeys.forEach(key=>{
       const cloudTpl = cloudTemplates[key];
       if(!cloudTpl || typeof cloudTpl !== 'object') return;
       const localTpl = localFull.mailTemplates[key] || {};
@@ -13519,7 +13552,7 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
       const localTime = localTpl.updatedAt ? Date.parse(localTpl.updatedAt) : NaN;
       const cloudIsNewer = Number.isFinite(cloudTime) && (!Number.isFinite(localTime) || cloudTime > localTime);
       if(cloudIsNewer){
-        mergedTemplates[key] = Object.assign({}, DEFAULT_MAIL_TEMPLATES[key], cloudTpl);
+        mergedTemplates[key] = Object.assign({}, DEFAULT_MAIL_TEMPLATES[key] || {}, cloudTpl);
         changed = true;
       }
     });
@@ -29343,7 +29376,10 @@ window.SHIN2_CRM_APP_INIT = function(){
     return `
       <div class="mail-tab-panel" data-mail-panel="${esc(key)}" style="display:${mailSettingsUI.activeTab===key?'block':'none'};">
         <div class="mailx-titlebar">
-          <div class="mailx-name">${esc(mailTabDisplayName(tpl, key))}</div>
+          ${/^custom_/.test(key)
+            ? `<input type="text" class="mailx-name-input" id="mailSetName_${esc(key)}" value="${esc(mailTabDisplayName(tpl, key))}" placeholder="메일 이름(예: 견적 안내)" aria-label="메일 이름" maxlength="30" />
+               <button type="button" class="mailx-tool-btn mailx-del-btn" data-mail-custom-del="${esc(key)}" title="이 메일 종류 삭제">삭제</button>`
+            : `<div class="mailx-name">${esc(mailTabDisplayName(tpl, key))}</div>`}
           <label class="mailx-switch" title="끄면 이 메일은 발송 대상에서 빠집니다">
             <input type="checkbox" id="mailSetEnabled_${key}" ${tpl.enabled!==false?'checked':''} />
             <span>사용</span>
@@ -29417,7 +29453,22 @@ window.SHIN2_CRM_APP_INIT = function(){
         </div>
       </div>`;
   }
-  function mailTabDisplayName(tpl, key){ return (tpl && tpl.displayName) ? tpl.displayName : MAIL_TEMPLATE_TAB_LABEL_DEFAULT[key]; }
+  function mailTabDisplayName(tpl, key){ return (tpl && tpl.displayName) ? tpl.displayName : (MAIL_TEMPLATE_TAB_LABEL_DEFAULT[key] || '새 메일'); }
+  // §메일 직접 추가 라운드(신규) — 사용자가 만든 메일(custom_*) 목록. 삭제 표시는 빼고 만든 순서대로.
+  function customMailKeys(settings){
+    const t = (settings && settings.mailTemplates) || {};
+    return Object.keys(t).filter(k=> /^custom_/.test(k) && t[k] && !t[k].deleted)
+      .sort((a,b)=> String(t[a].createdAt || '').localeCompare(String(t[b].createdAt || '')));
+  }
+  function allMailKeys(settings){ return MAIL_TEMPLATE_KEYS.concat(customMailKeys(settings)); }
+  // 메일 작성 팝업 제목·발송 기록 문구 — 기본 5종은 기존 문구, 직접 만든 메일은 그 이름으로.
+  function mailTypeTitle(mailType){
+    if(MAIL_TYPE_POPUP_TITLE[mailType]) return MAIL_TYPE_POPUP_TITLE[mailType];
+    try{ const t = D.loadMailSettings().mailTemplates[mailType]; return (t && t.displayName) || '메일'; }catch(e){ return '메일'; }
+  }
+  function mailTypeSuccessText(mailType){
+    return MAIL_TYPE_SUCCESS_LOG_TEXT[mailType] || (mailTypeTitle(mailType) + ' 메일 발송 완료');
+  }
   // §메일 설정 상단 카드형 선택 라운드(신규) — 4개 카드 버튼 하나의 마크업을 여기
   // 한 곳에만 두고 renderMailSettingsView(전체 렌더)·renderMailTabButtonWrap(버튼 하나만
   // 다시 그리는 부분 렌더) 둘 다 재사용한다. 카드 전체(버튼 하나)가 클릭 대상이라
@@ -29493,15 +29544,47 @@ window.SHIN2_CRM_APP_INIT = function(){
           </div>
         </div>
         <div class="mail-tabs-bar" role="tablist" id="mailTabsBar">
-          ${MAIL_TEMPLATE_KEYS.map(key=> `<span class="mail-tab-btn-wrap" id="mailTabWrap_${key}">${mailTypeCardButtonHtml(key, s.mailTemplates[key])}</span>`).join('')}
+          ${allMailKeys(s).map(key=> `<span class="mail-tab-btn-wrap" id="mailTabWrap_${key}">${mailTypeCardButtonHtml(key, s.mailTemplates[key])}</span>`).join('')}
+          <button type="button" class="mail-tab-add-btn" id="mailTabAddBtn" title="새 메일 종류를 만듭니다 — 이름·문구는 나중에 적어도 됩니다">+ 메일 추가</button>
         </div>
         <div class="mail-tab-panels" id="mailTabPanels">
-          ${MAIL_TEMPLATE_KEYS.map(key=> mailTabPanelHtml(key, s.mailTemplates[key], assetByKey[key], meta)).join('')}
+          ${allMailKeys(s).map(key=> mailTabPanelHtml(key, s.mailTemplates[key], assetByKey[key], meta)).join('')}
         </div>
       </div>
       <div id="mailSwitchGuardRoot"></div>
     `;
+    // 지금 탭이 지워진 메일이면 첫 탭으로
+    if(allMailKeys(s).indexOf(mailSettingsUI.activeTab) < 0) mailSettingsUI.activeTab = MAIL_TEMPLATE_KEYS[0];
     bindMailSettingsView();
+    bindCustomMailControls(wrap);
+  }
+  // §메일 직접 추가 라운드(신규) — [+ 메일 추가] / 직접 만든 메일 삭제. 저장은 기존 saveMailSettings.
+  function bindCustomMailControls(wrap){
+    const addBtn = document.getElementById('mailTabAddBtn');
+    if(addBtn) addBtn.addEventListener('click', ()=>{
+      const cur = mailSettingsUI.activeTab;
+      if(mailSettingsUI.dirty[cur] && !confirm('지금 탭에 저장하지 않은 변경사항이 있습니다. 새 메일을 만들면 사라집니다. 계속할까요?')) return;
+      const key = 'custom_' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+      D.saveMailSettings({ mailTemplates: { [key]: {
+        custom:true, displayName:'새 메일', enabled:true, subjectTemplate:'', bodyTemplate:'',
+        attachmentDocType:null, videoUrl:'', createdAt:new Date().toISOString()
+      } } });
+      mailSettingsUI.dirty = {};
+      mailSettingsUI.activeTab = key;
+      renderMailSettingsView();
+      const nameEl = document.getElementById('mailSetName_' + key);
+      if(nameEl){ nameEl.focus(); nameEl.select(); }
+    });
+    wrap.querySelectorAll('[data-mail-custom-del]').forEach(btn=> btn.addEventListener('click', ()=>{
+      const key = btn.getAttribute('data-mail-custom-del');
+      const s = D.loadMailSettings();
+      const name = mailTabDisplayName(s.mailTemplates[key], key);
+      if(!confirm(`"${name}" 메일을 삭제할까요? 이미 보낸 메일 기록은 그대로 남습니다.`)) return;
+      D.saveMailSettings({ mailTemplates: { [key]: { deleted:true, enabled:false } } });
+      mailSettingsUI.dirty[key] = false;
+      mailSettingsUI.activeTab = MAIL_TEMPLATE_KEYS[0];
+      renderMailSettingsView();
+    }));
   }
   // refreshMailTabPanel: 탭 하나만 저장된 데이터로 다시 그린다(§요청 "다른 탭에는
   // 영향 없음" — wrap.innerHTML 전체를 다시 그리면 다른 탭에서 아직 저장 안 한 입력값이
@@ -29577,7 +29660,8 @@ window.SHIN2_CRM_APP_INIT = function(){
         subjectTemplate: document.getElementById('mailSetSubject_' + key).value,
         bodyTemplate: sanitizeMailBodyHtml(document.getElementById('mailSetBody_' + key).innerHTML),
         attachmentDocType: attachEl ? (attachEl.value || null) : null,
-        videoUrl: document.getElementById('mailSetVideo_' + key).value.trim()
+        videoUrl: document.getElementById('mailSetVideo_' + key).value.trim(),
+        ...((()=>{ const n = document.getElementById('mailSetName_' + key); return n ? { displayName: (n.value.trim() || '새 메일') } : {}; })())
       } }
     });
     refreshMailTabPanel(key);
@@ -29803,7 +29887,8 @@ window.SHIN2_CRM_APP_INIT = function(){
   // .mail-body-editor 클래스를 쓰므로 컨트롤·핸들러를 한 벌만 만들어 양쪽에 쓴다.
   // ==========================================================================
   const MAIL_FMT_SIZES = [['13px','작게'], ['15px','보통'], ['18px','크게'], ['24px','아주 크게'], ['32px','제목급']];
-  const MAIL_FMT_HILITES = [['#FFF27A','노랑'], ['#B6F2C4','초록'], ['#FFC9DE','분홍'], ['#BFE3FF','하늘']];
+  // §형광펜 노랑만 라운드 — 사용자 요청으로 노랑 하나만 남긴다(이미 본문에 칠해 둔 다른 색은 그대로 보인다).
+  const MAIL_FMT_HILITES = [['#FFF27A','노랑']];
   // 툴바 버튼을 누르면 편집기에서 포커스가 빠지면서 선택이 사라진다. 그래서 선택이 바뀔
   // 때마다 마지막 위치를 기억해 두고, 버튼을 누르는 순간 그 선택을 되살린 뒤 명령을 건다.
   let mailFmtSavedRange = null;
@@ -30534,9 +30619,9 @@ window.SHIN2_CRM_APP_INIT = function(){
     const modalRoot = document.getElementById('mailComposeModalRoot');
     modalRoot.innerHTML = `
       <div class="pi-overlay" id="mailComposeOverlay">
-        <div class="pi-panel mail-compose-panel" style="max-width:600px;" role="dialog" aria-modal="true" aria-label="${esc(MAIL_TYPE_POPUP_TITLE[mailType])} 발송">
+        <div class="pi-panel mail-compose-panel" style="max-width:600px;" role="dialog" aria-modal="true" aria-label="${esc(mailTypeTitle(mailType))} 발송">
           <div class="pi-head">
-            <div class="pi-title">${esc(MAIL_TYPE_POPUP_TITLE[mailType])} — ${esc(co.name)}</div>
+            <div class="pi-title">${esc(mailTypeTitle(mailType))} — ${esc(co.name)}</div>
             <button type="button" class="chart-close-btn" id="mailComposeCloseBtn" aria-label="닫기">&times;</button>
           </div>
           <div class="pi-body">
@@ -30913,7 +30998,7 @@ window.SHIN2_CRM_APP_INIT = function(){
           hasVideoLink: !!(tpl.videoUrl || commonVideo),
           emailjsStatus: res.status
         });
-        D.addActivity(co.id, `${MAIL_TYPE_SUCCESS_LOG_TEXT[mailType]} (받는사람: ${toEmail})`);
+        D.addActivity(co.id, `${mailTypeSuccessText(mailType)} (받는사람: ${toEmail})`);
         if(mailType === 'questionnaire'){
           const savedCo = D.findCompany(co.id);
           console.info('[questionnaire-mail]', { companyId: co.id, companyName: co.name, sendSuccess: true,
@@ -31111,7 +31196,7 @@ window.SHIN2_CRM_APP_INIT = function(){
         <div class="pi-panel" style="max-width:440px;" role="dialog" aria-modal="true" aria-label="발송 최종 확인">
           <div class="pi-head"><div class="pi-title">발송 전 최종 확인</div></div>
           <div class="pi-body">
-            <div class="mail-final-confirm-row"><span>메일 종류</span><b>${esc(MAIL_TYPE_POPUP_TITLE[info.mailType])}</b></div>
+            <div class="mail-final-confirm-row"><span>메일 종류</span><b>${esc(mailTypeTitle(info.mailType))}</b></div>
             <div class="mail-final-confirm-row"><span>업체명</span><b>${esc(info.co.name)}</b></div>
             <div class="mail-final-confirm-row"><span>받는사람</span><b>${esc(info.toEmail)}</b></div>
             ${info.ccEmails.length ? `<div class="mail-final-confirm-row"><span>참조</span><b>${esc(info.ccEmails.join(', '))}</b></div>` : ''}
@@ -31958,6 +32043,17 @@ window.SHIN2_CRM_APP_INIT = function(){
     if(meeting && meeting.type === 'mou'){
       html.push(`<button type="button" class="workq-btn primary" data-agr-do="open-workq-item" data-agr-workq-type="mou">MOU 진행</button>`);
     }
+    // §메일 직접 추가 라운드(신규) — 메일 설정에서 직접 만든 메일(사용 켜짐)을 여기서 골라 보낸다.
+    try{
+      const ms = D.loadMailSettings();
+      const keys = customMailKeys(ms).filter(k=> ms.mailTemplates[k].enabled !== false);
+      if(keys.length){
+        html.push(`<details class="agr-more agr-custom-mail">
+          <summary class="workq-btn agr-custom-mail-btn">${agrIcon('mail')}메일 보내기 ▾</summary>
+          <div class="agr-more-menu">${keys.map(k=> `<button type="button" class="agr-custom-mail-item" data-agr-do="mail-custom" data-mail-key="${esc(k)}">${esc(mailTabDisplayName(ms.mailTemplates[k], k))}</button>`).join('')}</div>
+        </details>`);
+      }
+    }catch(err){ /* 메일 설정을 못 읽으면 버튼만 생략 */ }
     return html.join('');
   }
 
@@ -33678,6 +33774,11 @@ window.SHIN2_CRM_APP_INIT = function(){
       }
       else if(action === 'mail-first-meeting') openMailComposeModal(co.id, 'firstMeeting');
       else if(action === 'mail-post-second') openMailComposeModal(co.id, 'postSecondMeeting');
+      else if(action === 'mail-custom'){
+        const k = btn.getAttribute('data-mail-key');
+        const dd = btn.closest('details'); if(dd) dd.open = false;
+        if(k) openMailComposeModal(co.id, k);
+      }
       else if(action === 'q-reply-confirm') openQuestionnaireReplyModal(co.id, ()=> renderAgreementPopupBody(co.id));
       else if(action === 'open-workq-item'){
         const type = btn.getAttribute('data-agr-workq-type');
