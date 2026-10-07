@@ -10409,6 +10409,11 @@ body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-filters > .map
 .agr-terminate-actions{ flex:0 1 auto; min-width:0; }
 .agr-terminate-actions #relcardTerminateForm:not([hidden]),
 .agr-terminate-actions #relcardRestoreConfirm:not([hidden]){ margin-top:8px; max-width:520px; }
+
+/* §협약 진행 카드 폭 줄임 — 기본정보 왼쪽 열: 기업 요약 + 협약 진행을 세로로 */
+.cdet-overview-cols{ align-items:start; }
+.cdet-overview-left{ display:flex; flex-direction:column; gap:10px; min-width:0; }
+.cdet-overview-left #cdashAgreementStepsCard .cdet-step-label{ white-space:nowrap; }
 </style>
 </head>
 <body>
@@ -24024,13 +24029,15 @@ window.SHIN2_CRM_APP_INIT = function(){
               <!-- §기본정보 정리 라운드(신규) — 업체 관계 카드는 사용자 요청으로 뺐다(협약 종료
                    처리는 협약 진행 탭 아래로 옮김, 이전 상호는 기업 요약에 값이 있을 때만 표시).
                    [기업 요약 | 고객 인사이트] 다음 줄에 협약 진행 스텝을 전체 폭으로 둔다. -->
-              <div class="cdet-grid2">
-                <div id="cdashCompanySummaryCard"></div>
+              <!-- §협약 진행 카드 폭 줄임 — 전체 폭으로 늘어난 스텝이 너무 길어, 왼쪽 열에서
+                   기업 요약 아래에 둔다. 오른쪽 열은 고객 인사이트. -->
+              <div class="cdet-grid2 cdet-overview-cols">
+                <div class="cdet-overview-left">
+                  <div id="cdashCompanySummaryCard"></div>
+                  <div id="cdashAgreementStepsCard"></div>
+                </div>
                 <!-- 고객 인사이트 요약(읽기 전용, 3~4줄 + 더보기) — 수정은 질문지 상담 탭. -->
                 <div id="cdashInsightNoteSummary"></div>
-              </div>
-              <div style="margin-top:10px;">
-                <div id="cdashAgreementStepsCard"></div>
               </div>
               <div class="cdash2-docs-section" style="margin-top:10px;" id="cdashReactionsCol"></div>
             </div>
