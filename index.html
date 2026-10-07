@@ -10315,10 +10315,9 @@ body.crm-mapdock[data-crm-view="listView"] #crmMiniMapAlarm .sa-alarm-list > *{ 
            실제로 없어서 넣지 않았다 — 이 파일의 기존 원칙("가짜 메뉴 추가 금지", 바로
            위 주석 참고)을 그대로 따른다. 대신 실제 동작하는 관리 도구/PDF 버튼을 참고
            이미지의 아이콘 버튼과 같은 톤(.nf-icon-btn 계열 높이/모서리)으로 맞췄다. -->
-      <label class="nf-nav-search" id="crmNavSearchWrap">
-        <svg class="nf-nav-search-ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/></svg>
-        <input type="text" id="crmNavSearchInput" placeholder="업체 검색" aria-label="업체 검색" autocomplete="off" />
-      </label>
+      <!-- §상단 검색창 삭제 라운드(신규) — 사용자 요청으로 상단 메뉴의 "업체 검색" 칸을 뺐다.
+           고객목록 검색창(#crmSearchInput)과 같은 검색을 하던 중복 입력칸이었다.
+           bindNfNavSearch()는 이 칸이 없으면 첫 줄에서 그냥 빠져나온다. -->
       <div class="update-menu-wrap gnav-tool-wrap" id="crmUpdateMenuWrap">
         <button type="button" id="crmDataUpdateBtn" class="gnav-tool-btn">관리 도구 <span id="crmDataUpdateReviewBadge" class="unreg-badge" style="display:none;"></span> ▾</button>
         <div class="update-menu" id="crmUpdateMenu">
