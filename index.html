@@ -10226,6 +10226,12 @@ body.crm-mapdock[data-crm-view="listView"] #crmMiniMapAlarm .sa-alarm-list > *{ 
   border-color:var(--navy-700, #163A70) !important;
   color:#fff !important;
 }
+
+/* §업무관리 검색 자동완성 겹침 수정(신규) — 검색 줄(.workq-search-row)과 결과표 고정 머리글
+   (th, sticky)이 둘 다 z-index:var(--z-sticky)여서, DOM상 뒤에 있는 표 머리글이 자동완성
+   목록 위에 그려졌다. 검색 줄을 드롭다운 층으로 올려 목록이 항상 표 위에 보이게 한다
+   (모달 층 5000보다는 아래). */
+.workq-search-row{ z-index:var(--z-dropdown, 200) !important; }
 </style>
 </head>
 <body>
