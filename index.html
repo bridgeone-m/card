@@ -10523,6 +10523,11 @@ body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-filters > .map
   font:inherit; font-size:12.5px; text-align:left; cursor:pointer; color:#1F2A3C;
 }
 .agr-custom-mail-item:hover{ background:#F4F8FD; color:#1B4480; }
+
+/* §내부용 PDF 체크리스트 라운드(신규) */
+.pdfx-wide .pdf-dd-menu-cats{ width:280px; }
+.pdfx-wide .pdf-dd-menu-cols{ width:300px; }
+.pdfx-wide .pdf-dd-checks-1col{ grid-template-columns:1fr !important; }
 </style>
 </head>
 <body>
@@ -45920,7 +45925,43 @@ if(!window.__mapxRowDelegated){
       pdfExportResolveField(co,'address',0), pdfExportResolveField(co,'phone',0)].join(' ').toLowerCase();
     return hay.includes(s);
   }
-  let pdfExportState = { type:'internal', regions: new Set(), search:'' };
+  let pdfExportState = { type:'internal', regions: new Set(), search:'', cats: new Set(['mouDone']), cols: null };
+  // §내부용 PDF 체크리스트 라운드(신규) — 내부용 출력 대상을 고객 분류로 고른다. 판정은 고객목록
+  // 필터와 같은 함수(matchesFilter)와 의지박약 목록(willpowerCache)을 그대로 읽는다(새 판정 없음).
+  const PDF_INTERNAL_CATS = [
+    ['all','전체 시공사'],
+    ['mouDone','MOU 체결업체'],
+    ['nonPartnerRevenue','건바이건'],
+    ['willpower','의지박약'],
+    ['revenueNoMou','실적있음 · MOU 미체결']
+  ];
+  // 표시 항목 — 번호·지역·업체명은 항상 나가고, 나머지는 체크로 고른다.
+  const PDF_INTERNAL_ALWAYS_COLS = ['no','region','name'];
+  let pdfInternalCatMemo = { sig:'', ids:null };
+  function pdfInternalCatIdSet(){
+    const cats = pdfExportState.cats || new Set();
+    const pool = pdfExportBasePool();
+    const sig = [...cats].sort().join(',') + '|' + pool.length;
+    if(pdfInternalCatMemo.sig === sig && pdfInternalCatMemo.ids) return pdfInternalCatMemo.ids;
+    const ids = new Set();
+    if(cats.has('all')) pool.forEach(co=> ids.add(co.id));
+    else if(cats.size){
+      let relationIndex = null;
+      try{ relationIndex = D.buildRelationIndex(pool); }catch(e){ relationIndex = null; }
+      const willIds = new Set(((typeof willpowerCache !== 'undefined' && willpowerCache.list) || []).map(w=> w.co.id));
+      pool.forEach(co=>{
+        if(cats.has('willpower') && willIds.has(co.id)){ ids.add(co.id); return; }
+        let progress = null;
+        try{ progress = buildProgressStages(co); }catch(e){ return; }
+        for(const k of cats){
+          if(k === 'willpower') continue;
+          try{ if(matchesFilter(co, progress, k, relationIndex)){ ids.add(co.id); return; } }catch(e){}
+        }
+      });
+    }
+    pdfInternalCatMemo = { sig, ids };
+    return ids;
+  }
   // §PDF 대상 선정 재구성 라운드(신규) — 내부용 PDF에 넣을 업체를 사용자가 이 화면에서
   // 직접 고른다. 업체 id만 담는 화면 전용 상태로, 모달을 열 때마다 비운다(저장하지
   // 않는다 — 고객 레코드에는 어떤 흔적도 남기지 않는다).
@@ -45946,9 +45987,9 @@ if(!window.__mapxRowDelegated){
     // KPI "MOU 체결" 카드와 같은 판정이고, 삭제·협약종료 업체는 거기서 이미 빠진다.
     // 상태가 바뀌면 다음 렌더에서 자동으로 반영/제외된다(저장된 플래그를 보지 않는다).
     if(pdfExportState.type === 'external') return mouSignedIdSet.has(co.id);
-    // §internal은 이제 co.distributionLists 태그가 아니라 사용자가 이 화면에서 체크한
-    // 업체만 본다(§요청 4).
-    return pdfExportInternalSelected.has(co.id);
+    // §internal — 체크한 고객 분류에 해당하는 업체 + "특정 업체"에서 직접 고른 업체(합집합).
+    // 분류를 모두 끄면 직접 고른 업체만 나간다(특정 업체만 출력).
+    return pdfExportInternalSelected.has(co.id) || pdfInternalCatIdSet().has(co.id);
   }
   function pdfExportFilteredCompanies(){
     const mouSignedIdSet = pdfExportState.type === 'external'
@@ -46020,6 +46061,11 @@ if(!window.__mapxRowDelegated){
   // 지저분하게 만들지 말 것"). 이건 이 문서 한 장의 표시 여부일 뿐이고 co 레코드의
   // 필드는 읽기만 한다 — 어떤 데이터도 지우거나 바꾸지 않는다.
   function pdfExportVisibleColumns(type, companies){
+    if(type.key === 'internal' && pdfExportState.cols){
+      // 내부용: 항상 나가는 3개 + 체크한 항목. 체크했지만 값이 전부 비어 있으면 기존처럼 뺀다.
+      return type.columns.filter(c=> PDF_INTERNAL_ALWAYS_COLS.includes(c)
+        || (pdfExportState.cols.has(c) && companies.some((co,i)=> pdfExportResolveField(co, c, i) !== '-')));
+    }
     return type.columns.filter(c=>{
       if(PDF_EXPORT_REQUIRED_COLUMNS.includes(c)) return true;
       return companies.some((co,i)=> pdfExportResolveField(co, c, i) !== '-');
@@ -46035,6 +46081,16 @@ if(!window.__mapxRowDelegated){
     if(!pdfExportState.regions.size) return '전체지역';
     return COMPANY_REGIONS.filter(r=> pdfExportState.regions.has(r)).join('·');
   }
+  function pdfExportDocTitle(type){
+    if(!type || type.key !== 'internal') return 'MOU 체결 업체 목록';
+    const cats = [...(pdfExportState.cats || [])];
+    if(cats.length === 1 && cats[0] === 'mouDone' && !pdfExportInternalSelected.size) return 'MOU 체결 업체 목록';
+    if(cats.length === 1 && !pdfExportInternalSelected.size){
+      const hit = PDF_INTERNAL_CATS.find(c=> c[0] === cats[0]);
+      return (hit ? hit[1].replace(/\s+/g,' ') : '업체') + ' 목록';
+    }
+    return '업체 목록';
+  }
   function pdfExportBuildDocContext(){
     const type = PDF_EXPORT_TYPES.find(t=> t.key === pdfExportState.type) || PDF_EXPORT_TYPES[0];
     // 출력 대상은 기존 함수 그대로 — 지역/검색/출력유형이 이미 전부 반영돼 있다
@@ -46048,7 +46104,7 @@ if(!window.__mapxRowDelegated){
       geo: type.landscape ? PDF_PAGE_GEO.landscape : PDF_PAGE_GEO.portrait,
       companies,
       columns: pdfExportVisibleColumns(type, companies),
-      title: 'MOU 체결 업체 목록',
+      title: pdfExportDocTitle(type),
       regionLabel: pdfExportRegionLabel(),
       genLabel: `${now.getFullYear()}-${p2(now.getMonth()+1)}-${p2(now.getDate())} ${p2(now.getHours())}:${p2(now.getMinutes())}`,
       dateStamp: `${now.getFullYear()}${p2(now.getMonth()+1)}${p2(now.getDate())}`,
@@ -46465,7 +46521,46 @@ if(!window.__mapxRowDelegated){
     return `${picked.slice(0, 2).join(', ')} +${picked.length - 2}`;
   }
   function pdfExportPickLabel(){
-    return `업체 선택 · ${pdfExportInternalSelected.size}곳`;
+    return `특정 업체 · ${pdfExportInternalSelected.size}곳`;
+  }
+  function pdfExportCatsLabel(){
+    const picked = PDF_INTERNAL_CATS.filter(c=> pdfExportState.cats && pdfExportState.cats.has(c[0])).map(c=> c[1]);
+    if(!picked.length) return '선택 안 함';
+    if(picked.length === 1) return picked[0];
+    return `${picked[0]} 외 ${picked.length - 1}`;
+  }
+  function pdfExportColsLabel(){
+    const type = PDF_EXPORT_TYPES.find(t=> t.key === 'internal');
+    const optional = type.columns.filter(c=> !PDF_INTERNAL_ALWAYS_COLS.includes(c));
+    const n = optional.filter(c=> pdfExportState.cols && pdfExportState.cols.has(c)).length;
+    return n === optional.length ? '전체' : `${n}/${optional.length}개`;
+  }
+  function pdfExportInternalDdHtml(){
+    const type = PDF_EXPORT_TYPES.find(t=> t.key === 'internal');
+    const optional = type.columns.filter(c=> !PDF_INTERNAL_ALWAYS_COLS.includes(c));
+    const catsHtml = PDF_INTERNAL_CATS.map(([k,label])=> `
+      <label class="pdf-dd-check"><input type="checkbox" data-pdf-cat-check="${esc(k)}" ${pdfExportState.cats.has(k) ? 'checked' : ''} /><span>${esc(label)}</span></label>`).join('');
+    const colsHtml = optional.map(c=> `
+      <label class="pdf-dd-check"><input type="checkbox" data-pdf-col-check="${esc(c)}" ${pdfExportState.cols && pdfExportState.cols.has(c) ? 'checked' : ''} /><span>${esc(PDF_EXPORT_COLUMN_LABELS[c] || c)}</span></label>`).join('');
+    return `
+      <div class="pdf-dd${pdfExportOpenDd === 'cats' ? ' is-open' : ''}" data-pdf-dd="cats">
+        <button type="button" class="pdf-dd-btn" data-pdf-dd-toggle="cats" aria-haspopup="true" aria-expanded="${pdfExportOpenDd === 'cats' ? 'true' : 'false'}" title="출력할 고객 분류(복수 선택)">
+          <span class="pdf-dd-key">대상</span><span class="pdf-dd-val" id="pdfExportCatsLabel">${esc(pdfExportCatsLabel())}</span><span class="pdf-dd-caret" aria-hidden="true">▾</span>
+        </button>
+        <div class="pdf-dd-menu pdf-dd-menu-cats" role="group" aria-label="출력 대상 분류">
+          <div class="pdf-dd-menu-head"><span>체크한 분류의 업체가 들어갑니다 · 특정 업체와 합쳐서 출력</span></div>
+          <div class="pdf-dd-checks pdf-dd-checks-1col">${catsHtml}</div>
+        </div>
+      </div>
+      <div class="pdf-dd${pdfExportOpenDd === 'cols' ? ' is-open' : ''}" data-pdf-dd="cols">
+        <button type="button" class="pdf-dd-btn" data-pdf-dd-toggle="cols" aria-haspopup="true" aria-expanded="${pdfExportOpenDd === 'cols' ? 'true' : 'false'}" title="PDF에 넣을 항목">
+          <span class="pdf-dd-key">표시 항목</span><span class="pdf-dd-val" id="pdfExportColsLabel">${esc(pdfExportColsLabel())}</span><span class="pdf-dd-caret" aria-hidden="true">▾</span>
+        </button>
+        <div class="pdf-dd-menu pdf-dd-menu-cols" role="group" aria-label="표시 항목">
+          <div class="pdf-dd-menu-head"><span>번호 · 지역 · 업체명은 항상 포함</span></div>
+          <div class="pdf-dd-checks">${colsHtml}</div>
+        </div>
+      </div>`;
   }
   function pdfExportModalHtml(){
     const typeCardsHtml = PDF_EXPORT_TYPES.map(t=> `
@@ -46502,6 +46597,7 @@ if(!window.__mapxRowDelegated){
                   <div class="pdf-dd-checks">${regionChecksHtml}</div>
                 </div>
               </div>
+              ${isInternal ? pdfExportInternalDdHtml() : ''}
               ${isInternal ? `
               <!-- 내부용 업체 선택 — 기존 선택 블록(pdfExportInternalPickerHtml)을 그대로 넣는다 -->
               <div class="pdf-dd${pdfExportOpenDd === 'pick' ? ' is-open' : ''}" data-pdf-dd="pick">
@@ -46763,6 +46859,18 @@ if(!window.__mapxRowDelegated){
       renderPdfExportModal();
     });
     bindPdfExportDropdowns(root);
+    root.querySelectorAll('[data-pdf-cat-check]').forEach(box=> box.addEventListener('change', ()=>{
+      const k = box.getAttribute('data-pdf-cat-check');
+      if(box.checked) pdfExportState.cats.add(k); else pdfExportState.cats.delete(k);
+      pdfExportOpenDd = 'cats';
+      renderPdfExportModal();
+    }));
+    root.querySelectorAll('[data-pdf-col-check]').forEach(box=> box.addEventListener('change', ()=>{
+      const c = box.getAttribute('data-pdf-col-check');
+      if(box.checked) pdfExportState.cols.add(c); else pdfExportState.cols.delete(c);
+      pdfExportOpenDd = 'cols';
+      renderPdfExportModal();
+    }));
     // §PDF 대상 선정 재구성 라운드(신규) — 내부용 업체 체크. 체크 하나로 목록 전체를
     // 다시 그리면 스크롤 위치가 튀므로, 개별 체크는 상태만 바꾸고 건수·미리보기만 갱신한다.
     bindPdfExportPickControls(root);
@@ -46801,7 +46909,9 @@ if(!window.__mapxRowDelegated){
     renderPdfExportConfirmResult();
   }
   function openPdfExportModal(){
-    pdfExportState = { type:'internal', regions:new Set(), search:'' };
+    pdfExportState = { type:'internal', regions:new Set(), search:'', cats:new Set(['mouDone']),
+      cols: new Set(((PDF_EXPORT_TYPES.find(t=> t.key === 'internal') || {}).columns || []).filter(c=> !PDF_INTERNAL_ALWAYS_COLS.includes(c))) };
+    pdfInternalCatMemo = { sig:'', ids:null };
     // 내부용 선택은 이 창에서만 쓰는 상태라 열 때마다 비운다(저장하지 않음).
     pdfExportInternalSelected = new Set();
     pdfExportConfirmQuery = '';
