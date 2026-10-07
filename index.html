@@ -10210,6 +10210,22 @@ body.crm-mapdock[data-crm-view="listView"] #crmMiniMapAlarm .sa-alarm-list > *{ 
     border:1px solid #E3EAF3 !important; border-radius:16px !important;
   }
 }
+
+/* ==========================================================================
+   §질문지 평가 버튼 선택 표시 라운드(신규) — 선택지 칩(.is-choice: 타사 공법·가격 민감도·
+   관계 형성·관심 포인트)에는 "선택됨" 스타일이 아예 없어서, 눌러도 저장만 되고 색이 안
+   바뀌었다. 상/중/하와 같은 네이비 채움으로 통일한다. 클릭·저장 로직은 그대로다.
+   ========================================================================== */
+.crv-rate-btn.is-on{
+  background:var(--primary-navy, #1B4480) !important;
+  border-color:var(--primary-navy, #1B4480) !important;
+  color:#fff !important;
+}
+.crv-rate-btn.is-on:hover{
+  background:var(--navy-700, #163A70) !important;
+  border-color:var(--navy-700, #163A70) !important;
+  color:#fff !important;
+}
 </style>
 </head>
 <body>
