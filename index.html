@@ -10232,6 +10232,12 @@ body.crm-mapdock[data-crm-view="listView"] #crmMiniMapAlarm .sa-alarm-list > *{ 
    목록 위에 그려졌다. 검색 줄을 드롭다운 층으로 올려 목록이 항상 표 위에 보이게 한다
    (모달 층 5000보다는 아래). */
 .workq-search-row{ z-index:var(--z-dropdown, 200) !important; }
+
+/* §지도 탭 여백 라운드(신규) — 고정 지도 패널의 탭 3개(시공사 지역분포/아파트 시공/근처 시공)가
+   위 제목 구분선과 아래 구분선에 바로 붙어 있었다. 위아래로 살짝(8px) 띄운다. */
+body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-tabs{
+  padding-top:8px !important; padding-bottom:8px !important;
+}
 </style>
 </head>
 <body>
