@@ -20188,7 +20188,11 @@ window.SHIN2_CRM_APP_INIT = function(){
         // 2차는 'waiting'일 때만 — 'done'은 미팅 완료, 'scheduled'는 일정이 이미 잡힌
         // 상태라 둘 다 회신을 받은 셈이다(§요청 4·5 "일정 등록 즉시 제외").
         if(!byKey.m2 || byKey.m2.state !== 'waiting') return;
-        const sent = mailLogForType(co, 'secondMeetingRequest').filter(l=> l && l.status === 'sent' && l.sentAt);
+        // 2차 미팅 제안(postSecondMeeting) · 일정 리마인드(secondMeetingRequest) 둘 다 "2차 제안 후
+        // 회신 대기"로 본다 — 위에서 2차가 'waiting'(미완료·일정 없음)인 업체만 남겨서, 2차 완료 후
+        // 보내는 협약 후속 메일은 여기 들어오지 않는다.
+        const sent = mailLogForType(co, 'secondMeetingRequest').concat(mailLogForType(co, 'postSecondMeeting'))
+          .filter(l=> l && l.status === 'sent' && l.sentAt);
         if(!sent.length) return;
         let lastTs = null;
         sent.forEach(l=>{
@@ -20292,7 +20296,7 @@ window.SHIN2_CRM_APP_INIT = function(){
         const st = buildProgressStages(it.co).stages.find(s=> s.key === 'm1');
         if(st && typeof st.ts === 'number') m1Ts = st.ts;
       }catch(err){ m1Ts = null; }
-      const mailTs = latestSentMailTs(it.co, ['secondMeetingRequest']);
+      const mailTs = latestSentMailTs(it.co, ['secondMeetingRequest', 'postSecondMeeting']);
       const contactTs = latestContactTs(ctx.actsIdx(), it.co);
       return {
         co: it.co, days: it.days,
@@ -28424,7 +28428,7 @@ window.SHIN2_CRM_APP_INIT = function(){
   // 기존 4개(업체명/담당자/대표자/보내는사람) 치환 로직은 그대로.
   function fillMailTemplate(tpl, co, mailSettings, mailType, scheduledLabelOverride){
     let scheduledLabel = scheduledLabelOverride || '';
-    if(!scheduledLabel && (mailType === 'firstMeeting' || mailType === 'secondMeetingRequest')){
+    if(!scheduledLabel && (mailType === 'firstMeeting' || mailType === 'secondMeetingRequest' || mailType === 'postSecondMeeting')){
       const nm = resolveNewMouForCompany(co) || {};
       scheduledLabel = (mailType === 'firstMeeting' ? nm.m1ScheduledLabel : nm.m2ScheduledLabel) || '';
     }
@@ -30008,14 +30012,14 @@ window.SHIN2_CRM_APP_INIT = function(){
   const MAIL_TYPE_POPUP_TITLE = {
     questionnaire: '질문서 발송 메일',
     firstMeeting: '1차 미팅 제안 메일',
-    postSecondMeeting: '협약 후속 메일',
+    postSecondMeeting: '2차 미팅 제안 메일',   // 메일 설정 카드 이름("2차 미팅 제안")과 통일
     documentRequest: '서류 요청 메일',
     secondMeetingRequest: '2차 미팅 일정 리마인드 메일'
   };
   const MAIL_TYPE_SUCCESS_LOG_TEXT = {
     questionnaire: '질문서 발송 완료',
     firstMeeting: '1차 미팅 제안 메일 발송 완료',
-    postSecondMeeting: '2차 미팅 후 협약 안내 메일 발송 완료',
+    postSecondMeeting: '2차 미팅 제안 메일 발송 완료',
     documentRequest: '서류 요청 메일 발송 완료',
     secondMeetingRequest: '2차 미팅 일정 리마인드 메일 발송 완료'
   };
@@ -33182,7 +33186,11 @@ window.SHIN2_CRM_APP_INIT = function(){
         // 화면엔 "예정"이라고 보이는데도 이 값만 undefined로 남는 불일치가 있었다.
         const schedRow = buildAgreementStageRows(co).find(r=> r.key === (isM1 ? 'm1Scheduled' : 'm2Scheduled'));
         const schedDate = schedRow && schedRow.dateText !== '—' ? schedRow.dateText : '';
-        openMailComposeModal(co.id, isM1 ? 'firstMeeting' : 'secondMeetingRequest',
+        // §2차 미팅 메일 종류 수정 라운드(신규) — 2차미팅 [메일]이 "2차 미팅 일정 리마인드"
+        // (secondMeetingRequest, 의지박약 리마인드용) 템플릿을 열고 있었다. 2차 미팅을 제안하는
+        // 메일이므로 메일 설정의 "2차 미팅 제안" 템플릿(postSecondMeeting)을 연다.
+        // 리마인드 메일은 쓰레기통 > 의지박약 [리마인드 발송]에서 그대로 쓴다.
+        openMailComposeModal(co.id, isM1 ? 'firstMeeting' : 'postSecondMeeting',
           schedDate ? { scheduledDateOverride: schedDate } : {});
       }
       else if(action === 'mail-first-meeting') openMailComposeModal(co.id, 'firstMeeting');
