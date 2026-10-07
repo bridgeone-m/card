@@ -10452,6 +10452,49 @@ body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-filters > .map
 #workQueueView .workq-task-card-unit{ font-size:11.5px !important; }
 #workQueueView .workq-task-card-label{ font-size:12.5px !important; }
 #workQueueView .workq-task-card-sub{ font-size:11.5px !important; }
+
+/* ==========================================================================
+   §업무관리 알림 카드 라운드(신규) — 업무 카드 3개 오른쪽의 알림 요약
+   ========================================================================== */
+/* 업무 카드와 같은 5칸 격자 안에서 남는 2칸을 차지한다(카드 크기는 그대로 고객관리 KPI와 같음) */
+@media (min-width:641px){ #workQueueView .workq-task-row > .workq-alert-card{ grid-column:span 2; } }
+#workQueueView .workq-task-row{ align-items:stretch; }
+#workQueueView .workq-task-row > .workq-task-card{ max-height:none !important; }
+.workq-alert-card{
+  display:flex; flex-direction:column; gap:4px; min-width:0;
+  padding:8px 12px; background:#fff; border:1px solid var(--line, #E3EAF3); border-radius:7px;
+}
+.workq-alert-head{ display:flex; align-items:baseline; gap:8px; }
+.workq-alert-title{ font-size:13px; font-weight:800; color:#17345F; }
+.workq-alert-sub{ font-size:11px; color:#93A1B5; }
+.workq-alert-body{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:8px 12px; align-items:start; }
+.workq-alert-body > .workq-alert-rows:only-child{ grid-column:1 / -1; }
+.workq-alert-rows{ display:flex; flex-direction:column; gap:0; }
+.workq-alert-row{
+  display:grid; grid-template-columns:18px minmax(0,1fr) auto; align-items:center; gap:7px;
+  width:100%; padding:1px 6px; min-height:21px; border:0; border-radius:6px; background:transparent; cursor:pointer;
+  font:inherit; text-align:left;
+}
+.workq-alert-row:hover{ background:#F5F8FC; }
+.workq-alert-ico{ display:inline-flex; color:#8494A8; }
+.workq-alert-ico .agr-ico{ width:14px; height:14px; }
+.workq-alert-label{ font-size:12.5px; font-weight:600; color:#334155; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.workq-alert-count{ font-size:15px; font-weight:800; font-variant-numeric:tabular-nums; color:#17345F; }
+.workq-alert-count small{ margin-left:1px; font-size:11px; font-weight:700; color:#7C8BA1; }
+.workq-alert-row.is-red .workq-alert-ico, .workq-alert-row.is-red .workq-alert-count{ color:#C2410C; }
+.workq-alert-row.is-orange .workq-alert-ico, .workq-alert-row.is-orange .workq-alert-count{ color:#B45309; }
+.workq-alert-row.is-navy .workq-alert-ico, .workq-alert-row.is-navy .workq-alert-count{ color:#1B4480; }
+.workq-alert-row.is-zero .workq-alert-count, .workq-alert-row.is-zero .workq-alert-ico{ color:#B5C0CE !important; }
+.workq-alert-list{ display:flex; flex-direction:column; gap:4px; padding-left:12px; border-left:1px solid #F0F3F7; min-width:0; }
+.workq-alert-list::before{ content:"오래 기다린 업체"; font-size:10.5px; font-weight:700; color:#93A1B5; }
+.workq-alert-co{
+  display:flex; align-items:center; justify-content:space-between; gap:6px; width:100%; min-width:0;
+  height:20px; padding:0 8px; border:1px solid #F6D9C4; border-radius:999px; background:#FFF7F0; cursor:pointer; font:inherit;
+}
+.workq-alert-co:hover{ background:#FFEDE0; }
+.workq-alert-co-name{ font-size:11.5px; font-weight:700; color:#7C2D12; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.workq-alert-co-days{ font-size:11px; font-weight:800; color:#C2410C; font-variant-numeric:tabular-nums; }
+
 </style>
 </head>
 <body>
@@ -28333,6 +28376,52 @@ window.SHIN2_CRM_APP_INIT = function(){
     // 대상)는 살아있다 — reuse 유형 항목은 여전히 computeWorkQueue의 list/counts.reuse에
     // 잡히고, "전체" 필터로 보면 표에 그대로 나온다(행 클릭 -> renderWorkqExpandBody의
     // reuse 분기도 그대로) — 이 카드는 그 목록으로 바로 점프하는 지름길이었을 뿐이다.
+    // §업무관리 알림 카드 라운드(신규) — 업무 카드 오른쪽 빈 자리에 "알림" 요약을 둔다.
+    //   · 30일 넘게 지연: 할 일이 있는 항목 중 경과일(it.days) > 30 — 오래된 순 상위 3곳 표시
+    //   · 2차 회신 지연: 기존 secondMeetingNoReplyIdSet() ∩ list (필터 칩과 같은 기준)
+    //   · 7일 안 미팅: 예정 미팅(m1Scheduled/m2Scheduled)의 it.days(남은 일수) 0~7,
+    //     지난 예정(음수)은 "완료 확인 필요"로 따로 센다.
+    // 숫자는 전부 위 list에서 세기만 한다 — 저장·새 계산 없음.
+    const WORKQ_LONG_DAYS = 30;
+    const alertTaskItems = list.filter(it=> !it.noTask && it.type !== 'm1Scheduled' && it.type !== 'm2Scheduled');
+    const longDelayed = alertTaskItems.filter(it=> typeof it.days === 'number' && it.days > WORKQ_LONG_DAYS)
+      .sort((a,b)=> b.days - a.days);
+    const m2NoReplyCountAlert = (()=>{ try{ const set = secondMeetingNoReplyIdSet(); return list.filter(it=> set.has(String(it.co.id))).length; }catch(e){ return 0; } })();
+    const scheduledItems = list.filter(it=> it.type === 'm1Scheduled' || it.type === 'm2Scheduled');
+    const upcoming = scheduledItems.filter(it=> typeof it.days === 'number' && it.days >= 0 && it.days <= 7);
+    const overdueSched = scheduledItems.filter(it=> typeof it.days === 'number' && it.days < 0);
+    // 7일 안 미팅 줄을 누르면 해당 미팅이 있는 탭으로 — 1차만이면 1차, 2차만이면 2차, 섞이면 전체.
+    const schedPool = upcoming.length ? upcoming : overdueSched;
+    const schedFilter = schedPool.length && schedPool.every(it=> it.type === 'm1Scheduled') ? 'm1'
+      : (schedPool.length && schedPool.every(it=> it.type === 'm2Scheduled') ? 'm2' : 'all');
+    const alertRow = (opts)=> `
+      <button type="button" class="workq-alert-row${opts.tone ? ' is-' + opts.tone : ''}${opts.count ? '' : ' is-zero'}" ${opts.attr}>
+        <span class="workq-alert-ico">${agrIcon(opts.icon)}</span>
+        <span class="workq-alert-label">${esc(opts.label)}</span>
+        <span class="workq-alert-count">${esc(opts.count)}<small>곳</small></span>
+      </button>`;
+    const alertHtml = `
+      <div class="workq-alert-card" aria-label="알림">
+        <div class="workq-alert-head">
+          <span class="workq-alert-title">알림</span>
+          <span class="workq-alert-sub">경과일 · 회신 · 예정 미팅</span>
+        </div>
+        <div class="workq-alert-body">
+        <div class="workq-alert-rows">
+          ${alertRow({ icon:'clock', tone:'red', label:`${WORKQ_LONG_DAYS}일 넘게 지연`, count:longDelayed.length, attr:'data-workq-alert="long"' })}
+          ${alertRow({ icon:'mail', tone:'orange', label:'2차 회신 지연', count:m2NoReplyCountAlert, attr:'data-workq-filter="m2NoReply"' })}
+          ${alertRow({ icon:'calendar', tone:'navy', label:'7일 안 미팅' + (overdueSched.length ? ` · 지난 일정 ${overdueSched.length}` : ''), count:upcoming.length, attr:`data-workq-filter="${schedFilter}"` })}
+        </div>
+        ${longDelayed.length ? `
+          <div class="workq-alert-list">
+            ${longDelayed.slice(0,2).map(it=> `
+              <button type="button" class="workq-alert-co" data-workq-alert-co="${esc(it.co.id)}" title="${esc(it.actionLabel || '')}">
+                <span class="workq-alert-co-name">${esc(it.co.name)}</span>
+                <span class="workq-alert-co-days">${esc(it.days)}일</span>
+              </button>`).join('')}
+          </div>` : ''}
+        </div>
+      </div>`;
     function workqTaskCard(item){
       return `
         <button type="button" class="workq-task-card" data-workq-filter="${esc(item.key)}">
@@ -28353,6 +28442,7 @@ window.SHIN2_CRM_APP_INIT = function(){
         <div class="workq-task-section-title">지금 해야 할 업무</div>
         <div class="workq-task-row">
           ${heroItems.map(h=> workqTaskCard(h)).join('')}
+          ${alertHtml}
         </div>
       </div>
       <div class="list-search-row workq-search-row">
@@ -28466,6 +28556,16 @@ window.SHIN2_CRM_APP_INIT = function(){
     wrap.querySelectorAll('[data-workq-filter]').forEach(btn=> btn.addEventListener('click', ()=>{
       workQueueFilter = btn.getAttribute('data-workq-filter');
       renderWorkQueueView();
+    }));
+    // 알림 카드 — "30일 넘게 지연"은 전체 목록을 경과일 많은 순으로, 업체 이름은 협약 진행 탭.
+    // (2차 회신 지연/7일 안 미팅 줄은 data-workq-filter라 위 필터 바인딩이 그대로 처리한다.)
+    wrap.querySelectorAll('[data-workq-alert="long"]').forEach(btn=> btn.addEventListener('click', ()=>{
+      workQueueFilter = 'all';
+      workQueueSortAsc = false;
+      renderWorkQueueView();
+    }));
+    wrap.querySelectorAll('[data-workq-alert-co]').forEach(btn=> btn.addEventListener('click', ()=>{
+      openCustomerDetail(btn.getAttribute('data-workq-alert-co'), 'agreement');
     }));
     const sortToggle = document.getElementById('workqSortToggle');
     if(sortToggle) sortToggle.addEventListener('click', ()=>{
