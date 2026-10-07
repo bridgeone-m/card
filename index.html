@@ -10311,6 +10311,22 @@ body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-filters > .map
 @media (max-width:640px){
   #agreementPopupBody .agr-stage-row-actions.is-slotted{ grid-template-columns:repeat(2, minmax(0,1fr)) 30px; width:100%; }
 }
+
+/* §인사이트 읽기 개선 라운드(신규) — 종합 고객 인사이트를 옅은 상자 안에 문장별 목록으로 */
+.qtab-insight-box{
+  margin-top:4px; padding:10px 12px; border-radius:10px;
+  background:#F7FAFF; border:1px solid #DCE7F5;
+}
+.qtab-insight-list{ margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:6px; }
+.qtab-insight-list li{
+  position:relative; padding-left:14px;
+  font-size:13px; line-height:1.6; color:#1F3350; word-break:keep-all; overflow-wrap:anywhere;
+}
+.qtab-insight-list li::before{
+  content:''; position:absolute; left:2px; top:.62em; width:5px; height:5px; border-radius:50%;
+  background:var(--primary-navy, #1B4480); opacity:.55;
+}
+.qtab-insight-box .qtab-insight-text{ font-size:13px; line-height:1.65; }
 </style>
 </head>
 <body>
@@ -23573,9 +23589,12 @@ window.SHIN2_CRM_APP_INIT = function(){
     ['activity', '활동', ['activity']],
     ['sales', '매출·실적', ['sales','pour']],
     ['agreement', '협약 진행', ['agreement']],
-    ['questionnaire', '상담·서류', ['questionnaire','documents']]
+    // §상담/서류 탭 분리 라운드(신규) — 한 탭에 묶여 있던 상담(질문지·평가·인사이트·메모)과
+    // 서류(체크리스트)를 각각의 탭으로 나눴다. 패널·내용·저장 경로는 그대로다.
+    ['questionnaire', '상담', ['questionnaire']],
+    ['documents', '서류', ['documents']]
   ];
-  const CUSTOMER_DETAIL_TAB_ALIAS = { pour:'sales', documents:'questionnaire' };
+  const CUSTOMER_DETAIL_TAB_ALIAS = { pour:'sales' };
   function normalizeCustomerDetailTab(tab){
     const t = CUSTOMER_DETAIL_TAB_ALIAS[tab] || tab;
     return CUSTOMER_DETAIL_TAB_GROUPS.some(g=> g[0] === t) ? t : 'overview';
@@ -25431,12 +25450,19 @@ window.SHIN2_CRM_APP_INIT = function(){
           <div class="qtab-sec-label">종합 고객 인사이트</div>
           ${r.autoInsight.updatedAt ? `<span class="qtab-sec-meta">${esc(fmtDate(r.autoInsight.updatedAt))} 정리</span>` : ''}
         </div>
-        ${verdict ? `<div class="qtab-insight-text">${esc(verdict)}</div>`
+        ${verdict ? qtabInsightListHtml(verdict)
                   : `<div class="qtab-sec-empty">평가·메모를 입력하면 자동으로 정리됩니다</div>`}
       </div>
     `;
     const openBtn = document.getElementById('cdashQuestionnaireOpenBtn');
     if(openBtn) openBtn.addEventListener('click', ()=> openQuestionnaireSession(co.id, doc.id));
+  }
+  // §인사이트 읽기 개선 라운드(신규) — 한 문단으로 이어 붙은 종합 인사이트를 문장 단위로
+  // 끊어 한 줄씩 보여준다(표시만, 저장된 문장은 그대로). 문장 끝(. ! ? 。)과 줄바꿈에서 나눈다.
+  function qtabInsightListHtml(text){
+    const parts = String(text || '').split(/(?<=[.!?。])\s+|\n+/).map(t=> t.trim()).filter(Boolean);
+    if(parts.length <= 1) return `<div class="qtab-insight-box"><div class="qtab-insight-text">${esc(text)}</div></div>`;
+    return `<div class="qtab-insight-box"><ul class="qtab-insight-list">${parts.map(p=> `<li>${esc(p)}</li>`).join('')}</ul></div>`;
   }
   // 상/중/하 3개 + 선택 3개 + 관심 포인트를 한 줄 칩으로만 보여준다(§4 "각 항목별 설명문은
   // 여기서 노출하지 말 것"). 값 표는 D.CONSULT_REVIEW_RATED / D.CONSULT_REVIEW_CHOICE /
