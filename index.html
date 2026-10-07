@@ -10140,7 +10140,7 @@ body.crm-fixed-view #crmFilterRow.is-dropdown > .crm-status-dd{ height:auto !imp
 :root{ --mapdock-w: clamp(476px, calc(32vw + 76px), 576px); }
 
 body.crm-mapdock[data-crm-view="listView"] #mapDistributionModalRoot.crm-mapdock-root{
-  position:fixed; top:0; right:0; left:auto; bottom:0; width:var(--mapdock-w);
+  position:fixed; top:16px; right:16px; left:auto; bottom:16px; width:var(--mapdock-w); /* 화면 가장자리와 16px 여백 — 왼쪽 영역과 통일 */
   z-index:var(--z-map, 10); isolation:isolate;
 }
 body.crm-mapdock #mapDistributionModalRoot .map-modal-overlay.map-docked{
@@ -10159,8 +10159,8 @@ body.crm-mapdock #mapDistributionModalRoot .map-modal-overlay.map-docked > .map-
 
 /* 오른쪽 고객관리 영역 — 왼쪽 패널 폭만큼 비우고 나머지 전부 사용 */
 body.crm-mapdock[data-crm-view="listView"]{
-  padding-right:calc(var(--mapdock-w) + 16px) !important; /* 지도는 오른쪽 고정 */
-  padding-top:10px !important; padding-left:20px !important;
+  padding-right:calc(var(--mapdock-w) + 32px) !important; /* 지도는 오른쪽 고정 */
+  padding-top:16px !important; padding-bottom:16px !important; padding-left:16px !important;
 }
 /* 상단 메뉴·KPI 높이와 여백을 줄여 고객목록이 더 위에서 시작 */
 body.crm-mapdock[data-crm-view="listView"] .gnav-inner{
