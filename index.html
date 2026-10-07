@@ -10278,6 +10278,13 @@ body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-filters > .map
   .l2l3k-card{ padding:12px 14px; gap:12px; }
   .l2l3k-left, .l2l3k-mid{ flex:1 1 100%; }
 }
+
+/* §2차 메일 발송 표시 라운드(신규) — "해야 할 일" 칸의 발송 완료 배지(초록 톤, 버튼 아님) */
+.workq-sent-badge{
+  display:inline-flex; align-items:center; height:22px; padding:0 8px; box-sizing:border-box;
+  border-radius:5px; background:#ECFDF3; border:1px solid #BBE5CB; color:#15803D;
+  font-size:11px; font-weight:700; white-space:nowrap;
+}
 </style>
 </head>
 <body>
@@ -28135,6 +28142,25 @@ window.SHIN2_CRM_APP_INIT = function(){
               const mailCellHtml = mailInfo && mailInfo.show
                 ? `<button type="button" class="workq-mail-btn${mailInfo.alreadySent ? ' is-sent' : ''}" data-workq-mail="${esc(it.co.id)}">📧 ${esc(mailInfo.label)}</button>`
                 : '';
+              // §2차 메일 발송 표시 라운드(신규) — 2차미팅 단계(잡기/예정) 업체에 2차 미팅 제안·일정
+              // 리마인드 메일을 보낸 기록(co.m1MailLog, status 'sent')이 있으면 "2차 메일 발송 MM/DD"
+              // 배지를 남긴다. 기존 발송 기록을 읽기만 하고 새로 저장하지 않는다.
+              let m2SentHtml = '';
+              if(it.type === 'm2' || it.type === 'm2Scheduled'){
+                let lastTs = null, count = 0;
+                ['postSecondMeeting','secondMeetingRequest'].forEach(t=> mailLogForType(it.co, t).forEach(l=>{
+                  if(!l || l.status !== 'sent' || !l.sentAt) return;
+                  const ts = new Date(l.sentAt).getTime();
+                  if(!Number.isFinite(ts)) return;
+                  count++;
+                  if(lastTs == null || ts > lastTs) lastTs = ts;
+                }));
+                if(lastTs != null){
+                  const d = new Date(lastTs);
+                  const md = `${d.getMonth()+1}/${d.getDate()}`;
+                  m2SentHtml = `<span class="workq-sent-badge" title="2차 미팅 메일 ${count}회 발송 · 최근 ${esc(d.toLocaleString('ko-KR'))}">✓ 2차 메일 발송 ${esc(md)}${count > 1 ? ` · ${count}회` : ''}</span>`;
+                }
+              }
               // §P1-3 경과일 배지 3단계 라운드(신규) — it.days(각 분기에서 이미 계산된
               // 경과일/예정일까지 남은 일수, 위 buildWorkQueueItem 계산은 안 건드림)를
               // 그대로 조회만 해서 배지 색만 구간별로 나눈다. 예정 미팅이 이미 지난
@@ -28159,6 +28185,7 @@ window.SHIN2_CRM_APP_INIT = function(){
                     ? `<span class="workq-notask-badge">${esc(it.actionLabel)}</span>`
                     : `<button type="button" class="workq-action-btn${isOpen ? ' is-open' : ''}" data-workq-toggle="${esc(it.co.id)}" data-workq-toggle-type="${esc(it.type)}">${esc(it.actionLabel)}</button>`}
                   ${mailCellHtml}
+                  ${m2SentHtml}
                 </td>
               </tr>`;
             }).join('')}
@@ -28195,6 +28222,15 @@ window.SHIN2_CRM_APP_INIT = function(){
       if(isSame){ workQueueExpanded = null; closeWorkqActionModal(); renderWorkQueueView(); return; }
       const item = list.find(it=> it.co.id === companyId && it.type === type);
       if(!item) return;
+      // §일정 확인 팝업 제거 라운드(신규) — 사용자 요청 "일정 탭 없어도 될 것 같아". 예정된 미팅
+      // (m1Scheduled/m2Scheduled)은 일정 확인 팝업을 띄우지 않고, 업체명 클릭과 같은 고객 상세
+      // 협약 진행 탭을 연다 — 날짜 수정·완료 처리는 그 탭의 기존 버튼을 그대로 쓴다.
+      if(type === 'm1Scheduled' || type === 'm2Scheduled'){
+        workQueueExpanded = null;
+        closeWorkqActionModal();
+        openCustomerDetail(companyId, 'agreement');
+        return;
+      }
       workQueueExpanded = { companyId, type };
       openWorkqActionModal(item);
       renderWorkQueueView(); // 버튼 강조(is-open) 갱신만 목적 — 팝업 자체는 별도 root라 안 지워짐
