@@ -10548,6 +10548,11 @@ body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-filters > .map
   font:inherit; font-size:12px; font-weight:700; color:#1B4480; cursor:pointer;
 }
 .pdfx-wide .pdf-colbar-all:hover{ background:#EEF4FD; }
+
+/* §상단 메뉴 아이콘 라운드(신규) — 고객관리 / MOU 진행상황 / 메일 설정 앞 단색 아이콘 */
+.top-tab{ display:inline-flex !important; align-items:center; gap:6px; }
+.top-tab .top-tab-ico{ flex:none; width:15px; height:15px; opacity:.75; }
+.top-tab.is-active .top-tab-ico{ opacity:1; }
 </style>
 </head>
 <body>
@@ -10610,9 +10615,9 @@ body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-filters > .map
     <!-- §업무관리 탭 1차 구축 라운드 §1 / §1차미팅 메일 자동발송 라운드 — 3개 실제 탭
          버튼은 그대로, class/부모만 gnav-menu로 바꿨다. -->
     <nav class="gnav-menu" id="crmTopTabs" aria-label="주요 메뉴">
-      <button type="button" class="top-tab is-active" id="crmTabCustomer" data-tab="customer">고객관리</button>
-      <button type="button" class="top-tab" id="crmTabWorkQueue" data-tab="workqueue">MOU 진행상황</button>
-      <button type="button" class="top-tab" id="crmTabMailSettings" data-tab="mailsettings">메일 설정</button>
+      <button type="button" class="top-tab is-active" id="crmTabCustomer" data-tab="customer"><svg class="top-tab-ico" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.4"/><path d="M3 19.5a6 6 0 0 1 12 0"/><path d="M15.5 4.8a3.2 3.2 0 0 1 0 6.3M17.5 14a5.5 5.5 0 0 1 3.5 5.5"/></svg>고객관리</button>
+      <button type="button" class="top-tab" id="crmTabWorkQueue" data-tab="workqueue"><svg class="top-tab-ico" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="m8.5 12 2 2 4-4.5M8.5 17.5h7"/></svg>MOU 진행상황</button>
+      <button type="button" class="top-tab" id="crmTabMailSettings" data-tab="mailsettings"><svg class="top-tab-ico" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3.5 6.5 8.5 6 8.5-6"/></svg>메일 설정</button>
     </nav>
     <div class="gnav-right">
       <!-- 알림/도움말/사용자 메뉴는 이 앱에 실제로 연결된 기능이 없어 넣지 않았다(§요청
