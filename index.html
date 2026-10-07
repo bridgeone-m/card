@@ -10528,6 +10528,26 @@ body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-filters > .map
 .pdfx-wide .pdf-dd-menu-cats{ width:280px; }
 .pdfx-wide .pdf-dd-menu-cols{ width:300px; }
 .pdfx-wide .pdf-dd-checks-1col{ grid-template-columns:1fr !important; }
+
+/* §표 머리 체크 라운드(신규) — PDF 표 항목 체크 줄 */
+.pdfx-wide .pdf-colbar{
+  flex:none; display:flex; align-items:center; flex-wrap:wrap; gap:6px;
+  padding:7px 10px; border:1px solid #E3EAF3; border-radius:10px; background:#F8FAFD;
+}
+.pdfx-wide .pdf-colbar-key{ font-size:12px; font-weight:800; color:#17345F; margin-right:4px; }
+.pdfx-wide .pdf-colbar-item{
+  display:inline-flex; align-items:center; gap:5px; height:28px; padding:0 10px; box-sizing:border-box;
+  border:1px solid #DCE5EF; border-radius:999px; background:#fff; cursor:pointer;
+  font-size:12px; font-weight:600; color:#94A3B8; user-select:none;
+}
+.pdfx-wide .pdf-colbar-item input{ margin:0; width:14px; height:14px; accent-color:#1B4480; cursor:pointer; }
+.pdfx-wide .pdf-colbar-item.is-on{ border-color:#B9D0EE; background:#EEF4FD; color:#1B4480; }
+.pdfx-wide .pdf-colbar-item.is-fixed{ cursor:default; opacity:.85; }
+.pdfx-wide .pdf-colbar-all{
+  margin-left:auto; height:28px; padding:0 10px; border:0; border-radius:8px; background:transparent;
+  font:inherit; font-size:12px; font-weight:700; color:#1B4480; cursor:pointer;
+}
+.pdfx-wide .pdf-colbar-all:hover{ background:#EEF4FD; }
 </style>
 </head>
 <body>
@@ -45936,7 +45956,7 @@ if(!window.__mapxRowDelegated){
     ['revenueNoMou','실적있음 · MOU 미체결']
   ];
   // 표시 항목 — 번호·지역·업체명은 항상 나가고, 나머지는 체크로 고른다.
-  const PDF_INTERNAL_ALWAYS_COLS = ['no','region','name'];
+  const PDF_INTERNAL_ALWAYS_COLS = ['name'];   // §표 머리 체크 라운드 — 업체명만 고정, 나머지는 전부 체크로
   let pdfInternalCatMemo = { sig:'', ids:null };
   function pdfInternalCatIdSet(){
     const cats = pdfExportState.cats || new Set();
@@ -46535,6 +46555,21 @@ if(!window.__mapxRowDelegated){
     const n = optional.filter(c=> pdfExportState.cols && pdfExportState.cols.has(c)).length;
     return n === optional.length ? '전체' : `${n}/${optional.length}개`;
   }
+  // §표 머리 체크 라운드(신규) — PDF 표 머리글 순서 그대로 체크 칸을 한 줄로 늘어놓아, 보면서
+  // 바로 빼고 넣는다. 위 [표시 항목 ▾] 드롭다운과 같은 상태(pdfExportState.cols)를 쓴다.
+  function pdfExportColBarHtml(){
+    const type = PDF_EXPORT_TYPES.find(t=> t.key === 'internal');
+    return `<div class="pdf-colbar" role="group" aria-label="PDF 표 항목">
+      <span class="pdf-colbar-key">표 항목</span>
+      ${type.columns.map(c=>{
+        const fixed = PDF_INTERNAL_ALWAYS_COLS.includes(c);
+        const on = fixed || (pdfExportState.cols && pdfExportState.cols.has(c));
+        return `<label class="pdf-colbar-item${on ? ' is-on' : ''}${fixed ? ' is-fixed' : ''}" title="${fixed ? '업체명은 항상 포함' : '체크하면 PDF에 넣고, 해제하면 뺍니다'}">
+          <input type="checkbox" data-pdf-col-check="${esc(c)}" ${on ? 'checked' : ''} ${fixed ? 'disabled' : ''} /><span>${esc(PDF_EXPORT_COLUMN_LABELS[c] || c)}</span></label>`;
+      }).join('')}
+      <button type="button" class="pdf-colbar-all" data-pdf-col-all="1">전체 선택</button>
+    </div>`;
+  }
   function pdfExportInternalDdHtml(){
     const type = PDF_EXPORT_TYPES.find(t=> t.key === 'internal');
     const optional = type.columns.filter(c=> !PDF_INTERNAL_ALWAYS_COLS.includes(c));
@@ -46557,7 +46592,7 @@ if(!window.__mapxRowDelegated){
           <span class="pdf-dd-key">표시 항목</span><span class="pdf-dd-val" id="pdfExportColsLabel">${esc(pdfExportColsLabel())}</span><span class="pdf-dd-caret" aria-hidden="true">▾</span>
         </button>
         <div class="pdf-dd-menu pdf-dd-menu-cols" role="group" aria-label="표시 항목">
-          <div class="pdf-dd-menu-head"><span>번호 · 지역 · 업체명은 항상 포함</span></div>
+          <div class="pdf-dd-menu-head"><span>업체명은 항상 포함</span></div>
           <div class="pdf-dd-checks">${colsHtml}</div>
         </div>
       </div>`;
@@ -46616,6 +46651,7 @@ if(!window.__mapxRowDelegated){
               <button type="button" class="co-text-action primary pdf-export-save" id="pdfExportSaveBtn">PDF 저장</button>
             </div>
             <div class="pdf-export-note">${noteHtml} <span class="pdf-export-note-sub">· 업체 포함 여부 검색은 출력 대상을 바꾸지 않습니다 · 지역 조건은 이 화면에서만 적용됩니다</span></div>
+            ${isInternal ? pdfExportColBarHtml() : ''}
             <div id="pdfExportConfirmResult"></div>
             <div class="pdf-preview-wrap" id="pdfExportPreviewWrap"></div>
           </div>
@@ -46868,9 +46904,16 @@ if(!window.__mapxRowDelegated){
     root.querySelectorAll('[data-pdf-col-check]').forEach(box=> box.addEventListener('change', ()=>{
       const c = box.getAttribute('data-pdf-col-check');
       if(box.checked) pdfExportState.cols.add(c); else pdfExportState.cols.delete(c);
-      pdfExportOpenDd = 'cols';
+      // 드롭다운 안에서 눌렀을 때만 드롭다운을 열어 둔다(표 항목 줄에서 누르면 닫힌 채)
+      pdfExportOpenDd = box.closest('[data-pdf-dd]') ? 'cols' : null;
       renderPdfExportModal();
     }));
+    const colAll = root.querySelector('[data-pdf-col-all]');
+    if(colAll) colAll.addEventListener('click', ()=>{
+      const type = PDF_EXPORT_TYPES.find(t=> t.key === 'internal');
+      pdfExportState.cols = new Set(type.columns.filter(c=> !PDF_INTERNAL_ALWAYS_COLS.includes(c)));
+      renderPdfExportModal();
+    });
     // §PDF 대상 선정 재구성 라운드(신규) — 내부용 업체 체크. 체크 하나로 목록 전체를
     // 다시 그리면 스크롤 위치가 튀므로, 개별 체크는 상태만 바꾸고 건수·미리보기만 갱신한다.
     bindPdfExportPickControls(root);
