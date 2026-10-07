@@ -10245,6 +10245,39 @@ body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-tabs{
 body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-filters > .map-modal-select{
   flex:1 1 120px !important; min-width:120px !important;
 }
+
+/* ==========================================================================
+   §L2→L3 KPI 가로형 통합 라운드(신규) — 전환율·막대·세부 숫자·관리 필요를 카드 하나로.
+   흰 배경 · 연한 회색 테두리 · 최소 그림자 · 남색 핵심 숫자. 그라데이션·도넛·애니메이션 없음.
+   ========================================================================== */
+.l2l3k-card{
+  display:flex; align-items:center; flex-wrap:wrap; gap:14px 28px;
+  margin:0 0 10px; padding:14px 20px; box-sizing:border-box;
+  background:#fff; border:1px solid #E3EAF3; border-radius:14px;
+  box-shadow:0 1px 3px rgba(15,23,42,.04);
+}
+.l2l3k-left{ flex:0 1 300px; min-width:200px; }
+.l2l3k-label{ font-size:12.5px; font-weight:700; color:#17345F; }
+.l2l3k-rate{ margin-top:2px; font-size:36px; font-weight:800; line-height:1.05; letter-spacing:-.02em; color:var(--primary-navy, #1B4480); font-variant-numeric:tabular-nums; }
+.l2l3k-sub{ margin-top:4px; font-size:11.5px; line-height:1.45; color:#7C8BA1; }
+.l2l3k-mid{ flex:1 1 260px; min-width:200px; }
+.l2l3k-bar{ height:12px; border-radius:999px; background:#EEF2F7; overflow:hidden; }
+.l2l3k-bar-fill{ height:100%; border-radius:999px; background:var(--primary-navy, #1B4480); }
+.l2l3k-bar-caption{ margin-top:8px; font-size:12.5px; color:#55657C; font-variant-numeric:tabular-nums; }
+.l2l3k-bar-caption b{ font-weight:800; color:#17345F; }
+.l2l3k-bar-caption b.is-done{ color:var(--primary-navy, #1B4480); }
+.l2l3k-warn{
+  flex:none; display:flex; flex-direction:column; align-items:flex-start; gap:2px;
+  padding:9px 16px; border-radius:10px;
+  background:#FFF4E8; border:1px solid #F6D9B8;
+}
+.l2l3k-warn-label{ font-size:11.5px; font-weight:700; color:#A15C07; }
+.l2l3k-warn-value{ font-size:22px; font-weight:800; line-height:1.1; color:#B45309; font-variant-numeric:tabular-nums; }
+.l2l3k-warn-value small{ margin-left:2px; font-size:12px; font-weight:700; }
+@media (max-width:760px){
+  .l2l3k-card{ padding:12px 14px; gap:12px; }
+  .l2l3k-left, .l2l3k-mid{ flex:1 1 100%; }
+}
 </style>
 </head>
 <body>
@@ -22486,23 +22519,32 @@ window.SHIN2_CRM_APP_INIT = function(){
     // 같은 흰색 KPI 카드 5개를 한 줄에 배치한다. 값은 전부 위 analysis 그대로 — 새
     // 계산 없음. 관리 필요 카드는 0이어도 항상 보여준다(다른 4개와 순서가 어긋나지
     // 않도록, §요청 2 "5개 카드를 한 줄로").
+    // §L2→L3 KPI 가로형 통합 라운드(신규) — 카드 4개(전환율/신규 협약/전환 완료/관리 필요)를
+    // 가로형 카드 하나로 합쳤다. 왼쪽 전환율 → 가운데 막대(신규 협약 전체=100%, 전환 완료만
+    // 남색) → 오른쪽 관리 필요. 값은 전부 위 analysis 그대로(rate/total/converted/needsAttention),
+    // 새 계산·새 판정 없음. 관리 필요는 전환 완료와 겹칠 수 있어 막대에 넣지 않고 따로 둔다.
+    // 막대 폭은 기존 rateNum(analysis.rate)을 0~100으로만 자른다 — 0개여도 0%로 그려진다.
+    const kpiTotal = Number(analysis.total) || 0;
+    const kpiConverted = (analysis.converted || []).length;
+    const kpiNeeds = (analysis.needsAttention || []).length;
+    const kpiBarPct = Math.max(0, Math.min(100, rateNum));
     const kpiHtml = `
-      <div class="l2l3v2-kpi-row">
-        <div class="l2l3v2-kpi-main">
-          <div class="l2l3v2-kpi-main-label">L2 → L3 전환율</div>
-          <!-- §L2→L3 상단 압축 라운드(신규) — 숫자·분수를 세로로 쌓지 않고 한 줄에 둔다.
-               값(analysis.rate / converted.length / total)은 전부 그대로다. -->
-          <div class="l2l3v2-kpi-main-headline">
-            <span class="l2l3v2-kpi-main-rate">${esc(analysis.rate)}%</span>
-            <span class="l2l3v2-kpi-main-frac">${esc(analysis.converted.length)} / ${esc(analysis.total)} 전환 완료</span>
-          </div>
-          <div class="l2l3v2-kpi-main-bar"><div class="l2l3v2-kpi-main-bar-fill" style="width:${Math.max(0,Math.min(100,rateNum))}%;"></div></div>
-          <!-- 긴 기준 설명(협약 시점·경과일)은 한 줄을 더 쓰지 않도록 title 툴팁으로 옮겼다. -->
-          <div class="l2l3v2-kpi-main-sub" title="2026-05-20 이후 협약, 경과 ${esc(npCmpPeriodDays)}일 기준">신규 협약 업체 중 실제 플랫폼 이용 단계(L3) 전환 비율</div>
+      <div class="l2l3k-card" role="group" aria-label="L2 → L3 전환율">
+        <div class="l2l3k-left">
+          <div class="l2l3k-label">L2 → L3 전환율</div>
+          <div class="l2l3k-rate">${esc(analysis.rate)}%</div>
+          <div class="l2l3k-sub" title="2026-05-20 이후 협약, 경과 ${esc(npCmpPeriodDays)}일 기준">신규 협약 업체 중 실제 플랫폼 이용 단계(L3)로 전환한 비율</div>
         </div>
-        <div class="l2l3v2-kpi-card l2l3v2-kpi-card-new"><span class="l2l3v2-kpi-card-value">${esc(analysis.total)}</span><span class="l2l3v2-kpi-card-label">신규 협약</span></div>
-        <div class="l2l3v2-kpi-card l2l3v2-kpi-card-done"><span class="l2l3v2-kpi-card-value">${esc(analysis.converted.length)}</span><span class="l2l3v2-kpi-card-label">전환 완료</span></div>
-        <div class="l2l3v2-kpi-card l2l3v2-kpi-card-warn"><span class="l2l3v2-kpi-card-value">${esc(analysis.needsAttention.length)}</span><span class="l2l3v2-kpi-card-label">관리 필요</span></div>
+        <div class="l2l3k-mid">
+          <div class="l2l3k-bar" role="img" aria-label="신규 협약 ${esc(kpiTotal)}개 중 전환 완료 ${esc(kpiConverted)}개">
+            <div class="l2l3k-bar-fill" style="width:${kpiBarPct}%;"></div>
+          </div>
+          <div class="l2l3k-bar-caption">신규 협약 <b>${esc(kpiTotal)}</b>개 · 전환 완료 <b class="is-done">${esc(kpiConverted)}</b>개</div>
+        </div>
+        <div class="l2l3k-warn">
+          <span class="l2l3k-warn-label">관리 필요</span>
+          <span class="l2l3k-warn-value">${esc(kpiNeeds)}<small>개</small></span>
+        </div>
       </div>`;
     // §요청 6/7 "상태 탭 오른쪽에 협약 후 경과일(30/60/90일) 배치": 기존 npCmp 섹션
     // 안쪽에 있던 기간 선택 칩(NPCMP_PERIODS/data-npcmp-period)을 상태 탭과 같은 줄로
