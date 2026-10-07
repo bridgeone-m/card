@@ -23553,7 +23553,14 @@ window.SHIN2_CRM_APP_INIT = function(){
     currentCompanyId = null;
     cardView.innerHTML = '';
     cardView.style.display = 'none';
-    listView.style.display = 'block';
+    // §화면 겹침 수정 라운드(신규) — MOU 진행상황/메일 설정 탭에서 연 고객카드를 닫으면 여기로
+    // 와서 고객목록까지 켜는 바람에, 그 탭 화면 위에 고객목록이 함께 겹쳐 보였다. 다른 탭
+    // 화면이 보이는 중이면 그 탭에 그대로 머물고 고객목록은 켜지 않는다.
+    const otherTabShown = ['workQueueView','mailSettingsView'].some(id=>{
+      const el = document.getElementById(id);
+      return !!el && el.style.display === 'block';
+    });
+    if(!otherTabShown) listView.style.display = 'block';
     document.body.classList.remove('chart-lock');
     document.removeEventListener('keydown', chartEscHandler);
     history.replaceState(null, '', location.pathname);
