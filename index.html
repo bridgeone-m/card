@@ -10140,7 +10140,7 @@ body.crm-fixed-view #crmFilterRow.is-dropdown > .crm-status-dd{ height:auto !imp
 :root{ --mapdock-w: clamp(476px, calc(32vw + 76px), 576px); }
 
 body.crm-mapdock[data-crm-view="listView"] #mapDistributionModalRoot.crm-mapdock-root{
-  position:fixed; top:16px; right:16px; left:auto; bottom:16px; width:var(--mapdock-w); /* 화면 가장자리와 16px 여백 — 왼쪽 영역과 통일 */
+  position:fixed; top:var(--crm-frame-y, 20px); right:var(--crm-frame-x, 28px); left:auto; bottom:var(--crm-frame-y, 20px); width:var(--mapdock-w); /* 바깥 여백 — MOU 진행상황과 같은 프레임 값 */
   z-index:var(--z-map, 10); isolation:isolate;
 }
 body.crm-mapdock #mapDistributionModalRoot .map-modal-overlay.map-docked{
@@ -10159,13 +10159,10 @@ body.crm-mapdock #mapDistributionModalRoot .map-modal-overlay.map-docked > .map-
 
 /* 오른쪽 고객관리 영역 — 왼쪽 패널 폭만큼 비우고 나머지 전부 사용 */
 body.crm-mapdock[data-crm-view="listView"]{
-  padding-right:calc(var(--mapdock-w) + 32px) !important; /* 지도는 오른쪽 고정 */
-  padding-top:16px !important; padding-bottom:16px !important; padding-left:16px !important;
+  padding-right:calc(var(--mapdock-w) + var(--crm-frame-x, 28px) + 16px) !important; /* 지도는 오른쪽 고정(지도와 16px 간격) */
+  padding-top:var(--crm-frame-y, 20px) !important; padding-bottom:var(--crm-frame-y, 20px) !important; padding-left:var(--crm-frame-x, 28px) !important; /* MOU 진행상황과 같은 바깥 여백 */
 }
-/* 상단 메뉴·KPI 높이와 여백을 줄여 고객목록이 더 위에서 시작 */
-body.crm-mapdock[data-crm-view="listView"] .gnav-inner{
-  height:48px !important; min-height:0 !important; padding-top:4px !important; padding-bottom:4px !important;
-}
+/* 상단 메뉴 높이는 MOU 진행상황·메일 설정과 같게 둔다(예전 48px 압축 규칙 제거 — 탭마다 헤더 높이가 달라 보였다). */
 body.crm-mapdock[data-crm-view="listView"] .crm-main-grid{
   grid-template-columns:minmax(0,1fr) !important;
   grid-template-rows:auto minmax(0,1fr) !important;
