@@ -10285,6 +10285,32 @@ body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-filters > .map
   border-radius:5px; background:#ECFDF3; border:1px solid #BBE5CB; color:#15803D;
   font-size:11px; font-weight:700; white-space:nowrap;
 }
+
+/* ==========================================================================
+   §진행 단계 버튼 정렬 · 메일 발송 표시 라운드(신규) — 협약 진행 탭 단계 행의 버튼을
+   [주 동작][메일][⋯] 고정 칸에 맞춰 세로로 줄을 맞추고, 보낸 메일은 초록 "✓ 발송 M/D"로 표시.
+   ========================================================================== */
+#agreementPopupBody .agr-stage-row-actions.is-slotted{
+  display:grid !important; grid-template-columns:118px 86px 30px; gap:6px; align-items:center; justify-items:stretch;
+}
+#agreementPopupBody .agr-stage-row-actions.is-slotted > .agr-meeting-row{ display:contents !important; }
+#agreementPopupBody .agr-stage-row-actions.is-slotted .agr-slot-main{ order:1; grid-column:1; justify-self:end; }
+#agreementPopupBody .agr-stage-row-actions.is-slotted .agr-slot-mail{ order:2; grid-column:2; }
+#agreementPopupBody .agr-stage-row-actions.is-slotted .agr-slot-more{ order:3; grid-column:3; justify-self:center; }
+#agreementPopupBody .agr-stage-row-actions.is-slotted .agr-slot-main:not(.agr-slot-empty){ max-width:100%; white-space:nowrap; }
+#agreementPopupBody .agr-stage-row-actions.is-slotted .agr-slot-mail{
+  width:100% !important; min-width:0 !important; justify-content:center; box-sizing:border-box; white-space:nowrap;
+}
+#agreementPopupBody .agr-slot-empty{ display:block; width:30px; min-height:1px; }
+/* 메일 발송됨 — 초록 톤(버튼은 그대로 눌러 재발송 가능) */
+#agreementPopupBody .agr-stage-row-actions .is-mail-sent{
+  background:#ECFDF3 !important; border:1px solid #BBE5CB !important; color:#15803D !important; font-weight:700 !important;
+}
+#agreementPopupBody .agr-stage-row-actions .is-mail-sent:hover{ background:#DCFCE7 !important; border-color:#86D3A4 !important; color:#166534 !important; }
+#agreementPopupBody .agr-mail-sent-ico{ font-size:11px; font-weight:800; margin-right:4px; }
+@media (max-width:640px){
+  #agreementPopupBody .agr-stage-row-actions.is-slotted{ grid-template-columns:repeat(2, minmax(0,1fr)) 30px; width:100%; }
+}
 </style>
 </head>
 <body>
@@ -33119,6 +33145,71 @@ window.SHIN2_CRM_APP_INIT = function(){
       menu.addEventListener('click', ()=>{ more.open = false; });
     });
   }
+  // §진행 단계 버튼 정렬 라운드(신규) — 행마다 버튼 수가 달라(⋯ 더보기가 있거나 없음) 메일·수정
+  // 버튼이 줄마다 다른 위치에 있었다. 각 행의 버튼에 칸(slot)을 정해 [주 동작][메일][⋯] 순서의
+  // 고정 칸에 놓는다. ⋯가 없는 행은 빈 칸을 두어 위 행과 세로로 맞춘다. 버튼 노드를 옮기지 않고
+  // 클래스만 붙이므로 클릭 핸들러·data 속성은 그대로다.
+  function alignAgreementRowActions(body){
+    if(!body) return;
+    body.querySelectorAll('.agr-stage-row-actions').forEach(rowActions=>{
+      const actions = rowActions.querySelector(':scope > .agr-meeting-row') || rowActions;
+      const kids = Array.from(actions.children).filter(el=> el.matches('button, .agr-more'));
+      const isMail = el=> /mail/.test(el.getAttribute('data-agr-do') || '') || el.classList.contains('is-mail');
+      const more = kids.find(el=> el.classList.contains('agr-more'));
+      const mail = kids.find(el=> el !== more && isMail(el));
+      const others = kids.filter(el=> el !== more && el !== mail);
+      if(others[0]) others[0].classList.add('agr-slot-main');
+      if(mail) mail.classList.add('agr-slot-mail');
+      else if(others[1]) others[1].classList.add('agr-slot-mail');
+      if(more) more.classList.add('agr-slot-more');
+      // 빈 칸 채우기 — 주 동작/⋯가 없는 행도 같은 칸 구조를 갖게 한다(보이지 않는 자리 표시).
+      if(!others[0]){ const ph = document.createElement('span'); ph.className = 'agr-slot-main agr-slot-empty'; ph.setAttribute('aria-hidden','true'); actions.appendChild(ph); }
+      if(!more){ const ph = document.createElement('span'); ph.className = 'agr-slot-more agr-slot-empty'; ph.setAttribute('aria-hidden','true'); actions.appendChild(ph); }
+      rowActions.classList.add('is-slotted');
+    });
+  }
+  // §진행 단계 메일 발송 표시 라운드(신규) — 단계별 [메일] 버튼만 봐도 보냈는지 알 수 있게,
+  // 기존 발송 기록(co.m1MailLog, status 'sent')이 있으면 버튼을 초록 "발송 M/D"로 바꾼다.
+  // 다시 누르면 기존처럼 메일 작성 창이 열린다(재발송). 기록을 읽기만 하고 저장하지 않는다.
+  // 2차미팅 행과 MOU 행은 같은 템플릿(postSecondMeeting)을 쓰므로 2차미팅 완료일을 기준으로
+  // 나눈다 — 완료 전 발송은 2차미팅 행, 완료 후 발송은 MOU 행.
+  function markAgreementMailSent(body, co){
+    if(!body || !co) return;
+    let m2DoneTs = null;
+    try{
+      const st = buildProgressStages(co).stages.find(x=> x.key === 'm2');
+      if(st && st.state === 'done' && typeof st.ts === 'number') m2DoneTs = st.ts;
+    }catch(err){ m2DoneTs = null; }
+    const sentTimes = (types, filterFn)=>{
+      const out = [];
+      types.forEach(t=> mailLogForType(co, t).forEach(l=>{
+        if(!l || l.status !== 'sent' || !l.sentAt) return;
+        const ts = new Date(l.sentAt).getTime();
+        if(Number.isFinite(ts) && (!filterFn || filterFn(ts))) out.push(ts);
+      }));
+      return out;
+    };
+    const RULES = {
+      'mail-questionnaire': ()=> sentTimes(['questionnaire']),
+      'mail-m1-stage': ()=> sentTimes(['firstMeeting']),
+      'mail-m2-stage': ()=> sentTimes(['postSecondMeeting','secondMeetingRequest'], ts=> m2DoneTs == null || ts < m2DoneTs),
+      'mail-post-second': ()=> m2DoneTs == null ? [] : sentTimes(['postSecondMeeting'], ts=> ts >= m2DoneTs)
+    };
+    body.querySelectorAll('.agr-stage-row-actions [data-agr-do]').forEach(btn=>{
+      const rule = RULES[btn.getAttribute('data-agr-do')];
+      if(!rule) return;
+      const times = rule();
+      if(!times.length) return;
+      const last = new Date(Math.max.apply(null, times));
+      const md = `${last.getMonth()+1}/${last.getDate()}`;
+      btn.classList.add('is-mail-sent');
+      btn.title = `메일 ${times.length}회 발송 · 최근 ${last.toLocaleString('ko-KR')} (다시 누르면 재발송)`;
+      btn.setAttribute('aria-label', `메일 발송됨 ${md}, 다시 보내기`);
+      const svg = btn.querySelector('svg');
+      btn.innerHTML = '<span class="agr-mail-sent-ico" aria-hidden="true">✓</span><span class="agr-date-chip-add">발송 ' + md + '</span>';
+      void svg;
+    });
+  }
   // §협약 무효 처리 라운드 — 자주 쓰는 기능이 아니라 탭 맨 아래 조용한 관리 영역에 둔다.
   // 협약/MOU 신호(진행 단계 원본·수동 확정·협약사 등재·협약 종료)가 하나라도 있을 때만 보인다.
   function agreementInvalidateZoneHtml(co){
@@ -33189,6 +33280,8 @@ window.SHIN2_CRM_APP_INIT = function(){
     const invalidateBtn = body.querySelector('#agrInvalidateBtn');
     if(invalidateBtn) invalidateBtn.addEventListener('click', ()=> openAgreementInvalidateModal(co.id));
     compactAgreementRowActions(body);
+    alignAgreementRowActions(body);
+    markAgreementMailSent(body, co);
     // 질문지 상담 탭 — 질문지 등록/교체 카드(상/중/하 배지·메모 포함). 통합 팝업이 아닌
     // 곳에서 불려도 안전하도록 컨테이너가 없으면 조용히 건너뛴다(이 파일의 기존 관례).
     const qWrap = document.getElementById('cdashQuestionnaireWork');
