@@ -10414,6 +10414,26 @@ body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-filters > .map
 .cdet-overview-cols{ align-items:start; }
 .cdet-overview-left{ display:flex; flex-direction:column; gap:10px; min-width:0; }
 .cdet-overview-left #cdashAgreementStepsCard .cdet-step-label{ white-space:nowrap; }
+
+/* ==========================================================================
+   §기업 요약 목록형 · 아이콘 배경 투명 라운드(신규)
+   ========================================================================== */
+#cdashReactionsCol.is-collapsed-hidden{ display:none !important; }
+/* 아이콘 — 배경 없이 선 아이콘만 */
+.cinfo-ico{ background:transparent !important; color:#5B7393 !important; width:16px !important; height:16px !important; margin-right:6px !important; border-radius:0 !important; }
+.cinfo-ico .agr-ico{ width:14px !important; height:14px !important; }
+/* 기업 요약 — 한 줄에 [아이콘] 항목명 | 값, 얇은 구분선 */
+.cosum-grid{ display:flex !important; flex-direction:column; gap:0 !important; margin-top:2px; }
+.cosum-item{
+  display:grid !important; grid-template-columns:18px 76px minmax(0,1fr); align-items:baseline; column-gap:6px;
+  padding:9px 2px; border-bottom:1px solid #F0F3F7;
+}
+.cosum-item:last-child{ border-bottom:0; }
+.cosum-item .cinfo-ico{ width:16px !important; height:16px !important; margin:0 !important; align-self:center; }
+.cosum-text{ display:contents; }
+.cosum-label{ font-size:12px !important; font-weight:600; color:#7C8BA1 !important; }
+.cosum-value{ margin:0 !important; font-size:13.5px !important; font-weight:700; color:#13243E; line-height:1.5; }
+.cosum-value.is-muted{ color:#B5C0CE !important; font-weight:500; }
 </style>
 </head>
 <body>
@@ -39364,6 +39384,9 @@ window.SHIN2_CRM_APP_INIT = function(){
     if(!wrap) return;
     const editing = !!cardState.sectionEdit.reactions;
     const open = !!(cardState.accordionOpen && cardState.accordionOpen.info);
+    // §고객 정보 줄 숨김 라운드(신규) — 사용자 요청으로 접힌 "고객 정보" 줄은 화면에서 뺐다.
+    // 고객 정보 수정(기업 요약 ✎)이 이 영역을 펼쳐 쓰므로 요소는 지우지 않고, 펼쳤을 때만 보인다.
+    wrap.classList.toggle('is-collapsed-hidden', !open);
     const reactions = co.reactions || [];
     const st = co.salesTendency || {};
     const autoFacts = buildCustomerInfoFacts(co);
