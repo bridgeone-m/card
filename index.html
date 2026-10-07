@@ -10384,6 +10384,31 @@ body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-filters > .map
 @media (max-width:760px){
   .rvl-val:not(.is-max){ font-size:9px; }
 }
+
+/* ==========================================================================
+   §기본정보 정리 라운드(신규) — 기업 요약 정보 그리드 · 협약 종료 블록
+   ========================================================================== */
+.cosum-grid{ display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:12px 16px; margin-top:4px; }
+.cosum-item{ display:flex; align-items:flex-start; gap:2px; min-width:0; }
+.cosum-item.is-wide{ grid-column:1 / -1; }
+.cosum-item .cinfo-ico{ width:28px; height:28px; border-radius:8px; margin-right:8px; }
+.cosum-item .cinfo-ico .agr-ico{ width:14px; height:14px; }
+.cosum-text{ min-width:0; }
+.cosum-label{ font-size:11px; font-weight:600; color:#8494A8; line-height:1.3; }
+.cosum-value{ margin-top:2px; font-size:13px; font-weight:700; color:#13243E; line-height:1.45; word-break:keep-all; overflow-wrap:anywhere; }
+.cosum-value.is-muted{ color:#B5C0CE; font-weight:500; }
+@media (max-width:560px){ .cosum-grid{ grid-template-columns:1fr; } }
+/* 협약 진행 탭 맨 아래 — 협약 종료(무효 처리 블록과 같은 조용한 톤) */
+.agr-terminate-holder{ margin-top:10px; }
+.agr-terminate-holder:empty{ display:none; }
+.agr-terminate-zone{
+  display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap;
+  padding:10px 14px; border:1px solid #F1E3E1; border-radius:12px; background:#FFFBFA;
+}
+.agr-terminate-text{ min-width:0; flex:1 1 260px; }
+.agr-terminate-actions{ flex:0 1 auto; min-width:0; }
+.agr-terminate-actions #relcardTerminateForm:not([hidden]),
+.agr-terminate-actions #relcardRestoreConfirm:not([hidden]){ margin-top:8px; max-width:520px; }
 </style>
 </head>
 <body>
@@ -23996,14 +24021,16 @@ window.SHIN2_CRM_APP_INIT = function(){
                  같은 값이 헤더(연락처)와 기업 요약에 이미 있어 세 번 반복되고 있었다.
                  renderInfoStrip 함수는 지우지 않았다(컨테이너가 없으면 조용히 no-op). -->
             <div class="cdet-panel" data-cdet-panel="overview">
+              <!-- §기본정보 정리 라운드(신규) — 업체 관계 카드는 사용자 요청으로 뺐다(협약 종료
+                   처리는 협약 진행 탭 아래로 옮김, 이전 상호는 기업 요약에 값이 있을 때만 표시).
+                   [기업 요약 | 고객 인사이트] 다음 줄에 협약 진행 스텝을 전체 폭으로 둔다. -->
               <div class="cdet-grid2">
                 <div id="cdashCompanySummaryCard"></div>
-                <div id="cdashRelationsCard"></div>
-              </div>
-              <div class="cdet-grid2" style="margin-top:10px;">
-                <div id="cdashAgreementStepsCard"></div>
                 <!-- 고객 인사이트 요약(읽기 전용, 3~4줄 + 더보기) — 수정은 질문지 상담 탭. -->
                 <div id="cdashInsightNoteSummary"></div>
+              </div>
+              <div style="margin-top:10px;">
+                <div id="cdashAgreementStepsCard"></div>
               </div>
               <div class="cdash2-docs-section" style="margin-top:10px;" id="cdashReactionsCol"></div>
             </div>
@@ -24036,6 +24063,7 @@ window.SHIN2_CRM_APP_INIT = function(){
                  그 안의 모든 이벤트 배선이 한 글자도 안 바뀌고 그대로 동작한다. -->
             <div class="cdet-panel" data-cdet-panel="agreement">
               <div id="agreementPopupBody"></div>
+              <div id="cdashRelationsCard" class="agr-terminate-holder"></div>
             </div>
 
             <!-- ⑤ 질문지 상담 (§6) — 질문지 파일·상담 평가·종합 고객 인사이트·요청자료를
@@ -24830,18 +24858,21 @@ window.SHIN2_CRM_APP_INIT = function(){
        값은 전부 기존 필드이거나 이미 있는 조회 함수 결과다(새 계산 없음):
          주요 공종 buildTopCategoriesText(co,2) · 지역 parseMapRegion(co.address). */
     const rows = [];
-    const KV_ICON = { '대표':'user', '주소':'pin', '주요 공종':'tag', '지역':'globe', '업체코드':'idcard', '등급':'badge' };
-    const push = (k, v, muted)=>{ rows.push(
-      `<div class="cdet-kv-k">${KV_ICON[k] ? cinfoIcon(KV_ICON[k]) : ''}${esc(k)}</div><div class="cdet-kv-v${v ? '' : ' is-muted'}">${esc(v || '—')}</div>`); };
+    const KV_ICON = { '대표':'user', '주소':'pin', '주요 공종':'tag', '지역':'globe', '업체코드':'idcard', '이전 상호':'doc' };
+    // §기본정보 정리 라운드 — 아이콘 + (작은 라벨 / 값) 정보 칸. wide=true면 한 줄 전체.
+    const push = (k, v, wide)=>{ rows.push(
+      `<div class="cosum-item${wide ? ' is-wide' : ''}">${cinfoIcon(KV_ICON[k] || 'doc')}<div class="cosum-text"><div class="cosum-label">${esc(k)}</div><div class="cosum-value${v ? '' : ' is-muted'}">${esc(v || '—')}</div></div></div>`); };
     let topCats = null, region = null;
     try{ topCats = buildTopCategoriesText(co, 2); }catch(e){}
     try{ region = parseMapRegion(co.address); }catch(e){}
     // §디자인 완성도 라운드 — 업체명은 팝업 헤더 제목에 이미 있어 반복하지 않는다.
     push('대표', co.repName);
-    push('주소', co.address);
-    push('주요 공종', topCats);
     push('지역', region && region !== '기타' ? region : null);
+    push('주요 공종', topCats);
     push('업체코드', co.code || co.masterCode);
+    push('주소', co.address, true);
+    const formerNames = Array.isArray(co.formerNames) ? co.formerNames.filter(Boolean) : [];
+    if(formerNames.length) push('이전 상호', formerNames.join(', '), true);
     const grade = getCompanyGrade(co);
     const isCore = !!(grade && (grade.raw === 'S' || grade.raw === 'A'));
     wrap.innerHTML = `
@@ -24853,7 +24884,7 @@ window.SHIN2_CRM_APP_INIT = function(){
             <button type="button" class="cdash2-cosum-edit-btn" id="cdashCompanySummaryEditBtn" title="고객 정보 수정" aria-label="고객 정보 수정">✎</button>
           </div>
         </div>
-        <div class="cdet-kv">${rows.join('')}</div>
+        <div class="cosum-grid">${rows.join('')}</div>
       </div>
     `;
     const editBtn = document.getElementById('cdashCompanySummaryEditBtn');
@@ -26083,29 +26114,18 @@ window.SHIN2_CRM_APP_INIT = function(){
       <button type="button" class="btn-danger-link" id="relcardTerminateBtn">협약 종료 처리</button>
       <div id="relcardTerminateForm" hidden></div>
     `;
+    // §기본정보 정리 라운드(신규) — 업체 관계 카드를 없애면서 이 컨테이너는 협약 진행 탭 맨 아래로
+    // 옮겼고, 여기서는 "협약 종료" 처리/취소 블록만 그린다. 이전 상호·관련 업체 표는 그리지 않는다
+    // (이전 상호는 고객 등록 때 선택 입력, 값이 있으면 기업 요약에 표시). 저장 함수는 그대로다.
+    void formerListHtml; void relatedText; void relationNote;
     wrap.innerHTML = `
-      <!-- §7 — compact 2열 표(현재 상호 / 이전 상호 / 관련 업체 / 관계 메모).
-           "협약 진행 상태" 행은 뺐다 — 바로 옆 "협약 진행" 카드가 같은 값을 스텝으로
-           보여준다(§5 중복 제거). 협약 종료 처리/취소 버튼은 그대로 남긴다.
-           이전 상호 입력줄은 [+ 관계 추가] 하나로 접어 뒀다(§7 "버튼 하나만"). -->
-      <div class="cdet-card-head">
-        <div class="cdash2-card-title">업체 관계</div>
-        <button type="button" class="co-text-action" id="relcardAddToggleBtn" style="font-size:11px;padding:2px 8px;white-space:nowrap;">+ 관계 추가</button>
-      </div>
-      <div class="cdet-kv">
-        <div class="cdet-kv-k">${cinfoIcon('building')}현재 상호</div><div class="cdet-kv-v">${esc(co.name)}</div>
-        <div class="cdet-kv-k">${cinfoIcon('doc')}이전 상호</div>
-        <div class="cdet-kv-v">${formerListHtml ? `<span class="cdash-tag-wrap">${formerListHtml}</span>` : '<span class="is-muted">없음</span>'}</div>
-        <div class="cdet-kv-k">${cinfoIcon('userCheck')}관련 업체</div><div class="cdet-kv-v${relatedText ? '' : ' is-muted'}">${esc(relatedText || '—')}</div>
-        <div class="cdet-kv-k">${cinfoIcon('edit')}관계 메모</div><div class="cdet-kv-v${relationNote ? '' : ' is-muted'}">${esc(relationNote || '—')}</div>
-      </div>
-      <div class="cdet-inline-add" id="relcardFormerAddRow" hidden>
-        <input type="text" id="relcardFormerInput" placeholder="이전 상호 입력" />
-        <button type="button" class="co-text-action" id="relcardFormerAddBtn">추가</button>
-        <span class="cdash-cloud-save-status" id="relcardFormerStatus"></span>
-      </div>
-      <div style="margin-top:7px;">${agreementBlockHtml}</div>
-    `;
+      <div class="agr-terminate-zone">
+        <div class="agr-terminate-text">
+          <div class="agr-danger-zone-title">협약 종료</div>
+          <div class="agr-danger-zone-desc">협약이 끝난 업체를 종료 처리합니다. 고객·체결일·활동 기록은 그대로 남습니다.</div>
+        </div>
+        <div class="agr-terminate-actions">${agreementBlockHtml}</div>
+      </div>`;
     const addToggle = document.getElementById('relcardAddToggleBtn');
     const addRow = document.getElementById('relcardFormerAddRow');
     if(addToggle && addRow) addToggle.addEventListener('click', ()=>{
@@ -39392,8 +39412,9 @@ window.SHIN2_CRM_APP_INIT = function(){
              메인 그리드에서 빼고, "고객 정보 수정" 팝오버 안 이 자리로 옮겼다. 렌더 함수
              (renderCompanyRelationsCard)/데이터/저장 로직은 전혀 안 바뀌었다 — 그려지는
              컨테이너 위치만 이동, 기능(이전 상호 추가·삭제, 협약 종료 처리·취소) 그대로.
-             카드 자체가 이미 "업체 관계" 제목을 그리므로 여기서 별도 subtitle은 안 붙인다. -->
-        <div id="cdashRelationsCard" style="margin-top:12px;"></div>
+             카드 자체가 이미 "업체 관계" 제목을 그리므로 여기서 별도 subtitle은 안 붙인다.
+             §기본정보 정리 라운드 — 업체 관계를 없애면서 이 자리는 비웠다. 협약 종료 처리는
+             협약 진행 탭 맨 아래(#cdashRelationsCard, 하나뿐)에서 한다. -->
       </div>
     `;
     document.getElementById('cdashReactionsAccHeader').addEventListener('click', (e)=>{
@@ -42125,7 +42146,7 @@ window.SHIN2_CRM_APP_INIT = function(){
      날짜칸 안에는 넣지 않는다. 모양만 바뀌고 입력·저장·OCR 동작은 그대로다. */
   const ADDCO_LABEL_ICONS = [
     ['상호','building'], ['업체코드','tag'], ['대표자','user'], ['담당자','userCheck'], ['직급','badge'],
-    ['휴대전화','mobile'], ['연락처','phone'], ['Email','mail'], ['주소','pin'], ['사업자번호','idcard']
+    ['휴대전화','mobile'], ['연락처','phone'], ['Email','mail'], ['주소','pin'], ['사업자번호','idcard'], ['이전 상호','doc']
   ];
   function decorateAddCompanyForm(wrap){
     if(!wrap) return;
@@ -42243,6 +42264,7 @@ window.SHIN2_CRM_APP_INIT = function(){
         </div>
         <div class="co-form-field co-form-span2"><label>주소</label><input type="text" id="crmNewF_address" /></div>
         <div class="co-form-field co-form-span2"><label>사업자번호</label><input type="text" id="crmNewF_bizRegNo" /></div>
+        <div class="co-form-field co-form-span2"><label>이전 상호(선택)</label><input type="text" id="crmNewF_formerNames" placeholder="상호가 바뀐 업체만 입력 · 여러 개는 쉼표(,)로 구분" /></div>
       </div>
       <details class="co-form-more">
         <summary>▸ 추가 정보(FAX · 홈페이지 · 자본금 · 비고)</summary>
@@ -42562,6 +42584,12 @@ window.SHIN2_CRM_APP_INIT = function(){
       patch.code = document.getElementById('crmNewF_code').value.trim();
       patch.note = document.getElementById('crmNewF_note').value.trim();
       patch.region = Array.from(regionSelected);
+      // §이전 상호 선택 입력(신규) — 입력했을 때만 formerNames로 저장한다(비우면 필드 자체를 안 만든다).
+      // 현재 상호와 같은 이름·중복은 빼고, 저장은 기존 addCompany 경로 그대로(normalizeCompanyPatch가 표기 정리).
+      const formerEl = document.getElementById('crmNewF_formerNames');
+      const formerList = formerEl ? formerEl.value.split(/[,，\n]/).map(t=> t.trim()).filter(Boolean) : [];
+      const formerUniq = formerList.filter((n,i)=> formerList.indexOf(n) === i && n !== (document.getElementById('crmNewF_name').value || '').trim());
+      if(formerUniq.length) patch.formerNames = formerUniq;
       // §PDF 대상 선정 재구성 라운드(신규) — 등록 시 patch.distributionLists를 더 이상
       // 쓰지 않는다. 신규 레코드에는 이 필드 자체가 생기지 않고, PDF 대상은 출력 화면에서
       // 정해진다(외부용=MOU 체결 자동, 내부용=사용자 체크).
