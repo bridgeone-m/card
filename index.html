@@ -10130,6 +10130,86 @@ body.crm-fixed-view #crmFilterRow.is-dropdown > .crm-status-dd{ height:auto !imp
   .aptpdf-wide .pdf-export-right{ flex:none; }
   .aptpdf-wide .pdf-preview-wrap{ flex:none; height:70vh; min-height:360px; }
 }
+
+/* ==========================================================================
+   §지도 왼쪽 고정 라운드(신규) — 오른쪽 지도 드로어를 그대로 왼쪽 화면 맨 위~맨 아래에
+   상시 고정한다. 패널 안쪽(폭·글꼴·색·탭·검색·필터·지도·목록)은 드로어 CSS
+   (#mapDistributionModalRoot .map-modal-panel …)를 그대로 쓰고, 여기서는 위치·높이·
+   테두리만 바꾼다. 고객목록 화면(#listView)이 보일 때만 적용된다.
+   ========================================================================== */
+:root{ --mapdock-w: clamp(476px, calc(32vw + 76px), 576px); }
+
+body.crm-mapdock[data-crm-view="listView"] #mapDistributionModalRoot.crm-mapdock-root{
+  position:fixed; top:0; left:0; bottom:0; width:var(--mapdock-w);
+  z-index:var(--z-map, 10); isolation:isolate;
+}
+body.crm-mapdock #mapDistributionModalRoot .map-modal-overlay.map-docked{
+  position:absolute !important; inset:0 !important; z-index:auto !important;
+  padding:0 !important; background:transparent !important;
+  display:flex !important; align-items:stretch !important; justify-content:stretch !important;
+  animation:none !important;
+}
+body.crm-mapdock #mapDistributionModalRoot .map-modal-overlay.map-docked > .map-modal-panel{
+  width:100% !important; min-width:0 !important; max-width:none !important;
+  height:100% !important; max-height:none !important; margin:0 !important;
+  border-radius:0 !important; border-left:0 !important; border-right:1px solid #E3EAF3 !important;
+  box-shadow:4px 0 18px rgba(15,23,42,.06) !important;
+  animation:none !important;
+}
+
+/* 오른쪽 고객관리 영역 — 왼쪽 패널 폭만큼 비우고 나머지 전부 사용 */
+body.crm-mapdock[data-crm-view="listView"]{
+  padding-left:calc(var(--mapdock-w) + 16px) !important;
+  padding-top:10px !important; padding-right:20px !important;
+}
+/* 상단 메뉴·KPI 높이와 여백을 줄여 고객목록이 더 위에서 시작 */
+body.crm-mapdock[data-crm-view="listView"] .gnav-inner{
+  height:48px !important; min-height:0 !important; padding-top:4px !important; padding-bottom:4px !important;
+}
+body.crm-mapdock[data-crm-view="listView"] .crm-main-grid{
+  grid-template-columns:minmax(0,1fr) !important;
+  grid-template-rows:auto minmax(0,1fr) auto !important;
+  gap:10px !important; margin-top:10px !important;
+}
+body.crm-mapdock[data-crm-view="listView"] .crm-main-grid .crm-kpi-cell{ grid-column:1 !important; grid-row:1 !important; }
+body.crm-mapdock[data-crm-view="listView"] .crm-main-grid .crm-list-col{ grid-column:1 !important; grid-row:2 !important; min-height:0 !important; }
+body.crm-mapdock[data-crm-view="listView"] .crm-kpi-cell,
+body.crm-mapdock[data-crm-view="listView"] #crmKpiStrip{ margin:0 !important; height:auto !important; min-height:0 !important; }
+/* 좁아진 상단 메뉴 — 메뉴 글자가 두 줄로 꺾이지 않게, 대신 상단 검색칸이 줄어든다 */
+body.crm-mapdock[data-crm-view="listView"] .gnav-menu{ flex:none !important; }
+body.crm-mapdock[data-crm-view="listView"] .gnav-menu .top-tab{ white-space:nowrap !important; }
+body.crm-mapdock[data-crm-view="listView"] .gnav-right{ min-width:0 !important; flex:1 1 auto !important; justify-content:flex-end !important; }
+body.crm-mapdock[data-crm-view="listView"] .nf-nav-search{ min-width:120px !important; flex:0 1 220px !important; width:auto !important; }
+body.crm-mapdock[data-crm-view="listView"] #crmKpiStrip .kpi-item{
+  min-height:54px !important; height:auto !important; padding:6px 14px !important;
+}
+
+/* 미팅 관리 — 고객목록 아래 한 줄 카드(내용은 그대로, 길면 카드 안에서만 스크롤) */
+body.crm-mapdock[data-crm-view="listView"] .crm-main-grid .nf-side-right{
+  grid-column:1 !important; grid-row:3 !important; height:auto !important; min-height:0 !important;
+}
+body.crm-mapdock[data-crm-view="listView"] .nf-side-right > .nf-card-action{
+  height:auto !important; padding:10px 14px !important;
+}
+/* 넓어진 폭을 써서 알람 행을 2열로 — 높이는 줄이고 행 수·내용은 그대로(행이 눌려 겹치지 않게 shrink 금지) */
+body.crm-mapdock[data-crm-view="listView"] #crmMiniMapAlarm .sa-alarm-body,
+body.crm-mapdock[data-crm-view="listView"] #crmMiniMapAlarm .sa-alarm-list{ flex:none !important; height:auto !important; }
+body.crm-mapdock[data-crm-view="listView"] #crmMiniMapAlarm .sa-alarm-list{
+  display:grid !important; grid-template-columns:repeat(2, minmax(0,1fr)); column-gap:18px;
+}
+body.crm-mapdock[data-crm-view="listView"] #crmMiniMapAlarm .sa-alarm-list > *{ flex-shrink:0 !important; }
+.sa-meeting-title{ font-size:13px; font-weight:700; color:#17345F; margin:0 0 8px; }
+
+/* 좁은 화면 — 고정하지 않고 고객관리 위에 같은 패널을 그대로 둔다 */
+@media (max-width:1100px){
+  body.crm-mapdock[data-crm-view="listView"]{ padding-left:12px !important; padding-right:12px !important; }
+  body.crm-mapdock[data-crm-view="listView"] #mapDistributionModalRoot.crm-mapdock-root{
+    position:relative; top:auto; bottom:auto; width:auto; height:82vh; margin:0 0 12px; flex:none;
+  }
+  body.crm-mapdock[data-crm-view="listView"] #mapDistributionModalRoot .map-modal-overlay.map-docked > .map-modal-panel{
+    border:1px solid #E3EAF3 !important; border-radius:16px !important;
+  }
+}
 </style>
 </head>
 <body>
@@ -10280,6 +10360,9 @@ body.crm-fixed-view #crmFilterRow.is-dropdown > .crm-status-dd{ height:auto !imp
        만들지 않는다 — 해당 업무 데이터/자동 Todo(§고객 진행단계 연동 라운드)는 그대로
        살아있고 v2의 "내 할 일"에서 계속 보인다(§1, 첫 화면 표시만 뺀 것). -->
   <div id="listView">
+    <!-- §지도 왼쪽 고정 라운드 — 지도 패널 root를 #listView 맨 앞으로 옮겼다(넓은 화면에선 position:fixed로
+         왼쪽에 고정되고, 좁은 화면에선 고객관리 위에 그대로 놓인다). id는 이것 하나뿐이다. -->
+    <div id="mapDistributionModalRoot"></div>
     <!-- §상단 헤더 재정리 라운드 2(신규) — 사용자가 빨간 X로 지적한 "고객 N" 큰 타이틀
          영역을 화면에서 완전히 뺐다. #crmListTitle에 여러 렌더 함수(renderList/
          L2→L3 전환 탭/신규 협약사 탭)가 조건 없이 textContent·innerHTML을 그대로
@@ -10440,7 +10523,6 @@ body.crm-fixed-view #crmFilterRow.is-dropdown > .crm-status-dd{ height:auto !imp
          (§13, 아래 .crm-main-grid 1열 규칙). 이 root는 이제 팝업 전용이라 그리드 밖
          최상위에 둔다 — openMapDistributionModal이 여기에 .map-modal-overlay(position:fixed)를
          그린다. 인라인 전용이던 .map-embed-root 클래스는 더 이상 붙이지 않는다. -->
-    <div id="mapDistributionModalRoot"></div>
     <!-- §TOP5 KPI 카드 이동 라운드(신규) — 페이지 맨 아래에 있던 "실적상승 업체 TOP 5"
          섹션(#crmRisingSection)을 없앴다. 같은 내용을 상단 KPI 5번째 카드의 팝오버에서
          보여준다(renderKpiStrip의 risingTop5 항목 + openRisingTop5Popover 참고).
@@ -10567,8 +10649,6 @@ body.crm-fixed-view #crmFilterRow.is-dropdown > .crm-status-dd{ height:auto !imp
   <!-- §MOU 체결 업체 선물 등급 산정 라운드(신규) — "🎁 선물 등급" 버튼이 여는 분석 모달
        전용 root. 다른 중앙 모달과 같은 .pi-overlay/.pi-panel 패턴 재사용. -->
   <div id="giftGradeModalRoot"></div>
-  <!-- §지도 분포 라운드(신규): "지도 분포" 버튼이 여는 중앙 대형 모달 전용 root. -->
-  <div id="mapDistributionModalRoot"></div>
   <!-- §엑셀/Google Sheets 가져오기 제거 라운드(신규) — 엑셀 실적 가져오기 전용
        root(pourExcelImportModalRoot/pourExcelHistoryModalRoot)는 그 화면을 완전히
        제거하면서 함께 지웠다(§요청 1). 지도용 Google Sheets는 이번 라운드에서 만들지
@@ -19978,109 +20058,17 @@ window.SHIN2_CRM_APP_INIT = function(){
   // 카드 뼈대는 한 번만 만든다 — 지도 노드를 renderList마다 지웠다 다시 만들면
   // 지도 인스턴스가 매번 새로 생겨 느리고 깜빡인다.
   function ensureSalesActionShell(wrap){
-    if(wrap.dataset.shell === '4') return;
-    wrap.dataset.shell = '4';
+    // §지도 왼쪽 고정 라운드(신규) — 지도 패널 전체(기존 오른쪽 드로어)가 왼쪽에 상시 고정되면서
+    // 이 카드의 미리보기 지도·지도 검색창·"전체 보기" 버튼은 중복이 되어 뺐다. 남는 것은
+    // 미팅 관리(후속 미팅 알람 3탭) 하나뿐이고, 내용·계산은 renderCrmMiniMapAlarm 그대로다.
+    // 카드는 CSS로 고객목록 아래에 놓인다.
+    if(wrap.dataset.shell === '5') return;
+    wrap.dataset.shell = '5';
     wrap.innerHTML = `
-      <div class="sa-map-block">
-        <div class="sa-map-head">
-          <div class="sa-map-titles">
-            <div class="sa-map-title">지도 검색</div>
-            <div class="sa-map-sub">시공사·아파트·근처 시공을 한 곳에서 확인</div>
-          </div>
-          <button type="button" class="open-map-modal-btn sa-map-open" id="crmMiniMapOpen" aria-label="지도 검색 전체 보기"></button>
-        </div>
-        <div class="sa-map-mode-tabs" role="tablist" aria-label="지도 검색 방식">
-          <button type="button" class="sa-map-mode-btn is-active" data-mini-map-tab="company" role="tab">시공사 지역분포</button>
-          <button type="button" class="sa-map-mode-btn" data-mini-map-tab="apartment" role="tab">아파트 시공</button>
-          <button type="button" class="sa-map-mode-btn" data-mini-map-tab="near" role="tab">근처 시공</button>
-        </div>
-        <!-- §메인 지도 검색창 라운드(신규) — 메인 지도 카드에서 바로 검색. Enter/검색 버튼을 누르면
-             오른쪽 결과 드로어(기존 지도 모달)를 같은 탭으로 열고 그 탭의 기존 검색창에 검색어를
-             넣어 실행한다 — 검색·필터·지도 이동·거리 계산은 전부 드로어의 기존 로직 그대로. -->
-        <form class="sa-map-search" id="crmMiniMapSearchForm" role="search" autocomplete="off">
-          <svg class="sa-map-search-ico" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-          <input type="text" id="crmMiniMapSearchInput" class="sa-map-search-input" placeholder="지역명 · 업체명 검색 (예: 수원)" aria-label="지도 검색" />
-          <button type="submit" class="sa-map-search-btn" id="crmMiniMapSearchBtn">검색</button>
-        </form>
-        <div class="sa-map-wrap">
-          <div class="sa-map-canvas" id="crmMiniMap">
-            <div class="sa-map-loading">지도를 불러오는 중…</div>
-          </div>
-          <!-- 메인 지도는 빠른 현황 미리보기다. 실제 검색/필터/결과 목록은 오른쪽 드로어에서 연다. -->
-          <button type="button" class="sa-map-hit" id="crmMiniMapHit"
-            aria-label="시공사 지역분포 검색 열기"></button>
-        </div>
+      <div class="sa-meeting-block">
+        <div class="sa-meeting-title">미팅 관리</div>
         <div class="sa-alarm" id="crmMiniMapAlarm"></div>
       </div>`;
-
-    // 기존 지도 검색 로직을 그대로 재사용한다. 메인에서는 검색 종류만 고르고,
-    // 결과가 많아도 본문을 밀지 않도록 오른쪽 드로어(기존 map modal)에 표시한다.
-    const openMapMode = (mode)=>{
-      try{
-        openMapDistributionModal();
-        // modal shell은 동기적으로 먼저 만들어지므로 기존 탭 버튼을 클릭해
-        // 기존 데이터/필터/지오코딩/거리 계산 로직을 그대로 탄다.
-        // §메인 지도 검색창 라운드 — 드로어 본문이 비동기로 다 그려진 뒤(SDK·첫 탭 렌더 완료)에 탭을
-        // 바꿔야 한다. 다음 프레임에 한 번만 누르면 첫 렌더가 끝나며 시공사 탭으로 되돌아갔다.
-        // 본문 검색칸이 생길 때까지(최대 4초) 기다렸다가 같은 탭 버튼을 누른다.
-        if(mode === 'company') return;
-        const startedAt = Date.now();
-        const trySwitch = ()=>{
-          const target = document.querySelector(`#mapDistributionModalRoot [data-map-tab="${mode}"]`);
-          const ready = document.getElementById('mapFilterSearch') || document.getElementById('aptFilterSearch');
-          if(target && ready){ if(!target.classList.contains('is-active')) target.click(); return; }
-          if(Date.now() - startedAt < 4000) setTimeout(trySwitch, 120);
-        };
-        setTimeout(trySwitch, 0); // rAF는 백그라운드 탭에서 멈춰서 setTimeout으로
-      }catch(err){ console.warn('지도 검색 열기 실패:', err); }
-    };
-    const MINI_SEARCH_PLACEHOLDER = {
-      company: '지역명 · 업체명 검색 (예: 수원)',
-      apartment: '아파트명 · 지역 · 시공사 검색',
-      near: '주소 또는 장소명으로 근처 찾기'
-    };
-    let miniMapMode = 'company';
-    const miniInput = wrap.querySelector('#crmMiniMapSearchInput');
-    const setMiniMode = (mode)=>{
-      miniMapMode = mode;
-      if(miniInput) miniInput.placeholder = MINI_SEARCH_PLACEHOLDER[mode] || MINI_SEARCH_PLACEHOLDER.company;
-    };
-    // 드로어가 열리고 해당 탭의 기존 입력칸이 생길 때까지 잠깐 기다렸다가(최대 4초) 검색어를 넣는다.
-    const runInDrawer = (mode, q)=>{
-      openMapMode(mode);
-      const targetId = mode === 'near' ? 'aptNearSearchInput' : (mode === 'apartment' ? 'aptFilterSearch' : 'mapFilterSearch');
-      const startedAt = Date.now();
-      const tick = ()=>{
-        const input = document.getElementById(targetId);
-        if(!input){ if(Date.now() - startedAt < 4000) setTimeout(tick, 120); return; }
-        input.value = q;
-        if(mode === 'near'){
-          const go = document.getElementById('aptNearSearchBtn');
-          if(go) go.click();
-        } else {
-          input.dispatchEvent(new Event('input', { bubbles:true }));
-        }
-      };
-      setTimeout(tick, 150);
-    };
-    const form = wrap.querySelector('#crmMiniMapSearchForm');
-    if(form) form.addEventListener('submit', (e)=>{
-      e.preventDefault();
-      const q = String((miniInput && miniInput.value) || '').trim();
-      if(!q){ openMapMode(miniMapMode); return; }
-      runInDrawer(miniMapMode, q);
-    });
-    wrap.querySelectorAll('[data-mini-map-tab]').forEach(btn=> btn.addEventListener('click', ()=>{
-      wrap.querySelectorAll('[data-mini-map-tab]').forEach(b=> b.classList.toggle('is-active', b === btn));
-      const mode = btn.getAttribute('data-mini-map-tab') || 'company';
-      setMiniMode(mode);
-      const q = String((miniInput && miniInput.value) || '').trim();
-      if(q) runInDrawer(mode, q); else openMapMode(mode);
-    }));
-    const openBtn = document.getElementById('crmMiniMapOpen');
-    if(openBtn) openBtn.addEventListener('click', ()=> openMapMode('company'));
-    const hit = document.getElementById('crmMiniMapHit');
-    if(hit) hit.addEventListener('click', ()=> openMapMode('company'));
   }
 
   // ---- 미니 지도 ----------------------------------------------------------
@@ -20405,7 +20393,11 @@ window.SHIN2_CRM_APP_INIT = function(){
     const wrap = document.getElementById('crmActionCard');
     if(!wrap) return;
     ensureSalesActionShell(wrap);
-    renderCrmMiniMap();
+    // §지도 왼쪽 고정 라운드 — 미리보기 지도(renderCrmMiniMap)는 그리지 않고 미팅 알람만 갱신한다.
+    // 지도는 기존 지도 패널을 왼쪽 고정 영역에 한 번만 마운트한다(이미 있으면 바로 빠져나온다).
+    renderCrmMiniMapAlarm();
+    try{ mountMapDistributionInline(); }
+    catch(err){ console.warn('왼쪽 지도 패널 마운트 실패:', err); }
   }
 
   // 우측 "최근 요청" — buildRequestListItems() 결과를 업체 구분 없이 최신순으로 모은다.
@@ -42540,15 +42532,19 @@ window.SHIN2_CRM_APP_INIT = function(){
     if(!root) return;
     mapModalOpen = true;
     invalidateMapCompaniesCache();
+    // §지도 왼쪽 고정 라운드(신규) — 오른쪽 드로어 그대로를 왼쪽 화면 맨 위~맨 아래에 상시 고정한다.
+    // .map-docked: ModalManager가 팝업으로 잡지 않게 하는 표시(스크롤 잠금·ESC·z-index 대상 아님).
+    // 상시 영역이라 닫기 버튼은 두지 않는다. 내부(탭·검색·필터·지도·목록)는 드로어와 같은 렌더 경로.
+    root.classList.add('crm-mapdock-root');
+    document.body.classList.add('crm-mapdock');
     root.innerHTML = `
-      <div class="map-modal-overlay map-embedded" id="mapModalOverlay">
+      <div class="map-modal-overlay map-docked" id="mapModalOverlay">
         <div class="map-modal-panel" role="region" aria-label="시공사 지역 분포">
           <div class="map-modal-head">
             <div class="map-modal-title-wrap">
               <div class="map-modal-title" id="mapModalTitle">시공사 지역 분포</div>
               <div class="map-modal-subtitle" id="mapModalSubtitle">전국 등록 업체의 위치와 영업 현황</div>
             </div>
-            <button type="button" class="map-modal-close" id="mapModalCloseBtn" aria-label="닫기">&times;</button>
           </div>
           <div class="map-modal-tabs" id="mapModalTabs">
             <div class="map-modal-tabs-list">
@@ -42606,6 +42602,18 @@ window.SHIN2_CRM_APP_INIT = function(){
       renderMapModalBody();
     }));
     renderMapModalBody();
+    // 창 크기가 바뀌면 지도 크기를 다시 계산한다(보던 범위는 유지 — relayout 함수가 bounds를 지킨다).
+    if(!window.__crmMapDockResizeBound){
+      window.__crmMapDockResizeBound = true;
+      let t = null;
+      window.addEventListener('resize', ()=>{
+        clearTimeout(t);
+        t = setTimeout(()=>{
+          try{ if(mapCanvasState && typeof mapCanvasState.relayout === 'function') mapCanvasState.relayout(); }catch(err){ /* 무시 */ }
+          try{ if(aptCanvasState && typeof aptCanvasState.relayout === 'function') aptCanvasState.relayout(); }catch(err){ /* 무시 */ }
+        }, 150);
+      });
+    }
   }
 
   // §4/§9: 키가 없거나 SDK 로드에 실패해도 나머지 CRM은 전혀 영향받지 않는다 — 이
@@ -47223,7 +47231,7 @@ else { window.addEventListener('shin2-crm-gate-passed', window.SHIN2_CRM_APP_INI
      ========================================================================== */
   if(typeof MutationObserver === 'undefined') return; // 아주 오래된 브라우저 방어
 
-  const OVERLAY_SELECTOR = '.pi-overlay, .chart-overlay, .map-modal-overlay, .side-drawer-overlay, .gnav-drawer-overlay, .chart-memo-overlay';
+  const OVERLAY_SELECTOR = '.pi-overlay, .chart-overlay, .map-modal-overlay:not(.map-docked), .side-drawer-overlay, .gnav-drawer-overlay, .chart-memo-overlay';
   // 닫기 버튼으로 쓰이는 클래스/ id 들 — closeTopModal이 "그 팝업 자신의 닫기 경로"를
   // 그대로 타도록, 직접 DOM을 지우지 않고 이 버튼을 누른다(각자의 정리 코드가 돈다).
   const CLOSE_BTN_SELECTOR = [
