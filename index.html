@@ -10431,6 +10431,27 @@ body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-filters > .map
 .cosum-label{ font-size:12px !important; font-weight:600; color:#7C8BA1 !important; }
 .cosum-value{ margin:0 !important; font-size:13.5px !important; font-weight:700; color:#13243E; line-height:1.5; }
 .cosum-value.is-muted{ color:#B5C0CE !important; font-weight:500; }
+
+/* ==========================================================================
+   §MOU 진행상황 글자 크기 통일 라운드(신규) — 고객관리 탭과 같은 크기로 맞춘다.
+   고객관리 기준: 표 머리 14px · 업체명 13.5px · 칩 13px · 보조 글자 12px ·
+   배지 11.5px · KPI 숫자 20px / 라벨 11.5px. 이 화면(#workQueueView) 안에서만 바꾼다.
+   ========================================================================== */
+#workQueueView .workq-table th{ font-size:14px !important; font-weight:750 !important; }
+#workQueueView .workq-co-link{ font-size:13.5px !important; font-weight:750 !important; }
+#workQueueView .workq-days{ font-size:13.5px !important; }
+#workQueueView .stage-step-label{ font-size:12px !important; }
+#workQueueView .workq-delay-badge{ font-size:11.5px !important; }
+#workQueueView .workq-action-btn{ font-size:12px !important; height:28px !important; padding:0 12px !important; }
+#workQueueView .workq-notask-badge{ font-size:12px !important; }
+#workQueueView .workq-sent-badge{ font-size:11.5px !important; height:24px !important; }
+#workQueueView .workq-mail-btn{ font-size:12px !important; }
+#workQueueView .list-filter-chip{ font-size:13px !important; font-weight:700 !important; }
+/* 지금 해야 할 업무 카드 — 고객관리 KPI 카드와 같은 숫자/라벨 크기 */
+#workQueueView .workq-task-card-num{ font-size:20px !important; }
+#workQueueView .workq-task-card-unit{ font-size:11.5px !important; }
+#workQueueView .workq-task-card-label{ font-size:12.5px !important; }
+#workQueueView .workq-task-card-sub{ font-size:11.5px !important; }
 </style>
 </head>
 <body>
