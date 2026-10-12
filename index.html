@@ -10326,11 +10326,18 @@ body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-filters > .map
   width:100% !important; min-width:0 !important; justify-content:center; box-sizing:border-box; white-space:nowrap;
 }
 #agreementPopupBody .agr-slot-empty{ display:block; width:30px; min-height:1px; }
-/* 질문서 회신 확인 알림 */
-.qreply-remind-help{ font-size:12.5px; color:var(--text-muted); margin-bottom:10px; }
-.qreply-remind-check{ display:flex; align-items:center; gap:9px; padding:9px 10px; margin-bottom:6px; border:1px solid var(--line); border-radius:8px; font-size:13.5px; cursor:pointer; }
-.qreply-remind-check:has(input:checked){ background:#ECFDF3; border-color:#BBE5CB; }
-.qreply-remind-check input{ width:18px; height:18px; margin:0; flex:none; cursor:pointer; }
+/* 질문서 회신 체크리스트 팝업 — 오른쪽 아래 "질문서 공유·저장" 알림과 같은 기록을 쓴다 */
+.reply-checklist-help{ font-size:12.5px; color:var(--text-muted); margin-bottom:10px; line-height:1.5; }
+.reply-checklist-body .consult-req-alert-row-name, .reply-checklist-body .alert-details{ display:none; }
+.reply-checklist-body .alert-check{ display:flex; align-items:center; gap:9px; padding:9px 10px; margin:0 0 6px; border:1px solid var(--line); border-radius:8px; font-size:13.5px; cursor:pointer; }
+.reply-checklist-body .alert-check:has(input:checked){ background:#ECFDF3; border-color:#BBE5CB; }
+.reply-checklist-body .alert-check input{ width:18px; height:18px; margin:0; flex:none; cursor:pointer; }
+.reply-checklist-body .alert-actions{ display:flex; justify-content:flex-end; margin-top:10px; }
+.reply-checklist-body .alert-actions [hidden]{ display:none; }
+.reply-checklist-body .consult-req-alert-done{ height:34px; min-width:96px; border:1px solid #191e34; background:#191e34; color:#fff; border-radius:7px; font-size:13px; font-weight:700; cursor:pointer; }
+.reply-checklist-body .consult-req-alert-done:disabled{ background:#eef0f3; border-color:#e3e6eb; color:#737c89; cursor:default; }
+.reply-checklist-body .alert-status{ display:block; min-height:18px; font-size:12px; color:#C2403A; }
+.reply-checklist-wait{ font-size:13px; color:var(--text-muted); padding:10px 0; }
 /* 메일 발송됨 — 초록 톤(버튼은 그대로 눌러 재발송 가능) */
 #agreementPopupBody .agr-stage-row-actions .is-mail-sent{
   background:#ECFDF3 !important; border:1px solid #BBE5CB !important; color:#15803D !important; font-weight:700 !important;
@@ -27237,6 +27244,8 @@ window.SHIN2_CRM_APP_INIT = function(){
       at: new Date().toISOString(), by: crmCurrentUserLabel()
     });
     const companyPatch = {partnerDashboard:Object.assign({},pd,{stageCorrections:corrections,stageCorrectionLog:log})};
+    if(after && after.status==='done' && stageKey==='qReply' && after.dateText)
+      Object.assign(companyPatch, window.WebsiteCleanup.eventPatch(co,'qReply',after.dateText));
     if(after && after.status==='done' && (stageKey==='mouDone' || (stageKey==='m2Done' && meta && meta.reason==='완료 처리'))){
       Object.assign(companyPatch, window.WebsiteCleanup.eventPatch(co,stageKey==='m2Done'?'m2':'mou',after.dateText,
         isConfirmedPartner(Object.assign({},co,companyPatch), buildProgressStages(Object.assign({},co,companyPatch)))));
@@ -32427,6 +32436,10 @@ window.SHIN2_CRM_APP_INIT = function(){
     closeStageDateModal();
     if(document.getElementById('agreementPopupBody')) renderAgreementPopupBody(companyId);
     if(!result.ok) { setAgrSaveStatus('저장 실패 · 로컬 저장에 실패했습니다', 'error'); return; }
+    if(stageKey === 'qReply' && patch && patch.status === 'done' && typeof window.SHIN2_OPEN_REPLY_CHECKLIST === 'function'){
+      const savedCo = D.findCompany(companyId);
+      window.SHIN2_OPEN_REPLY_CHECKLIST(companyId, savedCo ? savedCo.name : '');
+    }
     setAgrSaveStatus('저장 중...', 'progress');
     confirmCloudSave('companies', result.list).then(r=>{
       if(r.ok){
@@ -32488,40 +32501,6 @@ window.SHIN2_CRM_APP_INIT = function(){
     m1Scheduled:'scheduled', m2Scheduled:'scheduled',
     m1Done:'done', m2Done:'done', mouDone:'done'
   };
-  // §질문서 회신 확인 알림(신규) — [회신]을 누르면 회신일 입력 전에 "고객 인사이트 등록 /
-  // 잔디 등록"을 했는지 먼저 확인시킨다. 두 항목을 모두 체크해야 회신일 입력으로 넘어간다.
-  // 확인용 팝업일 뿐 저장값은 없다(진행단계 저장은 기존 openStageDateModal 그대로).
-  function openQuestionnaireReplyReminder(onConfirm){
-    const root = document.getElementById('agreementModalRoot') || document.body;
-    const prev = document.getElementById('qReplyReminderOverlay');
-    if(prev) prev.remove();
-    const wrap = document.createElement('div');
-    wrap.innerHTML = `
-      <div class="pi-overlay" id="qReplyReminderOverlay" style="z-index:10012;">
-        <div class="pi-panel qreply-remind-panel" style="max-width:380px;" role="alertdialog" aria-modal="true" aria-labelledby="qReplyRemindTitle">
-          <div class="pi-head"><div class="pi-title" id="qReplyRemindTitle">질문서 회신 — 등록했나요?</div></div>
-          <div class="pi-body">
-            <div class="qreply-remind-help">회신일을 넣기 전에 아래 두 가지를 확인해 주세요.</div>
-            <label class="qreply-remind-check"><input type="checkbox" data-qreply-check /> 질문서를 <b>고객 인사이트</b>에 등록했습니다</label>
-            <label class="qreply-remind-check"><input type="checkbox" data-qreply-check /> 질문서를 <b>잔디</b>에 등록했습니다</label>
-          </div>
-          <div class="pi-actions">
-            <button type="button" class="co-text-action" id="qReplyRemindCancel">취소</button>
-            <button type="button" class="co-text-action primary" id="qReplyRemindOk" disabled>확인 · 회신일 입력</button>
-          </div>
-        </div>
-      </div>`;
-    const overlay = wrap.firstElementChild;
-    root.appendChild(overlay);
-    const ok = overlay.querySelector('#qReplyRemindOk');
-    const checks = Array.from(overlay.querySelectorAll('[data-qreply-check]'));
-    const close = ()=> overlay.remove();
-    checks.forEach(c=> c.addEventListener('change', ()=>{ ok.disabled = !checks.every(x=> x.checked); }));
-    overlay.querySelector('#qReplyRemindCancel').addEventListener('click', close);
-    bindSafeBackdropClose(overlay, close);
-    ok.addEventListener('click', ()=>{ if(ok.disabled) return; close(); onConfirm(); });
-    checks[0].focus();
-  }
   function openStageDateModal(companyId, stageKey, label){
     const co = D.findCompany(companyId);
     if(!co) return;
@@ -34486,9 +34465,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     // 누르면 바로 날짜 전용 팝업(openStageDateModal)이 뜬다.
     body.querySelectorAll('[data-agr-date-key]').forEach(btn=>{
       btn.addEventListener('click', ()=>{
-        const key = btn.getAttribute('data-agr-date-key');
-        const open = ()=> openStageDateModal(co.id, key, btn.getAttribute('data-agr-date-label') || undefined);
-        if(key === 'qReply') openQuestionnaireReplyReminder(open); else open();
+        openStageDateModal(co.id, btn.getAttribute('data-agr-date-key'), btn.getAttribute('data-agr-date-label') || undefined);
       });
     });
     // §수동 MOU 체결 확정 라운드(신규) — "MOU 체결로 확정 / 해제" 칩.

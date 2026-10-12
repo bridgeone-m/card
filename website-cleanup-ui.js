@@ -109,7 +109,40 @@
     const dock=window.crmAlertDock();dock.insertBefore(el,document.getElementById('consultReqAlert'));
     cards.set(type,card);return card;
   }
+  // 질문서 회신 체크리스트 팝업 — 같은 알림 기록(reply)을 같은 save()로 체크하므로, 팝업에서 체크하면
+  // 오른쪽 아래 알림에도 그대로 반영되고, 팝업을 닫아도 남은 항목은 알림으로 계속 남는다.
+  let popup=null;
+  function closePopup(){if(popup){clearTimeout(popup.timer);popup.el.remove();popup=null;}}
+  window.SHIN2_OPEN_REPLY_CHECKLIST=function(companyId,companyName){
+    closePopup();
+    const el=document.createElement('div');el.className='pi-overlay';el.id='replyChecklistOverlay';el.style.zIndex='10012';
+    el.innerHTML='<div class="pi-panel" style="max-width:380px;" role="dialog" aria-modal="true" aria-labelledby="replyChecklistTitle">'+
+      '<div class="pi-head"><div class="pi-title" id="replyChecklistTitle">질문서 회신 — 공유·저장했나요?</div></div>'+
+      '<div class="pi-body"><div class="reply-checklist-help"><b>'+esc(companyName)+'</b> 질문서 회신이 등록됐습니다. 아래 항목을 체크해 주세요. 지금 못 하면 [나중에]를 누르세요 — 오른쪽 아래 알림으로 남습니다.</div>'+
+      '<div class="reply-checklist-body"><div class="reply-checklist-wait">알림 준비 중…</div></div></div>'+
+      '<div class="pi-actions"><button type="button" class="co-text-action" data-reply-later>나중에</button></div></div>';
+    document.body.appendChild(el);
+    el.querySelector('[data-reply-later]').onclick=closePopup;
+    el.addEventListener('mousedown',e=>{if(e.target===el)closePopup();});
+    popup={el,companyId:String(companyId),row:null,saw:null,timer:setTimeout(()=>{
+      if(popup && !popup.row){const w=popup.el.querySelector('.reply-checklist-wait');if(w)w.textContent='알림 생성이 늦어지고 있습니다. 잠시 뒤 오른쪽 아래 "질문서 공유·저장" 알림에서 체크해 주세요.';}
+    },20000)};
+    renderPopup();
+  };
+  function renderPopup(){
+    if(!popup)return;
+    const all=window.SHIN2_WEBSITE_CLEANUP_ITEMS || [];
+    const n=popup.saw ? all.find(x=>x.id===popup.saw) : all.find(x=>x.type==='reply' && String(x.companyId)===popup.companyId && !x.completedAt);
+    if(!n){ if(popup.saw)closePopup(); return; }
+    if(n.completedAt){closePopup();return;}
+    popup.saw=n.id;
+    const body=popup.el.querySelector('.reply-checklist-body');
+    if(!popup.row){popup.row={el:document.createElement('div')};popup.row.el.innerHTML=rowHTML(n,false);body.innerHTML='';body.appendChild(popup.row.el);
+      const first=popup.row.el.querySelector('[data-check]');if(first)first.focus();}
+    updateRow(popup.row,n,false);
+  }
   function render(){
+    renderPopup();
     const all=window.SHIN2_WEBSITE_CLEANUP_ITEMS || [];
     for(const [type,def] of Object.entries(definitions)){
       const isHistory=history===type || (history==='followups' && type!=='website');
