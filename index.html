@@ -10553,6 +10553,11 @@ body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-filters > .map
 .top-tab{ display:inline-flex !important; align-items:center; gap:6px; }
 .top-tab .top-tab-ico{ flex:none; width:15px; height:15px; opacity:.75; }
 .top-tab.is-active .top-tab-ico{ opacity:1; }
+/* Shared bottom-right stack: individual alert skins remain unchanged. */
+.crm-alert-dock{position:fixed;right:22px;bottom:22px;z-index:9000;width:min(330px, calc(100vw - 32px));display:flex;flex-direction:column;gap:10px;max-height:calc(100dvh - 44px);}
+@media(max-height:560px){.crm-alert-dock{overflow-y:auto;}}
+.crm-alert-dock > .consult-req-alert{position:relative;right:auto;bottom:auto;left:auto;width:100%;flex:none;}
+@media(max-width:760px){.crm-alert-dock{right:10px;left:10px;bottom:10px;width:auto;max-height:calc(100dvh - 20px);}}
 </style>
 </head>
 <body>
@@ -10645,6 +10650,7 @@ body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-filters > .map
           <!-- §미팅 후 요청자료 라운드(신규) — 새 알림 시스템을 따로 만들지 않고, 이미 있는
                관리 도구 드롭다운 + 외곽 배지(#crmDataUpdateReviewBadge) 구조를 그대로 쓴다. -->
           <div class="update-menu-group-label">업무</div>
+          <button type="button" id="crmWebsiteCleanupHistoryBtn">홈페이지 정리 완료 이력</button>
           <button type="button" id="crmReqMatBtn">미팅 후 요청자료 <span id="crmReqMatCount" class="update-menu-count"></span></button>
           <div class="update-menu-divider"></div>
           <div class="update-menu-group-label">데이터 정리</div>
@@ -11949,6 +11955,7 @@ window.SHIN2_CRM_OCR = (function(){
 })();
 </script>
 
+<script src="website-cleanup.js"></script>
 <script type="module">
 /* ==========================================================================
    Firebase Storage 연결(§ 고객서류함 Storage 연결 라운드, 신규) — v2/index.html의 Auth/
@@ -11998,7 +12005,7 @@ window.SHIN2_CRM_OCR = (function(){
       // Firestore 클라우드에만 있던 경우 — 에서 고객 목록이 0건으로 보이는 실제 장애를
       // 일으켰다. 원인 확인 즉시 원래의 공유 키·공유 Firestore 문서로 되돌렸다 — v2와 다시
       // 공유하지만, 그게 실제로 데이터가 안전하게 보존/동기화되고 있던 유일한 경로였다).
-      const { getFirestore, doc, getDoc, setDoc, onSnapshot, serverTimestamp, collection, getDocs, writeBatch } =
+      const { getFirestore, doc, getDoc, setDoc, onSnapshot, serverTimestamp, collection, getDocs, writeBatch, runTransaction } =
         await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js');
 
       const app = initializeApp(cfg, 'shin2crm');
@@ -12196,6 +12203,7 @@ window.SHIN2_CRM_OCR = (function(){
       const SHARED_ARRAY_KEYS = { companies: 'shin2-companies-staging', customerActivities: 'shin2-customer-activities-v1', memos: 'shin2-memos-v1', mailAssets: 'shin2-mail-assets-v1', salesLedger: 'shin2-sales-ledger-v1', salesPendingReview2026: 'shin2-sales-pending-2026-v1', salesCrossYearReview2026: 'shin2-sales-crossyear-review-2026-v1', salesCompanyReview2026: 'shin2-sales-company-review-2026-v1' };
       const sharedSyncStarted = {};
       const sharedPushTimers = {};
+      const lifecycleSyncLocks = new Set();
       // §2026 업로더 운영 전 마지막 점검 라운드 — pending/타연도 review/업체 review 3종만
       // "의도적으로 0건이 된 상태"도 최신 상태로 클라우드에 동기화한다(§요청 1). companies/
       // customerActivities/memos/mailAssets/salesLedger는 이 목록에 없으므로 아래 두 가드
@@ -12217,6 +12225,7 @@ window.SHIN2_CRM_OCR = (function(){
         try{ localStorage.setItem(sharedLocalRevKey(storageKey), String(rev)); }catch(e){}
         clearTimeout(sharedPushTimers[name]);
         sharedPushTimers[name] = setTimeout(async ()=>{
+          delete sharedPushTimers[name];
           try{ await setDoc(doc(db, 'users', currentUid, 'shin2', storageKey), { value: data, updatedAt: serverTimestamp(), localRev: rev }); }
           catch(e){ console.error(`[CRM/Firebase] ${name} 저장 실패`, e); }
         }, 500);
@@ -12227,6 +12236,7 @@ window.SHIN2_CRM_OCR = (function(){
         const ref = doc(db, 'users', currentUid, 'shin2', storageKey);
         onSnapshot(ref, (snap)=>{
           if(!snap.exists()) return;
+          if(lifecycleSyncLocks.has(name)) return;
           const payload = snap.data();
           if(payload.value == null || !Array.isArray(payload.value)) return;
           if(payload.value.length === 0 && !ALLOW_EMPTY_SYNC_NAMES.has(name)) return; // 다른 키는 기존 그대로 빈 값 무시
@@ -12276,6 +12286,7 @@ window.SHIN2_CRM_OCR = (function(){
         const rev = Date.now();
         try{ localStorage.setItem(sharedLocalRevKey(storageKey), String(rev)); }catch(e){}
         clearTimeout(sharedPushTimers[name]);
+        delete sharedPushTimers[name];
         return setDoc(doc(db, 'users', currentUid, 'shin2', storageKey), { value: data, updatedAt: serverTimestamp(), localRev: rev });
       }
       // §로컬-클라우드 비교 화면 라운드(신규) — onSnapshot은 항상 "로컬에 이미 병합된
@@ -12296,6 +12307,79 @@ window.SHIN2_CRM_OCR = (function(){
         pushAsync: (name, data)=> SHARED_ARRAY_KEYS[name] ? pushSharedKeyToCloudAsync(name, SHARED_ARRAY_KEYS[name], data) : Promise.reject(new Error('알 수 없는 저장소: ' + name)),
         getOnce: (name)=> SHARED_ARRAY_KEYS[name] ? getSharedKeyDocOnce(SHARED_ARRAY_KEYS[name]) : Promise.reject(new Error('알 수 없는 저장소: ' + name)),
         isReady: (name)=> !!sharedSyncStarted[name]
+      };
+
+      const cleanupKey = window.WebsiteCleanup.KEY;
+      let cleanupUnsubscribe = null;
+      window.SHIN2_WEBSITE_CLEANUP_ITEMS = [];
+      function startWebsiteCleanupSync(){
+        if(cleanupUnsubscribe) cleanupUnsubscribe();
+        window.SHIN2_WEBSITE_CLEANUP_ITEMS = [];
+        window.dispatchEvent(new CustomEvent('website-cleanup-update'));
+        if(!currentUid) return;
+        cleanupUnsubscribe = onSnapshot(doc(db, 'users', currentUid, 'shin2', cleanupKey), {includeMetadataChanges:true}, snap=>{
+          // Never hide a task based on a pending/offline completion write.
+          if(snap.metadata.hasPendingWrites) return;
+          window.SHIN2_WEBSITE_CLEANUP_ITEMS = snap.exists() && Array.isArray(snap.data().value) ? snap.data().value : [];
+          window.dispatchEvent(new CustomEvent('website-cleanup-update'));
+        }, err=> console.warn('[CRM/Firebase] 홈페이지 정리 알림 구독 실패', err));
+      }
+      let cleanupBusy = false;
+      window.SHIN2_WEBSITE_CLEANUP_SAVE = async command=>{
+        if(!currentUid) throw new Error('로그인이 필요합니다.');
+        if(cleanupBusy) throw new Error('저장 중입니다. 잠시 후 다시 시도해주세요.');
+        cleanupBusy = true;
+        const uid = currentUid;
+        const actor = {uid, label:'사용자 ' + (localStorage.getItem('shin2-active-user-id') || '1')};
+        const keys = Object.assign({}, SHARED_ARRAY_KEYS, {websiteCleanup:cleanupKey});
+        const names = command.kind === 'check' ? ['websiteCleanup'] :
+          command.kind === 'complete' ? ['websiteCleanup','customerActivities'] : ['companies','customerActivities','websiteCleanup'];
+        try{
+          // Drain pre-existing edits before the transaction; none of the new operation is optimistic.
+          for(const name of names){
+            if(name === 'websiteCleanup') continue;
+            if(sharedPushTimers[name]){
+              clearTimeout(sharedPushTimers[name]);
+              delete sharedPushTimers[name];
+              const value = JSON.parse(localStorage.getItem(keys[name]) || '[]');
+              if(value.length) await pushSharedKeyToCloudAsync(name, keys[name], value);
+            }
+            lifecycleSyncLocks.add(name);
+          }
+          const result = await runTransaction(db, async tx=>{
+            const state = {companies:[], customerActivities:[], websiteCleanup:[]};
+            const refs = {};
+            let rev = Date.now();
+            for(const name of names){
+              refs[name] = doc(db, 'users', uid, 'shin2', keys[name]);
+              const snap = await tx.get(refs[name]);
+              if(snap.exists()){
+                state[name] = Array.isArray(snap.data().value) ? snap.data().value : [];
+                rev = Math.max(rev, (snap.data().localRev || 0) + 1);
+              }
+            }
+            const result = window.WebsiteCleanup.apply(state, command, actor, new Date().toISOString());
+            result.changed.forEach(name=> tx.set(refs[name], {value:result.state[name], updatedAt:serverTimestamp(), localRev:rev}));
+            return Object.assign(result, {rev});
+          });
+          if(currentUid !== uid) return;
+          // Local storage is only a mirror. The promise above is the commit acknowledgement.
+          result.changed.forEach(name=>{
+            if(name === 'websiteCleanup') window.SHIN2_WEBSITE_CLEANUP_ITEMS = result.state[name];
+            else {
+              try{
+                localStorage.setItem(keys[name], JSON.stringify(result.state[name]));
+                localStorage.setItem(sharedLocalRevKey(keys[name]), String(result.rev));
+              }catch(err){ console.warn('클라우드 저장 완료, 로컬 캐시 갱신 실패', err); }
+            }
+          });
+          window.dispatchEvent(new CustomEvent('website-cleanup-update'));
+          result.changed.filter(name=> name !== 'websiteCleanup').forEach(key=>
+            window.dispatchEvent(new CustomEvent('shin2-crm-cloud-update', {detail:{key}})));
+        }finally{
+          names.forEach(name=> lifecycleSyncLocks.delete(name));
+          cleanupBusy = false;
+        }
       };
 
       // §업체코드 중복발급 방지 라운드(신규) — genCompanyCode()의 "D.loadCompanies() 스캔
@@ -12694,6 +12778,7 @@ window.SHIN2_CRM_OCR = (function(){
 
       onAuthStateChanged(auth, (user) => {
         currentUid = user ? user.uid : null;
+        startWebsiteCleanupSync();
         window.dispatchEvent(new CustomEvent('shin2-crm-firebase-ready'));
         // §클라우드 파일 저장 문제 해결 라운드: customerDocuments는 v2의 tasks/memos/todos
         // 같은 "개인 데이터"가 아니라 처음부터 회사 공용 서류함이다(§4 "사용자별 파일이
@@ -15189,12 +15274,7 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
     // 빈 값으로 유지"(§요청) — endedAt 키 자체를 넘겼는지로 구분한다. 안 넘기면(기존 호출부
     // 전부 그대로) 지금까지처럼 처리 시각을 쓰고, 명시적으로 endedAt:null을 넘긴 새 호출부만
     // 빈 값을 그대로 유지한다(하위 호환 100% — 기존 호출부는 코드를 하나도 안 고쳤다).
-    const patch = {
-      agreementStatus: 'terminated',
-      agreementEndedAt: ('endedAt' in opts) ? (opts.endedAt || null) : now,
-      agreementEndReason: opts.reason || '',
-      agreementEndNote: opts.note || ''
-    };
+    const patch = window.WebsiteCleanup.terminationPatch(opts, now);
     const rec = updateCompany(companyId, patch);
     // §종료 전후 상태를 활동기록에 남김(§요청 "보호 절차") — 기존 addActivity 재사용.
     addActivity(companyId, `[협약 종료] ${opts.reason ? opts.reason : '사유 미기재'}${opts.note ? ' · ' + opts.note : ''}`);
@@ -15429,11 +15509,7 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
   function softDeleteCompany(companyId, reason){
     const co = findCompany(companyId); if(!co) return null;
     if(co.deletedAt) return co; // 이미 삭제된 업체 — 재시도로 또 처리되지 않게 그대로 반환
-    const rec = updateCompany(companyId, {
-      deletedAt: nowIso(),
-      deletedBy: currentUserLabel(),
-      deleteReason: (reason || '').trim()
-    });
+    const rec = updateCompany(companyId, window.WebsiteCleanup.deletionPatch(reason, nowIso(), currentUserLabel()));
     addActivity(companyId, `[업체 삭제] ${(reason || '').trim() || '사유 미기재'}`);
     return rec;
   }
@@ -24652,7 +24728,7 @@ window.SHIN2_CRM_APP_INIT = function(){
   function openDeleteCompanyModal(companyId){
     const co = D.findCompany(companyId);
     if(!co) return;
-    deleteCompanyModalState = { companyId, typedName:'', reason:'', saving:false, err:null, applied:false };
+    deleteCompanyModalState = { companyId, typedName:'', reason:'', saving:false, err:null };
     renderDeleteCompanyModal();
   }
   function renderDeleteCompanyModal(){
@@ -24692,7 +24768,9 @@ window.SHIN2_CRM_APP_INIT = function(){
         </div>
       </div>
     `;
-    const close = ()=> closeDeleteCompanyModal();
+    const close = ()=>{ if(!s.saving) closeDeleteCompanyModal(); };
+    document.getElementById('deleteCompanyCloseBtn').disabled = s.saving;
+    document.getElementById('deleteCompanyCancelBtn').disabled = s.saving;
     document.getElementById('deleteCompanyCloseBtn').addEventListener('click', close);
     document.getElementById('deleteCompanyCancelBtn').addEventListener('click', close);
     bindSafeBackdropClose(document.getElementById('deleteCompanyOverlay'), close);
@@ -24701,20 +24779,18 @@ window.SHIN2_CRM_APP_INIT = function(){
     document.getElementById('deleteCoReasonInput').addEventListener('input', (e)=>{ s.reason = e.target.value; });
     document.getElementById('deleteCompanyConfirmBtn').addEventListener('click', confirmDeleteCompany);
   }
-  // §요청 3의 "삭제 확인"을 눌렀을 때 — 로컬 반영은 이 모달 인스턴스당 한 번만(재시도
-  // 시 중복 활동기록 방지, §모든 저장 지점 재시도 중복 방지 라운드와 동일 패턴), 실패하면
-  // 모달을 닫지 않고 그대로 재시도할 수 있게 둔다(§요청 9). applied는 state 객체 안에
-  // 둬서(전역 변수 아님) 업체 A에서 실패 후 취소하고 업체 B를 삭제해도 서로 섞이지 않는다.
+  // 확인 절차 이후 업체 상태·활동 이력·홈페이지 정리 알림을 하나의 트랜잭션으로 저장한다.
+  // 실패 시 로컬 상태는 그대로이며, 같은 이벤트 ID로 재시도할 수 있다.
   async function confirmDeleteCompany(){
     const s = deleteCompanyModalState;
-    if(!s) return;
+    if(!s || s.saving) return;
     const co = D.findCompany(s.companyId);
     if(!co) return;
     if(s.typedName.trim() !== (co.name || '').trim()) return; // 방어적 재확인(버튼 disabled로 이미 막히지만)
     s.saving = true; s.err = null;
     renderDeleteCompanyModal();
-    if(!s.applied){ D.softDeleteCompany(s.companyId, s.reason); s.applied = true; }
-    const r = await confirmCloudSave('companies');
+    if(!s.cleanupEventId) s.cleanupEventId = crypto.randomUUID();
+    const r = await saveWebsiteCleanupCommand({kind:'delete', id:s.cleanupEventId, companyId:s.companyId, typedName:s.typedName, options:{reason:s.reason}});
     if(!deleteCompanyModalState){ return; } // 그 사이 모달이 닫혔으면(드물게) 더 손대지 않음
     if(!r.ok){
       s.saving = false;
@@ -26337,8 +26413,10 @@ window.SHIN2_CRM_APP_INIT = function(){
         const endedAt = document.getElementById('relcardEndDateInput').value || today;
         const reason = document.getElementById('relcardEndReasonInput').value.trim();
         const note = document.getElementById('relcardEndNoteInput').value.trim();
-        D.terminateAgreement(co.id, { endedAt, reason, note });
-        const r = await confirmCloudSave('companies');
+        const cancel = document.getElementById('relcardTerminateCancelBtn');
+        cancel.disabled = true;
+        const r = await saveWebsiteCleanupCommand({kind:'terminate', id:crypto.randomUUID(), companyId:co.id, options:{endedAt, reason, note}});
+        cancel.disabled = false;
         btn.disabled = false;
         showCloudSaveStatus(statusEl, r.ok, r.err);
         if(!r.ok) return; // 입력값(종료일/사유/메모)은 폼에 그대로 남아있다
@@ -32988,6 +33066,13 @@ window.SHIN2_CRM_APP_INIT = function(){
       || String(b.notifiedAt || '').localeCompare(String(a.notifiedAt || '')));
     return items;
   }
+  async function saveWebsiteCleanupCommand(command){
+    try{
+      if(!window.SHIN2_WEBSITE_CLEANUP_SAVE) throw new Error('SYNC_UNAVAILABLE');
+      await window.SHIN2_WEBSITE_CLEANUP_SAVE(command);
+      return {ok:true};
+    }catch(err){ return {ok:false, err}; }
+  }
   function renderConsultRequestAlert(){
     const host = document.getElementById('workQueueView');
     let el = document.getElementById('consultReqAlert');
@@ -32999,7 +33084,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       el = document.createElement('div');
       el.id = 'consultReqAlert';
       el.className = 'consult-req-alert';
-      document.body.appendChild(el);
+      window.crmAlertDock().appendChild(el);
     }
     const afterM1Count = items.filter(it=> it.afterM1).length;
     el.innerHTML = `
@@ -48319,5 +48404,6 @@ else { window.addEventListener('shin2-crm-gate-passed', window.SHIN2_CRM_APP_INI
    유지하고 새로 창을 만들지 않았다(§요청 "기존 디자인과 기능은 유지") — 아래는 핸들이
    있는 경우 방어적으로 focus()만 추가한 것뿐이다(§요청 "focus()를 호출"). */
 </script>
+<script src="website-cleanup-ui.js"></script>
 </body>
 </html>
