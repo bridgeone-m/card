@@ -5017,6 +5017,28 @@ table.pdf-doc-table thead{ background:var(--bg); }
   font-family:inherit; font-size:12px; font-weight:650; color:var(--text-muted); cursor:pointer;
   transition:background .15s ease, color .15s ease, border-color .15s ease;
 }
+.mailx-header-btns{ display:flex; gap:6px; flex:0 0 auto; flex-wrap:wrap; justify-content:flex-end; }
+/* §메일 발송 이력 라운드(신규) */
+.mail-history-panel{ margin:0 0 16px; padding:14px; border:1px solid var(--line); border-radius:10px; background:#fff; }
+.mail-history-tools{ display:flex; gap:8px; flex-wrap:wrap; }
+.mail-history-search{ flex:1 1 240px; min-width:0; height:34px; padding:0 10px; border:1px solid var(--line); border-radius:8px; font:inherit; font-size:13px; box-sizing:border-box; }
+.mail-history-tools select{ height:34px; padding:0 8px; border:1px solid var(--line); border-radius:8px; font:inherit; font-size:13px; background:#fff; }
+.mail-history-count{ margin:8px 0 6px; font-size:12px; color:var(--text-muted); }
+.mail-history-table-wrap{ max-height:420px; overflow:auto; border-top:1px solid var(--line); }
+.mail-history-table{ width:100%; border-collapse:collapse; font-size:12.5px; }
+.mail-history-table th{ position:sticky; top:0; background:#F7F9FC; text-align:left; font-weight:700; color:var(--text-muted); padding:7px 8px; white-space:nowrap; border-bottom:1px solid var(--line); }
+.mail-history-table td{ padding:7px 8px; border-bottom:1px solid #EEF1F5; vertical-align:top; }
+.mail-history-table .mh-when{ white-space:nowrap; color:var(--text-muted); }
+.mail-history-table .mh-to{ word-break:break-all; }
+.mail-history-table .mh-cc{ font-size:11px; color:var(--text-muted); }
+.mail-history-table .mh-subj{ max-width:260px; }
+.mail-history-table .mh-co{ border:0; background:none; padding:0; font:inherit; font-weight:700; color:var(--navy); cursor:pointer; text-align:left; }
+.mail-history-table .mh-co:hover{ text-decoration:underline; }
+.mail-history-table .mh-resend{ font-size:10.5px; color:var(--text-muted); }
+.mail-history-table .mh-status{ display:inline-block; padding:1px 7px; border-radius:5px; font-size:11px; font-weight:700; white-space:nowrap; }
+.mail-history-table .mh-status.is-ok{ background:#ECFDF3; color:#15803D; border:1px solid #BBE5CB; }
+.mail-history-table .mh-status.is-fail{ background:#FFF1F0; color:#C2403A; border:1px solid #F0C2BF; cursor:help; }
+.mail-history-table .mh-empty{ text-align:center; color:var(--text-muted); padding:20px 8px; }
 .mailx-account-btn:hover{ background:#F5F9FF; color:var(--navy); border-color:#BFD2EC; }
 .mailx-account-btn[aria-expanded="true"]{ background:var(--navy); color:#fff; border-color:var(--navy); }
 .mailx-account-btn .mail-account-chevron{ font-size:9px; transition:transform .15s ease; }
@@ -29625,7 +29647,7 @@ window.SHIN2_CRM_APP_INIT = function(){
   // 탭/저장 UI 상태 — 데이터가 아니라 화면 전용 상태(다른 cardState류와 같은 패턴).
   // dirty[key]=true면 그 탭에 저장 안 한 변경이 있다는 뜻, pendingTab은 그 상태에서
   // 다른 탭을 눌렀을 때 "저장/변경 취소/계속 편집" 확인 전까지 보류 중인 목적지 키.
-  let mailSettingsUI = { activeTab: 'questionnaire', accountOpen: false, dirty:{}, pendingTab:null };
+  let mailSettingsUI = { activeTab: 'questionnaire', accountOpen: false, historyOpen: false, historyQuery: '', historyType: '', historyStatus: '', dirty:{}, pendingTab:null };
   function mailAssetSizeLabel(bytes){ return fmtFileSize ? fmtFileSize(bytes) : (Math.round((bytes||0)/1024)) + 'KB'; }
   // §메일 설정 첨부파일 업로드 인증 연결 라운드(신규) — 서류함 업로드가 쓰는 것과 동일한
   // window.SHIN2_STORAGE(Firebase Auth/Storage 단일 인스턴스, §3514 module 블록 참고)를
@@ -29965,10 +29987,15 @@ window.SHIN2_CRM_APP_INIT = function(){
           <!-- §메일 설정 에디터형 정리 라운드(신규) — 큰 접기 영역이던 "발송 계정 설정"을
                헤더 오른쪽 작은 버튼으로 옮겼다. id(mailAccountToggleBtn)와 .mail-account-chevron
                span은 그대로 둬서 기존 토글 코드가 그대로 돈다. -->
+          <div class="mailx-header-btns">
+          <button type="button" class="mailx-account-btn" id="mailHistoryToggleBtn" aria-expanded="${mailSettingsUI.historyOpen?'true':'false'}" aria-controls="mailHistoryPanel">
+            <span aria-hidden="true">✉</span> 발송 이력
+          </button>
           <button type="button" class="mailx-account-btn" id="mailAccountToggleBtn" aria-expanded="${mailSettingsUI.accountOpen?'true':'false'}" aria-controls="mailAccountPanel">
             <span aria-hidden="true">⚙</span> 발송 계정
             <span class="mail-account-chevron${mailSettingsUI.accountOpen?' is-open':''}" aria-hidden="true">▾</span>
           </button>
+          </div>
         </div>
       </div>
       <div class="mail-settings-panel">
@@ -29994,6 +30021,7 @@ window.SHIN2_CRM_APP_INIT = function(){
             ${globalMailImageBoxHtml(globalAsset)}
           </div>
         </div>
+        <div class="mail-history-panel" id="mailHistoryPanel" style="display:${mailSettingsUI.historyOpen?'block':'none'};">${mailSettingsUI.historyOpen ? mailHistoryPanelHtml() : ''}</div>
         <div class="mail-tabs-bar" role="tablist" id="mailTabsBar">
           ${allMailKeys(s).map(key=> `<span class="mail-tab-btn-wrap" id="mailTabWrap_${key}">${mailTypeCardButtonHtml(key, s.mailTemplates[key])}</span>`).join('')}
           <button type="button" class="mail-tab-add-btn" id="mailTabAddBtn" title="새 메일 종류를 만듭니다 — 이름·문구는 나중에 적어도 됩니다">+ 메일 추가</button>
@@ -30584,7 +30612,103 @@ window.SHIN2_CRM_APP_INIT = function(){
       return;
     }
   });
+  // §메일 발송 이력 라운드(신규) — 업체마다 흩어진 co.m1MailLog(발송 성공·실패 기록)를
+  // 메일 설정 화면 한 곳에 모아 최신순으로 보여주고, 업체명·받는사람·제목으로 검색한다.
+  // 읽기 전용 — 기록을 새로 만들거나 고치지 않는다.
+  function collectMailHistory(){
+    const rows = [];
+    (D.loadCompanies() || []).forEach(co=>{
+      if(!co || !Array.isArray(co.m1MailLog)) return;
+      co.m1MailLog.forEach(l=>{ if(l && l.sentAt) rows.push({ co, l }); });
+    });
+    return rows.sort((a,b)=> String(b.l.sentAt).localeCompare(String(a.l.sentAt)));
+  }
+  function mailHistoryPanelHtml(){
+    const s = D.loadMailSettings();
+    const typeOpts = allMailKeys(s).map(k=> `<option value="${esc(k)}"${mailSettingsUI.historyType===k?' selected':''}>${esc(mailTypeTitle(k))}</option>`).join('');
+    return `
+      <div class="mail-history-tools">
+        <input type="search" id="mailHistorySearch" class="mail-history-search" placeholder="업체명 · 받는사람 · 제목 · 보낸사람 검색" value="${esc(mailSettingsUI.historyQuery)}" aria-label="발송 이력 검색" />
+        <select id="mailHistoryType" aria-label="메일 종류"><option value="">전체 종류</option>${typeOpts}</select>
+        <select id="mailHistoryStatus" aria-label="발송 결과">
+          <option value="">전체 결과</option>
+          <option value="sent"${mailSettingsUI.historyStatus==='sent'?' selected':''}>발송 성공</option>
+          <option value="failed"${mailSettingsUI.historyStatus==='failed'?' selected':''}>발송 실패</option>
+        </select>
+      </div>
+      <div class="mail-history-count" id="mailHistoryCount"></div>
+      <div class="mail-history-table-wrap"><table class="mail-history-table">
+        <thead><tr><th>발송 일시</th><th>업체</th><th>메일 종류</th><th>받는사람</th><th>제목</th><th>결과</th><th>보낸사람</th></tr></thead>
+        <tbody id="mailHistoryBody"></tbody>
+      </table></div>`;
+  }
+  function renderMailHistoryRows(){
+    const body = document.getElementById('mailHistoryBody');
+    if(!body) return;
+    const q = mailSettingsUI.historyQuery.trim().toLowerCase();
+    const all = collectMailHistory();
+    const rows = all.filter(({co,l})=>{
+      if(mailSettingsUI.historyType && l.mailType !== mailSettingsUI.historyType) return false;
+      if(mailSettingsUI.historyStatus && l.status !== mailSettingsUI.historyStatus) return false;
+      if(!q) return true;
+      const cc = Array.isArray(l.cc) ? l.cc.join(' ') : (l.cc || '');
+      return [co.name, l.to, cc, l.subject, l.sentBy, mailTypeTitle(l.mailType)].some(v=> String(v || '').toLowerCase().includes(q));
+    });
+    const LIMIT = 300;
+    body.innerHTML = rows.length ? rows.slice(0, LIMIT).map(({co,l})=>{
+      const d = new Date(l.sentAt);
+      const when = isNaN(d) ? esc(l.sentAt) : d.toLocaleString('ko-KR',{timeZone:'Asia/Seoul',year:'2-digit',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+      const ok = l.status === 'sent';
+      const cc = Array.isArray(l.cc) ? l.cc.filter(Boolean) : [];
+      return `<tr>
+        <td class="mh-when">${when}</td>
+        <td><button type="button" class="mh-co" data-mail-history-co="${esc(co.id)}" title="고객카드 열기">${esc(co.name || '(이름 없음)')}</button></td>
+        <td>${esc(mailTypeTitle(l.mailType))}${l.isResend ? ' <span class="mh-resend">재발송</span>' : ''}</td>
+        <td class="mh-to">${esc(l.to || '')}${cc.length ? `<div class="mh-cc">참조 ${esc(cc.join(', '))}</div>` : ''}</td>
+        <td class="mh-subj">${esc(l.subject || '')}</td>
+        <td><span class="mh-status ${ok ? 'is-ok' : 'is-fail'}"${!ok && l.error ? ` title="${esc(l.error)}"` : ''}>${ok ? '성공' : '실패'}</span></td>
+        <td>${esc(l.sentBy || '')}</td>
+      </tr>`;
+    }).join('') : `<tr><td colspan="7" class="mh-empty">${all.length ? '검색 결과가 없습니다.' : '아직 발송 기록이 없습니다.'}</td></tr>`;
+    const cnt = document.getElementById('mailHistoryCount');
+    if(cnt) cnt.textContent = `전체 ${all.length}건 중 ${rows.length}건` + (rows.length > LIMIT ? ` · 최근 ${LIMIT}건만 표시` : '');
+  }
+  function bindMailHistoryPanel(){
+    const panel = document.getElementById('mailHistoryPanel');
+    if(!panel || panel.dataset.bound) return;
+    panel.dataset.bound = '1';
+    panel.addEventListener('input', e=>{
+      if(e.target.id === 'mailHistorySearch'){ mailSettingsUI.historyQuery = e.target.value; renderMailHistoryRows(); }
+    });
+    panel.addEventListener('change', e=>{
+      if(e.target.id === 'mailHistoryType'){ mailSettingsUI.historyType = e.target.value; renderMailHistoryRows(); }
+      if(e.target.id === 'mailHistoryStatus'){ mailSettingsUI.historyStatus = e.target.value; renderMailHistoryRows(); }
+    });
+    panel.addEventListener('click', e=>{
+      const btn = e.target.closest('[data-mail-history-co]');
+      if(!btn) return;
+      const id = btn.getAttribute('data-mail-history-co');
+      if(!D.findCompany(id)) return;
+      document.getElementById('mailSettingsView').style.display = 'none';
+      updateTopTabsUI('customer');
+      openCustomerDetail(id, 'overview');
+    });
+  }
   function bindMailSettingsView(){
+    const histToggle = document.getElementById('mailHistoryToggleBtn');
+    bindMailHistoryPanel();
+    if(mailSettingsUI.historyOpen) renderMailHistoryRows();
+    if(histToggle) histToggle.addEventListener('click', ()=>{
+      // 발송 계정 토글과 같은 방식 — 전체 재렌더 없이 이 패널만 열고 닫는다(다른 탭 미저장 입력 보존).
+      mailSettingsUI.historyOpen = !mailSettingsUI.historyOpen;
+      const panel = document.getElementById('mailHistoryPanel');
+      if(panel){
+        if(mailSettingsUI.historyOpen){ panel.innerHTML = mailHistoryPanelHtml(); renderMailHistoryRows(); }
+        panel.style.display = mailSettingsUI.historyOpen ? 'block' : 'none';
+        if(mailSettingsUI.historyOpen){ const inp = document.getElementById('mailHistorySearch'); if(inp) inp.focus(); }
+      }
+      histToggle.setAttribute('aria-expanded', mailSettingsUI.historyOpen ? 'true' : 'false');
+    });
     const accToggle = document.getElementById('mailAccountToggleBtn');
     if(accToggle) accToggle.addEventListener('click', ()=>{
       // §버그 수정: 여기서 renderMailSettingsView()(전체 재렌더링)를 부르면 다른 탭에
