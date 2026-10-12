@@ -10689,6 +10689,23 @@ body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-filters > .map
   font:inherit; font-size:13px; font-weight:700; color:#33415A; cursor:pointer; white-space:nowrap;
 }
 .crm-alert-dock .meeting-alert-sub:hover{ background:#F4F7FB; }
+
+/* §쓰레기통 검색 라운드(신규) — 검색 결과 아래 "쓰레기통에서 찾은 업체" */
+.trash-search-hits{ margin:10px 8px 12px; padding:10px 12px; border:1px dashed #E3B9B5; border-radius:10px; background:#FFFBFA; }
+.trash-search-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:6px; }
+.trash-search-title{ font-size:12.5px; font-weight:800; color:#8A2D27; }
+.trash-search-title b{ font-weight:800; }
+.trash-search-go{ height:26px; padding:0 10px; border:1px solid #E8C6C2; border-radius:7px; background:#fff; color:#8A2D27; font:inherit; font-size:12px; font-weight:700; cursor:pointer; }
+.trash-search-go:hover{ background:#FFF1EF; }
+.trash-search-row{
+  display:flex; align-items:center; gap:8px; width:100%; min-height:34px; padding:4px 6px;
+  border:0; border-radius:7px; background:transparent; font:inherit; text-align:left; cursor:pointer;
+}
+.trash-search-row:hover{ background:#FFF1EF; }
+.trash-search-badge{ flex:none; font-size:11px; font-weight:800; color:#B42318; background:#FEE4E2; border-radius:5px; padding:2px 7px; }
+.trash-search-name{ flex:none; font-size:13.5px; font-weight:750; color:#13243E; }
+.trash-search-meta{ min-width:0; font-size:12px; color:#8A97AA; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.trash-search-more{ margin-top:4px; font-size:12px; color:#8A97AA; }
 </style>
 </head>
 <body>
@@ -21482,6 +21499,40 @@ window.SHIN2_CRM_APP_INIT = function(){
     }
     closeListRowPopovers();
     renderListRows(ctx);
+    renderTrashSearchHits();
+  }
+  // §쓰레기통 검색 라운드(신규) — 검색어가 있으면 쓰레기통(삭제된 업체)에서도 같은 검색
+  // (matchesSearch)으로 찾아 목록 맨 아래에 따로 보여준다. 일반 목록·건수·필터는 그대로이고,
+  // 삭제 업체를 되살리거나 고치지 않는다(보기만, 복구는 기존 쓰레기통 화면에서).
+  function renderTrashSearchHits(){
+    const old = document.getElementById('crmTrashSearchHits');
+    if(old) old.remove();
+    const q = String(searchQuery || '').trim();
+    if(!q || filterKey === 'trash' || !listEl) return;
+    let hits = [];
+    try{ hits = D.loadDeletedCompanies().filter(co=> matchesSearch(co, [], q)); }catch(e){ hits = []; }
+    if(!hits.length) return;
+    hits.sort((a,b)=> String(b.deletedAt || '').localeCompare(String(a.deletedAt || '')));
+    const shown = hits.slice(0, 30);
+    const box = document.createElement('div');
+    box.id = 'crmTrashSearchHits';
+    box.className = 'trash-search-hits';
+    box.innerHTML = `
+      <div class="trash-search-head">
+        <span class="trash-search-title">쓰레기통에서 찾은 업체 <b>${esc(hits.length)}</b>곳</span>
+        <button type="button" class="trash-search-go" data-trash-search-go="1">쓰레기통에서 보기</button>
+      </div>
+      ${shown.map(co=> `
+        <button type="button" class="trash-search-row" data-trash-search-co="${esc(co.id)}" title="고객 카드 보기(삭제된 업체)">
+          <span class="trash-search-badge">쓰레기통</span>
+          <span class="trash-search-name">${esc(co.name || '(업체명 없음)')}</span>
+          <span class="trash-search-meta">${esc([co.deletedAt ? '삭제 ' + fmtDate(co.deletedAt) : '', co.deleteReason || ''].filter(Boolean).join(' · '))}</span>
+        </button>`).join('')}
+      ${hits.length > shown.length ? `<div class="trash-search-more">외 ${esc(hits.length - shown.length)}곳 — 쓰레기통에서 보기</div>` : ''}`;
+    listEl.appendChild(box);
+    box.querySelectorAll('[data-trash-search-co]').forEach(btn=> btn.addEventListener('click', ()=> openCard(btn.getAttribute('data-trash-search-co'))));
+    const go = box.querySelector('[data-trash-search-go]');
+    if(go) go.addEventListener('click', ()=>{ filterKey = 'trash'; currentPage = 1; renderList(); });
   }
 
   // §2차 메일 알림 표시 조건(신규) — "2차 메일 발송 확인" 알림은 1차 미팅 제안 메일을 보낸
@@ -21748,6 +21799,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     // 행 렌더가 끝까지 갔을 때만(빈 결과로 일찍 끝나면 예전처럼 호출 안 함) 지도 갱신.
     // 검색어 입력(renderListSearchOnly)은 업체 데이터가 안 바뀌므로 지도를 건드리지 않는다.
     if(renderListRows(ctx) && typeof refreshMapIfOpen === 'function') refreshMapIfOpen();
+    renderTrashSearchHits();
   }
 
   function renderListRows(ctx){
