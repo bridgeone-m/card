@@ -21430,7 +21430,23 @@ window.SHIN2_CRM_APP_INIT = function(){
     renderListRows(ctx);
   }
 
+  // §2차 메일 알림 표시 조건(신규) — "2차 메일 발송 확인" 알림은 1차 미팅 제안 메일을 보낸
+  // 순간 저장된다(website-cleanup.js, 생성 로직·저장값은 그대로). 그런데 1차 메일은 1차 미팅
+  // 날짜를 잡자는 메일이라, 1차 미팅이 끝나기 전에 "2차 미팅 제안 메일 보내기"를 띄우면 순서가
+  // 맞지 않는다. 그래서 화면에 보일 때만 거른다: 1차 미팅 완료 + 2차 미팅이 아직 잡히지도
+  // 끝나지도 않은 업체만 보인다. 조건이 맞으면(1차 미팅 완료 처리) 그때 자동으로 나타난다.
+  window.SHIN2_FOLLOWUP_ALERT_VISIBLE = function(n){
+    if(!n || n.type !== 'mail') return true;
+    try{
+      const co = D.findCompany(n.companyId);
+      if(!co) return true;
+      const st = buildProgressStages(co).stages;
+      const m1 = st.find(x=> x.key === 'm1'), m2 = st.find(x=> x.key === 'm2');
+      return !!(m1 && m1.state === 'done' && (!m2 || m2.state === 'waiting'));
+    }catch(e){ return true; }
+  };
   function renderList(){
+    try{ setTimeout(()=> window.dispatchEvent(new CustomEvent('crm-followup-visibility')), 0); }catch(e){}
     lastListCtx = null;
     // §총 매출 Popover 전환 라운드: 필터/검색/정렬/페이지가 바뀌면 목록 DOM이 통째로
     // 새로 그려져 popover가 붙어있던 버튼이 사라진다 — 열려있던 popover가 엉뚱한 위치에

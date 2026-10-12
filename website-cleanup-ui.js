@@ -6,6 +6,8 @@
   const cards=new Map(), busy=new Set(), errors=new Map(), retries=new Map(), pendingCommands=new Map();
   let history=null, scheduled=false;
   const visibilityKey='shin2-task-alerts-hidden';
+  // 2차 메일 알림은 1차 미팅 완료 뒤에만 보인다(판정은 index.html의 SHIN2_FOLLOWUP_ALERT_VISIBLE).
+  const visibleNow=n=>!window.SHIN2_FOLLOWUP_ALERT_VISIBLE || window.SHIN2_FOLLOWUP_ALERT_VISIBLE(n);
   let alertsHidden=false;
   try{alertsHidden=localStorage.getItem(visibilityKey)==='1';}catch(_){}
   window.crmAlertDock=function(){
@@ -15,7 +17,7 @@
       const toggle=document.createElement('button');toggle.type='button';toggle.className='alert-dock-toggle';el.appendChild(toggle);
       const refresh=()=>{
         const cards=Array.from(el.children).filter(c=>c.classList.contains('consult-req-alert'));
-        const pending=(window.SHIN2_WEBSITE_CLEANUP_ITEMS || []).filter(n=>!n.completedAt).length;
+        const pending=(window.SHIN2_WEBSITE_CLEANUP_ITEMS || []).filter(n=>!n.completedAt && visibleNow(n)).length;
         const requestTitle=el.querySelector('#consultReqAlert .consult-req-alert-title');
         const requestCount=requestTitle ? Number((requestTitle.textContent.match(/(\d+)건/) || [0,0])[1]) : 0;
         const count=pending+requestCount;
@@ -93,7 +95,7 @@
     const all=window.SHIN2_WEBSITE_CLEANUP_ITEMS || [];
     for(const [type,def] of Object.entries(definitions)){
       const isHistory=history===type || (history==='followups' && type!=='website');
-      const items=all.filter(n=>(n.type || 'website')===type && (isHistory?!!n.completedAt:!n.completedAt));
+      const items=all.filter(n=>(n.type || 'website')===type && (isHistory?!!n.completedAt:(!n.completedAt && visibleNow(n))));
       let card=cards.get(type);
       if(!window.SHIN2_CRM_GATE_PASSED || (!items.length && !isHistory)){
         if(card){card.el.remove();cards.delete(type);}continue;
@@ -127,6 +129,7 @@
     }
   }
   ['website-cleanup-update','shin2-crm-gate-passed','shin2-crm-firebase-ready'].forEach(event=>window.addEventListener(event,schedule));
+  window.addEventListener('crm-followup-visibility',()=>{schedule();window.dispatchEvent(new CustomEvent('website-cleanup-update'));});
   for(const [id,type] of [['crmWebsiteCleanupHistoryBtn','website'],['crmFollowupHistoryBtn','followups']]){
     const button=document.getElementById(id);if(button)button.onclick=()=>{document.getElementById('crmUpdateMenu').classList.remove('is-open');history=type;render();};
   }
