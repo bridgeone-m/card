@@ -10706,6 +10706,12 @@ body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-filters > .map
 .trash-search-name{ flex:none; font-size:13.5px; font-weight:750; color:#13243E; }
 .trash-search-meta{ min-width:0; font-size:12px; color:#8A97AA; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .trash-search-more{ margin-top:4px; font-size:12px; color:#8A97AA; }
+
+/* §쓰레기통 검색 줄 간소화 — 제목 줄·바깥 상자 없이 목록 행처럼 한 줄씩(연분홍 바탕 + 점선 구분) */
+.trash-search-hits{ margin:0 !important; padding:0 !important; border:0 !important; border-radius:0 !important; background:transparent !important; }
+.trash-search-head, .trash-search-more{ display:none !important; }
+.trash-search-row{ min-height:40px !important; padding:6px 16px !important; border-radius:0 !important; background:#FFFBFA !important; border-bottom:1px dashed #F0C9C4 !important; }
+.trash-search-row:hover{ background:#FFF1EF !important; }
 </style>
 </head>
 <body>
