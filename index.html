@@ -10712,6 +10712,19 @@ body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-filters > .map
 .trash-search-head, .trash-search-more{ display:none !important; }
 .trash-search-row{ min-height:40px !important; padding:6px 16px !important; border-radius:0 !important; background:#FFFBFA !important; border-bottom:1px dashed #F0C9C4 !important; }
 .trash-search-row:hover{ background:#FFF1EF !important; }
+
+/* §MOU 진행상황 진행 현황·최근 메일 열(신규) */
+#workQueueView .workq-status-cell, #workQueueView .workq-mailinfo-cell{ vertical-align:middle; }
+#workQueueView .wq-st-line{ display:flex; align-items:baseline; gap:6px; white-space:nowrap; line-height:1.45; }
+#workQueueView .wq-st-text{ font-size:12.5px; font-weight:700; color:#23364F; }
+#workQueueView .wq-st-date{ font-size:12px; color:#7C8BA1; font-variant-numeric:tabular-nums; }
+#workQueueView .wq-st-line.is-next .wq-st-text{ color:#1B4480; }
+#workQueueView .wq-st-line.is-next .wq-st-date{ color:#1B4480; font-weight:700; }
+#workQueueView .wq-st-sub{ font-size:11px; color:#93A1B5; }
+#workQueueView .wq-st-none{ color:#C3CBD6; }
+#workQueueView .wq-mail-res{ font-size:10.5px; font-weight:800; border-radius:4px; padding:0 5px; line-height:1.6; }
+#workQueueView .wq-mail-res.is-ok{ color:#15803D; background:#ECFDF3; }
+#workQueueView .wq-mail-res.is-fail{ color:#B42318; background:#FEE4E2; }
 </style>
 </head>
 <body>
@@ -28412,6 +28425,41 @@ window.SHIN2_CRM_APP_INIT = function(){
   // 남겨 원본을 지우지 않는다(§7 "MERGE/PATCH만, 기존 필드 삭제 금지"). 날짜를 안 고르면
   // 오늘 날짜로 완료 처리한다(실제 미팅이 방금 끝났을 때 바로 누르는 버튼이라 §7의 다른
   // 버튼들과 달리 완료일 입력을 필수로 요구하지 않는다).
+  // §MOU 진행상황 진행 현황·최근 메일 열(신규) — 표시 전용. 새 판정 없이 buildProgressStages
+  // (질문서/1차/2차/MOU의 상태·날짜)와 co.m1MailLog(메일 발송 기록)를 그대로 읽는다.
+  function workqStatusCellHtml(co){
+    let st = [];
+    try{ st = buildProgressStages(co).stages; }catch(e){ st = []; }
+    const by = {}; st.forEach(x=> by[x.key] = x);
+    const has = d=> d && d !== '—';
+    let done = null, next = null;
+    if(by.q){
+      if(by.q.state === 'done') done = { text:'질문서 회신', date: by.q.dateDisplay };
+      else if(has(by.q.dateDisplay)) done = { text:'질문서 발송', date: by.q.dateDisplay };
+    }
+    [['m1','1차미팅'],['m2','2차미팅']].forEach(([k,label])=>{
+      const x = by[k]; if(!x) return;
+      if(x.state === 'done') done = { text: label + ' 완료', date: x.dateDisplay };
+      else if(x.state === 'scheduled' && !next) next = { text: label + ' 예정', date: x.dateDisplay + (x.scheduledTime ? ' ' + x.scheduledTime : '') };
+    });
+    if(by.mou && by.mou.state === 'done'){ done = { text:'MOU 체결', date: by.mou.dateDisplay }; next = null; }
+    const line = (o, cls)=> o ? `<div class="wq-st-line${cls ? ' ' + cls : ''}"><span class="wq-st-text">${esc(o.text)}</span>${has(o.date) ? `<span class="wq-st-date">${esc(o.date)}</span>` : ''}</div>` : '';
+    const html = line(done, '') + line(next, 'is-next');
+    return html || '<span class="wq-st-none">—</span>';
+  }
+  function workqLastMailCellHtml(co){
+    const logs = Array.isArray(co.m1MailLog) ? co.m1MailLog.filter(l=> l && l.sentAt) : [];
+    if(!logs.length) return '<span class="wq-st-none">—</span>';
+    const last = logs.slice().sort((a,b)=> String(b.sentAt).localeCompare(String(a.sentAt)))[0];
+    const d = new Date(last.sentAt);
+    const date = isNaN(d) ? '' : `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+    let name = '메일';
+    try{ name = String(mailTypeTitle(last.mailType) || '메일').replace(/ ?메일$/, ''); }catch(e){}
+    const ok = last.status === 'sent';
+    const sentCount = logs.filter(l=> l.status === 'sent').length;
+    return `<div class="wq-st-line"><span class="wq-st-text">${esc(name)}</span>${date ? `<span class="wq-st-date">${esc(date)}</span>` : ''}<span class="wq-mail-res ${ok ? 'is-ok' : 'is-fail'}" title="${esc(ok ? '발송 성공' : ('발송 실패' + (last.error ? ' · ' + last.error : '')))}">${ok ? '성공' : '실패'}</span></div>`
+      + (sentCount > 1 ? `<div class="wq-st-sub">발송 ${sentCount}회</div>` : '');
+  }
   function workqSaveMeetingDone(item, dateStr, memo){
     const isM1 = item.type === 'm1' || item.type === 'm1Scheduled';
     const label = dateStr ? workqDateInputToLabel(dateStr) : workqTodayLabel();
@@ -29070,7 +29118,7 @@ window.SHIN2_CRM_APP_INIT = function(){
                재사용했고(§요청 "메일보내기는 1차미팅잡기 밑이나 옆에 배치"), 서류 현황
                (buildAgreementDocSummary)은 이 표에서 더는 표시하지 않는다(계산 함수 자체는
                다른 화면에서 쓸 수 있어 그대로 둠). 5열 → 4열. -->
-          <thead><tr>${workQueueFilter==='qWaiting'?'<th>업체명</th><th>담당자·연락처</th><th>질문서 발송일</th><th>발송 후 경과일</th><th>해야 할 일</th>':'<th>업체명</th><th>단계 진행상황</th><th>경과</th><th>해야 할 일</th>'}</tr></thead>
+          <thead><tr>${workQueueFilter==='qWaiting'?'<th>업체명</th><th>담당자·연락처</th><th>질문서 발송일</th><th>발송 후 경과일</th><th>해야 할 일</th>':'<th>업체명</th><th>단계 진행상황</th><th>경과</th><th>진행 현황</th><th>최근 메일</th><th>해야 할 일</th>'}</tr></thead>
           <tbody>
             ${filtered.map(it=> {
               if(workQueueFilter==='qWaiting') return questionnaireWaitingRowHtml(it);
@@ -29127,6 +29175,8 @@ window.SHIN2_CRM_APP_INIT = function(){
                   ${stageStepperHtml}
                 </td>
                 <td class="workq-days">${it.days === null ? '—' : esc(it.days) + '일'}${dayBadgeHtml}</td>
+                <td class="workq-status-cell">${workqStatusCellHtml(it.co)}</td>
+                <td class="workq-mailinfo-cell">${workqLastMailCellHtml(it.co)}</td>
                 <td class="workq-task-cell">
                   ${it.noTask
                     ? `<span class="workq-notask-badge">${esc(it.actionLabel)}</span>`
