@@ -10399,13 +10399,24 @@ body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-filters > .map
 .agr-terminate-holder{ margin-top:10px; }
 .agr-terminate-holder:empty{ display:none; }
 .agr-terminate-zone{
-  display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap;
-  padding:10px 14px; border:1px solid #F1E3E1; border-radius:12px; background:#FFFBFA;
+  display:flex; flex-direction:column; gap:10px;
+  padding:14px; border:1px solid #F1E3E1; border-radius:12px; background:#FFFBFA;
+  height:auto; min-height:0;
 }
-.agr-terminate-text{ min-width:0; flex:1 1 260px; }
-.agr-terminate-actions{ flex:0 1 auto; min-width:0; }
-.agr-terminate-actions #relcardTerminateForm:not([hidden]),
-.agr-terminate-actions #relcardRestoreConfirm:not([hidden]){ margin-top:8px; max-width:520px; }
+.agr-terminate-text{ display:flex; align-items:baseline; gap:10px; min-width:0; }
+.agr-terminate-actions{ min-width:0; width:100%; }
+.agr-terminate-zone:has(#relcardTerminateForm:not([hidden])) #relcardTerminateBtn{ display:none; }
+.agr-terminate-actions #relcardTerminateForm:not([hidden]){ display:grid; gap:10px; height:auto; min-height:0; max-width:none; }
+.agr-terminate-actions #relcardRestoreConfirm:not([hidden]){ margin-top:8px; max-width:none; }
+#relcardTerminateForm .stage-cancel-warn{ margin:0; }
+#relcardTerminateForm .co-form-field{ margin:0; max-width:none; min-width:0; }
+.agr-terminate-fields{ display:grid; grid-template-columns:160px minmax(0,1fr); gap:10px; }
+#relcardTerminateForm #relcardEndNoteInput{ height:auto; min-height:0; resize:vertical; }
+.agr-terminate-footer{ display:flex; justify-content:flex-end; align-items:center; gap:8px; flex-wrap:wrap; }
+.agr-terminate-footer .cdash-cloud-save-status:empty{ display:none; }
+@media(max-width:560px){
+  .agr-terminate-fields{ grid-template-columns:130px minmax(0,1fr); }
+}
 
 /* §협약 진행 카드 폭 줄임 — 기본정보 왼쪽 열: 기업 요약 + 협약 진행을 세로로 */
 .cdet-overview-cols{ align-items:start; }
@@ -26354,7 +26365,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       <div class="agr-terminate-zone">
         <div class="agr-terminate-text">
           <div class="agr-danger-zone-title">협약 종료</div>
-          <div class="agr-danger-zone-desc">협약이 끝난 업체를 종료 처리합니다. 고객·체결일·활동 기록은 그대로 남습니다.</div>
+          <div class="agr-danger-zone-desc">종료 후에도 고객·활동 기록은 보존됩니다.</div>
         </div>
         <div class="agr-terminate-actions">${agreementBlockHtml}</div>
       </div>`;
@@ -26397,13 +26408,15 @@ window.SHIN2_CRM_APP_INIT = function(){
       form.hidden = false;
       form.innerHTML = `
         <div class="stage-cancel-warn">협약을 종료 처리합니다 — 고객 데이터·과거 체결일·업무/활동 기록은 삭제되지 않고 그대로 유지됩니다.</div>
-        <div class="co-form-field"><label>종료일</label><input type="date" id="relcardEndDateInput" value="${esc(today)}" /></div>
-        <div class="co-form-field"><label>종료 사유</label><input type="text" id="relcardEndReasonInput" placeholder="예: 시공 실적 저조, 연락 두절 등" /></div>
-        <div class="co-form-field"><label>내부 메모</label><textarea id="relcardEndNoteInput"></textarea></div>
-        <div style="display:flex;gap:8px;align-items:center;">
+        <div class="agr-terminate-fields">
+          <div class="co-form-field"><label for="relcardEndDateInput">종료일</label><input type="date" id="relcardEndDateInput" value="${esc(today)}" /></div>
+          <div class="co-form-field"><label for="relcardEndReasonInput">종료 사유</label><input type="text" id="relcardEndReasonInput" placeholder="예: 시공 실적 저조, 연락 두절 등" /></div>
+        </div>
+        <div class="co-form-field"><label for="relcardEndNoteInput">내부 메모</label><textarea id="relcardEndNoteInput" rows="2"></textarea></div>
+        <div class="agr-terminate-footer">
+          <span class="cdash-cloud-save-status" id="relcardTerminateStatus"></span>
           <button type="button" class="co-text-action" id="relcardTerminateCancelBtn">취소</button>
           <button type="button" class="co-text-action danger" id="relcardTerminateOkBtn">협약 종료 확정</button>
-          <span class="cdash-cloud-save-status" id="relcardTerminateStatus"></span>
         </div>`;
       document.getElementById('relcardTerminateCancelBtn').addEventListener('click', ()=>{ form.hidden = true; form.innerHTML = ''; });
       document.getElementById('relcardTerminateOkBtn').addEventListener('click', async (e)=>{
