@@ -20,7 +20,7 @@
         const pending=(window.SHIN2_WEBSITE_CLEANUP_ITEMS || []).filter(n=>!n.completedAt && visibleNow(n)).length;
         const requestTitle=el.querySelector('#consultReqAlert .consult-req-alert-title');
         const requestCount=requestTitle ? Number((requestTitle.textContent.match(/(\d+)건/) || [0,0])[1]) : 0;
-        const count=pending+requestCount;
+        const count=pending+requestCount+(Number(window.SHIN2_MEETING_ALERT_COUNT)||0);
         const label=alertsHidden?'알림 '+count:'숨기기 · '+count+'건';
         if(toggle.textContent!==label)toggle.textContent=label;
         if(toggle.hidden!==(!cards.length))toggle.hidden=!cards.length;

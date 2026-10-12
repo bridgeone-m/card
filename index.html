@@ -10635,6 +10635,14 @@ body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-filters > .map
 .crm-alert-dock .alert-details summary{line-height:34px;}
 .crm-alert-dock .consult-req-alert-more{border-top-color:#e8ebef;color:#626d7d;}
 
+
+/* §미팅 후속 알림 라운드(신규) — 알림 줄의 보조 버튼(일정 보기 / 메일 보내기) */
+.crm-alert-dock .alert-actions{ display:flex; align-items:center; gap:6px; }
+.crm-alert-dock .meeting-alert-sub{
+  height:32px; padding:0 12px; border:1px solid #D5DCE6; border-radius:8px; background:#fff;
+  font:inherit; font-size:13px; font-weight:700; color:#33415A; cursor:pointer; white-space:nowrap;
+}
+.crm-alert-dock .meeting-alert-sub:hover{ background:#F4F7FB; }
 </style>
 </head>
 <body>
@@ -28309,6 +28317,148 @@ window.SHIN2_CRM_APP_INIT = function(){
     workqLogMemo(item.co.id, memo);
     return true;
   }
+  /* ==========================================================================
+     §미팅 후속 알림 라운드(신규) — 1차 미팅 날짜가 등록되면 그날부터 "1차 미팅 진행했나요?"
+     알림을 띄우고, [진행 완료]를 누르면 1차 미팅을 완료 처리한 뒤 같은 자리에서 "2차 미팅
+     제안 메일 보냈나요?"를 묻는다.
+       · 1단계 대상: MOU 진행상황과 같은 판정(computeWorkQueue)의 "1차미팅 예정"(m1Scheduled) 중
+         예정일이 오늘이거나 지난 업체 — 저장된 일정만 읽는다(새 판정 없음).
+       · [진행 완료]: 기존 MOU 진행상황의 "미팅 완료 처리"와 같은 저장 경로(workqMergeNewMou +
+         활동기록)로 1차 미팅 완료(완료일 = 등록된 예정일)를 저장하고, 업체에 2차 메일 확인 표시
+         (followupM2MailAsk)를 남긴다.
+       · 2단계 대상: 그 표시가 있고 아직 확인하지 않았으며, 2차 미팅이 잡히지도 끝나지도 않았고,
+         그 뒤 2차 미팅 제안 메일 발송 기록이 없는 업체. 메일을 보내면(발송 기록) 자동으로 사라지고,
+         [보냈음]을 누르면 확인 처리된다. 같은 업체의 기존 "2차 메일 발송 확인" 알림이 이미
+         보이면 그쪽 하나만 보이게 이 줄은 뺀다(중복 방지).
+     ========================================================================== */
+  function meetingFollowupAlertItems(){
+    const out = { m1:[], m2:[] };
+    let wq = [];
+    try{ wq = computeWorkQueue().list || []; }catch(e){ wq = []; }
+    wq.forEach(it=>{
+      if(it.type !== 'm1Scheduled') return;
+      if(typeof it.days !== 'number' || it.days > 0) return;   // 예정일 당일(0) 또는 지난 날(음수)부터
+      // it.days = floor((예정시각-지금)/1일)이라 오늘 일정은 0 또는 -1이 된다 — 달력 기준 지난 일수로 바꾼다.
+      let m1st = null;
+      try{ m1st = buildProgressStages(it.co).stages.find(x=> x.key === 'm1'); }catch(e){ m1st = null; }
+      out.m1.push({ co: it.co, scheduledLabel: (m1st && m1st.scheduledLabel) || '', scheduledTime: (m1st && m1st.scheduledTime) || '', overdue: Math.max(0, -it.days - 1) });
+    });
+    const storedMailOpen = new Set((window.SHIN2_WEBSITE_CLEANUP_ITEMS || [])
+      .filter(n=> n && n.type === 'mail' && !n.completedAt && (!window.SHIN2_FOLLOWUP_ALERT_VISIBLE || window.SHIN2_FOLLOWUP_ALERT_VISIBLE(n)))
+      .map(n=> String(n.companyId)));
+    let list = [];
+    try{ list = D.loadActiveCompanies() || []; }catch(e){ list = []; }
+    list.forEach(co=>{
+      const ask = co.followupM2MailAsk;
+      if(!ask || ask.doneAt) return;
+      if(storedMailOpen.has(String(co.id))) return;
+      let m2State = 'waiting';
+      try{ const st = buildProgressStages(co).stages.find(x=> x.key === 'm2'); if(st) m2State = st.state; }catch(e){}
+      if(m2State !== 'waiting') return;
+      const since = Date.parse(ask.since || '') || 0;
+      const sentAfter = ['postSecondMeeting','secondMeetingRequest'].some(t=> mailLogForType(co, t)
+        .some(l=> l && l.status === 'sent' && Date.parse(l.sentAt || '') >= since));
+      if(sentAfter) return;
+      out.m2.push({ co, m1Label: ask.m1Label || '' });
+    });
+    return out;
+  }
+  async function meetingAlertConfirmSave(){
+    const results = await Promise.all([confirmCloudSave('companies'), confirmCloudSave('customerActivities')]);
+    const failed = results.find(r=> !r.ok);
+    return failed ? { ok:false, err: failed.err } : { ok:true };
+  }
+  const meetingAlertApplied = new Set();   // 같은 업체를 재시도할 때 활동기록이 두 번 쌓이지 않게
+  function meetingAlertCompleteM1(co, scheduledLabel){
+    const key = 'm1:' + co.id;
+    if(meetingAlertApplied.has(key)) return;
+    meetingAlertApplied.add(key);
+    const label = scheduledLabel || workqTodayLabel();
+    workqMergeNewMou(co, { m1Done: true, m1Label: label });
+    D.updateCompany(co.id, { followupM2MailAsk: { since: new Date().toISOString(), m1Label: label } });
+    workqLogEvent(co.id, `1차미팅 완료 (${label}) · 알림에서 확인`);
+  }
+  function meetingAlertMarkM2Sent(co){
+    const fresh = D.findCompany(co.id) || co;
+    D.updateCompany(co.id, { followupM2MailAsk: Object.assign({}, fresh.followupM2MailAsk || {}, { doneAt: new Date().toISOString() }) });
+  }
+  let meetingAlertTimer = null;
+  function scheduleMeetingFollowupAlerts(){
+    clearTimeout(meetingAlertTimer);
+    meetingAlertTimer = setTimeout(renderMeetingFollowupAlerts, 250);
+  }
+  let meetingAlertExpanded = true;
+  function renderMeetingFollowupAlerts(){
+    if(!window.SHIN2_CRM_GATE_PASSED || typeof window.crmAlertDock !== 'function') return;
+    const items = meetingFollowupAlertItems();
+    const total = items.m1.length + items.m2.length;
+    window.SHIN2_MEETING_ALERT_COUNT = total;
+    let card = document.getElementById('meetingFollowupAlert');
+    if(!total){ if(card) card.remove(); window.dispatchEvent(new CustomEvent('website-cleanup-update')); return; }
+    if(!card){
+      card = document.createElement('div');
+      card.className = 'consult-req-alert';
+      card.id = 'meetingFollowupAlert';
+      const dock = window.crmAlertDock();
+      dock.insertBefore(card, dock.querySelector('.consult-req-alert') || document.getElementById('consultReqAlert'));
+    }
+    const rowHtml = (opts)=> `
+      <div class="consult-req-alert-row" data-meeting-alert="${esc(opts.kind)}" data-co="${esc(opts.co.id)}">
+        <div class="consult-req-alert-row-main">
+          <span class="consult-req-alert-row-name">${esc(opts.co.name)}</span>
+          <div class="alert-task">${esc(opts.task)}</div>
+          <details class="alert-details"><summary>상세보기</summary><div>${esc(opts.detail)}</div></details>
+        </div>
+        <div class="alert-actions">
+          ${opts.secondary ? `<button type="button" class="meeting-alert-sub" data-meeting-act="${esc(opts.secondary[0])}">${esc(opts.secondary[1])}</button>` : ''}
+          <button type="button" class="consult-req-alert-done" data-meeting-act="${esc(opts.primary[0])}">${esc(opts.primary[1])}</button>
+        </div>
+        <span class="alert-status" role="status" aria-live="polite"></span>
+      </div>`;
+    card.innerHTML = `
+      <button type="button" class="consult-req-alert-main" aria-expanded="${meetingAlertExpanded}"><span class="alert-brand" aria-hidden="true"><img src="assets/netform-symbol-original.png" alt="" /></span><span class="consult-req-alert-texts"><span class="consult-req-alert-title">미팅 진행 확인</span></span></button>
+      <div class="consult-req-alert-list"${meetingAlertExpanded ? '' : ' hidden'}>
+        ${items.m1.map(it=> rowHtml({ kind:'m1', co:it.co, task:'1차 미팅 진행했나요?',
+            detail:`1차 미팅 예정: ${it.scheduledLabel}${it.scheduledTime ? ' ' + it.scheduledTime : ''}${it.overdue ? ` (${it.overdue}일 지남)` : ' (오늘)'}`,
+            secondary:['open','일정 보기'], primary:['m1done','진행 완료'] })).join('')}
+        ${items.m2.map(it=> rowHtml({ kind:'m2', co:it.co, task:'2차 미팅 제안 메일 보냈나요?',
+            detail:`1차 미팅 완료${it.m1Label ? ': ' + it.m1Label : ''} · 메일을 보내면 이 알림은 자동으로 사라집니다`,
+            secondary:['mail','메일 보내기'], primary:['m2sent','보냈음'] })).join('')}
+      </div>`;
+    card.querySelector('.consult-req-alert-main').addEventListener('click', ()=>{
+      meetingAlertExpanded = !meetingAlertExpanded;
+      renderMeetingFollowupAlerts();
+    });
+    card.querySelectorAll('[data-meeting-act]').forEach(btn=> btn.addEventListener('click', async ()=>{
+      const row = btn.closest('[data-meeting-alert]');
+      const co = D.findCompany(row.getAttribute('data-co'));
+      if(!co) return;
+      const act = btn.getAttribute('data-meeting-act');
+      const status = row.querySelector('.alert-status');
+      if(act === 'open'){ openCustomerDetail(co.id, 'agreement'); return; }
+      if(act === 'mail'){ openMailComposeModal(co.id, 'postSecondMeeting'); return; }
+      row.querySelectorAll('button').forEach(b=> b.disabled = true);
+      if(status) status.textContent = '저장 중…';
+      if(act === 'm1done'){
+        const it = items.m1.find(x=> String(x.co.id) === String(co.id));
+        meetingAlertCompleteM1(co, it ? it.scheduledLabel : '');
+      } else if(act === 'm2sent'){
+        meetingAlertMarkM2Sent(co);
+      }
+      const r = await meetingAlertConfirmSave();
+      if(!r.ok){
+        row.querySelectorAll('button').forEach(b=> b.disabled = false);
+        if(status) status.textContent = '저장 실패 · 다시 눌러주세요';
+        alert(cloudSaveErrorMessage(r.err));
+        return;
+      }
+      meetingAlertApplied.delete('m1:' + co.id);
+      try{ renderList(); }catch(e){}
+      renderMeetingFollowupAlerts();
+    }));
+    window.dispatchEvent(new CustomEvent('website-cleanup-update'));
+  }
+  ['crm-followup-visibility','website-cleanup-update-data','shin2-crm-gate-passed'].forEach(ev=> window.addEventListener(ev, scheduleMeetingFollowupAlerts));
   // §7: MOU 상태 — "체결 완료"만 실제 mouDone/mouLabel을 바꾼다. "체결 협의"/"서류 요청"은
   // 기존 newMou 구조에 대응하는 중간상태 필드가 없어(있는 필드는 완료 여부뿐) 원본을 억지로
   // 바꾸지 않고 활동기록만 남긴다(§18 "실제 원본과 상태가 불일치하게 만들지 않는다").
