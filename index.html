@@ -10600,6 +10600,12 @@ body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-filters > .map
 
 .crm-alert-dock > .consult-req-alert{position:relative;right:auto;bottom:auto;left:auto;width:100%;flex:none;}
 @media(max-width:760px){.crm-alert-dock{right:10px;left:auto;bottom:10px;width:min(330px, calc(100vw - 20px));max-height:calc(100dvh - 20px);}}
+.crm-alert-dock .alert-dock-toggle{order:-1;align-self:flex-end;flex:none;min-height:34px;padding:7px 13px;border:1px solid #dce0e7;border-radius:18px;background:#fff;color:#191e34;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 3px 12px rgba(25,30,52,.08);}
+.crm-alert-dock .alert-dock-toggle:hover{background:#eef2f7;}
+.crm-alert-dock .alert-dock-toggle:focus-visible{outline:2px solid #607595;outline-offset:2px;}
+.crm-alert-dock .alert-dock-toggle[hidden]{display:none;}
+.crm-alert-dock.is-collapsed > .consult-req-alert{display:none;}
+.crm-alert-dock.is-collapsed{width:auto;}
 /* Shared task alerts only. Original symbol is cropped with a viewport; source pixels remain intact. */
 .crm-alert-dock > .consult-req-alert{background:#fff;border:1px solid #dce0e7;border-radius:12px;box-shadow:0 5px 18px rgba(25,30,52,.10);box-sizing:border-box;}
 .crm-alert-dock .consult-req-alert-main{background:#fff;color:#191e34;padding:10px 12px 8px;gap:9px;min-height:44px;}

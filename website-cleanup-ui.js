@@ -5,11 +5,35 @@
   const labels={jandi:'잔디 토픽에 질문서 올리기',pdf:'질문서 고객관리 PDF 저장',requested:'담당자에게 삭제 요청',verified:'홈페이지 삭제 확인',materials:'체결 서류 받기',documents:'계약서 2건 보내기',signed:'서명·체결 확인'};
   const cards=new Map(), busy=new Set(), errors=new Map(), retries=new Map(), pendingCommands=new Map();
   let history=null, scheduled=false;
+  const visibilityKey='shin2-task-alerts-hidden';
+  let alertsHidden=false;
+  try{alertsHidden=localStorage.getItem(visibilityKey)==='1';}catch(_){}
   window.crmAlertDock=function(){
     let el=document.getElementById('crmAlertDock');
-    if(!el){el=document.createElement('div');el.id='crmAlertDock';el.className='crm-alert-dock';document.body.appendChild(el);
-      const fit=()=>el.classList.toggle('is-overflowing',Array.from(el.children).reduce((h,c)=>h+c.getBoundingClientRect().height,0)+Math.max(0,el.children.length-1)*10>el.clientHeight+1);
-      new MutationObserver(fit).observe(el,{childList:true,subtree:true,attributes:true,attributeFilter:['hidden']});window.addEventListener('resize',fit);}
+    if(!el){
+      el=document.createElement('div');el.id='crmAlertDock';el.className='crm-alert-dock';document.body.appendChild(el);
+      const toggle=document.createElement('button');toggle.type='button';toggle.className='alert-dock-toggle';el.appendChild(toggle);
+      const refresh=()=>{
+        const cards=Array.from(el.children).filter(c=>c.classList.contains('consult-req-alert'));
+        const pending=(window.SHIN2_WEBSITE_CLEANUP_ITEMS || []).filter(n=>!n.completedAt).length;
+        const requestTitle=el.querySelector('#consultReqAlert .consult-req-alert-title');
+        const requestCount=requestTitle ? Number((requestTitle.textContent.match(/(\d+)건/) || [0,0])[1]) : 0;
+        const count=pending+requestCount;
+        const label=alertsHidden?'알림 '+count:'숨기기 · '+count+'건';
+        if(toggle.textContent!==label)toggle.textContent=label;
+        if(toggle.hidden!==(!cards.length))toggle.hidden=!cards.length;
+        toggle.setAttribute('aria-label',alertsHidden?'미완료 업무 알림 '+count+'건 펼치기':'업무 알림 팝업 숨기기');
+        toggle.setAttribute('aria-expanded',String(!alertsHidden));
+        el.classList.toggle('is-collapsed',alertsHidden);
+        const height=Array.from(el.children).reduce((h,c)=>h+c.getBoundingClientRect().height,0);
+        el.classList.toggle('is-overflowing',!alertsHidden && height+Math.max(0,cards.length)*10>el.clientHeight+1);
+      };
+      toggle.onclick=()=>{alertsHidden=!alertsHidden;try{localStorage.setItem(visibilityKey,alertsHidden?'1':'0');}catch(_){}refresh();};
+      new MutationObserver(refresh).observe(el,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:['hidden']});
+      window.addEventListener('resize',refresh);
+      window.addEventListener('website-cleanup-update',refresh);
+      refresh();
+    }
     return el;
   };
   function schedule(){if(scheduled)return;scheduled=true;queueMicrotask(()=>{scheduled=false;render();});}
