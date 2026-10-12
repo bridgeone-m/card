@@ -10538,7 +10538,15 @@ body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-filters > .map
 .workq-alert-row.is-navy .workq-alert-ico, .workq-alert-row.is-navy .workq-alert-count{ color:#1B4480; }
 .workq-alert-row.is-zero .workq-alert-count, .workq-alert-row.is-zero .workq-alert-ico{ color:#B5C0CE !important; }
 .workq-alert-list{ display:flex; flex-direction:column; gap:4px; padding-left:12px; border-left:1px solid #F0F3F7; min-width:0; }
-.workq-alert-list::before{ content:"오래 기다린 업체"; font-size:10.5px; font-weight:700; color:#93A1B5; }
+.workq-alert-list:not(.workq-reply-list)::before{ content:"오래 기다린 업체"; font-size:10.5px; font-weight:700; color:#93A1B5; }
+.workq-reply-head{ font-size:10.5px; font-weight:700; color:#93A1B5; }
+.workq-reply-head b{ color:#C2410C; font-size:11.5px; }
+.workq-reply-item{ display:flex; align-items:center; gap:4px; min-width:0; }
+.workq-reply-item .workq-alert-co{ flex:1 1 auto; min-width:0; }
+.workq-reply-type{ flex:none; margin-left:auto; font-size:10.5px; font-weight:700; color:#9A5B2E; white-space:nowrap; }
+.workq-reply-ok{ flex:none; width:22px; height:22px; padding:0; border:1px solid #E3E8EF; border-radius:6px; background:#fff; color:#15803D; font-size:12px; font-weight:800; cursor:pointer; }
+.workq-reply-ok:hover{ background:#ECFDF3; border-color:#BBE5CB; }
+.workq-reply-more, .workq-reply-empty{ font-size:11px; color:#93A1B5; }
 .workq-alert-co{
   display:flex; align-items:center; justify-content:space-between; gap:6px; width:100%; min-width:0;
   height:20px; padding:0 8px; border:1px solid #F6D9C4; border-radius:999px; background:#FFF7F0; cursor:pointer; font:inherit;
@@ -29034,6 +29042,40 @@ window.SHIN2_CRM_APP_INIT = function(){
     const schedPool = upcoming.length ? upcoming : overdueSched;
     const schedFilter = schedPool.length && schedPool.every(it=> it.type === 'm1Scheduled') ? 'm1'
       : (schedPool.length && schedPool.every(it=> it.type === 'm2Scheduled') ? 'm2' : 'all');
+    // §회신 대기 알림(신규) — "오래 기다린 업체" 자리를 바꿨다. 업체마다 가장 최근에 "발송 성공"한
+    // 메일(co.m1MailLog)을 보고, 그 뒤 다음 단계로 넘어가지 않았으면 회신 대기로 띄운다.
+    //   질문서 → 질문서 회신 / 1차 미팅 제안 → 1차 미팅 일정 / 2차 미팅 제안·리마인드 → 2차 미팅 일정
+    //   (2차 미팅이 이미 끝난 뒤 보낸 메일은 MOU 체결) / 그 밖의 메일은 [✓]로 직접 지운다.
+    // [✓]은 그 발송 기록에 replyCheckedAt만 덧붙인다(다른 기록은 그대로).
+    const replyWaiting = (()=>{
+      const out = [];
+      const since = Date.now() - 60 * 864e5;
+      (D.loadCompanies() || []).forEach(co=>{
+        if(!co || co.deletedAt || !Array.isArray(co.m1MailLog)) return;
+        const sent = co.m1MailLog.filter(l=> l && l.status === 'sent' && l.sentAt);
+        if(!sent.length) return;
+        const last = sent.reduce((a,b)=> String(b.sentAt) > String(a.sentAt) ? b : a);
+        const ts = Date.parse(last.sentAt);
+        if(!(ts >= since) || last.replyCheckedAt) return;
+        let answered = false;
+        try{
+          const rows = {}; buildAgreementStageRows(co).forEach(r=> rows[r.key] = r);
+          const done = k=> !!(rows[k] && rows[k].done);
+          if(last.mailType === 'questionnaire') answered = done('qReply');
+          else if(last.mailType === 'firstMeeting') answered = done('m1Scheduled') || done('m1Done');
+          else if(last.mailType === 'postSecondMeeting' || last.mailType === 'secondMeetingRequest'){
+            const m2p = done('m2Done') && parsePartnerDateLabel(rows.m2Done.dateText);
+            answered = (m2p && m2p.ts < ts) ? done('mouDone') : (done('m2Scheduled') || done('m2Done'));
+          }
+        }catch(e){ answered = false; }
+        if(answered) return;
+        const days = Math.max(0, Math.floor((new Date().setHours(0,0,0,0) - new Date(ts).setHours(0,0,0,0)) / 864e5));
+        out.push({ co, log:last, ts, days });
+      });
+      return out.sort((a,b)=> a.ts - b.ts);
+    })();
+    const REPLY_SHORT = { questionnaire:'질문서', firstMeeting:'1차 제안', postSecondMeeting:'2차 제안', documentRequest:'서류 요청', secondMeetingRequest:'2차 리마인드' };
+    const replyShort = t=> REPLY_SHORT[t] || mailTypeTitle(t);
     const alertRow = (opts)=> `
       <button type="button" class="workq-alert-row${opts.tone ? ' is-' + opts.tone : ''}${opts.count ? '' : ' is-zero'}" ${opts.attr}>
         <span class="workq-alert-ico">${agrIcon(opts.icon)}</span>
@@ -29052,14 +29094,19 @@ window.SHIN2_CRM_APP_INIT = function(){
           ${alertRow({ icon:'mail', tone:'orange', label:'2차 회신 지연', count:m2NoReplyCountAlert, attr:'data-workq-filter="m2NoReply"' })}
           ${alertRow({ icon:'calendar', tone:'navy', label:'7일 안 미팅' + (overdueSched.length ? ` · 지난 일정 ${overdueSched.length}` : ''), count:upcoming.length, attr:`data-workq-filter="${schedFilter}"` })}
         </div>
-        ${longDelayed.length ? `
-          <div class="workq-alert-list">
-            ${longDelayed.slice(0,2).map(it=> `
-              <button type="button" class="workq-alert-co" data-workq-alert-co="${esc(it.co.id)}" title="${esc(it.actionLabel || '')}">
-                <span class="workq-alert-co-name">${esc(it.co.name)}</span>
-                <span class="workq-alert-co-days">${esc(it.days)}일</span>
-              </button>`).join('')}
-          </div>` : ''}
+          <div class="workq-alert-list workq-reply-list">
+            <div class="workq-reply-head">회신 대기 <b>${esc(replyWaiting.length)}</b>곳</div>
+            ${replyWaiting.length ? replyWaiting.slice(0,3).map(it=> `
+              <div class="workq-reply-item">
+                <button type="button" class="workq-alert-co" data-workq-alert-co="${esc(it.co.id)}" title="${esc(mailTypeTitle(it.log.mailType))} · ${esc(new Date(it.ts).toLocaleString('ko-KR'))} 발송 · ${esc(it.log.to || '')}">
+                  <span class="workq-alert-co-name">${esc(it.co.name)}</span>
+                  <span class="workq-reply-type">${esc(replyShort(it.log.mailType))}</span>
+                  <span class="workq-alert-co-days">${it.days ? esc(it.days) + '일' : '오늘'}</span>
+                </button>
+                <button type="button" class="workq-reply-ok" data-workq-reply-ok="${esc(it.co.id)}" data-sent-at="${esc(it.log.sentAt)}" title="회신 받음 — 목록에서 지우기" aria-label="${esc(it.co.name)} 회신 받음">✓</button>
+              </div>`).join('') + (replyWaiting.length > 3 ? `<div class="workq-reply-more">외 ${esc(replyWaiting.length - 3)}곳</div>` : '')
+            : '<div class="workq-reply-empty">회신 기다리는 메일이 없습니다</div>'}
+          </div>
         </div>
       </div>`;
     function workqTaskCard(item){
@@ -29206,6 +29253,14 @@ window.SHIN2_CRM_APP_INIT = function(){
     }));
     wrap.querySelectorAll('[data-workq-alert-co]').forEach(btn=> btn.addEventListener('click', ()=>{
       openCustomerDetail(btn.getAttribute('data-workq-alert-co'), 'agreement');
+    }));
+    wrap.querySelectorAll('[data-workq-reply-ok]').forEach(btn=> btn.addEventListener('click', ()=>{
+      const co = D.findCompany(btn.getAttribute('data-workq-reply-ok'));
+      if(!co || !Array.isArray(co.m1MailLog)) return;
+      const sentAt = btn.getAttribute('data-sent-at');
+      const by = crmCurrentUserLabel(), at = new Date().toISOString();
+      D.updateCompany(co.id, { m1MailLog: co.m1MailLog.map(l=> (l && l.sentAt === sentAt && l.status === 'sent') ? Object.assign({}, l, { replyCheckedAt:at, replyCheckedBy:by }) : l) });
+      renderWorkQueueView();
     }));
     const sortToggle = document.getElementById('workqSortToggle');
     if(sortToggle) sortToggle.addEventListener('click', ()=>{
