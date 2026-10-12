@@ -6,6 +6,11 @@
   const cards=new Map(), busy=new Set(), errors=new Map(), retries=new Map(), pendingCommands=new Map();
   let history=null, scheduled=false;
   const visibilityKey='shin2-task-alerts-hidden';
+  // 알림 카드 X — 지운 카드는 그 시점 내용(업체 목록)으로 기억해 두고, 새 업체가 생기는 등 내용이 바뀌면 다시 보인다.
+  const dismissKey='shin2-task-alerts-dismissed';
+  let dismissed={};
+  try{dismissed=JSON.parse(localStorage.getItem(dismissKey)||'{}')||{};}catch(_){}
+  const cardSignature=c=>Array.from(c.querySelectorAll('.consult-req-alert-row:not(.is-history)')).map(r=>{const n=r.querySelector('.consult-req-alert-row-name');return (r.getAttribute('data-cleanup-id')||r.getAttribute('data-meeting-alert')||'')+':'+(r.getAttribute('data-co')||'')+':'+(n?n.textContent.trim():'');}).sort().join('|');
   // 2차 메일 알림은 1차 미팅 완료 뒤에만 보인다(판정은 index.html의 SHIN2_FOLLOWUP_ALERT_VISIBLE).
   const visibleNow=n=>!window.SHIN2_FOLLOWUP_ALERT_VISIBLE || window.SHIN2_FOLLOWUP_ALERT_VISIBLE(n);
   let alertsHidden=false;
@@ -16,11 +21,24 @@
       el=document.createElement('div');el.id='crmAlertDock';el.className='crm-alert-dock';document.body.appendChild(el);
       const toggle=document.createElement('button');toggle.type='button';toggle.className='alert-dock-toggle';el.appendChild(toggle);
       const refresh=()=>{
-        const cards=Array.from(el.children).filter(c=>c.classList.contains('consult-req-alert'));
+        const allCards=Array.from(el.children).filter(c=>c.classList.contains('consult-req-alert'));
+        let hiddenRows=0;
+        allCards.forEach(c=>{
+          if(!c.querySelector(':scope > .alert-dismiss')){
+            const x=document.createElement('button');x.type='button';x.className='alert-dismiss';x.textContent='×';
+            x.setAttribute('aria-label','이 알림 지우기');x.title='이 알림 지우기';
+            x.onclick=e=>{e.stopPropagation();dismissed[c.id]=cardSignature(c);try{localStorage.setItem(dismissKey,JSON.stringify(dismissed));}catch(_){}refresh();};
+            c.appendChild(x);
+          }
+          const off=!!c.id && dismissed[c.id]!=null && dismissed[c.id]===cardSignature(c);
+          if(c.classList.contains('is-dismissed')!==off)c.classList.toggle('is-dismissed',off);
+          if(off)hiddenRows+=c.querySelectorAll('.consult-req-alert-row:not(.is-history)').length;
+        });
+        const cards=allCards.filter(c=>!c.classList.contains('is-dismissed'));
         const pending=(window.SHIN2_WEBSITE_CLEANUP_ITEMS || []).filter(n=>!n.completedAt && visibleNow(n)).length;
         const requestTitle=el.querySelector('#consultReqAlert .consult-req-alert-title');
         const requestCount=requestTitle ? Number((requestTitle.textContent.match(/(\d+)건/) || [0,0])[1]) : 0;
-        const count=pending+requestCount+(Number(window.SHIN2_MEETING_ALERT_COUNT)||0);
+        const count=Math.max(0,pending+requestCount+(Number(window.SHIN2_MEETING_ALERT_COUNT)||0)-hiddenRows);
         const label=alertsHidden?'알림 '+count:'숨기기 · '+count+'건';
         if(toggle.textContent!==label)toggle.textContent=label;
         if(toggle.hidden!==(!cards.length))toggle.hidden=!cards.length;
@@ -31,7 +49,7 @@
         el.classList.toggle('is-overflowing',!alertsHidden && height+Math.max(0,cards.length)*10>el.clientHeight+1);
       };
       toggle.onclick=()=>{alertsHidden=!alertsHidden;try{localStorage.setItem(visibilityKey,alertsHidden?'1':'0');}catch(_){}refresh();};
-      new MutationObserver(refresh).observe(el,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:['hidden']});
+      new MutationObserver(refresh).observe(el,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:['hidden','data-co','data-meeting-alert']});
       window.addEventListener('resize',refresh);
       window.addEventListener('website-cleanup-update',refresh);
       refresh();
