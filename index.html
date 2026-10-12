@@ -10539,6 +10539,9 @@ body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-filters > .map
 .workq-alert-row.is-zero .workq-alert-count, .workq-alert-row.is-zero .workq-alert-ico{ color:#B5C0CE !important; }
 .workq-alert-list{ display:flex; flex-direction:column; gap:4px; padding-left:12px; border-left:1px solid #F0F3F7; min-width:0; }
 .workq-alert-list:not(.workq-reply-list)::before{ content:"오래 기다린 업체"; font-size:10.5px; font-weight:700; color:#93A1B5; }
+.workq-alert-body > .workq-reply-list{ grid-column:1 / -1; display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:4px 10px; padding-left:0; border-left:0; }
+.workq-reply-list > .workq-reply-head, .workq-reply-list > .workq-reply-more, .workq-reply-list > .workq-reply-empty{ grid-column:1 / -1; }
+@media (max-width:640px){ .workq-alert-body > .workq-reply-list{ grid-template-columns:minmax(0,1fr); } }
 .workq-reply-head{ font-size:10.5px; font-weight:700; color:#93A1B5; }
 .workq-reply-head b{ color:#C2410C; font-size:11.5px; }
 .workq-reply-item{ display:flex; align-items:center; gap:4px; min-width:0; }
@@ -29024,24 +29027,6 @@ window.SHIN2_CRM_APP_INIT = function(){
     // 대상)는 살아있다 — reuse 유형 항목은 여전히 computeWorkQueue의 list/counts.reuse에
     // 잡히고, "전체" 필터로 보면 표에 그대로 나온다(행 클릭 -> renderWorkqExpandBody의
     // reuse 분기도 그대로) — 이 카드는 그 목록으로 바로 점프하는 지름길이었을 뿐이다.
-    // §업무관리 알림 카드 라운드(신규) — 업무 카드 오른쪽 빈 자리에 "알림" 요약을 둔다.
-    //   · 30일 넘게 지연: 할 일이 있는 항목 중 경과일(it.days) > 30 — 오래된 순 상위 3곳 표시
-    //   · 2차 회신 지연: 기존 secondMeetingNoReplyIdSet() ∩ list (필터 칩과 같은 기준)
-    //   · 7일 안 미팅: 예정 미팅(m1Scheduled/m2Scheduled)의 it.days(남은 일수) 0~7,
-    //     지난 예정(음수)은 "완료 확인 필요"로 따로 센다.
-    // 숫자는 전부 위 list에서 세기만 한다 — 저장·새 계산 없음.
-    const WORKQ_LONG_DAYS = 30;
-    const alertTaskItems = list.filter(it=> !it.noTask && it.type !== 'm1Scheduled' && it.type !== 'm2Scheduled');
-    const longDelayed = alertTaskItems.filter(it=> typeof it.days === 'number' && it.days > WORKQ_LONG_DAYS)
-      .sort((a,b)=> b.days - a.days);
-    const m2NoReplyCountAlert = (()=>{ try{ const set = secondMeetingNoReplyIdSet(); return list.filter(it=> set.has(String(it.co.id))).length; }catch(e){ return 0; } })();
-    const scheduledItems = list.filter(it=> it.type === 'm1Scheduled' || it.type === 'm2Scheduled');
-    const upcoming = scheduledItems.filter(it=> typeof it.days === 'number' && it.days >= 0 && it.days <= 7);
-    const overdueSched = scheduledItems.filter(it=> typeof it.days === 'number' && it.days < 0);
-    // 7일 안 미팅 줄을 누르면 해당 미팅이 있는 탭으로 — 1차만이면 1차, 2차만이면 2차, 섞이면 전체.
-    const schedPool = upcoming.length ? upcoming : overdueSched;
-    const schedFilter = schedPool.length && schedPool.every(it=> it.type === 'm1Scheduled') ? 'm1'
-      : (schedPool.length && schedPool.every(it=> it.type === 'm2Scheduled') ? 'm2' : 'all');
     // §회신 대기 알림(신규) — "오래 기다린 업체" 자리를 바꿨다. 업체마다 가장 최근에 "발송 성공"한
     // 메일(co.m1MailLog)을 보고, 그 뒤 다음 단계로 넘어가지 않았으면 회신 대기로 띄운다.
     //   질문서 → 질문서 회신 / 1차 미팅 제안 → 1차 미팅 일정 / 2차 미팅 제안·리마인드 → 2차 미팅 일정
@@ -29076,27 +29061,16 @@ window.SHIN2_CRM_APP_INIT = function(){
     })();
     const REPLY_SHORT = { questionnaire:'질문서', firstMeeting:'1차 제안', postSecondMeeting:'2차 제안', documentRequest:'서류 요청', secondMeetingRequest:'2차 리마인드' };
     const replyShort = t=> REPLY_SHORT[t] || mailTypeTitle(t);
-    const alertRow = (opts)=> `
-      <button type="button" class="workq-alert-row${opts.tone ? ' is-' + opts.tone : ''}${opts.count ? '' : ' is-zero'}" ${opts.attr}>
-        <span class="workq-alert-ico">${agrIcon(opts.icon)}</span>
-        <span class="workq-alert-label">${esc(opts.label)}</span>
-        <span class="workq-alert-count">${esc(opts.count)}<small>곳</small></span>
-      </button>`;
     const alertHtml = `
       <div class="workq-alert-card" aria-label="알림">
         <div class="workq-alert-head">
           <span class="workq-alert-title">알림</span>
-          <span class="workq-alert-sub">경과일 · 회신 · 예정 미팅</span>
+          <span class="workq-alert-sub">보낸 메일 회신 확인</span>
         </div>
         <div class="workq-alert-body">
-        <div class="workq-alert-rows">
-          ${alertRow({ icon:'clock', tone:'red', label:`${WORKQ_LONG_DAYS}일 넘게 지연`, count:longDelayed.length, attr:'data-workq-alert="long"' })}
-          ${alertRow({ icon:'mail', tone:'orange', label:'2차 회신 지연', count:m2NoReplyCountAlert, attr:'data-workq-filter="m2NoReply"' })}
-          ${alertRow({ icon:'calendar', tone:'navy', label:'7일 안 미팅' + (overdueSched.length ? ` · 지난 일정 ${overdueSched.length}` : ''), count:upcoming.length, attr:`data-workq-filter="${schedFilter}"` })}
-        </div>
           <div class="workq-alert-list workq-reply-list">
             <div class="workq-reply-head">회신 대기 <b>${esc(replyWaiting.length)}</b>곳</div>
-            ${replyWaiting.length ? replyWaiting.slice(0,3).map(it=> `
+            ${replyWaiting.length ? replyWaiting.slice(0,6).map(it=> `
               <div class="workq-reply-item">
                 <button type="button" class="workq-alert-co" data-workq-alert-co="${esc(it.co.id)}" title="${esc(mailTypeTitle(it.log.mailType))} · ${esc(new Date(it.ts).toLocaleString('ko-KR'))} 발송 · ${esc(it.log.to || '')}">
                   <span class="workq-alert-co-name">${esc(it.co.name)}</span>
@@ -29104,7 +29078,7 @@ window.SHIN2_CRM_APP_INIT = function(){
                   <span class="workq-alert-co-days">${it.days ? esc(it.days) + '일' : '오늘'}</span>
                 </button>
                 <button type="button" class="workq-reply-ok" data-workq-reply-ok="${esc(it.co.id)}" data-sent-at="${esc(it.log.sentAt)}" title="회신 받음 — 목록에서 지우기" aria-label="${esc(it.co.name)} 회신 받음">✓</button>
-              </div>`).join('') + (replyWaiting.length > 3 ? `<div class="workq-reply-more">외 ${esc(replyWaiting.length - 3)}곳</div>` : '')
+              </div>`).join('') + (replyWaiting.length > 6 ? `<div class="workq-reply-more">외 ${esc(replyWaiting.length - 6)}곳</div>` : '')
             : '<div class="workq-reply-empty">회신 기다리는 메일이 없습니다</div>'}
           </div>
         </div>
@@ -29242,13 +29216,6 @@ window.SHIN2_CRM_APP_INIT = function(){
     wrap.querySelectorAll('[data-workq-q-reply]').forEach(btn=>btn.addEventListener('click',()=>openQuestionnaireReplyModal(btn.getAttribute('data-workq-q-reply'),renderWorkQueueView)));
     wrap.querySelectorAll('[data-workq-filter]').forEach(btn=> btn.addEventListener('click', ()=>{
       workQueueFilter = btn.getAttribute('data-workq-filter');
-      renderWorkQueueView();
-    }));
-    // 알림 카드 — "30일 넘게 지연"은 전체 목록을 경과일 많은 순으로, 업체 이름은 협약 진행 탭.
-    // (2차 회신 지연/7일 안 미팅 줄은 data-workq-filter라 위 필터 바인딩이 그대로 처리한다.)
-    wrap.querySelectorAll('[data-workq-alert="long"]').forEach(btn=> btn.addEventListener('click', ()=>{
-      workQueueFilter = 'all';
-      workQueueSortAsc = false;
       renderWorkQueueView();
     }));
     wrap.querySelectorAll('[data-workq-alert-co]').forEach(btn=> btn.addEventListener('click', ()=>{
