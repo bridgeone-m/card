@@ -7106,7 +7106,7 @@ body{
 /* §요청자료 알림 — MOU 진행상황 화면 우측 하단 floating */
 .consult-req-alert{
   position:fixed; right:22px; bottom:22px; z-index:9000;
-  width:min(330px, calc(100vw - 32px));
+  width:min(290px, calc(100vw - 32px));
   border-radius:14px; overflow:hidden;
   box-shadow:0 12px 32px rgba(120,30,30,.22);
 }
@@ -10565,10 +10565,41 @@ body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-filters > .map
 .top-tab .top-tab-ico{ flex:none; width:15px; height:15px; opacity:.75; }
 .top-tab.is-active .top-tab-ico{ opacity:1; }
 /* Shared bottom-right stack: individual alert skins remain unchanged. */
-.crm-alert-dock{position:fixed;right:22px;bottom:22px;z-index:9000;width:min(330px, calc(100vw - 32px));display:flex;flex-direction:column;gap:10px;max-height:calc(100dvh - 44px);}
-@media(max-height:560px){.crm-alert-dock{overflow-y:auto;}}
+.crm-alert-dock{position:fixed;right:22px;bottom:22px;z-index:9000;width:min(290px, calc(100vw - 32px));display:flex;flex-direction:column;gap:10px;max-height:calc(100dvh - 44px);}
+.crm-alert-dock.is-overflowing{overflow-y:auto;scrollbar-width:none;overflow-anchor:none;}
+.crm-alert-dock::-webkit-scrollbar{width:0;}
+/* Compact task alerts: shared skin, stable controls and touch-sized targets. */
+.crm-alert-dock .consult-req-alert-main{padding:8px 12px;min-height:36px;gap:9px;}
+.crm-alert-dock .consult-req-alert-title{font-size:14px;line-height:20px;}
+.crm-alert-dock .consult-req-alert-sub{display:none;}
+.crm-alert-dock .consult-req-alert-dot{width:7px;height:7px;box-shadow:none;}
+.crm-alert-dock .consult-req-alert-list{max-height:360px;}
+.crm-alert-dock .consult-req-alert-row{display:block;position:relative;padding:10px 12px 4px;}
+.crm-alert-dock .consult-req-alert-row:hover{background:#fff;}
+.crm-alert-dock .consult-req-alert-row-main{gap:4px;padding:0;cursor:default;}
+.crm-alert-dock button.consult-req-alert-row-main{cursor:pointer;width:100%;}
+.crm-alert-dock .consult-req-alert-row-name{font-size:15px;line-height:22px;}
+.crm-alert-dock .alert-task,.crm-alert-dock .alert-check{font-size:14px;line-height:20px;color:#23364F;}
+.crm-alert-dock .alert-task{padding:6px 0;}
+.crm-alert-dock .alert-check{display:flex;align-items:center;gap:9px;min-height:36px;box-sizing:border-box;padding:6px 4px;margin:0;cursor:pointer;border-radius:6px;}
+.crm-alert-dock .alert-check:hover{background:#FFF6F5;}
+.crm-alert-dock .alert-check input{width:20px;height:20px;flex:none;margin:0;accent-color:#D93B37;cursor:pointer;}
+.crm-alert-dock .alert-check:focus-within{outline:2px solid #D93B37;outline-offset:1px;}
+.crm-alert-dock .alert-details{font-size:12px;line-height:1.5;color:#6F7C91;}
+.crm-alert-dock .alert-details summary{cursor:pointer;padding:0;width:fit-content;position:absolute;left:12px;bottom:22px;line-height:36px;}
+.crm-alert-dock .alert-details:not([open]){height:0;}
+.crm-alert-dock .is-history .alert-details{height:auto;}
+.crm-alert-dock .is-history .alert-details summary{position:static;line-height:30px;}
+.crm-alert-dock .alert-details [data-details]{white-space:pre-line;padding:4px 0 6px;}
+.crm-alert-dock .alert-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:4px;}
+.crm-alert-dock .alert-actions .consult-req-alert-done{flex:0 0 55%;}
+.crm-alert-dock .consult-req-alert-done{height:36px;min-width:80px;border-radius:7px;font-size:14px;flex:1;}
+.crm-alert-dock .alert-actions [hidden]{display:none;}
+.crm-alert-dock .alert-status{display:block;height:18px;font-size:12px;line-height:18px;color:#C2403A;}
+.crm-alert-dock .alert-history{font-size:13px;line-height:20px;color:#6F7C91;}
+
 .crm-alert-dock > .consult-req-alert{position:relative;right:auto;bottom:auto;left:auto;width:100%;flex:none;}
-@media(max-width:760px){.crm-alert-dock{right:10px;left:10px;bottom:10px;width:auto;max-height:calc(100dvh - 20px);}}
+@media(max-width:760px){.crm-alert-dock{right:10px;left:auto;bottom:10px;width:min(290px, calc(100vw - 20px));max-height:calc(100dvh - 20px);}}
 </style>
 </head>
 <body>
@@ -10662,6 +10693,7 @@ body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-filters > .map
                관리 도구 드롭다운 + 외곽 배지(#crmDataUpdateReviewBadge) 구조를 그대로 쓴다. -->
           <div class="update-menu-group-label">업무</div>
           <button type="button" id="crmWebsiteCleanupHistoryBtn">홈페이지 정리 완료 이력</button>
+          <button type="button" id="crmFollowupHistoryBtn">후속 업무 완료 이력</button>
           <button type="button" id="crmReqMatBtn">미팅 후 요청자료 <span id="crmReqMatCount" class="update-menu-count"></span></button>
           <div class="update-menu-divider"></div>
           <div class="update-menu-group-label">데이터 정리</div>
@@ -12135,6 +12167,7 @@ window.SHIN2_CRM_OCR = (function(){
         try{ localStorage.setItem(docSyncLocalRevKey(), String(rev)); }catch(e){}
         clearTimeout(docsPushTimer);
         docsPushTimer = setTimeout(async ()=>{
+          docsPushTimer=null;
           try{ await setDoc(doc(db, 'users', currentUid, 'shin2', DOC_SYNC_STORAGE_KEY), { value: data, updatedAt: serverTimestamp(), localRev: rev }); }
           catch(e){ console.error('[CRM/Firebase] 서류함 메타데이터 저장 실패', e); }
         }, 500);
@@ -12148,13 +12181,47 @@ window.SHIN2_CRM_OCR = (function(){
         const rev = Date.now();
         try{ localStorage.setItem(docSyncLocalRevKey(), String(rev)); }catch(e){}
         clearTimeout(docsPushTimer);
+        docsPushTimer=null;
         return setDoc(doc(db, 'users', currentUid, 'shin2', DOC_SYNC_STORAGE_KEY), { value: data, updatedAt: serverTimestamp(), localRev: rev });
       }
+      // Complete only this request against the latest shared documents. No optimistic hide.
+      const consultCompletionBusy = new Set();
+      window.SHIN2_CONSULT_REQUEST_COMPLETE = async (docId, expected, actorLabel)=>{
+        if(!currentUid) throw new Error('로그인이 필요합니다.');
+        if(consultCompletionBusy.has(docId)) throw new Error('저장 중입니다.');
+        consultCompletionBusy.add(docId);
+        try{
+          if(docsPushTimer){
+            clearTimeout(docsPushTimer); docsPushTimer=null;
+            await pushDocsToCloudAsync(window.SHIN2_CRM_DOCS_MEMORY || []);
+          }
+          const ref=doc(db,'users',currentUid,'shin2',DOC_SYNC_STORAGE_KEY);
+          const result=await runTransaction(db,async tx=>{
+            const snap=await tx.get(ref), previous=snap.exists()?snap.data():{};
+            const list=(previous.value || []).slice(), index=list.findIndex(d=>d.id===docId);
+            if(index<0) throw new Error('요청자료를 찾을 수 없습니다.');
+            const rec=list[index], review=rec.consultReview || {}, request=review.requestedMaterialsAfterMeeting || {};
+            if(request.memo!==expected.memo || request.notifiedAt!==expected.notifiedAt) throw new Error('요청 내용이 변경되었습니다. 새로고침 후 확인해주세요.');
+            if(request.completedAt && !request.pending) return {value:list,localRev:previous.localRev};
+            const now=new Date().toISOString();
+            list[index]=Object.assign({},rec,{updatedAt:now,consultReview:Object.assign({},review,{requestedMaterialsAfterMeeting:Object.assign({},request,{pending:false,completedAt:now,completedBy:actorLabel,completedByUid:currentUid})})});
+            const payload={value:list,localRev:Math.max(Date.now(),(previous.localRev || 0)+1),alertOnlyBaseRev:previous.localRev || 0,updatedAt:serverTimestamp()};
+            tx.set(ref,payload);return payload;
+          });
+          let localRev=0;try{localRev=Number(localStorage.getItem(docSyncLocalRevKey()) || 0);}catch(e){}
+          if((result.localRev || 0)>=localRev){
+            setDocsMemory(result.value,true);
+            try{localStorage.setItem(docSyncLocalRevKey(),String(result.localRev));}catch(e){}
+          }
+          return result.value.find(d=>d.id===docId);
+        }finally{consultCompletionBusy.delete(docId);}
+      };
       function startDocsSync(){
         if(docsSyncStarted || !currentUid) return;
         docsSyncStarted = true;
         const ref = doc(db, 'users', currentUid, 'shin2', DOC_SYNC_STORAGE_KEY);
-        onSnapshot(ref, (snap)=>{
+        onSnapshot(ref, {includeMetadataChanges:true}, (snap)=>{
+          if(snap.metadata.hasPendingWrites) return;
           if(!snap.exists()) return;
           const payload = snap.data();
           if(payload.value == null || !Array.isArray(payload.value)) return;
@@ -12171,6 +12238,11 @@ window.SHIN2_CRM_OCR = (function(){
           // localStorage가 용량 초과여도 Firestore의 최신 메타데이터는 메모리 미러에서
           // 즉시 읽을 수 있게 한다. 기존 로컬 전용 파일 메타데이터는 함께 보존한다.
           setDocsMemory(payload.value, true);
+          try{localStorage.setItem(docSyncLocalRevKey(),String(snapRev));}catch(e){}
+          if(localRev && payload.alertOnlyBaseRev === localRev){
+            window.dispatchEvent(new CustomEvent('consult-request-alert-update'));
+            return;
+          }
           window.dispatchEvent(new CustomEvent('shin2-crm-docs-cloud-update'));
         }, (err)=> console.warn('[CRM/Firebase] 서류함 메타데이터 구독 실패', err));
       }
@@ -12227,6 +12299,25 @@ window.SHIN2_CRM_OCR = (function(){
       // 즉 이 경로로 들어오는 빈 배열은 항상 "사람이 실제로 pending/review를 전부 해소한"
       // 결과이지, 네트워크 실패나 미로딩으로 인한 빈 값이 아니다.
       const ALLOW_EMPTY_SYNC_NAMES = new Set(['salesPendingReview2026', 'salesCrossYearReview2026', 'salesCompanyReview2026']);
+      // Company state and its explicit follow-up event commit together. Other saves keep their existing path.
+      async function saveSharedPayload(name, storageKey, data, rev){
+        const ref = doc(db, 'users', currentUid, 'shin2', storageKey);
+        if(name !== 'companies' || !data.some(c=> c.followupEvents))
+          return setDoc(ref, {value:data, updatedAt:serverTimestamp(), localRev:rev});
+        const noticeRef = doc(db, 'users', currentUid, 'shin2', window.WebsiteCleanup.KEY);
+        const actor = {uid:currentUid,label:'사용자 ' + (localStorage.getItem('shin2-active-user-id') || '1')};
+        const payload = await runTransaction(db, async tx=>{
+          const snap = await tx.get(noticeRef);
+          const previous = snap.exists() ? snap.data() : {};
+          const next = window.WebsiteCleanup.applyEvents(previous, data, actor, new Date().toISOString());
+          tx.set(ref, {value:data, updatedAt:serverTimestamp(), localRev:rev});
+          if(!next.changed) return null;
+          const result = {value:next.value,processedEvents:next.processedEvents,localRev:Math.max(Date.now(),(previous.localRev || 0)+1)};
+          tx.set(noticeRef, Object.assign({},result,{updatedAt:serverTimestamp()}),{merge:true});
+          return result;
+        });
+        if(payload) publishCleanup(payload);
+      }
       function sharedLocalRevKey(storageKey){ return 'shin2-sync-rev-' + storageKey; }
       function pushSharedKeyToCloud(name, storageKey, data){
         if(!currentUid) return;
@@ -12237,7 +12328,7 @@ window.SHIN2_CRM_OCR = (function(){
         clearTimeout(sharedPushTimers[name]);
         sharedPushTimers[name] = setTimeout(async ()=>{
           delete sharedPushTimers[name];
-          try{ await setDoc(doc(db, 'users', currentUid, 'shin2', storageKey), { value: data, updatedAt: serverTimestamp(), localRev: rev }); }
+          try{ await saveSharedPayload(name, storageKey, data, rev); }
           catch(e){ console.error(`[CRM/Firebase] ${name} 저장 실패`, e); }
         }, 500);
       }
@@ -12298,7 +12389,7 @@ window.SHIN2_CRM_OCR = (function(){
         try{ localStorage.setItem(sharedLocalRevKey(storageKey), String(rev)); }catch(e){}
         clearTimeout(sharedPushTimers[name]);
         delete sharedPushTimers[name];
-        return setDoc(doc(db, 'users', currentUid, 'shin2', storageKey), { value: data, updatedAt: serverTimestamp(), localRev: rev });
+        return saveSharedPayload(name, storageKey, data, rev);
       }
       // §로컬-클라우드 비교 화면 라운드(신규) — onSnapshot은 항상 "로컬에 이미 병합된
       // 뒤의" 최신 상태만 보여준다. 이 기기의 localStorage와 Firestore 원본을 있는
@@ -12322,28 +12413,37 @@ window.SHIN2_CRM_OCR = (function(){
 
       const cleanupKey = window.WebsiteCleanup.KEY;
       let cleanupUnsubscribe = null;
+      let cleanupRevision = -1;
+      function publishCleanup(payload){
+        const rev = payload.localRev || 0;
+        if(rev <= cleanupRevision) return;
+        cleanupRevision = rev;
+        window.SHIN2_WEBSITE_CLEANUP_ITEMS = Array.isArray(payload.value) ? payload.value : [];
+        window.dispatchEvent(new CustomEvent('website-cleanup-update'));
+      }
       window.SHIN2_WEBSITE_CLEANUP_ITEMS = [];
       function startWebsiteCleanupSync(){
         if(cleanupUnsubscribe) cleanupUnsubscribe();
+        cleanupRevision = -1;
         window.SHIN2_WEBSITE_CLEANUP_ITEMS = [];
         window.dispatchEvent(new CustomEvent('website-cleanup-update'));
         if(!currentUid) return;
         cleanupUnsubscribe = onSnapshot(doc(db, 'users', currentUid, 'shin2', cleanupKey), {includeMetadataChanges:true}, snap=>{
           // Never hide a task based on a pending/offline completion write.
           if(snap.metadata.hasPendingWrites) return;
-          window.SHIN2_WEBSITE_CLEANUP_ITEMS = snap.exists() && Array.isArray(snap.data().value) ? snap.data().value : [];
-          window.dispatchEvent(new CustomEvent('website-cleanup-update'));
+          publishCleanup(snap.exists() ? snap.data() : {value:[],localRev:0});
         }, err=> console.warn('[CRM/Firebase] 홈페이지 정리 알림 구독 실패', err));
       }
-      let cleanupBusy = false;
+      const cleanupBusy = new Set();
       window.SHIN2_WEBSITE_CLEANUP_SAVE = async command=>{
         if(!currentUid) throw new Error('로그인이 필요합니다.');
-        if(cleanupBusy) throw new Error('저장 중입니다. 잠시 후 다시 시도해주세요.');
-        cleanupBusy = true;
+        if(cleanupBusy.has(command.id)) throw new Error('저장 중입니다. 잠시 후 다시 시도해주세요.');
+        cleanupBusy.add(command.id);
         const uid = currentUid;
         const actor = {uid, label:'사용자 ' + (localStorage.getItem('shin2-active-user-id') || '1')};
         const keys = Object.assign({}, SHARED_ARRAY_KEYS, {websiteCleanup:cleanupKey});
-        const names = command.kind === 'check' ? ['websiteCleanup'] :
+        const item = window.SHIN2_WEBSITE_CLEANUP_ITEMS.find(n=>n.id===command.id);
+        const names = command.kind === 'check' || (command.kind === 'complete' && item && item.type && item.type!=='website') ? ['websiteCleanup'] :
           command.kind === 'complete' ? ['websiteCleanup','customerActivities'] : ['companies','customerActivities','websiteCleanup'];
         try{
           // Drain pre-existing edits before the transaction; none of the new operation is optimistic.
@@ -12370,13 +12470,13 @@ window.SHIN2_CRM_OCR = (function(){
               }
             }
             const result = window.WebsiteCleanup.apply(state, command, actor, new Date().toISOString());
-            result.changed.forEach(name=> tx.set(refs[name], {value:result.state[name], updatedAt:serverTimestamp(), localRev:rev}));
+            result.changed.forEach(name=> tx.set(refs[name], {value:result.state[name], updatedAt:serverTimestamp(), localRev:rev},{merge:true}));
             return Object.assign(result, {rev});
           });
           if(currentUid !== uid) return;
           // Local storage is only a mirror. The promise above is the commit acknowledgement.
           result.changed.forEach(name=>{
-            if(name === 'websiteCleanup') window.SHIN2_WEBSITE_CLEANUP_ITEMS = result.state[name];
+            if(name === 'websiteCleanup') publishCleanup({value:result.state[name],localRev:result.rev});
             else {
               try{
                 localStorage.setItem(keys[name], JSON.stringify(result.state[name]));
@@ -12384,12 +12484,11 @@ window.SHIN2_CRM_OCR = (function(){
               }catch(err){ console.warn('클라우드 저장 완료, 로컬 캐시 갱신 실패', err); }
             }
           });
-          window.dispatchEvent(new CustomEvent('website-cleanup-update'));
-          result.changed.filter(name=> name !== 'websiteCleanup').forEach(key=>
+          result.changed.filter(name=> name !== 'websiteCleanup' && command.kind !== 'complete').forEach(key=>
             window.dispatchEvent(new CustomEvent('shin2-crm-cloud-update', {detail:{key}})));
         }finally{
           names.forEach(name=> lifecycleSyncLocks.delete(name));
-          cleanupBusy = false;
+          cleanupBusy.delete(command.id);
         }
       };
 
@@ -15275,6 +15374,7 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
       confirmPatch.agreementInvalidatedLog = (Array.isArray(co.agreementInvalidatedLog) ? co.agreementInvalidatedLog : [])
         .concat([{ action:'lift', at: after.at, by: after.by, reason:'MOU 체결 확정으로 무효 표시 해제' }]);
     }
+    if(confirmed) Object.assign(confirmPatch,window.WebsiteCleanup.eventPatch(co,'mou',after.at,true));
     return updateCompany(companyId, confirmPatch);
   }
   function terminateAgreement(companyId, opts){
@@ -27038,7 +27138,12 @@ window.SHIN2_CRM_APP_INIT = function(){
       reason: meta && meta.reason, reasonOther: (meta && meta.reason === '기타') ? meta.reasonOther : null,
       at: new Date().toISOString(), by: crmCurrentUserLabel()
     });
-    const { rec, list } = D.updateCompanyReturningAll(companyId, { partnerDashboard: Object.assign({}, pd, { stageCorrections: corrections, stageCorrectionLog: log }) });
+    const companyPatch = {partnerDashboard:Object.assign({},pd,{stageCorrections:corrections,stageCorrectionLog:log})};
+    if(after && after.status==='done' && (stageKey==='mouDone' || (stageKey==='m2Done' && meta && meta.reason==='완료 처리'))){
+      Object.assign(companyPatch, window.WebsiteCleanup.eventPatch(co,stageKey==='m2Done'?'m2':'mou',after.dateText,
+        isConfirmedPartner(Object.assign({},co,companyPatch), buildProgressStages(Object.assign({},co,companyPatch)))));
+    }
+    const { rec, list } = D.updateCompanyReturningAll(companyId, companyPatch);
     return { ok: !!rec, list };
   }
   function buildProgressStages(co){
@@ -28076,7 +28181,11 @@ window.SHIN2_CRM_APP_INIT = function(){
   function workqMergeNewMou(co, patch){
     const current = (co.partnerDashboard && co.partnerDashboard.newMou) || {};
     const merged = Object.assign({}, current, patch);
-    D.updateCompany(co.id, { partnerDashboard: Object.assign({}, co.partnerDashboard, { newMou: merged }) });
+    const companyPatch = {partnerDashboard:Object.assign({},co.partnerDashboard,{newMou:merged})};
+    if(patch.m2Done===true || patch.mouDone===true) Object.assign(companyPatch,
+      window.WebsiteCleanup.eventPatch(co,patch.mouDone===true?'mou':'m2',patch.mouLabel || patch.m2Label,
+        isConfirmedPartner(Object.assign({},co,companyPatch), buildProgressStages(Object.assign({},co,companyPatch)))));
+    D.updateCompany(co.id, companyPatch);
   }
   function workqLogActivity(companyId, text){ if(text) D.addActivity(companyId, text); }
   function workqLogMemo(companyId, text){ const t = (text||'').trim(); if(t) D.addMemo(companyId, t); }
@@ -30610,8 +30719,17 @@ window.SHIN2_CRM_APP_INIT = function(){
     const co = D.findCompany(companyId);
     if(!co) return;
     const log = Array.isArray(co.m1MailLog) ? co.m1MailLog.slice() : [];
+    entry = Object.assign({id:crypto.randomUUID()},entry);
+    const patch = {};
+    if(entry.status==='sent' && ['firstMeeting','postSecondMeeting'].includes(entry.mailType)){
+      if(entry.mailType==='postSecondMeeting'){
+        const first=log.filter(l=>l.mailType==='firstMeeting' && l.status==='sent' && l.id).at(-1);
+        entry.followupFirstMailId=first ? first.id : null;
+      }
+      Object.assign(patch,window.WebsiteCleanup.eventPatch(co,entry.mailType==='firstMeeting'?'firstMail':'secondMail',entry.id,false));
+    }
     log.push(entry);
-    D.updateCompany(companyId, { m1MailLog: log });
+    D.updateCompany(companyId, Object.assign(patch,{m1MailLog:log}));
   }
   // openMailComposeModal: 업무관리 "1차미팅 잡기" 목록의 [메일발송] 버튼에서 연다.
   // 메일 설정 탭에서 저장해 둔 문구 템플릿을 이 업체 값으로 채워 미리 보여주고, 발송
@@ -33061,8 +33179,9 @@ window.SHIN2_CRM_APP_INIT = function(){
   function consultRequestAlertItems(){
     const docs = (D.pendingConsultReviewDocs && D.pendingConsultReviewDocs()) || [];
     const items = [];
+    const companiesById = new Map(D.loadCompanies().map(co=>[co.id,co]));
     docs.forEach(d=>{
-      const co = D.findCompany(d.companyId);
+      const co = companiesById.get(d.companyId);
       if(!co) return;                      // 삭제된 업체는 알리지 않는다
       const r = D.readConsultReview(d);
       // 1차 미팅이 끝난 업체를 위로 올린다(§5 "1차 미팅 이후 단계라면 더 우선"). 새 판정을
@@ -33101,21 +33220,23 @@ window.SHIN2_CRM_APP_INIT = function(){
     }
     const afterM1Count = items.filter(it=> it.afterM1).length;
     el.innerHTML = `
-      <button type="button" class="consult-req-alert-main" id="consultReqAlertMain">
+      <button type="button" class="consult-req-alert-main" id="consultReqAlertMain" aria-expanded="true">
         <span class="consult-req-alert-dot" aria-hidden="true"></span>
         <span class="consult-req-alert-texts">
           <span class="consult-req-alert-title">요청자료 발송 필요 ${esc(items.length)}건</span>
           <span class="consult-req-alert-sub">${afterM1Count ? `1차 미팅 후 요청자료 발생 ${esc(afterM1Count)}건` : '질문지 상담에서 등록됨'}</span>
         </span>
       </button>
-      <div class="consult-req-alert-list" id="consultReqAlertList" hidden>
+      <div class="consult-req-alert-list" id="consultReqAlertList">
         ${items.slice(0, 8).map(it=> `
           <div class="consult-req-alert-row">
             <button type="button" class="consult-req-alert-row-main" data-consult-req-co="${esc(it.co.id)}">
-              <span class="consult-req-alert-row-name">${esc(it.co.name)}${it.afterM1 ? '<span class="consult-req-alert-flag">1차 미팅 후</span>' : ''}</span>
-              <span class="consult-req-alert-row-memo">${esc(it.memo.length > 60 ? it.memo.slice(0,60) + '…' : it.memo)}</span>
+              <span class="consult-req-alert-row-name">${esc(it.co.name)}</span>
+
             </button>
-            <button type="button" class="consult-req-alert-done" data-consult-req-done="${esc(it.doc.id)}" title="이 건을 알림에서 지웁니다(요청 내용은 질문지 상담에 그대로 남습니다)">완료</button>
+            <div class="alert-task">요청자료 보내기</div>
+            <details class="alert-details"><summary>상세보기</summary><div data-details>${esc(it.memo)}</div></details>
+            <div class="alert-actions"><button type="button" class="consult-req-alert-done" data-consult-req-done="${esc(it.doc.id)}" title="이 건을 알림에서 지웁니다(요청 내용은 질문지 상담에 그대로 남습니다)">발송 완료</button></div><span class="alert-status" role="status" aria-live="polite"></span>
           </div>`).join('')}
         ${items.length > 8 ? `<div class="consult-req-alert-more">외 ${esc(items.length - 8)}건</div>` : ''}
       </div>`;
@@ -33123,31 +33244,51 @@ window.SHIN2_CRM_APP_INIT = function(){
     document.getElementById('consultReqAlertMain').addEventListener('click', ()=>{
       list.hidden = !list.hidden;
       el.classList.toggle('is-open', !list.hidden);
+      document.getElementById('consultReqAlertMain').setAttribute('aria-expanded',String(!list.hidden));
     });
     el.querySelectorAll('[data-consult-req-co]').forEach(b=> b.addEventListener('click', ()=>{
       // 기존 통합 고객 상세 팝업을 "질문지 상담" 탭으로 연다(새 화면 없음).
       openCustomerDetail(b.getAttribute('data-consult-req-co'), 'questionnaire');
     }));
-    // [완료] — 누르는 즉시 그 줄이 알림에서 사라진다. 요청 내용은 지우지 않고
+    // [완료] — 저장 확인 후 해당 줄만 제거한다. 요청 내용은 지우지 않고
     // completedAt만 찍는다(§요청 "그냥 바로 사라지게, 따로 기록 안 남겨도 된다").
     el.querySelectorAll('[data-consult-req-done]').forEach(b=> b.addEventListener('click', async (ev)=>{
       ev.stopPropagation();
       const docId = b.getAttribute('data-consult-req-done');
+      if(b.disabled)return;
       b.disabled = true;
-      const r = D.markConsultRequestDone(docId, crmCurrentUserLabel());
-      if(!r || !r.ok){ b.disabled = false; alert('완료 처리에 실패했습니다.'); return; }
-      // 로컬 저장 시점에 화면을 바로 정리한다 — 클라우드 확인을 기다리지 않는다.
-      renderConsultRequestAlert();
-      const openId = (typeof currentCompanyId !== 'undefined') ? currentCompanyId : null;
-      if(openId && String(r.rec.companyId) === String(openId)){
-        // 고객 상세가 열려 있으면 그 안의 요청자료 표시도 같이 맞춘다.
-        const co = D.findCompany(openId);
-        if(co){ try{ renderQuestionnaireSummaryCard(co, r.rec); }catch(err){ /* 탭이 안 그려졌으면 무시 */ } }
+      b.textContent = '처리 중…';
+      const row=b.closest('.consult-req-alert-row');row.setAttribute('aria-busy','true');
+      await new Promise(resolve=>requestAnimationFrame(()=>setTimeout(resolve,0)));
+      try{
+        const item=items.find(it=>it.doc.id===docId);
+        if(!window.SHIN2_CONSULT_REQUEST_COMPLETE) throw new Error('저장 연결을 확인해주세요.');
+        await window.SHIN2_CONSULT_REQUEST_COMPLETE(docId,item.doc.consultReview.requestedMaterialsAfterMeeting,crmCurrentUserLabel());
+        row.remove();
+        const remaining=consultRequestAlertItems();
+        if(!remaining.length) el.remove();
+        else{
+          el.querySelector('.consult-req-alert-title').textContent='요청자료 발송 필요 '+remaining.length+'건';
+          const after=remaining.filter(it=>it.afterM1).length;
+          el.querySelector('.consult-req-alert-sub').textContent=after?'1차 미팅 후 요청자료 발생 '+after+'건':'질문지 상담에서 등록됨';
+          // Refill the eight-row window only when an off-screen item exists.
+          if(items.length>8){renderConsultRequestAlert();document.getElementById('consultReqAlertList').hidden=false;}
+        }
+      }catch(err){
+        b.disabled=false;b.textContent='재시도';b.title='저장 실패 · 다시 눌러 완료 저장을 재시도해주세요.';
+        row.setAttribute('aria-busy','false');row.querySelector('.alert-status').textContent='저장 실패 · 다시 시도해주세요.';
       }
-      const cloud = await confirmDocsCloudSave(r.list);
-      if(!cloud.ok) showMiniSaveToast('완료 저장 확인 실패 - 다시 시도');
     }));
   }
+  window.addEventListener('consult-request-alert-update',()=>{
+    const el=document.getElementById('consultReqAlert');if(!el)return;
+    const pending=consultRequestAlertItems(), ids=new Set(pending.map(it=>String(it.doc.id)));
+    el.querySelectorAll('[data-consult-req-done]').forEach(b=>{if(!ids.has(b.dataset.consultReqDone))b.closest('.consult-req-alert-row').remove();});
+    if(!pending.length){el.remove();return;}
+    el.querySelector('.consult-req-alert-title').textContent='요청자료 발송 필요 '+pending.length+'건';
+    const after=pending.filter(it=>it.afterM1).length;
+    el.querySelector('.consult-req-alert-sub').textContent=after?'1차 미팅 후 요청자료 발생 '+after+'건':'질문지 상담에서 등록됨';
+  });
   function closeQuestionnaireSession(){
     const root = document.getElementById('questionnaireSessionRoot');
     if(root) root.innerHTML = '';
@@ -42479,7 +42620,9 @@ window.SHIN2_CRM_APP_INIT = function(){
     // 체결일 데이터를 그대로 사용하거나 안전하게 연결" — 기존 값이 있으면 절대 지우지
     // 않고, 새로 체결 완료를 입력했을 때만 채운다).
     if(mouDateLabel) pdPatch.mouDate = mouDateLabel;
-    D.updateCompany(companyId, { partnerDashboard: pdPatch });
+    const companyPatch = {partnerDashboard:pdPatch};
+    if(mouDateLabel) Object.assign(companyPatch,window.WebsiteCleanup.eventPatch(co,'mou',mouDateLabel,true));
+    D.updateCompany(companyId, companyPatch);
     // §12: 별도 감사로그 시스템은 없으므로(범위 밖) 기존 활동기록에만 짧게 남긴다.
     const parts = [];
     if(values.m1s !== 'undetermined') parts.push(`1차미팅 ${DEAL_M_STATUS_LABELS.find(x=>x[0]===values.m1s)[1]}${values.m1d?' · '+values.m1d:''}`);
