@@ -41,3 +41,21 @@ test('단일 업무 확인 옵션으로 다중 항목 완료 조건을 우회할
   const c=event(co(),'m2','day'),p=run({},c);
   assert.throws(()=>A.apply({companies:[c],customerActivities:[],websiteCleanup:p.value},{kind:'complete',id:p.value[0].id,confirmSingle:true},actor,now));
 });
+test('질문서 회신 명시적 저장만 후속 알림 생성, 재접속·반복 저장 중복 없음',()=>{
+ let c=co();const context={window:{WebsiteCleanup:A},D:{updateCompany:(id,p)=>Object.assign(c,p)}};vm.runInNewContext(fn('workqMergeNewMou'),context);
+ assert.equal(run({}, {...c,partnerDashboard:{newMou:{qReplyLabel:'26.10.12'}}}).value.length,0);
+ context.workqMergeNewMou(c,{qReplyLabel:'26.10.12'});const p=run({},c);assert.equal(p.value[0].type,'reply');assert.equal(run(JSON.parse(JSON.stringify(p)),c).value.length,1);
+ let state={companies:[c],customerActivities:[],websiteCleanup:p.value},id=p.value[0].id;
+ state=A.apply(state,{kind:'check',id,field:'jandi',value:true},actor,now).state;assert.throws(()=>A.apply(state,{kind:'complete',id},actor,now));
+ state=A.apply(state,{kind:'check',id,field:'jandi',value:false},actor,now).state;assert.equal(state.websiteCleanup[0].jandi,false);
+ for(const field of ['jandi','pdf'])state=A.apply(state,{kind:'check',id,field,value:true},actor,now).state;
+ state=JSON.parse(JSON.stringify(state));state.companies=[];state=A.apply(state,{kind:'complete',id},actor,now).state;
+ assert.equal(state.websiteCleanup[0].completedByUid,'test');assert.equal(state.websiteCleanup[0].companyName,c.name);assert.equal(c.m1MailLog,undefined);
+});
+test('회신 저장 실패는 메일 화면 미개방, 재시도 성공 때만 첫 미팅 메일 화면 열기',async()=>{
+ const els={};for(const id of ['agreementModalRoot','qReplyCancelBtn','qReplyConfirmOverlay','qReplySaveBtn','qReplyDateInput'])els[id]={value:'2026-10-12',addEventListener:(type,fn)=>els[id].click=fn,appendChild:()=>{}};
+ let fail=true,writes=0,opened=0,closed=0;const context={document:{getElementById:id=>els[id],createElement:()=>({})},D:{findCompany:()=>co()},bindSafeBackdropClose:()=>{},closeQuestionnaireReplyModal:()=>closed++,workqSaveQuestionnaireReply:()=>{writes++;return true;},confirmCloudSave:async()=>({ok:!fail}),openMailComposeModal:(id,type)=>{assert.equal(type,'firstMeeting');opened++;}};
+ vm.runInNewContext(fn('openQuestionnaireReplyModal'),context);context.openQuestionnaireReplyModal('test-co');
+ await els.qReplySaveBtn.click();assert.equal(opened,0);assert.equal(closed,0);assert.equal(els.qReplySaveBtn.disabled,false);
+ fail=false;await els.qReplySaveBtn.click();assert.equal(opened,1);assert.equal(writes,1);assert.equal(closed,1);
+});

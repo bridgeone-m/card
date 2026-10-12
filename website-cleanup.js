@@ -4,6 +4,7 @@
   const TYPES = {
     website: {title:'홈페이지 삭제 처리 필요', checks:[['requested','홈페이지 담당자에게 삭제 요청 전달'],['verified','홈페이지 로고·업체 정보 삭제 확인']]},
     mou: {title:'MOU 체결 진행 필요', checks:[['materials','체결에 필요한 자료 수령'],['documents','협약체결서·물품공급계약서 발송'],['signed','두 문서 서명 및 체결 완료 확인']], guidance:'자료: 사업자등록증·통장사본·명함·회사 로고'},
+    reply: {title:'질문서 공유·저장', checks:[['jandi','잔디 토픽에 질문서 올리기'],['pdf','질문서 고객관리 PDF 저장하기']]},
     mail: {title:'2차 메일 발송 확인', checks:[['secondSent','2차 메일 발송 완료 확인']]}
   };
   // Mark only explicit new actions. Persisted with the existing company save, never reconstructed at boot.
@@ -20,9 +21,11 @@
       for(const e of events){
         if(processedEvents[e.id]) continue;
         processedEvents[e.id]=true; changed=true;
-        const type=e.kind==='m2' || e.kind==='mou' ? 'mou' : 'mail';
+        const type=e.kind==='qReply' ? 'reply' : e.kind==='m2' || e.kind==='mou' ? 'mou' : 'mail';
         let n=value.find(n=>n.type===type && n.companyId===co.id && !n.completedAt);
-        if(e.kind==='m2' && !e.mouComplete){
+        if(e.kind==='qReply'){
+          if(!n) value.push({id:e.id,type,companyId:co.id,companyName:co.name,occurredAt:e.at,replyDate:e.evidence,jandi:false,pdf:false,completedAt:null});
+        }else if(e.kind==='m2' && !e.mouComplete){
           if(!n) value.push({id:e.id,type,companyId:co.id,companyName:co.name,occurredAt:e.at,materials:false,documents:false,signed:false,completedAt:null});
         }else if(e.kind==='mou' && n){
           Object.assign(n,{completedAt:now,completedBy:actor.label,completedByUid:actor.uid,completionSource:'formal-mou',completionEvidence:e.evidence});

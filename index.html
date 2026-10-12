@@ -7106,7 +7106,7 @@ body{
 /* §요청자료 알림 — MOU 진행상황 화면 우측 하단 floating */
 .consult-req-alert{
   position:fixed; right:22px; bottom:22px; z-index:9000;
-  width:min(290px, calc(100vw - 32px));
+  width:min(330px, calc(100vw - 32px));
   border-radius:14px; overflow:hidden;
   box-shadow:0 12px 32px rgba(120,30,30,.22);
 }
@@ -10565,7 +10565,7 @@ body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-filters > .map
 .top-tab .top-tab-ico{ flex:none; width:15px; height:15px; opacity:.75; }
 .top-tab.is-active .top-tab-ico{ opacity:1; }
 /* Shared bottom-right stack: individual alert skins remain unchanged. */
-.crm-alert-dock{position:fixed;right:22px;bottom:22px;z-index:9000;width:min(290px, calc(100vw - 32px));display:flex;flex-direction:column;gap:10px;max-height:calc(100dvh - 44px);}
+.crm-alert-dock{position:fixed;right:22px;bottom:22px;z-index:9000;width:min(330px, calc(100vw - 32px));display:flex;flex-direction:column;gap:10px;max-height:calc(100dvh - 44px);}
 .crm-alert-dock.is-overflowing{overflow-y:auto;scrollbar-width:none;overflow-anchor:none;}
 .crm-alert-dock::-webkit-scrollbar{width:0;}
 /* Compact task alerts: shared skin, stable controls and touch-sized targets. */
@@ -10599,7 +10599,36 @@ body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-filters > .map
 .crm-alert-dock .alert-history{font-size:13px;line-height:20px;color:#6F7C91;}
 
 .crm-alert-dock > .consult-req-alert{position:relative;right:auto;bottom:auto;left:auto;width:100%;flex:none;}
-@media(max-width:760px){.crm-alert-dock{right:10px;left:auto;bottom:10px;width:min(290px, calc(100vw - 20px));max-height:calc(100dvh - 20px);}}
+@media(max-width:760px){.crm-alert-dock{right:10px;left:auto;bottom:10px;width:min(330px, calc(100vw - 20px));max-height:calc(100dvh - 20px);}}
+/* Shared task alerts only. Original symbol is cropped with a viewport; source pixels remain intact. */
+.crm-alert-dock > .consult-req-alert{background:#fff;border:1px solid #dce0e7;border-radius:12px;box-shadow:0 5px 18px rgba(25,30,52,.10);box-sizing:border-box;}
+.crm-alert-dock .consult-req-alert-main{background:#fff;color:#191e34;padding:10px 12px 8px;gap:9px;min-height:44px;}
+.crm-alert-dock .consult-req-alert-main:hover{background:#f8f9fb;}
+.crm-alert-dock .alert-brand{position:relative;display:block;flex:none;width:23px;height:24px;overflow:hidden;}
+.crm-alert-dock .alert-brand img{position:absolute;width:32.96px;height:31.77px;max-width:none;left:-5.75px;top:-4.27px;}
+.crm-alert-dock .consult-req-alert-title{font-size:14px;font-weight:750;}
+.crm-alert-dock .consult-req-alert-list{border:0;background:#fff;}
+.crm-alert-dock .consult-req-alert-row{padding:4px 12px 4px;}
+.crm-alert-dock .consult-req-alert-row + .consult-req-alert-row{border-top:1px solid #e8ebef;padding-top:10px;}
+.crm-alert-dock .consult-req-alert-row-name{color:#191e34;font-size:15px;font-weight:750;margin-bottom:4px;}
+.crm-alert-dock .alert-task,.crm-alert-dock .alert-check{color:#303746;font-size:14px;}
+.crm-alert-dock .alert-check{min-height:38px;padding:7px 6px;background:#fff;gap:9px;}
+.crm-alert-dock .alert-check:hover{background:#f5f6f8;}
+.crm-alert-dock .alert-check:has(input:checked){background:#eef2f7;}
+.crm-alert-dock .alert-check input{appearance:none;width:19px;height:19px;border:1px solid #9aa3b1;border-radius:4px;background:#fff;display:grid;place-content:center;}
+.crm-alert-dock .alert-check input:checked{border-color:#191e34;background:#eef2f7;}
+.crm-alert-dock .alert-check input:checked::after{content:'';width:9px;height:5px;border:solid #191e34;border-width:0 0 2px 2px;transform:rotate(-45deg);margin-top:-2px;}
+.crm-alert-dock .alert-check:focus-within{outline:2px solid #607595;outline-offset:1px;}
+.crm-alert-dock .consult-req-alert-done{height:34px;border:1px solid #191e34;background:#191e34;color:#fff;border-radius:7px;opacity:1;}
+.crm-alert-dock .consult-req-alert-done:hover:not(:disabled){background:#2c3554;border-color:#2c3554;}
+.crm-alert-dock .consult-req-alert-done:disabled{background:#eef0f3;border-color:#e3e6eb;color:#737c89;opacity:1;cursor:default;}
+.crm-alert-dock .consult-req-alert-done:focus-visible{outline:2px solid #607595;outline-offset:2px;}
+.crm-alert-dock .alert-actions{margin-top:8px;}
+.crm-alert-dock .alert-actions .consult-req-alert-done{flex:0 0 104px;}
+.crm-alert-dock .alert-details{color:#626d7d;}
+.crm-alert-dock .alert-details summary{line-height:34px;}
+.crm-alert-dock .consult-req-alert-more{border-top-color:#e8ebef;color:#626d7d;}
+
 </style>
 </head>
 <body>
@@ -27978,6 +28007,37 @@ window.SHIN2_CRM_APP_INIT = function(){
     if(byKey.mou.state !== 'done') return false;
     return byKey.q.ts == null && byKey.m1.ts == null && byKey.m2.ts == null;
   }
+  // Read-only queue: actual successful questionnaire mail, no inferred send records.
+  function questionnaireWaitingInfo(co, progress){
+    if(!co || D.isCompanyDeleted(co) || D.isAgreementTerminated(co) || D.isAgreementInvalidated(co) || isConfirmedPartner(co,progress)) return null;
+    if(!mailLogForType(co,'questionnaire').some(log=>log && log.status==='sent')) return null;
+    const sentAt=questionnaireMailSentTs(co);
+    const nm=resolveNewMouForCompany(co) || {};
+    const corrections=(co.partnerDashboard || {}).stageCorrections || {};
+    const reply=corrections.qReply;
+    // qSend may mark the generic question stage done: it is not a reply confirmation.
+    const replied=reply ? reply.status==='done' : !!(parsePartnerDateLabel(nm.qReplyLabel) || nm.qReplyDone || nm.qReplySkipped);
+    if(replied) return null;
+    const stages=Object.fromEntries(progress.stages.map(stage=>[stage.key,stage]));
+    if(stages.mou.state==='done') return null;
+    if(['m1','m2'].some(key=>{
+      const stage=stages[key];
+      return stage.state==='done' || stage.state==='scheduled' || stage.ts!=null || stage.scheduledLabel || nm[key+'Done'] || nm[key+'Skipped'] || nm[key+'Scheduled'];
+    })) return null;
+    const days=sentAt==null?null:Math.max(0,Math.round((getSeoulTodayDateOnly()-seoulDateOnlyFromTs(sentAt))/86400000));
+    return {sentAt,days};
+  }
+  function questionnaireWaitingSearchRows(list, query, activitiesIndex){
+    return list.filter(it=>it.type==='qWaiting').filter(it=>matchesSearch(it.co,query?(activitiesIndex.get(String(it.co.id)) || []):[],query));
+  }
+  function questionnaireWaitingRowHtml(it){
+    const contact=it.co.contactName || '미등록';
+    const phones=[...new Set([it.co.mobile,it.co.phone].filter(Boolean))].join(' · ') || '미등록';
+    const date=it.questionnaireSentAt==null?'미등록':new Date(it.questionnaireSentAt).toLocaleDateString('ko-KR',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit'});
+    return '<tr><td><button type="button" class="workq-co-link" data-workq-open-co="'+esc(it.co.id)+'">'+esc(it.co.name)+'</button></td>'+
+      '<td><div>'+esc(contact)+'</div><div>'+esc(phones)+'</div></td><td>'+esc(date)+'</td><td class="workq-days">'+(it.days==null?'—':esc(it.days)+'일')+'</td>'+
+      '<td class="workq-task-cell"><button type="button" class="workq-action-btn" data-workq-q-reply="'+esc(it.co.id)+'">회신 확인</button></td></tr>';
+  }
   function buildWorkQueueItem(co, acts, progress, hasPour){
     // §업체 관계·협약 종료 라운드(신규) — "현재 협약 업체를 대상으로 하는 자동 후속업무"
     // 에서 협약 종료 업체를 제외한다(§요청 3). 진행단계 자체는 전혀 안 건드리고 여기
@@ -27993,6 +28053,9 @@ window.SHIN2_CRM_APP_INIT = function(){
     // "현재 업무 없음"으로 표시된다. hasNoFunnelHistoryBeforeMou 함수 자체는 지금 이 호출
     // 하나만 썼던 함수라 더 이상 아무 데서도 안 쓰지만, 판정 규칙 이력 참고용으로 그대로 둔다
     // (§ 데이터/로직 삭제 금지 원칙 — 사용하지 않게 됐다고 정의를 지우지 않는다).
+    const waiting=questionnaireWaitingInfo(co,progress);
+    if(waiting) return {co,type:'qWaiting',category:'meeting',currentStateLabel:'질문서 발송',
+      reasonText:'질문서 회신 대기',questionnaireSentAt:waiting.sentAt,days:waiting.days,actionLabel:'회신 확인',isDelayed:waiting.days!=null && waiting.days>=7};
     const meeting = classifyWorkQueueMeeting(progress);
     if(meeting){
       const isScheduled = meeting.type === 'm1Scheduled' || meeting.type === 'm2Scheduled';
@@ -28017,27 +28080,6 @@ window.SHIN2_CRM_APP_INIT = function(){
         co, type: meeting.type, category: meeting.type === 'mou' ? 'mou' : 'meeting',
         currentStateLabel: meeting.stageLabel, reasonText: buildMeetingReasonText(meeting.type, days),
         days, actionLabel: meeting.label, isDelayed: days !== null && days >= 7
-      };
-    }
-    // §업무관리 "질문서 발송, 회신 대기" 누락 버그 수정 라운드(신규) — 실제 사례(㈜태림건설,
-    // "동기화 진단" 도구로 재현·확인): partner-dashboard에서 질문서를 다시 보낸(qSentLabel
-    // 있음) 업체는 buildProgressStages가 q.ts를 채우지만(발송일 자체가 날짜니까) 아직
-    // 회신을 못 받아 q.state는 'waiting'으로 남는다. classifyWorkQueueMeeting은 "질문서
-    // 회신 완료"(q.state==='done')를 전제조건으로 하고(§6, 위 참고), isNewPartnerNoProgress는
-    // "q.ts===null"만 신규로 본다(§ 위 주석 — "질문서 발송만 됐어도 q.ts가 생기니 여기까지
-    // 안 온다"고 가정했었음) — 그런데 "발송은 됐지만 회신 전"인 경우는 두 조건 중 어느
-    // 쪽에도 안 걸려 buildWorkQueueItem이 끝까지 null을 반환했고, 그래서 업무관리 목록
-    // 어디에도(전체 탭 포함) 안 보였다. m1/m2가 아직 시작 안 됐고 MOU도 미체결일 때만
-    // 이 유형으로 잡아 최소한 "전체" 탭에서는 반드시 보이게 한다 — 다른 판정(meeting/
-    // reuse/newPartner)의 조건·우선순위는 전혀 안 바꿨다.
-    const byKeyQ = {}; progress.stages.forEach(s=> byKeyQ[s.key] = s);
-    if(byKeyQ.mou.state !== 'done' && byKeyQ.q.state === 'waiting' && byKeyQ.q.ts != null
-       && byKeyQ.m1.ts == null && byKeyQ.m2.ts == null){
-      const days = Math.floor((Date.now() - byKeyQ.q.ts) / 86400000);
-      return {
-        co, type: 'qWaiting', category: 'meeting',
-        currentStateLabel: '질문서 발송', reasonText: `질문서 발송 후 ${days}일 · 회신 대기`,
-        days, actionLabel: '회신 확인', isDelayed: days >= 7
       };
     }
     // §업무관리 L단계 제거 라운드(신규) — classifyManagementNeed가 반환하는
@@ -28137,6 +28179,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       // §업무관리 1·2차미팅 탭 분리 라운드 — "미팅"(category='meeting')이 m1/m1Scheduled/
       // m2/m2Scheduled를 전부 묶어서 세던 걸 1차/2차로 따로 센다. 새 판정이 아니라 이미
       // 있는 it.type을 다른 키로 한 번 더 세는 것뿐.
+      if(it.type === 'qWaiting') counts.qWaiting=(counts.qWaiting || 0)+1;
       if(it.type === 'm1' || it.type === 'm1Scheduled') counts.m1++;
       if(it.type === 'm2' || it.type === 'm2Scheduled') counts.m2++;
     });
@@ -28185,6 +28228,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     if(patch.m2Done===true || patch.mouDone===true) Object.assign(companyPatch,
       window.WebsiteCleanup.eventPatch(co,patch.mouDone===true?'mou':'m2',patch.mouLabel || patch.m2Label,
         isConfirmedPartner(Object.assign({},co,companyPatch), buildProgressStages(Object.assign({},co,companyPatch)))));
+    if(patch.qReplyLabel) Object.assign(companyPatch, window.WebsiteCleanup.eventPatch(co,'qReply',patch.qReplyLabel));
     D.updateCompany(co.id, companyPatch);
   }
   function workqLogActivity(companyId, text){ if(text) D.addActivity(companyId, text); }
@@ -28451,7 +28495,7 @@ window.SHIN2_CRM_APP_INIT = function(){
   // 실행형 문구로("1차미팅"→"1차미팅 잡기" 등). 키(m1/m2/mou)·카운트 계산·클릭 필터링
   // 로직은 전혀 안 건드렸다 — label 문자열만 바꿨다.
   const WORKQ_FILTER_DEFS = [
-    ['all','전체'], ['m1','1차미팅 잡기'], ['m2','2차미팅 잡기'], ['mou','MOU체결 진행하기'],
+    ['all','전체'], ['qWaiting','질문서 회신 대기'], ['m1','1차미팅 잡기'], ['m2','2차미팅 잡기'], ['mou','MOU체결 진행하기'],
     // §지도 카드 하단 교체 라운드 — 메인 지도 카드의 "전체 보기 →"가 여는 필터.
     // 판정은 buildSecondMeetingNoReplyRows() 하나만 쓴다(새 기준 만들지 않음).
     ['m2NoReply','2차 회신 지연']
@@ -28624,7 +28668,8 @@ window.SHIN2_CRM_APP_INIT = function(){
       return it.category === workQueueFilter || it.type === workQueueFilter;
     }));
     workQueueAutocompleteItems = workQueueBaseFiltered.map(it=> ({ co:it.co, acts:activitiesIdxForSearch.get(String(it.co.id)) || [] }));
-    const filtered = workQueueBaseFiltered
+    const qWaitingRows = questionnaireWaitingSearchRows(list,workQueueSearch,activitiesIdxForSearch);
+    const filtered = workQueueFilter==='qWaiting' ? qWaitingRows : workQueueBaseFiltered
       .filter(it=> matchesSearch(it.co, workQueueSearch ? (activitiesIdxForSearch.get(String(it.co.id)) || []) : [], workQueueSearch));
     const m1Count = list.filter(it=> it.type==='m1').length;
     const m2Count = list.filter(it=> it.type==='m2').length;
@@ -28723,7 +28768,7 @@ window.SHIN2_CRM_APP_INIT = function(){
         ${WORKQ_FILTER_DEFS.map(([key,label])=>{
           // m2NoReply 숫자는 counts에 없는 값이라 여기서만 센다 — 표에 실제로 뜨는 행
           // (list ∩ 지연 업체)과 같은 기준이어야 칩 숫자와 표가 어긋나지 않는다.
-          const n = key === 'm2NoReply'
+          const n = key === 'qWaiting' ? qWaitingRows.length : key === 'm2NoReply'
             ? (()=>{ const s = secondMeetingNoReplyIdSet(); return list.filter(it=> s.has(String(it.co.id))).length; })()
             : (counts[key] || 0);
           return `<button type="button" class="list-filter-chip${workQueueFilter===key?' is-active':''}" data-workq-filter="${esc(key)}">${esc(label)} ${esc(n)}</button>`;
@@ -28747,9 +28792,10 @@ window.SHIN2_CRM_APP_INIT = function(){
                재사용했고(§요청 "메일보내기는 1차미팅잡기 밑이나 옆에 배치"), 서류 현황
                (buildAgreementDocSummary)은 이 표에서 더는 표시하지 않는다(계산 함수 자체는
                다른 화면에서 쓸 수 있어 그대로 둠). 5열 → 4열. -->
-          <thead><tr><th>업체명</th><th>단계 진행상황</th><th>경과</th><th>해야 할 일</th></tr></thead>
+          <thead><tr>${workQueueFilter==='qWaiting'?'<th>업체명</th><th>담당자·연락처</th><th>질문서 발송일</th><th>발송 후 경과일</th><th>해야 할 일</th>':'<th>업체명</th><th>단계 진행상황</th><th>경과</th><th>해야 할 일</th>'}</tr></thead>
           <tbody>
             ${filtered.map(it=> {
+              if(workQueueFilter==='qWaiting') return questionnaireWaitingRowHtml(it);
               const isOpen = workQueueExpanded && workQueueExpanded.companyId === it.co.id && workQueueExpanded.type === it.type;
               const stageStepperHtml = buildStageStepperHtml(buildProgressStages(it.co));
               // §1차미팅 메일 자동발송 라운드 — 사용자 재정정(§6): [메일발송]은 "1차미팅이
@@ -28817,6 +28863,7 @@ window.SHIN2_CRM_APP_INIT = function(){
         </div>
       ` : `<div class="workq-empty">해당 조건의 업체가 없습니다.</div>`}
     `;
+    wrap.querySelectorAll('[data-workq-q-reply]').forEach(btn=>btn.addEventListener('click',()=>openQuestionnaireReplyModal(btn.getAttribute('data-workq-q-reply'),renderWorkQueueView)));
     wrap.querySelectorAll('[data-workq-filter]').forEach(btn=> btn.addEventListener('click', ()=>{
       workQueueFilter = btn.getAttribute('data-workq-filter');
       renderWorkQueueView();
@@ -28858,6 +28905,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       // §일정 확인 팝업 제거 라운드(신규) — 사용자 요청 "일정 탭 없어도 될 것 같아". 예정된 미팅
       // (m1Scheduled/m2Scheduled)은 일정 확인 팝업을 띄우지 않고, 업체명 클릭과 같은 고객 상세
       // 협약 진행 탭을 연다 — 날짜 수정·완료 처리는 그 탭의 기존 버튼을 그대로 쓴다.
+      if(type === 'qWaiting'){openQuestionnaireReplyModal(companyId,renderWorkQueueView);return;}
       if(type === 'm1Scheduled' || type === 'm2Scheduled'){
         workQueueExpanded = null;
         closeWorkqActionModal();
@@ -32198,6 +32246,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     const label = dateStr ? workqDateInputToLabel(dateStr) : workqTodayLabel();
     if(!label) return false;
     workqMergeNewMou(co, { qReplyLabel: label });
+    if(getStageCorrections(co).qReply) saveStageCorrection(co.id,'qReply',{status:'done',dateText:label,owner:null},{reason:'회신 확인'});
     workqLogEvent(co.id, `질문서 회신 확인 (${label})`);
     return true;
   }
@@ -32226,13 +32275,29 @@ window.SHIN2_CRM_APP_INIT = function(){
         </div>
       </div>`;
     root.appendChild(wrap.firstElementChild);
-    document.getElementById('qReplyCancelBtn').addEventListener('click', closeQuestionnaireReplyModal);
-    bindSafeBackdropClose(document.getElementById('qReplyConfirmOverlay'), closeQuestionnaireReplyModal);
-    document.getElementById('qReplySaveBtn').addEventListener('click', ()=>{
-      const dateStr = document.getElementById('qReplyDateInput').value;
-      workqSaveQuestionnaireReply(co, dateStr);
+    let saving=false, prepared=false;
+    const close=()=>{ if(!saving) closeQuestionnaireReplyModal(); };
+    document.getElementById('qReplyCancelBtn').addEventListener('click', close);
+    bindSafeBackdropClose(document.getElementById('qReplyConfirmOverlay'), close);
+    document.getElementById('qReplySaveBtn').addEventListener('click', async ()=>{
+      if(saving) return;
+      const button=document.getElementById('qReplySaveBtn');
+      const input=document.getElementById('qReplyDateInput');
+      saving=true; button.disabled=true; button.textContent='저장 중…'; input.disabled=true;
+      if(!prepared){
+        if(!workqSaveQuestionnaireReply(co, input.value)){ saving=false; button.disabled=false; input.disabled=false; button.textContent='저장'; return; }
+        prepared=true;
+      }
+      const results=await Promise.all(['companies','customerActivities','memos'].map(name=>confirmCloudSave(name)));
+      saving=false;
+      if(results.some(result=>!result.ok)){
+        button.disabled=false; button.textContent='저장 재시도';
+        button.title='저장하지 못했습니다. 다시 눌러주세요.';
+        return;
+      }
       closeQuestionnaireReplyModal();
       if(typeof onSaved === 'function') onSaved();
+      openMailComposeModal(companyId, 'firstMeeting');
     });
   }
   // §요청 [3] 1차/2차 미팅 "일정 등록"/"완료", MOU "협의 중"/"체결 완료" 버튼 — 새 폼을
@@ -33221,7 +33286,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     const afterM1Count = items.filter(it=> it.afterM1).length;
     el.innerHTML = `
       <button type="button" class="consult-req-alert-main" id="consultReqAlertMain" aria-expanded="true">
-        <span class="consult-req-alert-dot" aria-hidden="true"></span>
+        <span class="alert-brand" aria-hidden="true"><img src="assets/netform-symbol-original.png" alt="" /></span>
         <span class="consult-req-alert-texts">
           <span class="consult-req-alert-title">요청자료 발송 필요 ${esc(items.length)}건</span>
           <span class="consult-req-alert-sub">${afterM1Count ? `1차 미팅 후 요청자료 발생 ${esc(afterM1Count)}건` : '질문지 상담에서 등록됨'}</span>

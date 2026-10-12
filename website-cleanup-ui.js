@@ -2,7 +2,7 @@
   'use strict';
   const esc=v=>String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const definitions=window.WebsiteCleanup.TYPES;
-  const labels={requested:'담당자에게 삭제 요청',verified:'홈페이지 삭제 확인',materials:'체결 서류 받기',documents:'계약서 2건 보내기',signed:'서명·체결 확인'};
+  const labels={jandi:'잔디 토픽에 질문서 올리기',pdf:'질문서 고객관리 PDF 저장',requested:'담당자에게 삭제 요청',verified:'홈페이지 삭제 확인',materials:'체결 서류 받기',documents:'계약서 2건 보내기',signed:'서명·체결 확인'};
   const cards=new Map(), busy=new Set(), errors=new Map(), retries=new Map(), pendingCommands=new Map();
   let history=null, scheduled=false;
   window.crmAlertDock=function(){
@@ -57,7 +57,7 @@
   }
   function makeCard(type){
     const el=document.createElement('div');el.className='consult-req-alert';el.id=type==='website'?'websiteCleanupAlert':type+'FollowupAlert';
-    el.innerHTML='<button type="button" class="consult-req-alert-main" aria-expanded="true"><span class="consult-req-alert-dot" aria-hidden="true"></span><span class="consult-req-alert-texts"><span class="consult-req-alert-title"></span></span></button><div class="consult-req-alert-list"></div>';
+    el.innerHTML='<button type="button" class="consult-req-alert-main" aria-expanded="true"><span class="alert-brand" aria-hidden="true"><img src="assets/netform-symbol-original.png" alt="" /></span><span class="consult-req-alert-texts"><span class="consult-req-alert-title"></span></span></button><div class="consult-req-alert-list"></div>';
     const card={el,button:el.firstElementChild,list:el.lastElementChild,rows:new Map(),expanded:true};
     card.button.id=type==='website'?'websiteCleanupMain':type+'FollowupMain';
     card.list.id=type+'FollowupList';card.button.setAttribute('aria-controls',card.list.id);
