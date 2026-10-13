@@ -10848,6 +10848,121 @@ body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-filters > .map
 }
 
 .cdet-head-code.is-none{ color:#A9B4C4; font-weight:600; }
+
+/* ==========================================================================
+   §내보내기 화면 개편 라운드(신규) — 왼쪽 설정 25% / 오른쪽 미리보기 75%, 흰색·남색
+   ========================================================================== */
+.pi-panel.pdfx2-panel{ width:min(1320px, calc(100vw - 32px)) !important; max-width:none !important; height:min(900px, calc(100vh - 32px)); max-height:none !important; display:flex; flex-direction:column; padding:0 !important; overflow:hidden; }
+.pdfx2-head{ flex:none; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 16px; border-bottom:1px solid #E3E8EF; background:#fff; }
+.pdfx2-title{ font-size:16px; font-weight:800; color:#13243E; }
+.pdfx2-head-actions{ display:flex; align-items:center; gap:8px; }
+.pdfx2-btn{ height:34px; padding:0 14px; border:1px solid #D5DCE6; border-radius:8px; background:#fff; color:#1B3A66; font:inherit; font-size:13px; font-weight:700; cursor:pointer; white-space:nowrap; }
+.pdfx2-btn:hover:not(:disabled){ background:#F4F7FB; }
+.pdfx2-btn.is-primary{ background:#1B3A66; border-color:#1B3A66; color:#fff; }
+.pdfx2-btn.is-primary:hover{ background:#152E52; }
+.pdfx2-btn.is-sm{ height:28px; padding:0 10px; font-size:12px; }
+.pdfx2-btn:disabled{ opacity:.45; cursor:default; }
+.pdfx2-close{ position:static !important; margin-left:4px; }
+.pdfx2-body{ flex:1 1 auto; min-height:0; display:grid; grid-template-columns:minmax(260px, 25%) 1fr; }
+.pdfx2-side{ min-height:0; overflow-y:auto; padding:14px 16px; border-right:1px solid #E3E8EF; background:#fff; display:flex; flex-direction:column; gap:16px; }
+.pdfx2-sec{ display:flex; flex-direction:column; gap:8px; }
+.pdfx2-sec-title{ font-size:12.5px; font-weight:800; color:#33415A; letter-spacing:.01em; }
+.pdfx2-sec-sub{ font-weight:600; color:#8A97AA; margin-left:4px; }
+.pdfx2-seg{ display:grid; grid-template-columns:1fr 1fr; gap:0; border:1px solid #D5DCE6; border-radius:8px; overflow:hidden; }
+.pdfx2-seg-btn{ height:32px; border:0; background:#fff; color:#5B6678; font:inherit; font-size:12.5px; font-weight:700; cursor:pointer; }
+.pdfx2-seg-btn + .pdfx2-seg-btn{ border-left:1px solid #D5DCE6; }
+.pdfx2-seg-btn.is-active{ background:#1B3A66; color:#fff; }
+.pdfx2-privacy{ font-size:11.5px; line-height:1.5; color:#8A2D27; background:#FFF6F4; border:1px solid #F1D9D5; border-radius:7px; padding:6px 8px; }
+.pdfx2-field{ display:flex; flex-direction:column; gap:4px; }
+.pdfx2-field-label{ font-size:11.5px; font-weight:700; color:#7C8BA1; }
+.pdfx2-fixed-val{ height:32px; display:flex; align-items:center; padding:0 10px; border:1px solid #E3E8EF; border-radius:8px; background:#F7F9FC; font-size:12.5px; font-weight:700; color:#33415A; }
+/* 드롭다운 — 기존 MOU 모달(.pdfx-wide) 규칙을 이 패널 범위로 복사 */
+.pdfx2-panel .pdf-dd{ position:relative; flex:none; }
+.pdfx2-panel .pdf-dd-btn{
+  display:inline-flex; align-items:center; gap:7px;
+  height:36px; padding:0 11px 0 12px; box-sizing:border-box; max-width:300px;
+  background:#fff; border:1px solid #D8E1EC; border-radius:9px; cursor:pointer;
+  font:inherit; font-size:13px; font-weight:600; color:#334155; white-space:nowrap;
+  transition:background-color .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+.pdfx2-panel .pdf-dd-btn:hover{ background:#F7F9FC; border-color:#C5D1E0; }
+.pdfx2-panel .pdf-dd-btn:focus-visible{ outline:none; box-shadow:0 0 0 3px rgba(27,68,128,.16); }
+.pdfx2-panel .pdf-dd.is-open .pdf-dd-btn{ border-color:#B9D0EE; background:#F4F8FD; }
+.pdfx2-panel .pdf-dd-key{ color:#7C8BA1; font-weight:600; }
+.pdfx2-panel .pdf-dd-val{ color:#17345F; overflow:hidden; text-overflow:ellipsis; }
+.pdfx2-panel .pdf-dd-caret{ font-size:11px; color:#8494A8; transition:transform .15s ease; }
+.pdfx2-panel .pdf-dd.is-open .pdf-dd-caret{ transform:rotate(180deg); }
+.pdfx2-panel .pdf-dd-menu{
+  display:none; position:absolute; left:0; top:calc(100% + 6px); z-index:20;
+  background:#fff; border:1px solid #DCE5EF; border-radius:12px;
+  box-shadow:0 12px 32px rgba(23,52,95,.14), 0 2px 6px rgba(23,52,95,.06);
+  padding:10px; box-sizing:border-box;
+}
+.pdfx2-panel .pdf-dd.is-open .pdf-dd-menu{ display:block; }
+.pdfx2-panel .pdf-dd-menu-region{ width:300px; }
+.pdfx2-panel .pdf-dd-menu-head{
+  display:flex; align-items:center; justify-content:space-between; gap:8px;
+  padding:0 2px 8px; margin-bottom:6px; border-bottom:1px solid #EEF2F7;
+  font-size:11.5px; color:#7C8BA1;
+}
+.pdfx2-panel .pdf-dd-clear{
+  flex:none; height:26px; padding:0 9px; border-radius:7px; cursor:pointer;
+  border:1px solid #D8E1EC; background:#fff; color:#1B4480; font:inherit; font-size:11.5px; font-weight:600;
+}
+.pdfx2-panel .pdf-dd-clear:hover:not(:disabled){ background:#EAF2FC; border-color:#B9D0EE; }
+.pdfx2-panel .pdf-dd-clear:disabled{ opacity:.45; cursor:default; }
+.pdfx2-panel .pdf-dd-checks{ display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:2px; }
+.pdfx2-panel .pdf-dd-check{
+  display:flex; align-items:center; gap:7px; padding:6px 7px; border-radius:7px; cursor:pointer;
+  font-size:12.5px; color:#334155;
+}
+.pdfx2-panel .pdf-dd-check:hover{ background:#F4F8FD; }
+.pdfx2-panel .pdf-dd-check input{ margin:0; width:15px; height:15px; accent-color:#1B4480; cursor:pointer; }
+/* 내부용 업체 선택 — 기존 선택 블록을 그대로 넣고 폭·높이만 맞춘다 */
+.pdfx2-panel .pdf-dd-menu-pick{ width:min(520px, calc(100vw - 72px)); }
+.pdfx2-panel .pdf-dd-menu-pick .pdf-pick-block{ margin:0; }
+.pdfx2-panel .pdf-dd-menu-pick .pdf-pick-list{ max-height:min(46vh, 380px); }
+
+/* 안내 한 줄 */
+.pdfx2-side .pdf-dd{ position:relative; width:100%; }
+.pdfx2-side .pdf-dd-checks{ display:grid !important; grid-template-columns:repeat(2, minmax(0,1fr)) !important; gap:4px 8px !important; }
+.pdfx2-side .pdf-dd-checks-1col{ grid-template-columns:1fr !important; }
+.pdfx2-side .pdf-dd-check{ white-space:nowrap; }
+.pdfx2-side .pdf-dd-menu-pick{ width:min(420px, calc(100vw - 64px)) !important; right:auto !important; }
+.pdfx2-side .pdf-dd-btn{ width:100%; height:32px; justify-content:space-between; }
+.pdfx2-side .pdf-dd-menu{ left:0 !important; right:0 !important; width:auto !important; min-width:0 !important; max-height:320px; overflow:auto; }
+.pdfx2-cols > summary{ list-style:none; cursor:pointer; display:flex; align-items:center; gap:4px; }
+.pdfx2-cols > summary::-webkit-details-marker{ display:none; }
+.pdfx2-cols > summary::after{ content:'▾'; margin-left:auto; color:#8A97AA; font-size:11px; }
+.pdfx2-cols:not([open]) > summary::after{ content:'▸'; }
+.pdfx2-cols-head{ display:flex; align-items:center; justify-content:space-between; margin:6px 0 4px; }
+.pdfx2-link{ border:0; background:none; padding:0; color:#1B3A66; font:inherit; font-size:12px; font-weight:700; cursor:pointer; text-decoration:underline; text-underline-offset:2px; }
+.pdfx2-link:disabled{ color:#A9B4C4; cursor:default; text-decoration:none; }
+.pdfx2-hint{ font-size:11px; color:#8A97AA; }
+.pdfx2-cols-grid{ display:grid; grid-template-columns:1fr 1fr; gap:4px 10px; }
+.pdfx2-check{ display:flex; align-items:center; gap:6px; font-size:12.5px; color:#33415A; cursor:pointer; min-width:0; }
+.pdfx2-check input{ width:14px; height:14px; margin:0; accent-color:#1B3A66; flex:none; }
+.pdfx2-check span{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.pdfx2-check.is-fixed{ color:#7C8BA1; cursor:default; }
+.pdfx2-main{ min-width:0; min-height:0; display:flex; flex-direction:column; background:#EEF1F5; }
+.pdfx2-main-head{ flex:none; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 16px; background:#fff; border-bottom:1px solid #E3E8EF; }
+.pdfx2-main-title{ font-size:13.5px; font-weight:800; color:#13243E; }
+.pdfx2-main-meta{ margin-left:8px; font-size:12px; font-weight:600; color:#7C8BA1; }
+.pdfx2-find{ display:flex; align-items:center; gap:6px; }
+.pdfx2-find input{ width:200px; height:28px; padding:0 10px; border:1px solid #D5DCE6; border-radius:7px; font:inherit; font-size:12px; }
+.pdfx2-confirm:empty{ display:none; }
+.pdfx2-confirm{ flex:none; padding:6px 16px; background:#fff; border-bottom:1px solid #E3E8EF; max-height:120px; overflow:auto; }
+.pdfx2-preview{ flex:1 1 auto; min-height:0; overflow:auto !important; position:relative; z-index:0; padding:0 !important; margin:0 !important; border:0 !important; background:#EEF1F5 !important; }
+.pdfx2-preview .pdfv-canvas{ background:transparent !important; border:0 !important; margin:0 auto; }
+.pdfx2-preview .pdf-page.pdfx2-page-hidden{ display:none !important; }
+.pdfx2-pager{ flex:none; position:relative; z-index:1; display:flex; align-items:center; justify-content:center; gap:8px; padding:8px 12px; background:#fff; border-top:1px solid #E3E8EF; }
+.pdfx2-page-no, .pdfx2-zoom-val{ min-width:56px; text-align:center; font-size:12.5px; font-weight:700; color:#33415A; font-variant-numeric:tabular-nums; }
+.pdfx2-pager-sep{ width:1px; height:18px; background:#E3E8EF; margin:0 6px; }
+@media (max-width: 900px){
+  .pdfx2-body{ grid-template-columns:1fr; grid-template-rows:auto 1fr; }
+  .pdfx2-side{ border-right:0; border-bottom:1px solid #E3E8EF; max-height:42vh; }
+  .pdfx2-find input{ width:140px; }
+}
 </style>
 </head>
 <body>
@@ -10973,7 +11088,7 @@ body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-filters > .map
           <button type="button" id="crmSignOutBtn" class="update-menu-signout">로그아웃</button>
         </div>
       </div>
-      <button type="button" class="gnav-tool-btn" id="crmMouPdfBtn">PDF 내보내기</button>
+      <button type="button" class="gnav-tool-btn" id="crmMouPdfBtn">내보내기</button>
       <button type="button" class="gnav-hamburger" id="gnavMenuBtn" aria-expanded="false" aria-controls="gnavDrawer" aria-label="메뉴 열기">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
       </button>
@@ -47319,7 +47434,11 @@ if(!window.__mapxRowDelegated){
       pdfExportResolveField(co,'address',0), pdfExportResolveField(co,'phone',0)].join(' ').toLowerCase();
     return hay.includes(s);
   }
-  let pdfExportState = { type:'internal', regions: new Set(), search:'', cats: new Set(['mouDone']), cols: null };
+  let pdfExportState = { type:'external', regions: new Set(), search:'', cats: new Set(['mouDone']), cols: null, extCols: null };
+  // §내보내기 화면 개편 라운드(신규) — 외부 발송용 표 항목은 PDF_EXPORT_TYPES의 external.columns
+  // (외부 공개가 허용된 항목) 안에서만 고른다. 내부용 항목은 이 목록에 애초에 없으므로 섞일 수 없다.
+  function pdfExportTypeColumns(typeKey){ return ((PDF_EXPORT_TYPES.find(t=> t.key === typeKey) || {}).columns || []).slice(); }
+  function pdfExportColSet(){ return pdfExportState.type === 'external' ? pdfExportState.extCols : pdfExportState.cols; }
   // §내부용 PDF 체크리스트 라운드(신규) — 내부용 출력 대상을 고객 분류로 고른다. 판정은 고객목록
   // 필터와 같은 함수(matchesFilter)와 의지박약 목록(willpowerCache)을 그대로 읽는다(새 판정 없음).
   const PDF_INTERNAL_CATS = [
@@ -47455,6 +47574,10 @@ if(!window.__mapxRowDelegated){
   // 지저분하게 만들지 말 것"). 이건 이 문서 한 장의 표시 여부일 뿐이고 co 레코드의
   // 필드는 읽기만 한다 — 어떤 데이터도 지우거나 바꾸지 않는다.
   function pdfExportVisibleColumns(type, companies){
+    if(type.key === 'external' && pdfExportState.extCols){
+      // 외부 발송용: 허용 목록(type.columns) ∩ 체크한 항목. 업체명은 항상. 선택한 항목은 값이 비어도 유지(기존 필수 규칙과 같게).
+      return type.columns.filter(c=> c === 'name' || pdfExportState.extCols.has(c));
+    }
     if(type.key === 'internal' && pdfExportState.cols){
       // 내부용: 항상 나가는 3개 + 체크한 항목. 체크했지만 값이 전부 비어 있으면 기존처럼 뺀다.
       return type.columns.filter(c=> PDF_INTERNAL_ALWAYS_COLS.includes(c)
@@ -47971,63 +48094,123 @@ if(!window.__mapxRowDelegated){
         </div>
       </div>`;
   }
+  // §내보내기 화면 개편 라운드(신규) — 왼쪽 25% 설정 / 오른쪽 75% 미리보기. 상단 오른쪽에 [엑셀 저장][PDF 저장][×].
+  // 출력 대상·필드값·문서 템플릿·페이지 나눔은 기존 함수 그대로(pdfExportFilteredCompanies / pdfExportResolveField /
+  // pdfExportBuildDocHtml) — 화면 배치와 입력 방식, 외부용 표 항목 선택, 엑셀 저장만 새로 붙였다.
+  let pdfExportPreviewPage = 0;     // 미리보기에서 보고 있는 페이지(0부터)
+  let pdfExportPreviewZoom = 1;     // 맞춤 배율에 곱하는 확대·축소 배율
+  function pdfExportColsBlockHtml(){
+    const isExt = pdfExportState.type === 'external';
+    const cols = pdfExportTypeColumns(pdfExportState.type);
+    const set = pdfExportColSet() || new Set();
+    const optional = cols.filter(c=> c !== 'name');
+    const allOn = optional.every(c=> set.has(c));
+    return `
+      <details class="pdfx2-cols" open>
+        <summary class="pdfx2-sec-title">표 항목 <span class="pdfx2-sec-sub">${optional.filter(c=> set.has(c)).length + 1}/${cols.length}</span></summary>
+        <div class="pdfx2-cols-head">
+          <button type="button" class="pdfx2-link" data-pdf-col-all="1" ${allOn ? 'disabled' : ''}>전체 선택</button>
+          ${isExt ? '<span class="pdfx2-hint">외부 공개 허용 항목만</span>' : ''}
+        </div>
+        <div class="pdfx2-cols-grid">
+          ${cols.map(c=>{
+            const fixed = c === 'name';
+            const on = fixed || set.has(c);
+            return `<label class="pdfx2-check${fixed ? ' is-fixed' : ''}" title="${fixed ? '업체명은 항상 포함' : ''}"><input type="checkbox" data-pdf-col-check="${esc(c)}" ${on ? 'checked' : ''} ${fixed ? 'disabled' : ''} /><span>${esc(PDF_EXPORT_COLUMN_LABELS[c] || c)}</span></label>`;
+          }).join('')}
+        </div>
+      </details>`;
+  }
   function pdfExportModalHtml(){
-    const typeCardsHtml = PDF_EXPORT_TYPES.map(t=> `
-      <button type="button" class="pdf-type-card${pdfExportState.type===t.key?' is-active':''}" data-pdf-type="${t.key}">
-        <div class="pdf-type-name">${esc(t.label)}</div>
-        <div class="pdf-type-desc">${esc(t.desc)}</div>
-      </button>`).join('');
+    const isInternal = pdfExportState.type === 'internal';
     const regionChecksHtml = COMPANY_REGIONS.map(r=> `
       <label class="pdf-dd-check"><input type="checkbox" data-pdf-region-check="${esc(r)}" ${pdfExportState.regions.has(r) ? 'checked' : ''} /><span>${esc(r)}</span></label>`).join('');
-    const isInternal = pdfExportState.type === 'internal';
-    const noteHtml = isInternal
-      ? `<span class="pdf-export-note-warn">내부용 문서에는 사업자번호·이메일 등 개인정보가 포함될 수 있습니다. 외부 공유에 사용하지 마세요.</span>`
-      : `외부 발송용은 MOU 체결 업체만 대상이며(KPI "MOU 체결"과 같은 기준), FAX·이메일·사업자번호·협약일·자본금·비고·내부 메모 등 민감정보는 자동 제외됩니다.`;
+    const typeBtns = ['external','internal'].map(k=>{
+      const t = PDF_EXPORT_TYPES.find(x=> x.key === k);
+      return `<button type="button" class="pdfx2-seg-btn${pdfExportState.type === k ? ' is-active' : ''}" data-pdf-type="${k}" aria-pressed="${pdfExportState.type === k ? 'true' : 'false'}">${esc(t ? t.label : k)}</button>`;
+    }).join('');
     return `
       <div class="pi-overlay" id="pdfExportOverlay">
-        <div class="pi-panel pdf-export-panel pdfx-wide" role="dialog" aria-modal="true" aria-label="PDF 내보내기">
-          <div class="pi-head">
-            <div class="pi-title">PDF 내보내기</div>
-            <button type="button" class="chart-close-btn" id="pdfExportCloseBtn" aria-label="닫기">&times;</button>
+        <div class="pi-panel pdfx2-panel" role="dialog" aria-modal="true" aria-label="내보내기">
+          <div class="pdfx2-head">
+            <div class="pdfx2-title">내보내기</div>
+            <div class="pdfx2-head-actions">
+              <button type="button" class="pdfx2-btn" id="pdfExportXlsxBtn">엑셀 저장</button>
+              <button type="button" class="pdfx2-btn is-primary" id="pdfExportSaveBtn">PDF 저장</button>
+              <button type="button" class="chart-close-btn pdfx2-close" id="pdfExportCloseBtn" aria-label="닫기">&times;</button>
+            </div>
           </div>
-          <div class="pdf-type-tabs" role="tablist" aria-label="출력 유형">${typeCardsHtml}</div>
-          <div class="pi-body pdf-export-body">
-            <div class="pdf-export-controls">
-              <!-- 지역 — 복수 선택, 선택 안 하면 전체(기존 pdfExportState.regions 그대로) -->
-              <div class="pdf-dd${pdfExportOpenDd === 'region' ? ' is-open' : ''}" data-pdf-dd="region">
-                <button type="button" class="pdf-dd-btn" data-pdf-dd-toggle="region" aria-haspopup="true" aria-expanded="${pdfExportOpenDd === 'region' ? 'true' : 'false'}" title="지역 선택(복수 선택 가능, 선택 안 하면 전체)">
-                  <span class="pdf-dd-key">지역</span><span class="pdf-dd-val">${esc(pdfExportRegionLabel())}</span><span class="pdf-dd-caret" aria-hidden="true">▾</span>
-                </button>
-                <div class="pdf-dd-menu pdf-dd-menu-region" role="group" aria-label="지역 선택">
-                  <div class="pdf-dd-menu-head">
-                    <span>복수 선택 가능 · 선택 안 하면 전체</span>
-                    <button type="button" class="pdf-dd-clear" data-pdf-region-clear="1" ${pdfExportState.regions.size ? '' : 'disabled'}>전체 지역</button>
+          <div class="pdfx2-body">
+            <aside class="pdfx2-side">
+              <div class="pdfx2-sec">
+                <div class="pdfx2-sec-title">문서 용도</div>
+                <div class="pdfx2-seg" role="group" aria-label="문서 용도">${typeBtns}</div>
+                ${isInternal ? '<div class="pdfx2-privacy">사업자번호·이메일 등 개인정보가 포함될 수 있어 사내에서만 사용하세요.</div>' : ''}
+              </div>
+              <div class="pdfx2-sec">
+                <div class="pdfx2-sec-title">출력 대상</div>
+                <div class="pdfx2-field">
+                  <div class="pdfx2-field-label">지역</div>
+                  <div class="pdf-dd${pdfExportOpenDd === 'region' ? ' is-open' : ''}" data-pdf-dd="region">
+                    <button type="button" class="pdf-dd-btn" data-pdf-dd-toggle="region" aria-haspopup="true" aria-expanded="${pdfExportOpenDd === 'region' ? 'true' : 'false'}">
+                      <span class="pdf-dd-val">${esc(pdfExportRegionLabel())}</span><span class="pdf-dd-caret" aria-hidden="true">▾</span>
+                    </button>
+                    <div class="pdf-dd-menu pdf-dd-menu-region" role="group" aria-label="지역 선택">
+                      <div class="pdf-dd-menu-head">
+                        <span>복수 선택 · 선택 안 하면 전체</span>
+                        <button type="button" class="pdf-dd-clear" data-pdf-region-clear="1" ${pdfExportState.regions.size ? '' : 'disabled'}>전체 지역</button>
+                      </div>
+                      <div class="pdf-dd-checks">${regionChecksHtml}</div>
+                    </div>
                   </div>
-                  <div class="pdf-dd-checks">${regionChecksHtml}</div>
+                </div>
+                <div class="pdfx2-field">
+                  <div class="pdfx2-field-label">대상</div>
+                  ${isInternal ? `
+                  <div class="pdf-dd${pdfExportOpenDd === 'cats' ? ' is-open' : ''}" data-pdf-dd="cats">
+                    <button type="button" class="pdf-dd-btn" data-pdf-dd-toggle="cats" aria-haspopup="true" aria-expanded="${pdfExportOpenDd === 'cats' ? 'true' : 'false'}">
+                      <span class="pdf-dd-val" id="pdfExportCatsLabel">${esc(pdfExportCatsLabel())}</span><span class="pdf-dd-caret" aria-hidden="true">▾</span>
+                    </button>
+                    <div class="pdf-dd-menu pdf-dd-menu-cats" role="group" aria-label="출력 대상 분류">
+                      <div class="pdf-dd-checks pdf-dd-checks-1col">${PDF_INTERNAL_CATS.map(([k,label])=> `<label class="pdf-dd-check"><input type="checkbox" data-pdf-cat-check="${esc(k)}" ${pdfExportState.cats.has(k) ? 'checked' : ''} /><span>${esc(label)}</span></label>`).join('')}</div>
+                    </div>
+                  </div>` : `<div class="pdfx2-fixed-val">MOU 체결 업체</div>`}
+                </div>
+                ${isInternal ? `
+                <div class="pdfx2-field">
+                  <div class="pdfx2-field-label">특정 업체</div>
+                  <div class="pdf-dd${pdfExportOpenDd === 'pick' ? ' is-open' : ''}" data-pdf-dd="pick">
+                    <button type="button" class="pdf-dd-btn" data-pdf-dd-toggle="pick" aria-haspopup="true" aria-expanded="${pdfExportOpenDd === 'pick' ? 'true' : 'false'}">
+                      <span class="pdf-dd-val" id="pdfExportPickLabel">${esc(pdfExportPickLabel())}</span><span class="pdf-dd-caret" aria-hidden="true">▾</span>
+                    </button>
+                    <div class="pdf-dd-menu pdf-dd-menu-pick">${pdfExportInternalPickerHtml()}</div>
+                  </div>
+                </div>` : ''}
+              </div>
+              <div class="pdfx2-sec">${pdfExportColsBlockHtml()}</div>
+            </aside>
+            <section class="pdfx2-main">
+              <div class="pdfx2-main-head">
+                <div class="pdfx2-main-title">PDF 미리보기 <span class="pdfx2-main-meta" id="pdfExportPreviewMeta"></span></div>
+                <!-- 업체 포함 여부 찾기 — 출력 대상(pdfExportState)을 바꾸지 않는 확인 전용(기존 동작 그대로) -->
+                <div class="pdfx2-find">
+                  <input type="search" id="pdfExportConfirmInput" value="${esc(pdfExportConfirmQuery)}" placeholder="업체 포함 여부 찾기" aria-label="업체 포함 여부 찾기" />
+                  <button type="button" class="pdfx2-btn is-sm" id="pdfExportConfirmBtn">찾기</button>
                 </div>
               </div>
-              ${isInternal ? pdfExportInternalDdHtml() : ''}
-              ${isInternal ? `
-              <!-- 내부용 업체 선택 — 기존 선택 블록(pdfExportInternalPickerHtml)을 그대로 넣는다 -->
-              <div class="pdf-dd${pdfExportOpenDd === 'pick' ? ' is-open' : ''}" data-pdf-dd="pick">
-                <button type="button" class="pdf-dd-btn" data-pdf-dd-toggle="pick" aria-haspopup="true" aria-expanded="${pdfExportOpenDd === 'pick' ? 'true' : 'false'}" title="내부용에 포함할 업체 선택(체크한 업체만 출력)">
-                  <span class="pdf-dd-val" id="pdfExportPickLabel">${esc(pdfExportPickLabel())}</span><span class="pdf-dd-caret" aria-hidden="true">▾</span>
-                </button>
-                <div class="pdf-dd-menu pdf-dd-menu-pick">${pdfExportInternalPickerHtml()}</div>
-              </div>` : ''}
-              <!-- §요청 6/7/16 "업체 포함 여부 검색" — 출력 조건(pdfExportState)과 완전히 분리된
-                   별도 상태(pdfExportConfirmQuery). 출력 대상을 바꾸지 않고, 미리보기에서 해당
-                   행을 찾아 스크롤+강조만 한다. -->
-              <div class="pdf-confirm-inline">
-                <input type="text" id="pdfExportConfirmInput" value="${esc(pdfExportConfirmQuery)}" placeholder="업체 포함 여부 확인 검색 (예: 한솔시공사)" aria-label="업체 포함 여부 확인 검색" />
-                <button type="button" class="co-text-action" id="pdfExportConfirmBtn">찾기</button>
+              <div id="pdfExportConfirmResult" class="pdfx2-confirm"></div>
+              <div class="pdf-preview-wrap pdfx2-preview" id="pdfExportPreviewWrap"></div>
+              <div class="pdfx2-pager" id="pdfExportPager">
+                <button type="button" class="pdfx2-btn is-sm" data-pdf-page="prev" aria-label="이전 페이지">‹</button>
+                <span class="pdfx2-page-no" id="pdfExportPageNo">1 / 1</span>
+                <button type="button" class="pdfx2-btn is-sm" data-pdf-page="next" aria-label="다음 페이지">›</button>
+                <span class="pdfx2-pager-sep"></span>
+                <button type="button" class="pdfx2-btn is-sm" data-pdf-zoom="out" aria-label="축소">−</button>
+                <span class="pdfx2-zoom-val" id="pdfExportZoomVal">100%</span>
+                <button type="button" class="pdfx2-btn is-sm" data-pdf-zoom="in" aria-label="확대">+</button>
+                <button type="button" class="pdfx2-btn is-sm" data-pdf-zoom="fit">맞춤</button>
               </div>
-              <button type="button" class="co-text-action primary pdf-export-save" id="pdfExportSaveBtn">PDF 저장</button>
-            </div>
-            <div class="pdf-export-note">${noteHtml} <span class="pdf-export-note-sub">· 업체 포함 여부 검색은 출력 대상을 바꾸지 않습니다 · 지역 조건은 이 화면에서만 적용됩니다</span></div>
-            ${isInternal ? pdfExportColBarHtml() : ''}
-            <div id="pdfExportConfirmResult"></div>
-            <div class="pdf-preview-wrap" id="pdfExportPreviewWrap"></div>
+            </section>
           </div>
         </div>
       </div>`;
@@ -48092,16 +48275,29 @@ if(!window.__mapxRowDelegated){
     if(!wrap) return;
     const built = pdfExportBuildDocHtml();
     const ctx = built.ctx;
-    const colLabels = ctx.columns.map(c=> esc(PDF_EXPORT_COLUMN_LABELS[c])).join(' · ');
+    if(pdfExportPreviewPage > built.pageCount - 1) pdfExportPreviewPage = Math.max(0, built.pageCount - 1);
     wrap.innerHTML = `
-      <div class="pdfv-note">아래가 실제 저장되는 PDF와 같은 문서입니다 — 같은 템플릿·같은 CSS로 그리고 페이지 나눔도 동일합니다. 총 ${built.pageCount}페이지 · A4 ${ctx.landscape ? '가로' : '세로'} · 포함 열: ${colLabels} (파일 저장·발송·업로드 없음)</div>
       <div class="pdfv-canvas" id="pdfExportPreviewCanvas">
         <div class="pdfv-scaler" id="pdfExportPreviewScaler">
           <style>${pdfExportDocCss(ctx)}</style>
           <div class="pdf-doc-root pdfv-pages">${built.html}</div>
         </div>
       </div>`;
-    pdfExportFitPreview(ctx);
+    wrap.dataset.pageCount = String(built.pageCount);
+    const meta = document.getElementById('pdfExportPreviewMeta');
+    if(meta) meta.textContent = `A4 ${ctx.landscape ? '가로' : '세로'} · 총 ${built.pageCount}페이지 · ${ctx.companies.length}곳`;
+    pdfExportShowPage(ctx);
+  }
+  function pdfExportShowPage(ctx){
+    const wrap = document.getElementById('pdfExportPreviewWrap');
+    if(!wrap) return;
+    const pages = wrap.querySelectorAll('.pdf-page');
+    pages.forEach((p, i)=> p.classList.toggle('pdfx2-page-hidden', i !== pdfExportPreviewPage));
+    const no = document.getElementById('pdfExportPageNo');
+    if(no) no.textContent = `${pages.length ? pdfExportPreviewPage + 1 : 0} / ${pages.length}`;
+    const zv = document.getElementById('pdfExportZoomVal');
+    if(zv) zv.textContent = Math.round(pdfExportPreviewZoom * 100) + '%';
+    pdfExportFitPreview(ctx || pdfExportBuildDocContext());
   }
   // 미리보기 축소 배율 — A4 폭이 모달 안에 들어가도록 줄이고, 줄어든 만큼 액자 높이를
   // 다시 잡아준다(transform은 레이아웃 크기를 바꾸지 않기 때문).
@@ -48117,12 +48313,14 @@ if(!window.__mapxRowDelegated){
     const scaler = document.getElementById('pdfExportPreviewScaler');
     if(!canvas || !scaler) return;
     const pageW = ctx.geo.w * pdfExportPxPerMm();
-    const avail = canvas.clientWidth - 24;
+    const avail = (canvas.parentElement ? canvas.parentElement.clientWidth : canvas.clientWidth) - 24;
     if(!(pageW > 0) || !(avail > 0)) return;
-    const k = Math.min(PDF_PREVIEW_MAX_SCALE, avail / pageW);
+    // 맞춤 배율(폭 기준) × 사용자가 고른 확대·축소 배율. 한 번에 한 페이지만 보이므로 높이는 그 페이지 기준.
+    const k = Math.min(PDF_PREVIEW_MAX_SCALE, avail / pageW) * (pdfExportPreviewZoom || 1);
     scaler.style.transform = `scale(${k})`;
     scaler.style.left = Math.max(12, (canvas.clientWidth - pageW * k) / 2) + 'px';
     canvas.style.height = (scaler.scrollHeight * k + 32) + 'px';
+    canvas.style.width = Math.max(canvas.parentElement ? canvas.parentElement.clientWidth : 0, pageW * k + 24) + 'px';
   }
   // §요청 6~9/16/22~24 "업체 포함 여부 확인 검색" — 왼쪽 출력 조건(pdfExportState)과는
   // 별개인 확인 전용 상태. 절대 pdfExportState를 쓰지 않는다(=출력 대상을 바꾸지 않음).
@@ -48164,7 +48362,7 @@ if(!window.__mapxRowDelegated){
   }
   function pdfExportConfirmResultHtml(query){
     const q = (query || '').trim();
-    if(!q) return `<div class="mail-settings-help">업체명을 입력하고 "찾기"를 누르면 지금 왼쪽 조건으로 만들어질 PDF에 그 업체가 포함되는지 확인합니다. 이 확인은 출력 대상을 바꾸지 않습니다.</div>`;
+    if(!q) return '';
     const result = pdfExportConfirmMatches(q);
     if(!result) return '';
     if(result.status === 'included'){
@@ -48192,6 +48390,14 @@ if(!window.__mapxRowDelegated){
   function pdfExportHighlightRow(companyId){
     const row = document.querySelector('#pdfExportPreviewWrap [data-co-id="' + CSS.escape(companyId) + '"]');
     if(!row) return;
+    const page = row.closest('.pdf-page');
+    const pages = Array.from(document.querySelectorAll('#pdfExportPreviewWrap .pdf-page'));
+    const idx = pages.indexOf(page);
+    if(idx >= 0 && idx !== pdfExportPreviewPage){ pdfExportPreviewPage = idx; pdfExportShowPage(); }
+    // 미리보기 영역 안에서만 스크롤한다(팝업 전체가 밀려 상단 저장 버튼이 가려지지 않게)
+    const box = document.getElementById('pdfExportPreviewWrap');
+    row.classList.add('pdf-preview-row-hit');
+    if(box){ const rb = row.getBoundingClientRect(), bb = box.getBoundingClientRect(); box.scrollTop += (rb.top - bb.top) - box.clientHeight / 2; return; }
     row.classList.add('pdf-preview-row-hit');
     row.scrollIntoView({ behavior:'smooth', block:'center' });
   }
@@ -48255,8 +48461,21 @@ if(!window.__mapxRowDelegated){
     root.querySelectorAll('[data-pdf-type]').forEach(btn=> btn.addEventListener('click', ()=>{
       pdfExportState.type = btn.getAttribute('data-pdf-type');
       pdfExportOpenDd = null;
+      pdfExportPreviewPage = 0;
       renderPdfExportModal();
     }));
+    root.querySelectorAll('[data-pdf-page]').forEach(btn=> btn.addEventListener('click', ()=>{
+      const total = Number((document.getElementById('pdfExportPreviewWrap') || {}).dataset?.pageCount || 1);
+      pdfExportPreviewPage = Math.min(total - 1, Math.max(0, pdfExportPreviewPage + (btn.getAttribute('data-pdf-page') === 'next' ? 1 : -1)));
+      pdfExportShowPage();
+    }));
+    root.querySelectorAll('[data-pdf-zoom]').forEach(btn=> btn.addEventListener('click', ()=>{
+      const z = btn.getAttribute('data-pdf-zoom');
+      pdfExportPreviewZoom = z === 'fit' ? 1 : Math.min(2.5, Math.max(0.5, Math.round((pdfExportPreviewZoom + (z === 'in' ? 0.1 : -0.1)) * 10) / 10));
+      pdfExportShowPage();
+    }));
+    const xlsxBtn = document.getElementById('pdfExportXlsxBtn');
+    if(xlsxBtn) xlsxBtn.addEventListener('click', doExcelExportSave);
     // 지역 — 예전 칩 클릭과 같은 상태 변경(pdfExportState.regions 추가/삭제) + 같은 전체 재렌더.
     root.querySelectorAll('[data-pdf-region-check]').forEach(box=> box.addEventListener('change', ()=>{
       const r = box.getAttribute('data-pdf-region-check');
@@ -48277,15 +48496,17 @@ if(!window.__mapxRowDelegated){
     }));
     root.querySelectorAll('[data-pdf-col-check]').forEach(box=> box.addEventListener('change', ()=>{
       const c = box.getAttribute('data-pdf-col-check');
-      if(box.checked) pdfExportState.cols.add(c); else pdfExportState.cols.delete(c);
+      const set = pdfExportColSet();   // 외부용은 외부 허용 항목 집합, 내부용은 내부 집합
+      if(!set || !pdfExportTypeColumns(pdfExportState.type).includes(c)) return;
+      if(box.checked) set.add(c); else set.delete(c);
       // 드롭다운 안에서 눌렀을 때만 드롭다운을 열어 둔다(표 항목 줄에서 누르면 닫힌 채)
       pdfExportOpenDd = box.closest('[data-pdf-dd]') ? 'cols' : null;
       renderPdfExportModal();
     }));
     const colAll = root.querySelector('[data-pdf-col-all]');
     if(colAll) colAll.addEventListener('click', ()=>{
-      const type = PDF_EXPORT_TYPES.find(t=> t.key === 'internal');
-      pdfExportState.cols = new Set(type.columns.filter(c=> !PDF_INTERNAL_ALWAYS_COLS.includes(c)));
+      const all = new Set(pdfExportTypeColumns(pdfExportState.type).filter(c=> c !== 'name'));
+      if(pdfExportState.type === 'external') pdfExportState.extCols = all; else pdfExportState.cols = all;
       renderPdfExportModal();
     });
     // §PDF 대상 선정 재구성 라운드(신규) — 내부용 업체 체크. 체크 하나로 목록 전체를
@@ -48326,8 +48547,12 @@ if(!window.__mapxRowDelegated){
     renderPdfExportConfirmResult();
   }
   function openPdfExportModal(){
-    pdfExportState = { type:'internal', regions:new Set(), search:'', cats:new Set(['mouDone']),
-      cols: new Set(((PDF_EXPORT_TYPES.find(t=> t.key === 'internal') || {}).columns || []).filter(c=> !PDF_INTERNAL_ALWAYS_COLS.includes(c))) };
+    // §내보내기 화면 개편 라운드 — 처음 열 때·다시 열 때 모두 외부 발송용. 내부용은 사용자가 직접 바꿀 때만.
+    pdfExportState = { type:'external', regions:new Set(), search:'', cats:new Set(['mouDone']),
+      cols: new Set(pdfExportTypeColumns('internal').filter(c=> !PDF_INTERNAL_ALWAYS_COLS.includes(c))),
+      extCols: new Set(pdfExportTypeColumns('external').filter(c=> c !== 'name')) };
+    pdfExportPreviewPage = 0;
+    pdfExportPreviewZoom = 1;
     pdfInternalCatMemo = { sig:'', ids:null };
     // 내부용 선택은 이 창에서만 쓰는 상태라 열 때마다 비운다(저장하지 않음).
     pdfExportInternalSelected = new Set();
@@ -48339,13 +48564,104 @@ if(!window.__mapxRowDelegated){
   // 여기서도 브라우저 인쇄창을 여는 것 말고는 아무 것도 하지 않는다(외부 API 전송 없음,
   // Firebase 업로드 없음, 이메일 발송 없음). 시공사/외부용도 명칭일 뿐 실제 발송 기능이
   // 아니다(§4 "버튼 문구는 PDF 저장/다운로드로, 발송 버튼을 만들지 마라").
+  // §내보내기 화면 개편 라운드(신규) — 파일명: NETFORM_<문서 제목>_<외부용|내부용>_<지역>_<YYYYMMDD>
+  function pdfExportFileBase(ctx){
+    const title = String(ctx.title || '업체목록').replace(/\s+/g, '');
+    return `NETFORM_${title}_${ctx.type.fileLabel || ctx.type.label}_${pdfExportRegionFileLabel()}_${ctx.dateStamp}`;
+  }
+  // 엑셀 저장 — PDF 미리보기와 같은 ctx(같은 업체 목록·같은 표 항목·같은 필드값 함수)를 그대로 쓴다.
+  // 외부용은 ctx.columns가 외부 허용 항목만 담고 있으므로 다른 정보는 숨김 열·다른 시트로도 들어가지 않는다.
+  // 모든 값은 문자열 셀로 써서 전화번호·사업자번호·업체코드의 앞자리 0이나 하이픈이 그대로 남는다(번호 열만 숫자).
+  function pdfExportXlsxTable(ctx){
+    const headers = ctx.columns.map(c=> PDF_EXPORT_COLUMN_LABELS[c] || c);
+    const rows = ctx.companies.map((co, i)=> ctx.columns.map(c=>{
+      const v = pdfExportResolveField(co, c, i);
+      if(c === 'no') return { n: i + 1 };
+      return { s: v === '-' ? '' : String(v) };
+    }));
+    const XLSX_COL_WIDTH = { no:6, region:10, name:26, code:12, repName:12, bizRegNo:15, address:48, phone:16, fax:16, email:26, mouDate:12, capital:12, note:30 };
+    const widths = ctx.columns.map(c=> XLSX_COL_WIDTH[c] || 14);
+    return { headers, rows, widths };
+  }
+  function doExcelExportSave(){
+    const ctx = pdfExportBuildDocContext();
+    if(!ctx.companies.length){ alert('저장할 업체가 없습니다 — 출력 대상 조건을 확인해주세요.'); return; }
+    const t = pdfExportXlsxTable(ctx);
+    const bytes = buildXlsxBytes(ctx.title || '업체목록', t.headers, t.rows, t.widths);
+    const blob = new Blob([bytes], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = pdfExportFileBase(ctx) + '.xlsx';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=> URL.revokeObjectURL(url), 4000);
+  }
+  /* 최소 xlsx 생성기(외부 라이브러리 없음) — 시트 1개, 머리글 굵게·고정(틀 고정), 자동 필터, 열 너비.
+     셀은 inlineStr(문자열) 또는 숫자. zip은 무압축(STORE)이라 어떤 엑셀/뷰어에서도 그대로 열린다. */
+  function xlsxEscXml(v){
+    return String(v).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  function xlsxColName(i){ let n = i + 1, s = ''; while(n > 0){ const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); } return s; }
+  function buildXlsxSheetXml(headers, rows, widths){
+    const lastCol = xlsxColName(Math.max(0, headers.length - 1));
+    const lastRow = rows.length + 1;
+    const cell = (ref, v, header)=>{
+      if(v && typeof v.n === 'number') return `<c r="${ref}"${header ? ' s="1"' : ''}><v>${v.n}</v></c>`;
+      const text = v && v.s != null ? v.s : (typeof v === 'string' ? v : '');
+      return `<c r="${ref}" t="inlineStr"${header ? ' s="1"' : ''}><is><t xml:space="preserve">${xlsxEscXml(text)}</t></is></c>`;
+    };
+    const headRow = `<row r="1">${headers.map((h, ci)=> cell(xlsxColName(ci) + '1', { s:h }, true)).join('')}</row>`;
+    const bodyRows = rows.map((r, ri)=> `<row r="${ri + 2}">${r.map((v, ci)=> cell(xlsxColName(ci) + (ri + 2), v, false)).join('')}</row>`).join('');
+    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      + '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+      + `<dimension ref="A1:${lastCol}${lastRow}"/>`
+      + '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/><selection pane="bottomLeft" activeCell="A2" sqref="A2"/></sheetView></sheetViews>'
+      + '<sheetFormatPr defaultRowHeight="15"/>'
+      + `<cols>${widths.map((w, i)=> `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join('')}</cols>`
+      + `<sheetData>${headRow}${bodyRows}</sheetData>`
+      + `<autoFilter ref="A1:${lastCol}${lastRow}"/>`
+      + '</worksheet>';
+  }
+  const XLSX_CRC_TABLE = (()=>{ const t = new Uint32Array(256); for(let n = 0; n < 256; n++){ let c = n; for(let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1); t[n] = c >>> 0; } return t; })();
+  function xlsxCrc32(bytes){ let c = 0xFFFFFFFF; for(let i = 0; i < bytes.length; i++) c = XLSX_CRC_TABLE[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+  function xlsxZipStore(files){
+    const enc = new TextEncoder();
+    const chunks = [], central = [];
+    let offset = 0;
+    const u16 = v=> [v & 0xFF, (v >>> 8) & 0xFF];
+    const u32 = v=> [v & 0xFF, (v >>> 8) & 0xFF, (v >>> 16) & 0xFF, (v >>> 24) & 0xFF];
+    files.forEach(f=>{
+      const name = enc.encode(f.name);
+      const data = typeof f.data === 'string' ? enc.encode(f.data) : f.data;
+      const crc = xlsxCrc32(data);
+      const local = [0x50,0x4B,0x03,0x04, ...u16(20), ...u16(0x0800), ...u16(0), ...u16(0), ...u16(0x21), ...u32(crc), ...u32(data.length), ...u32(data.length), ...u16(name.length), ...u16(0)];
+      chunks.push(Uint8Array.from(local), name, data);
+      central.push(Uint8Array.from([0x50,0x4B,0x01,0x02, ...u16(20), ...u16(20), ...u16(0x0800), ...u16(0), ...u16(0), ...u16(0x21), ...u32(crc), ...u32(data.length), ...u32(data.length), ...u16(name.length), ...u16(0), ...u16(0), ...u16(0), ...u16(0), ...u32(0), ...u32(offset)]), name);
+      offset += local.length + name.length + data.length;
+    });
+    const centralSize = central.reduce((a, c)=> a + c.length, 0);
+    const end = Uint8Array.from([0x50,0x4B,0x05,0x06, ...u16(0), ...u16(0), ...u16(files.length), ...u16(files.length), ...u32(centralSize), ...u32(offset), ...u16(0)]);
+    const all = chunks.concat(central, [end]);
+    const out = new Uint8Array(all.reduce((a, c)=> a + c.length, 0));
+    let p = 0; all.forEach(c=>{ out.set(c, p); p += c.length; });
+    return out;
+  }
+  function buildXlsxBytes(sheetTitle, headers, rows, widths){
+    const sheetName = xlsxEscXml(String(sheetTitle || 'Sheet1').replace(/[\\\/?*\[\]:]/g, ' ').slice(0, 31) || 'Sheet1');
+    return xlsxZipStore([
+      { name:'[Content_Types].xml', data:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>' },
+      { name:'_rels/.rels', data:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>' },
+      { name:'xl/workbook.xml', data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="${sheetName}" sheetId="1" r:id="rId1"/></sheets><definedNames><definedName name="_xlnm._FilterDatabase" localSheetId="0" hidden="1">'${sheetName.replace(/'/g, "''")}'!$A$1:$${xlsxColName(Math.max(0, headers.length - 1))}$${rows.length + 1}</definedName></definedNames></workbook>` },
+      { name:'xl/_rels/workbook.xml.rels', data:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>' },
+      { name:'xl/styles.xml', data:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="맑은 고딕"/><family val="2"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="맑은 고딕"/><family val="2"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF1B3A66"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>' },
+      { name:'xl/worksheets/sheet1.xml', data: buildXlsxSheetXml(headers, rows, widths) }
+    ]);
+  }
   function doPdfExportSave(){
     // 미리보기와 완전히 같은 함수/같은 CSS를 쓴다 — 디자인을 바꾸면 둘이 동시에 바뀐다.
     const { ctx, html } = pdfExportBuildDocHtml();
     // §요청 15 — 파일명에만 내부/외부를 붙이고(내부용일 때만), 문서 본문에는 절대
     // "내부용/외부발송용" 문구를 넣지 않는다(§요청 1/2/5).
-    const suffix = ctx.type.key === 'internal' ? '_내부' : '';
-    const filename = `NETFORM_MOU체결업체목록_${pdfExportRegionFileLabel()}_${ctx.dateStamp}${suffix}`;
+    const filename = pdfExportFileBase(ctx);
     // §window.open에 noopener를 주면 명세상 반환값이 항상 null이 되어(연결 관계 자체를
     // 끊는 옵션이라) printWin.print()를 절대 호출할 수 없게 되는 실수를 했었다 — 이 창은
     // 같은 출처(same-origin)의 순수 표/문구만 담아 열기 때문에 opener 참조를 남겨도
