@@ -29431,7 +29431,9 @@ window.SHIN2_CRM_APP_INIT = function(){
   function bindWorkqActionHandlers(item){
     const root = document.getElementById('workqActionBody');
     if(!root) return;
-    const finishAndClose = ()=>{ workQueueExpanded = null; closeWorkqActionModal(); renderWorkQueueView(); };
+    // §미팅 완료 반영 수정 라운드 — 고객 카드가 뒤에 열려 있으면 상단 요약(1차/2차/체결)도 같이 다시 그린다.
+    const finishAndClose = ()=>{ workQueueExpanded = null; closeWorkqActionModal(); renderWorkQueueView();
+      try{ if(cardView.style.display === 'block' && item && item.co && String(currentCompanyId) === String(item.co.id)) refreshChart(); }catch(e){} };
     // §요청 3 "진행 단계 변경·취소 / 메모·활동"도 Firestore 확인 대상 — 이 팝업의 모든
     // 저장 버튼이 결국 workqLogEvent(customerActivities)/workqLogMemo(memos)/
     // workqMergeNewMou·D.updateCompany(companies) 중 일부를 조합해서 쓰므로, 어떤
