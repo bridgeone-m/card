@@ -12456,6 +12456,7 @@ window.SHIN2_CRM_OCR = (function(){
         if(payload) publishCleanup(payload);
       }
       function sharedLocalRevKey(storageKey){ return 'shin2-sync-rev-' + storageKey; }
+      let sharedPushInFlight = 0;
       function pushSharedKeyToCloud(name, storageKey, data){
         if(!currentUid) return;
         if(!Array.isArray(data)) return;
@@ -12465,8 +12466,10 @@ window.SHIN2_CRM_OCR = (function(){
         clearTimeout(sharedPushTimers[name]);
         sharedPushTimers[name] = setTimeout(async ()=>{
           delete sharedPushTimers[name];
+          sharedPushInFlight++;   // §데이터 저장 안정성 — 창 닫기 확인용 전송 중 건수
           try{ await saveSharedPayload(name, storageKey, data, rev); }
           catch(e){ console.error(`[CRM/Firebase] ${name} 저장 실패`, e); }
+          finally{ sharedPushInFlight = Math.max(0, sharedPushInFlight - 1); }
         }, 500);
       }
       function startSharedKeySync(name, storageKey){
@@ -12545,7 +12548,9 @@ window.SHIN2_CRM_OCR = (function(){
         push: (name, data)=>{ if(SHARED_ARRAY_KEYS[name]) pushSharedKeyToCloud(name, SHARED_ARRAY_KEYS[name], data); },
         pushAsync: (name, data)=> SHARED_ARRAY_KEYS[name] ? pushSharedKeyToCloudAsync(name, SHARED_ARRAY_KEYS[name], data) : Promise.reject(new Error('알 수 없는 저장소: ' + name)),
         getOnce: (name)=> SHARED_ARRAY_KEYS[name] ? getSharedKeyDocOnce(SHARED_ARRAY_KEYS[name]) : Promise.reject(new Error('알 수 없는 저장소: ' + name)),
-        isReady: (name)=> !!sharedSyncStarted[name]
+        isReady: (name)=> !!sharedSyncStarted[name],
+        // §데이터 저장 안정성 — 아직 클라우드로 안 나간(대기/전송 중) 저장 건수. 창 닫기 확인에만 쓴다.
+        pendingCount: ()=> Object.keys(sharedPushTimers).length + sharedPushInFlight
       };
 
       const cleanupKey = window.WebsiteCleanup.KEY;
@@ -13498,21 +13503,34 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
     try{ var a = JSON.parse(raw); return Array.isArray(a) ? a.length : -1; }catch(e){ return -1; }
   }
   function readArr(key){ try{ const raw = localStorage.getItem(key); const a = raw?JSON.parse(raw):[]; return Array.isArray(a)?a:[]; }catch(e){ return []; } }
+  // §데이터 저장 안정성 라운드(신규) — 로컬 쓰기 결과를 저장소 키와 클라우드 동기화 이름(confirmCloudSave가 쓰는 이름) 둘 다로 기록.
+  function markLocalWriteResult(key, ok){
+    try{
+      const reg = window.__SHIN2_LOCAL_WRITE_FAILED = window.__SHIN2_LOCAL_WRITE_FAILED || {};
+      const names = [key];
+      try{ if(typeof CO_KEY !== 'undefined') names.push(({ [CO_KEY]:'companies', [ACT_KEY]:'customerActivities', [MEMO_KEY]:'memos', [MAIL_ASSETS_KEY]:'mailAssets' })[key]); }catch(e){}
+      names.filter(Boolean).forEach(n=>{ if(ok) delete reg[n]; else reg[n] = Date.now(); });
+    }catch(e){}
+  }
   function writeArr(key, arr, opts){
     opts = opts || {};
-    if(!Array.isArray(arr)){ storageProblem('저장하려는 값이 목록 형식이 아닙니다(' + key + ')'); return false; }
+    // §데이터 저장 안정성 라운드(신규) — 로컬 쓰기 실패를 저장소별로 기록한다. confirmCloudSave가
+    // 이 표시를 보고, 로컬에 반영되지 않은(=옛) 데이터를 클라우드로 밀어 "저장됨"으로 보이는 것을 막는다.
+    // 같은 저장소에 다음 쓰기가 성공하면 표시가 풀린다. 저장 데이터 자체는 전혀 바꾸지 않는다.
+    const __lwFail = ()=>{ markLocalWriteResult(key, false); return false; };
+    if(!Array.isArray(arr)){ storageProblem('저장하려는 값이 목록 형식이 아닙니다(' + key + ')'); return __lwFail(); }
     // 호출부가 방금 같은 배열을 정상 파싱한 직후라면 그 길이를 재사용해 대용량 배열을
     // 저장 직전에 다시 JSON.parse하지 않는다. 값이 없을 때는 기존 보호 검사를 그대로 쓴다.
     var have = Number.isInteger(opts.knownExistingLength) ? opts.knownExistingLength : diskArrLen(key);
     if(have === -1){
       // 기존 값이 있는데 읽지 못하는 상태. 여기서 덮어쓰면 복구 단서까지 사라진다.
       storageProblem('기존 데이터를 읽지 못해 덮어쓰기를 막았습니다(' + key + ')');
-      return false;
+      return __lwFail();
     }
     if(!opts.allowShrink && have > 0 && arr.length < have){
       storageProblem('데이터 로드 이상으로 기존 데이터 보호됨 — ' + have + '건이 ' + arr.length
         + '건으로 줄어드는 저장을 막았습니다(' + key + ')');
-      return false;
+      return __lwFail();
     }
     window.__SHIN2_DATA_GEN = (window.__SHIN2_DATA_GEN || 0) + 1; // §검색 성능 라운드 — 목록 검색 보관값 무효화 신호
     try{ localStorage.setItem(key, JSON.stringify(arr)); }
@@ -13522,7 +13540,7 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
       }else{
         storageProblem('저장 공간이 가득 찼거나 저장이 거부되었습니다(' + key + ')', e);
       }
-      return false;
+      return __lwFail();
     }
     // §race 차단: 지금까지 localRev는 클라우드 push 경로 안에서만 기록됐다. 그래서 로그인
     // 전에 편집하면 rev가 남지 않았고, 뒤늦게 도착한 클라우드 스냅샷이 그 편집을 되돌렸다.
@@ -13537,6 +13555,7 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
     // 자체는 항상 그대로 이루어진다.
     const SYNC_NAME_BY_KEY = { [CO_KEY]: 'companies', [ACT_KEY]: 'customerActivities', [MEMO_KEY]: 'memos', [MAIL_ASSETS_KEY]: 'mailAssets', [SALES_LEDGER_KEY]: 'salesLedger', 'shin2-sales-pending-2026-v1': 'salesPendingReview2026', 'shin2-sales-crossyear-review-2026-v1': 'salesCrossYearReview2026', 'shin2-sales-company-review-2026-v1': 'salesCompanyReview2026' };
     const syncName = SYNC_NAME_BY_KEY[key];
+    markLocalWriteResult(key, true);
     if(syncName){ try{ if(window.SHIN2_CRM_SHARED_SYNC) window.SHIN2_CRM_SHARED_SYNC.push(syncName, arr); }catch(e){} }
     return true;
   }
@@ -15774,6 +15793,14 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
     return rec;
   }
 
+  // §데이터 저장 안정성 라운드(신규) — 복원 직전 상태 스냅샷(삭제 표시 필드만). 서버 저장이 실패하면
+  // 이 값으로 정확히 되돌린다. 다른 필드는 읽지도 쓰지도 않는다.
+  const RESTORE_SNAPSHOT_FIELDS = ['deletedAt','deletedBy','deleteReason','deleteType','permanentDeletePending'];
+  function snapshotDeleteFields(co){
+    const snap = {};
+    RESTORE_SNAPSHOT_FIELDS.forEach(k=>{ snap[k] = (co && k in co) ? co[k] : null; });
+    return snap;
+  }
   // 고객 상태(customerStatusNote) — 영업단계(dealStage, 고정 목록)와는 다른 개념의 자유
   // 문장형 상태 메모(예: "협약 검토 (2차 미팅 예정)"). 헤더 우측 요약 박스에서만 쓰인다.
   function setCustomerStatusNote(companyId, text){ return updateCompany(companyId, { customerStatusNote: text || '' }); }
@@ -17744,7 +17771,7 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
     isAgreementTerminated, terminateAgreement, restoreAgreement, renameCompanyKeepId,
     isAgreementInvalidated, invalidateAgreementAndTrash,
     getMouManualConfirm, isMouManuallyConfirmed, setMouManualConfirm,
-    isCompanyDeleted, loadActiveCompanies, loadDeletedCompanies, softDeleteCompany, restoreDeletedCompany,
+    isCompanyDeleted, loadActiveCompanies, loadDeletedCompanies, softDeleteCompany, restoreDeletedCompany, snapshotDeleteFields,
     isPermanentDeletePending, loadPermanentDeletePendingCompanies, markPermanentDeletePending, cancelPermanentDeletePending,
     permanentlyDeleteCompany, loadPermanentDeleteLog,
     addCurrentSituation, removeCurrentSituation, addInterestField, removeInterestField,
@@ -18378,8 +18405,48 @@ window.SHIN2_CRM_APP_INIT = function(){
   // 방금 저장 직후라 이미 메모리에 같은 배열을 들고 있는 경우가 있음 — 예: saveStageCorrection
   // 쪽 updateCompanyReturningAll). 인자를 안 넘기던 기존 호출부는 전부 그대로 loader()를 쓰므로
   // 동작이 전혀 바뀌지 않는다.
+  /* §데이터 저장 안정성 라운드(신규) — 탭/창 닫기 직전 마지막 입력 보호.
+     · 자동저장 칸(추가 고객 메모 600ms, 질문지 상담 기록 650ms)은 입력 후 타이머가 돌기 전엔
+       이 기기에도 아직 안 쓰였다. 그 사이 탭을 닫거나 다른 탭으로 가면(pagehide /
+       visibilitychange:hidden) 기다리지 않고 바로 저장(flush)한다 — 로컬 쓰기는 동기라 닫히기 전에 끝난다.
+     · 그래도 클라우드 확인이 진행 중이거나(아래 cloudSavesInFlight) 클라우드 전송 대기가 남아 있으면
+       beforeunload에서 브라우저 기본 "나가시겠습니까?" 확인만 띄운다(그때만, 문구는 브라우저 기본).
+     타이머 시간·저장 방식은 그대로다. */
+  const pendingLocalSaves = new Map();   // key → flush()
+  let cloudSavesInFlight = 0;
+  window.SHIN2_PENDING_SAVES = {
+    set(key, flush){ if(typeof flush === 'function') pendingLocalSaves.set(key, flush); },
+    clear(key){ pendingLocalSaves.delete(key); },
+    flushAll(){
+      Array.from(pendingLocalSaves.entries()).forEach(([key, flush])=>{
+        pendingLocalSaves.delete(key);
+        try{ flush(); }catch(e){ console.warn('[CRM/저장 대기] 즉시 저장 실패', key, e); }
+      });
+    },
+    hasPending(){
+      let cloudQueued = 0;
+      try{ cloudQueued = (window.SHIN2_CRM_SHARED_SYNC && typeof window.SHIN2_CRM_SHARED_SYNC.pendingCount === 'function') ? window.SHIN2_CRM_SHARED_SYNC.pendingCount() : 0; }catch(e){ cloudQueued = 0; }
+      return pendingLocalSaves.size > 0 || cloudSavesInFlight > 0 || cloudQueued > 0;
+    },
+    inFlightCount(){ return cloudSavesInFlight; }
+  };
+  window.addEventListener('pagehide', ()=> window.SHIN2_PENDING_SAVES.flushAll());
+  document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState === 'hidden') window.SHIN2_PENDING_SAVES.flushAll(); });
+  window.addEventListener('beforeunload', (e)=>{
+    window.SHIN2_PENDING_SAVES.flushAll();
+    if(window.SHIN2_PENDING_SAVES.hasPending()){ e.preventDefault(); e.returnValue = ''; return ''; }
+  });
   async function confirmCloudSave(syncName, preloadedData){
+    cloudSavesInFlight++;
+    try{ return await confirmCloudSaveInner(syncName, preloadedData); }
+    finally{ cloudSavesInFlight = Math.max(0, cloudSavesInFlight - 1); }
+  }
+  async function confirmCloudSaveInner(syncName, preloadedData){
     try{
+      // §데이터 저장 안정성 라운드 — 이 기기 저장(localStorage)이 실패한 상태면, 지금 밀어 보낼
+      // 데이터에 방금 입력이 빠져 있다. 성공으로 보이지 않게 여기서 실패로 끝낸다(입력값은 화면에 남는다).
+      const lwf = window.__SHIN2_LOCAL_WRITE_FAILED;
+      if(lwf && lwf[syncName]) throw Object.assign(new Error('LOCAL_WRITE_FAILED'), { code:'LOCAL_WRITE_FAILED' });
       if(!window.SHIN2_CRM_SHARED_SYNC || !window.SHIN2_CRM_SHARED_SYNC.pushAsync) throw new Error('SYNC_UNAVAILABLE');
       const loader = CLOUD_CONFIRM_LOADERS[syncName];
       if(!loader) throw new Error('알 수 없는 저장소: ' + syncName);
@@ -18388,9 +18455,44 @@ window.SHIN2_CRM_APP_INIT = function(){
       return { ok:true };
     }catch(err){ return { ok:false, err }; }
   }
+  /* §데이터 저장 안정성 라운드(신규) — 쓰레기통 복원(서버 확인 + 실패 시 원상 복구).
+     1) 복원 전 삭제 표시 필드 스냅샷 2) 로컬 복원(기존 D.restoreDeletedCompany 그대로)
+     3) 서버 저장 확인 4) 실패면 스냅샷으로 되돌리고, 이번 복원이 남긴 "[업체 복구]" 활동도 지운다
+     → 화면·로컬·서버 모두 "삭제됨" 그대로. 성공 후 활동 기록 확인은 따로 하고 결과만 알려준다. */
+  const restoreInFlight = new Set();
+  async function restoreCompanyConfirmed(companyId){
+    if(restoreInFlight.has(companyId)) return { ok:false, err: new Error('이미 복구 중입니다.') };
+    const before = D.findCompany(companyId);
+    if(!before) return { ok:false, err: new Error('업체를 찾을 수 없습니다.') };
+    if(!before.deletedAt) return { ok:true, already:true };
+    restoreInFlight.add(companyId);
+    try{
+      const snap = D.snapshotDeleteFields(before);
+      const actIdsBefore = new Set(D.activitiesForCompany(companyId).map(a=> a.id));
+      D.restoreDeletedCompany(companyId);
+      const newActIds = D.activitiesForCompany(companyId).filter(a=> !actIdsBefore.has(a.id)).map(a=> a.id);
+      const rollback = ()=>{
+        D.updateCompany(companyId, snap);
+        newActIds.forEach(id=> D.deleteActivity(id));
+      };
+      const after = D.findCompany(companyId);
+      if(!after || after.deletedAt){ rollback(); return { ok:false, rolledBack:true, err: Object.assign(new Error('LOCAL_WRITE_FAILED'), { code:'LOCAL_WRITE_FAILED' }) }; }
+      const r = await confirmCloudSave('companies');
+      if(!r.ok){ rollback(); return { ok:false, rolledBack:true, err: r.err }; }
+      const ra = newActIds.length ? await confirmCloudSave('customerActivities') : { ok:true };
+      return { ok:true, activityConfirmed: ra.ok };
+    } finally {
+      restoreInFlight.delete(companyId);
+    }
+  }
   // customerDocuments(서류함)는 SHARED_ARRAY_KEYS와 별개인 자체 동기화 경로다(§조사
   // 결과 — 회사 전체가 공유하는 서류함이라 v2 시절부터 항상 로그인만 되면 바로 동기화).
   async function confirmDocsCloudSave(documents){
+    cloudSavesInFlight++;
+    try{ return await confirmDocsCloudSaveInner(documents); }
+    finally{ cloudSavesInFlight = Math.max(0, cloudSavesInFlight - 1); }
+  }
+  async function confirmDocsCloudSaveInner(documents){
     try{
       if(!window.SHIN2_CRM_DOCS_SYNC || !window.SHIN2_CRM_DOCS_SYNC.pushAsync) throw new Error('SYNC_UNAVAILABLE');
       // Firestore가 오프라인에서 응답을 끝없이 기다려도 업로드 UI를 잠그지 않는다.
@@ -18411,6 +18513,7 @@ window.SHIN2_CRM_APP_INIT = function(){
   // 원인 미상 문구에 코드를 노출해 콘솔 없이도 원인을 알 수 있게 한다.
   function firestoreSaveErrorMessage(err){
     if(err && err.message === 'SYNC_UNAVAILABLE') return '지금은 저장 확인을 할 수 없습니다 — 로그인 상태를 확인해주세요.';
+    if(err && (err.code === 'LOCAL_WRITE_FAILED' || err.message === 'LOCAL_WRITE_FAILED')) return '이 기기에 저장하지 못했습니다(저장 공간 부족 등) — 저장되지 않았습니다. 공간을 정리한 뒤 다시 시도해주세요.';
     const code = err && (err.code || (err.cause && err.cause.code));
     if(code === 'unauthenticated') return '로그인이 만료되었습니다. 다시 로그인한 뒤 시도해주세요.';
     if(code === 'permission-denied') return '권한이 없습니다. 관리자에게 문의해주세요. (오류 코드: permission-denied)';
@@ -23703,13 +23806,13 @@ window.SHIN2_CRM_APP_INIT = function(){
       const id = btn.getAttribute('data-restore-co');
       const co = D.findCompany(id);
       if(!co) return;
+      if(btn.disabled) return;
       if(!confirm(`"${co.name}" 업체를 복구하시겠습니까?\n복구하면 일반 고객 목록에 다시 나타납니다.`)) return;
       const statusEl = document.getElementById('restoreStatus_' + id);
       btn.disabled = true;
-      D.restoreDeletedCompany(id);
-      const r = await confirmCloudSave('companies');
+      const r = await restoreCompanyConfirmed(id);
       btn.disabled = false;
-      if(!r.ok){ showCloudSaveStatus(statusEl, false, r.err); return; }
+      if(!r.ok){ showCloudSaveStatus(statusEl, false, r.err); return; }   // 실패 시 쓰레기통 상태 그대로(되돌림 완료)
       renderList();
       if(typeof refreshMapIfOpen === 'function') refreshMapIfOpen();
     }));
@@ -23881,7 +23984,14 @@ window.SHIN2_CRM_APP_INIT = function(){
   // (D.addCompany → confirmCloudSave('companies')로 원격 반영 확인 → 실패하면
   // D.removeCompanyHard로 되돌림, §낙관적 로컬 반영 롤백 원칙)을 그대로 재사용한다.
   // 코드 발급/MOU 체결 처리 자체는 handleConfirmMouFromNonPartnerTab과 동일한 로직.
+  const excelRegisterInFlight = new Set();   // §데이터 저장 안정성 — 같은 업체 중복 클릭 방지
   async function handleRegisterAndConfirmMouFromExcelName(excelName){
+    if(excelRegisterInFlight.has(excelName)) return;
+    excelRegisterInFlight.add(excelName);
+    try{ await registerAndConfirmMouFromExcelNameInner(excelName); }
+    finally{ excelRegisterInFlight.delete(excelName); }
+  }
+  async function registerAndConfirmMouFromExcelNameInner(excelName){
     if(!confirm(`"${excelName}"을(를) 신규 등록하고 MOU 체결 처리하시겠습니까?\n오늘 날짜로 기록되며, 업체코드가 자동으로 발급됩니다.`)) return;
     const dup = findActiveCompanyByExactName(excelName, D.loadCompanies());
     if(dup){ alert(`이미 같은 이름의 CRM 업체가 있습니다: "${dup.name}" — 그 업체 카드에서 처리해주세요.`); renderList(); return; }
@@ -23900,6 +24010,16 @@ window.SHIN2_CRM_APP_INIT = function(){
     D.addActivity(newCo.id, '[신규 등록] 실적있음·MOU미체결 탭에서 등록 + MOU 체결 처리');
     renderUnregisteredBadge();
     renderList();
+    // §데이터 저장 안정성 라운드 — 업체코드·MOU 체결·활동 기록도 서버 저장을 확인한다. 실패하면
+    // "부분 완료"로 분명히 알리고, 재시도는 저장 확인만 다시 한다(업체·활동을 다시 만들지 않음).
+    for(;;){
+      const rc = await confirmCloudSave('companies');
+      const ra = rc.ok ? await confirmCloudSave('customerActivities') : { ok:false, err: rc.err };
+      if(rc.ok && ra.ok) return;
+      const why = cloudSaveErrorMessage(rc.ok ? ra.err : rc.err);
+      const what = rc.ok ? '활동 기록' : '업체코드·MOU 체결 상태' + ' 및 활동 기록';
+      if(!confirm(`부분 완료 — "${excelName}" 업체 등록은 서버에 저장됐지만 ${what}의 서버 저장을 확인하지 못했습니다.\n(${why})\n\n[확인]: 저장 다시 시도 / [취소]: 나중에(이 기기 화면에는 반영된 상태, 다음 저장 때 다시 올라갑니다)`)) return;
+    }
   }
   // §실적있음·MOU미체결 탭·건바이건 통합 정리 라운드(신규) — 원래 이 함수는 "실적있음·
   // MOU미체결" 섹션 + "건바이건 업체" 섹션을 한 화면에 같이 보여줬는데, 이제 실적있음·
@@ -26079,19 +26199,27 @@ window.SHIN2_CRM_APP_INIT = function(){
     if(!input) return;
     let timer = null;
     let lastSaved = customerInsightNote(co);
+    const pendingKey = 'insightNote:' + co.id;
     const save = async ()=>{
+      clearTimeout(timer);
+      if(window.SHIN2_PENDING_SAVES) window.SHIN2_PENDING_SAVES.clear(pendingKey);
       const val = input.value.trim();
       if(val === lastSaved){ return; }
       status.textContent = '저장 중…'; status.className = 'insight-note-status';
+      const prevSaved = lastSaved;
       const rec = D.setCustomerInsight(co.id, { note: val });
       if(!rec){ status.textContent = '저장 실패'; status.className = 'insight-note-status is-err'; return; }
       lastSaved = val;
       renderInsightNoteSummary(D.findCompany(co.id) || co);   // 기본정보 탭 요약도 바로 맞춘다
       const r = await confirmCloudSave('companies');
       if(r.ok){ status.textContent = '저장됨'; setTimeout(()=>{ if(status.textContent === '저장됨') status.textContent = ''; }, 1800); }
+      else if(r.err && r.err.code === 'LOCAL_WRITE_FAILED'){ lastSaved = prevSaved; status.textContent = '저장 실패 · 이 기기 저장 공간 확인'; status.className = 'insight-note-status is-err'; }
       else { status.textContent = '이 기기에 저장됨 · 서버 확인 실패'; status.className = 'insight-note-status is-err'; }
     };
-    input.addEventListener('input', ()=>{ clearTimeout(timer); timer = setTimeout(save, 600); });
+    input.addEventListener('input', ()=>{
+      clearTimeout(timer); timer = setTimeout(save, 600);
+      if(window.SHIN2_PENDING_SAVES) window.SHIN2_PENDING_SAVES.set(pendingKey, save);   // 닫히기 전에 바로 저장할 수 있게
+    });
     input.addEventListener('blur', ()=>{ clearTimeout(timer); save(); });
   }
   // §질문지 상담 기록 재구성 라운드 — 자동 인사이트는 사람이 직접 쓴 인사이트와 저장
@@ -34204,6 +34332,7 @@ window.SHIN2_CRM_APP_INIT = function(){
         return Promise.resolve({ ok:true, skipped:true });
       }
       clearTimeout(debounceTimer); debounceTimer = null;
+      if(window.SHIN2_PENDING_SAVES) window.SHIN2_PENDING_SAVES.clear('questionnaire:' + doc.id);
       clearTimeout(statusHideTimer);
       setSaveStatus('저장 중…');
       const requestStarted = performance.now();
@@ -34264,6 +34393,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       setSaveStatus('변경사항 저장 대기…');
       console.info('[MEMO-SAVE] debounce start');
       debounceTimer = setTimeout(persistLatest, 650);
+      if(window.SHIN2_PENDING_SAVES) window.SHIN2_PENDING_SAVES.set('questionnaire:' + doc.id, ()=> queueSave(true));   // §데이터 저장 안정성 — 닫히기 전에 바로 저장
       return true;
     };
     flushPendingSave = ()=> queueSave(true);
@@ -37306,8 +37436,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       if(!co){ showCloudSaveStatus(statusEl, false, { message:'업체를 찾을 수 없습니다.' }); return; }
       if(!confirm(`"${co.name}" 업체를 복구하고 이 요청들과 연결하시겠습니까?`)) return;
       btn.disabled = true;
-      D.restoreDeletedCompany(companyId);
-      const rc = await confirmCloudSave('companies');
+      const rc = await restoreCompanyConfirmed(companyId);
       if(!rc.ok){ btn.disabled = false; showCloudSaveStatus(statusEl, false, rc.err); return; }
       const r = await resolveGsheetReviewCompany(rawName, companyId);
       btn.disabled = false;
@@ -37768,14 +37897,35 @@ window.SHIN2_CRM_APP_INIT = function(){
   // 로컬 작업 배열에도 반영해 가면서 처리하고 마지막에 카운터를 한 번에 올린다(§요청 3
   // "순차 발급, 중복 금지" — 기존 genCompanyCode/nextB2BSeq/bumpCompanyCodeB2BCounter
   // 재사용, 새 카운터 로직 없음).
+  // §데이터 저장 안정성 라운드(신규) — 같은 날짜인지(표기 차이 무시) 비교.
+  function samePartnerDateText(a, b){
+    const sa = String(a || '').trim(), sb = String(b || '').trim();
+    if(sa === sb) return true;
+    const pa = sa ? parsePartnerDateLabel(sa) : null, pb = sb ? parsePartnerDateLabel(sb) : null;
+    if(!pa || !pb) return false;
+    const da = new Date(pa.ts), db = new Date(pb.ts);
+    return da.getFullYear() === db.getFullYear() && da.getMonth() === db.getMonth() && da.getDate() === db.getDate();
+  }
   function applyPartnerExcelImport(preview){
     const workingCompanies = D.loadCompanies();
     let mouChangedCount = 0, alreadyMouCount = 0, newCodeCount = 0, mouDateAppliedCount = 0, mouNoDateCount = 0, errorCount = 0;
+    let unchangedCount = 0;
+    const errorNames = [];
     let lastIssuedSeq = null;
     preview.matched.forEach(m=>{
       try{
         const co = D.findCompany(m.companyId);
-        if(!co){ errorCount++; return; }
+        if(!co){ errorCount++; errorNames.push(m.companyName || m.companyId); return; }
+        // §데이터 저장 안정성 라운드 — 같은 엑셀을 다시 반영해도 이미 같은 값으로 반영된 업체는 손대지
+        // 않는다(MOU 정정·정정 이력·활동 기록이 또 쌓이던 문제). 판정: 이 엑셀 반영으로 만들어진 MOU 완료
+        // 정정이 같은 날짜로 이미 있고, 바꿀 업체코드·협약 상태가 없을 때만 "변경 없음".
+        const prevCorr = getStageCorrections(co).mouDone;
+        const codeWouldChange = m.codeDecision.status === 'issueNew' || (m.finalCode && m.finalCode !== co.code);
+        if(prevCorr && prevCorr.status === 'done' && samePartnerDateText(prevCorr.dateText, m.finalMouDate || '')
+          && !codeWouldChange && co.partnerStatus === 'partner'){
+          unchangedCount++;
+          return;
+        }
         const wasConfirmedPartner = isConfirmedPartner(co, buildProgressStages(co));
         let finalCode = m.finalCode;
         if(m.codeDecision.status === 'issueNew'){
@@ -37794,10 +37944,12 @@ window.SHIN2_CRM_APP_INIT = function(){
         saveStageCorrection(m.companyId, 'mouDone',
           { status:'done', dateText: m.finalMouDate || '', owner:null },
           { reason:'기타', reasonOther:'협력사 엑셀 일괄 반영' });
-        D.addActivity(m.companyId, buildPartnerExcelActivityLog(m));
+        const logText = buildPartnerExcelActivityLog(m);
+        // 같은 문장이 이미 있는 업체(이전 반영의 재시도)는 활동을 다시 만들지 않는다.
+        if(!D.activitiesForCompany(m.companyId).some(a=> (a.activityText || a.originalText) === logText)) D.addActivity(m.companyId, logText);
         if(wasConfirmedPartner) alreadyMouCount++; else mouChangedCount++;
         if(m.excelMouDate) mouDateAppliedCount++; else mouNoDateCount++;
-      }catch(e){ errorCount++; }
+      }catch(e){ errorCount++; errorNames.push(m.companyName || m.companyId); }
     });
     if(lastIssuedSeq != null) D.bumpCompanyCodeB2BCounter(lastIssuedSeq);
     return {
@@ -37807,7 +37959,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       mouDateAppliedCount, mouNoDateCount,
       notInCrmCount: preview.notInCrm.length,
       needsReviewCount: preview.needsReview.length,
-      errorCount
+      errorCount, errorNames, unchangedCount
     };
   }
 
@@ -37895,11 +38047,12 @@ window.SHIN2_CRM_APP_INIT = function(){
         ${partnerExcelColSelectHtml('bizno','사업자번호')}
       </div>` : ''}
       ${st.error ? `<div class="delete-co-modal-err">${esc(st.error)}</div>` : ''}
-      ${st.result ? `<div style="color:#1E7B34;margin-bottom:10px;">확정 반영 완료 — 엑셀 전체 ${st.result.excelTotal}건 · 매칭 ${st.result.matchedCount}건 ·
+      ${st.result ? partnerExcelCloudStatusHtml(st) : ''}
+      ${st.result ? `<div style="color:${(st.result.errorCount || st.cloud === 'fail') ? '#B3261E' : '#1E7B34'};margin-bottom:10px;">${st.result.errorCount ? '부분 완료' : (st.cloud === 'ok' ? '확정 반영 완료' : '이 기기 반영')} — 엑셀 전체 ${st.result.excelTotal}건 · 매칭 ${st.result.matchedCount}건 · 변경 없음(이미 반영) ${st.result.unchangedCount || 0}건 ·
         MOU 체결로 변경 ${st.result.mouChangedCount}건 · 기존에 이미 MOU 체결 ${st.result.alreadyMouCount}건 ·
         신규 B2B 코드 발급 ${st.result.newCodeCount}건 · 체결일 반영 ${st.result.mouDateAppliedCount}건 ·
         체결일 없는 MOU 체결 ${st.result.mouNoDateCount}건 · CRM 미등록 ${st.result.notInCrmCount}건 ·
-        확인 필요 ${st.result.needsReviewCount}건 · 오류 ${st.result.errorCount}건</div>` : ''}
+        확인 필요 ${st.result.needsReviewCount}건 · 오류 ${st.result.errorCount}건${st.result.errorCount ? ` — 반영 실패: ${esc((st.result.errorNames || []).join(', '))} (같은 엑셀을 다시 반영하면 실패 건만 처리됩니다)` : ''}</div>` : ''}
       ${p ? `
       <div class="pi-note" style="padding:0 0 10px;">
         엑셀 전체 ${p.total}건 — 매칭됨(반영 예정) ${p.matched.length}건 · 확인 필요 ${p.needsReview.length}건 · CRM 미등록 ${p.notInCrm.length}건
@@ -37962,9 +38115,12 @@ window.SHIN2_CRM_APP_INIT = function(){
     }));
     const recomputeBtn = document.getElementById('partnerExcelRecomputeBtn');
     if(recomputeBtn) recomputeBtn.addEventListener('click', recomputePartnerExcelPreview);
+    const cloudRetryBtn = document.getElementById('partnerExcelCloudRetryBtn');
+    if(cloudRetryBtn) cloudRetryBtn.addEventListener('click', ()=> confirmPartnerExcelCloud(st));
     const applyBtn = document.getElementById('partnerExcelImportApplyBtn');
     if(applyBtn) applyBtn.addEventListener('click', ()=>{
       if(!p || !p.matched.length) return;
+      if(st.applying) return;   // §데이터 저장 안정성 — 중복 클릭 방지
       if(!confirm(`매칭된 ${p.matched.length}건을 MOU 체결 상태로 반영합니다.\n확인 필요 ${p.needsReview.length}건, CRM 미등록 ${p.notInCrm.length}건은 반영하지 않습니다.\n계속할까요?`)) return;
       st.applying = true;
       renderPartnerExcelImportModal();
@@ -37976,7 +38132,29 @@ window.SHIN2_CRM_APP_INIT = function(){
       st.applying = false;
       renderList();
       renderPartnerExcelImportModal();
+      if(st.result) confirmPartnerExcelCloud(st);   // 서버 저장 확인(재시도는 확인만 다시 — 다시 반영하지 않음)
     });
+  }
+  // §데이터 저장 안정성 라운드(신규) — 일괄 반영 뒤 서버 저장 확인. 업체·활동 둘 다 성공해야 "완료".
+  async function confirmPartnerExcelCloud(st){
+    if(st.cloud === 'saving') return;
+    st.cloud = 'saving'; st.cloudErr = null;
+    renderPartnerExcelImportModal();
+    const rc = await confirmCloudSave('companies');
+    const ra = await confirmCloudSave('customerActivities');
+    if(rc.ok && ra.ok){ st.cloud = 'ok'; }
+    else {
+      st.cloud = 'fail';
+      st.cloudErr = (!rc.ok ? '업체·MOU 상태' : '') + (!rc.ok && !ra.ok ? ', ' : '') + (!ra.ok ? '활동 기록' : '') + ' 서버 저장 확인 실패 — ' + cloudSaveErrorMessage(!rc.ok ? rc.err : ra.err);
+    }
+    if(partnerExcelImportState === st) renderPartnerExcelImportModal();
+  }
+  function partnerExcelCloudStatusHtml(st){
+    if(st.cloud === 'saving') return '<div style="color:var(--text-muted);margin-bottom:6px;">서버 저장 확인 중…</div>';
+    if(st.cloud === 'fail') return `<div class="delete-co-modal-err" style="margin-bottom:6px;">${esc(st.cloudErr || '서버 저장 확인 실패')} · 이 기기 화면에만 반영된 상태입니다.
+      <button type="button" class="co-text-action" id="partnerExcelCloudRetryBtn">저장 다시 시도</button></div>`;
+    if(st.cloud === 'ok') return '<div style="color:#1E7B34;margin-bottom:6px;">서버 저장 확인됨</div>';
+    return '';
   }
 
 
@@ -42564,7 +42742,12 @@ window.SHIN2_CRM_APP_INIT = function(){
       if(btn.disabled) return;
       btn.disabled = true;
       // §상태 동기화 점검 — 저장 실패 뒤 같은 내용으로 다시 누르면 로컬에 이미 있는 기록은 다시 만들지 않는다.
-      if(btn.__appliedText !== text){ D.addActivity(co.id, text); btn.__appliedText = text; }
+      if(btn.__appliedText !== text){
+        const beforeIds = new Set(D.activitiesForCompany(co.id).map(a=> a.id));
+        D.addActivity(co.id, text);
+        const landed = D.activitiesForCompany(co.id).some(a=> !beforeIds.has(a.id));
+        btn.__appliedText = landed ? text : null;   // §데이터 저장 안정성 — 이 기기 저장 실패면 재시도에서 다시 저장
+      }
       const r = await confirmCloudSave('customerActivities');
       btn.disabled = false;
       showCloudSaveStatus(statusEl, r.ok, r.err);
@@ -42829,6 +43012,7 @@ window.SHIN2_CRM_APP_INIT = function(){
           D.addMemo(co.id, text); memoDraftApplied = true;
           const added = D.memosFor(co.id).find(m=> !before.has(m.id));
           btn.__memoId = added ? added.id : null; btn.__memoText = text;
+          if(!added) memoDraftApplied = false;   // §데이터 저장 안정성 — 이 기기 저장 실패 시 다음 재시도에서 다시 저장
         } else if(btn.__memoId && btn.__memoText !== text){
           // §상태 동기화 점검 — 저장 실패 뒤 내용을 고쳐 다시 누르면 고친 내용으로 바꾼다(예전엔 처음 내용만 남았다).
           D.updateMemo(btn.__memoId, text); btn.__memoText = text;
@@ -43348,10 +43532,50 @@ window.SHIN2_CRM_APP_INIT = function(){
   // 다른 중앙 모달(전화 요청 기록/협력사 데이터 가져오기 등)과 같은 .pi-overlay/
   // .pi-panel 팝업 패턴으로 바꾼다 — 뒤의 목록은 그대로 보이고, X/바깥 클릭으로 닫으면
   // 목록 화면으로 돌아갈 필요 없이(애초에 안 가려졌으므로) 팝업만 사라진다.
+  /* §데이터 저장 안정성 라운드(신규) — 신규 등록 중 서버 저장이 실패한 뒤 [취소]/[×]로 닫으면, 그 등록
+     시도 때 이 기기에만 만들어진 임시 업체가 남아 다음 저장 때 서버로 올라가던 문제.
+     · addFormUnsaved: 이 폼에서 만들었지만 서버 저장 성공을 확인하지 못한 업체 id + 마지막 오류.
+       서버 저장이 성공하면 즉시 비운다 → 이미 서버에 있는 업체는 취소로 절대 지우지 않는다.
+     · 오류가 "확실히 안 보내짐"(로그인 없음/이 기기 저장 실패/권한·인증 거부)이면 바로 정리한다.
+     · 그 외(네트워크 등 애매한 실패)는 서버를 읽기 전용으로 1회 확인해 서버에 없을 때만 정리하고,
+       확인조차 못 하면 지우지 않고 남겨 둔다(목록에서 직접 확인·삭제 가능). */
+  let addFormUnsaved = null;   // { id, err }
+  const DEFINITELY_NOT_SENT = new Set(['SYNC_UNAVAILABLE','LOCAL_WRITE_FAILED','permission-denied','unauthenticated']);
+  function errNotSent(err){
+    if(!err) return false;
+    if(DEFINITELY_NOT_SENT.has(err.message) || DEFINITELY_NOT_SENT.has(err.code)) return true;
+    return /로그인이 필요합니다/.test(String(err.message || ''));
+  }
+  async function discardUnsavedNewCompany(info){
+    if(!info || !info.id) return { removed:false };
+    const co = D.findCompany(info.id);
+    if(!co) return { removed:false };
+    let onServer = errNotSent(info.err) ? false : null;
+    if(onServer === null){
+      try{
+        const sync = window.SHIN2_CRM_SHARED_SYNC;
+        if(sync && typeof sync.getOnce === 'function'){
+          const list = await Promise.race([ sync.getOnce('companies'), new Promise((_, rej)=> setTimeout(()=> rej(new Error('TIMEOUT')), 8000)) ]);
+          onServer = Array.isArray(list) ? list.some(c=> c && c.id === info.id) : null;
+        }
+      }catch(e){ onServer = null; }
+    }
+    if(onServer !== false){
+      if(onServer === null) showMiniSaveToast('서버 저장 여부를 확인하지 못해 등록하던 업체를 목록에 남겨 두었습니다');
+      return { removed:false, onServer };
+    }
+    // 이 등록 시도가 만든 진행단계 활동만 함께 정리(이 업체 id의 활동 = 방금 만든 것뿐)
+    D.activitiesForCompany(info.id).forEach(a=> D.deleteActivity(a.id));
+    const removed = D.removeCompanyHard(info.id);
+    try{ renderList(); }catch(e){}
+    return { removed };
+  }
   function closeAddCompanyForm(){
     addingNewCompany = false;
     const root = document.getElementById('addCompanyModalRoot');
     if(root) root.innerHTML = '';
+    const unsaved = addFormUnsaved; addFormUnsaved = null;
+    if(unsaved) discardUnsavedNewCompany(unsaved);
   }
   /* §신규 고객 등록 아이콘 라운드(신규) — 글자·입력칸만 길게 늘어선 느낌을 줄이려고, 정보
      구분(섹션 머리말·주요 라벨)과 주요 액션(등록)에만 작은 선 아이콘을 단다. 아이콘은 협약
@@ -43866,11 +44090,14 @@ window.SHIN2_CRM_APP_INIT = function(){
       if(!rec){
         rec = D.addCompany(patch);
         pendingNewCompanyId = rec.id;
+        addFormUnsaved = { id: rec.id, err: null };   // §데이터 저장 안정성 — 서버 확인 전 임시 업체
         // 진행단계는 co.id가 생긴 뒤에만 partnerDashboard.newMou/mouDate에 안전하게 쓸 수
         // 있어 등록 직후에 적용한다(§ 첨부 이미지와 같은 "생성 후 부가 처리" 순서).
         applyDealStageValues(rec.id, dealCheck.values);
       }
       try{
+        // §데이터 저장 안정성 라운드 — 이 기기 저장이 실패해 업체가 목록에 없으면 클라우드로 보내지 않는다.
+        if(!D.findCompany(rec.id)){ pendingNewCompanyId = null; throw Object.assign(new Error('LOCAL_WRITE_FAILED'), { code:'LOCAL_WRITE_FAILED' }); }
         if(!window.SHIN2_CRM_SHARED_SYNC || !window.SHIN2_CRM_SHARED_SYNC.pushAsync) throw new Error('SYNC_UNAVAILABLE');
         await window.SHIN2_CRM_SHARED_SYNC.pushAsync('companies', D.loadCompanies());
       }catch(err){
@@ -43879,7 +44106,8 @@ window.SHIN2_CRM_APP_INIT = function(){
         // §요청 7 "고객정보 저장에 실패했습니다" — 기술적 오류를 그대로 노출하지 않는다.
         // 로컬에는 이미 저장돼 있어(위 rec) 입력한 내용 자체는 사라지지 않는다 — 폼도
         // 계속 열려 있어 사용자가 값을 다시 손댈 필요가 없다(§요청 "입력한 내용 유지").
-        saveErrEl.textContent = '고객정보 저장에 실패했습니다. 네트워크를 확인하고 다시 시도해주세요.';
+        if(addFormUnsaved && rec && addFormUnsaved.id === rec.id) addFormUnsaved.err = err;
+        saveErrEl.textContent = (err && err.code === 'LOCAL_WRITE_FAILED') ? cloudSaveErrorMessage(err) : '고객정보 저장에 실패했습니다. 네트워크를 확인하고 다시 시도해주세요.';
         saveErrEl.style.display = 'block';
         return;
       }
@@ -43895,6 +44123,7 @@ window.SHIN2_CRM_APP_INIT = function(){
         D.bumpCompanyCodeB2BCounter(parseInt(b2bMatch[1], 10));
       }
       pendingNewCompanyId = null;
+      addFormUnsaved = null;   // 서버 저장 성공 — 이제 취소로 지울 대상이 아니다
       closeAddCompanyForm();
       // 첨부 이미지가 있으면 기존 서류함 저장 경로(D.addDocument)를 그대로 재사용해
       // 저장한다 — OCR로 추출된 값이 있으면 §8 원칙 그대로 extracted로 함께 넘긴다.
