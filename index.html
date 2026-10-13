@@ -26230,7 +26230,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     const tagMatch = raw.match(/^\s*\[\s*([^\]]+?)\s*\]/);
     const sheetType = SHEET_REQUEST_TYPES.includes(type) ? type : (tagMatch && SHEET_REQUEST_TYPES.includes(tagMatch[1]) ? tagMatch[1] : '');
     if(!sheetType) return cleanActivityDisplayText(raw);
-    if(!/컨설팅요청/.test(sheetType)) return '';
+    if(!/컨설팅요청|기술자문문의/.test(sheetType)) return '';   // 컨설팅요청·기술자문문의는 현장명만 표시
     const m = raw.match(/현장명\s*[:：]\s*([^·\n]+)/);
     return m ? m[1].trim() : '';
   }

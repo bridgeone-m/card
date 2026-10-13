@@ -35,3 +35,12 @@ test('그래프 최근 5개월: 기준 월에서 거꾸로, 해가 바뀌면 전
   assert.equal(JSON.stringify(feb.map(p=>p.year+'-'+p.month)),JSON.stringify(['2025-10','2025-11','2025-12','2026-1','2026-2']));
   assert.equal(JSON.stringify(feb.map(p=>p.total)),JSON.stringify([100,0,120,0,20]));
 });
+
+test('활동 한 줄: 컨설팅요청·기술자문문의는 현장명만, 다른 시트 요청은 숨김, 직접 남긴 기록은 그대로',()=>{
+  const c={String};vm.runInNewContext([constLine('ACTIVITY_TAG_RE'),constLine('ACTIVITY_DROP_FIELD_RE'),fn('cleanActivityDisplayText'),constLine('SHEET_REQUEST_TYPES'),fn('activityTimelineText')].join('\n'),c);
+  const f=c.activityTimelineText;
+  assert.equal(f({type:'컨설팅요청_통합',text:'[컨설팅요청_통합] 순번: 3 · 공종: 방수 · 현장명: OO아파트 · 지역: 서울'}),'OO아파트');
+  assert.equal(f({type:'기타',text:'[기술자문문의] 순번: 12 · 브랜드: X · 현장명: XX현장'}),'XX현장');
+  assert.equal(f({type:'샘플카달로그요청',text:'[샘플카달로그요청] 품목: 카탈로그'}),'');
+  assert.equal(f({type:'미팅',text:'전화 통화 — 다음 주 미팅'}),'전화 통화 — 다음 주 미팅');
+});
