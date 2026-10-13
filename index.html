@@ -10846,6 +10846,8 @@ body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-filters > .map
   position:absolute; right:0; bottom:calc(100% + 8px); width:min(340px, calc(100vw - 48px)); z-index:5;
   background:#fff; border:1px solid #DCE4EE; border-radius:10px; box-shadow:0 10px 28px rgba(15,34,68,.16); padding:12px; text-align:left;
 }
+
+.cdet-head-code.is-none{ color:#A9B4C4; font-weight:600; }
 </style>
 </head>
 <body>
@@ -25014,7 +25016,7 @@ window.SHIN2_CRM_APP_INIT = function(){
         <div class="cdash2-header-left">
           ${showMapBackBtn ? `<button type="button" class="cdash2-map-back-btn" id="chartMapBackBtn">← 지도 분포로 돌아가기</button>` : ''}
           <div>
-            ${(co.code || co.masterCode) ? `<div class="cdet-head-code" title="업체코드">${esc(co.code || co.masterCode)}</div>` : ''}
+            ${(()=>{ /* §B2B 코드 표기 — 업체명 위에는 B2B 전용 발급코드(B2B+3자리)만 보여준다. 옛 형식 코드는 표시하지 않는다(데이터는 그대로). */ const b2b = [co.code, co.masterCode].map(v=> String(v || '').trim()).find(v=> /^B2B\d{3}$/.test(v)); return b2b ? `<div class="cdet-head-code" title="B2B 발급코드">${esc(b2b)}</div>` : `<div class="cdet-head-code is-none" title="B2B 전용 코드가 아직 발급되지 않았습니다">B2B 미발급</div>`; })()}
             <div class="cdet-head-name-row">
               <div class="cdash2-title" id="chartCoNameTitle" title="${esc(co.name)}">${esc(co.name)}</div>
               <span class="cdash2-tag${isDone ? ' is-done' : ''} is-by-name">${esc(stageText)}</span>
@@ -26092,7 +26094,19 @@ window.SHIN2_CRM_APP_INIT = function(){
   // 아니다. id/kind는 개별 건 상세 팝업(openContactDetailModal)이 원본 레코드를 다시
   // 찾을 때 쓴다.
   function buildContactHistoryItems(co){
-    const acts = D.activitiesForCompany(co.id).map(a=> ({
+    // §활동 요청일 동기화 라운드(신규) — 구글시트 요청은 예전엔 customerActivities에 쌓인 사본을 그
+    // 사본이 만들어진 시각(createdAt, 일괄 가져온 날 = 9.10 등)으로 보여줘서, 새로 들어온 요청(별도
+    // sheetRequests 컬렉션)은 안 보이고 날짜도 모두 같게 보였다. "최근 요청"과 같은 함수
+    // (mergedGsheetRequestItems — sheetRequests + 이전 사본, 실제 요청일, 중복 제거)로 바꾼다.
+    // 저장된 데이터는 읽기만 하고 바꾸지 않는다.
+    let reqItems = [];
+    try{
+      reqItems = mergedGsheetRequestItems(co.id).map((it, i)=> ({
+        id: 'req:' + (it.sourceUniqueId || i), kind: 'request', type: it.label || it.sourceTab || '요청',
+        text: String(it.text || it.siteName || it.label || '').trim(), siteName: it.siteName || '', raw: it.ts
+      }));
+    }catch(e){ reqItems = []; }
+    const acts = D.activitiesForCompany(co.id).filter(a=> a.source !== 'google-sheets-request').map(a=> ({
       id: a.id, kind: 'activity', type: a.category || D.classifyActivity(a.activityText || a.originalText || ''),
       text: (a.activityText || a.originalText || '').trim(), raw: a.createdAt, updatedAt: a.updatedAt
     }));
@@ -26107,7 +26121,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       const t = new Date(m.raw).getTime();
       return !actKeys.some(a=> a.text === m.text && Math.abs(a.t - t) < 10000);
     });
-    return acts.concat(memosDedup)
+    return acts.concat(memosDedup, reqItems)
       .filter(x=> x.text && x.raw != null && !isNaN(new Date(x.raw).getTime()))
       .sort((a,b)=> new Date(b.raw).getTime() - new Date(a.raw).getTime());
   }
@@ -26231,6 +26245,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     const sheetType = SHEET_REQUEST_TYPES.includes(type) ? type : (tagMatch && SHEET_REQUEST_TYPES.includes(tagMatch[1]) ? tagMatch[1] : '');
     if(!sheetType) return cleanActivityDisplayText(raw);
     if(!/컨설팅요청|기술자문문의/.test(sheetType)) return '';   // 컨설팅요청·기술자문문의는 현장명만 표시
+    if(it && it.siteName) return String(it.siteName).trim();
     const m = raw.match(/현장명\s*[:：]\s*([^·\n]+)/);
     return m ? m[1].trim() : '';
   }
