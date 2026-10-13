@@ -10745,7 +10745,7 @@ body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-filters > .map
 .chart-overlay .chart-panel, .chart-panel{
   width:min(580px, calc(100vw - 24px)) !important;
   max-width:min(580px, calc(100vw - 24px)) !important;
-  height:min(780px, 88vh) !important;
+  height:min(620px, 88vh) !important;   /* §상세 팝업 2차 라운드 — 남는 여백만큼 780→620, 모든 탭 동일 */
   max-height:88vh !important;
 }
 @media (max-width: 540px){
@@ -10828,6 +10828,24 @@ body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-filters > .map
 .cdash-docs-fold #agreementDocSection .doc-check-name{ font-size:12.5px !important; color:#33415A; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .cdash-footer-delete-btn{ flex:none; height:26px; padding:0 10px; border:1px solid #E3E8EF; border-radius:7px; background:#fff; color:#8A97AA; font:inherit; font-size:11.5px; font-weight:600; cursor:pointer; }
 .cdash-footer-delete-btn:hover{ color:#B42318; border-color:#E8C6C2; background:#FFF4F2; }
+
+/* §상세 팝업 2차 라운드(신규) */
+.cdet-head-code{ font-size:11px; font-weight:700; color:#7C8BA1; letter-spacing:.02em; line-height:1.2; margin-bottom:1px; }
+.cdet-head-name-row{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; min-width:0; }
+.cdet-head-name-row .cdash2-title{ min-width:0; }
+.cdet-head-name-row .cdash2-tag.is-by-name{ flex:none; margin:0 !important; }
+.cdash2-pour-title-row{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.cdash2-view-all-btn.is-inline{ margin:0 !important; padding:2px 8px !important; font-size:11.5px !important; }
+.agr-steps-in-tab{ margin-top:12px; }
+.agr-steps-in-tab .cdash2-card-title button, .agr-steps-in-tab [data-agr-steps-edit], .agr-steps-in-tab .co-text-action{ display:none !important; }
+.agr-admin-mini-row.is-footer{ margin:0; flex:none; position:relative; }
+.cdash-footer-docs-row{ position:relative; align-items:center; }
+/* 하단에서 [협약종료]를 누르면 나오는 입력칸은 위로 떠서 열린다(하단 줄 높이 고정) */
+.agr-admin-mini-row.is-footer #relcardTerminateForm:not([hidden]),
+.agr-admin-mini-row.is-footer #relcardRestoreConfirm:not([hidden]){
+  position:absolute; right:0; bottom:calc(100% + 8px); width:min(340px, calc(100vw - 48px)); z-index:5;
+  background:#fff; border:1px solid #DCE4EE; border-radius:10px; box-shadow:0 10px 28px rgba(15,34,68,.16); padding:12px; text-align:left;
+}
 </style>
 </head>
 <body>
@@ -24782,7 +24800,6 @@ window.SHIN2_CRM_APP_INIT = function(){
               <!-- §상세 팝업 compact 라운드 — 고객 인사이트 요약 칸 제거(데이터 보존), 한 열 배치 -->
               <div class="cdet-stack cdet-overview-cols">
                 <div id="cdashCompanySummaryCard"></div>
-                <div id="cdashAgreementStepsCard"></div>
               </div>
               <div class="cdash2-docs-section" style="margin-top:10px;" id="cdashReactionsCol"></div>
             </div>
@@ -24815,10 +24832,8 @@ window.SHIN2_CRM_APP_INIT = function(){
                  그 안의 모든 이벤트 배선이 한 글자도 안 바뀌고 그대로 동작한다. -->
             <div class="cdet-panel" data-cdet-panel="agreement">
               <div id="agreementPopupBody"></div>
-              <div class="agr-admin-mini-row">
-                <span id="agrInvalidateSlot"></span>
-                <div id="cdashRelationsCard" class="agr-terminate-holder"></div>
-              </div>
+              <!-- §상세 팝업 2차 라운드 — 기본정보에 있던 협약 진행 단계 카드를 이 탭 아래로 옮겼다. -->
+              <div id="cdashAgreementStepsCard" class="agr-steps-in-tab"></div>
             </div>
 
             <!-- ⑤ 질문지 상담 (§6) — 질문지 파일·상담 평가·종합 고객 인사이트·요청자료를
@@ -24999,7 +25014,11 @@ window.SHIN2_CRM_APP_INIT = function(){
         <div class="cdash2-header-left">
           ${showMapBackBtn ? `<button type="button" class="cdash2-map-back-btn" id="chartMapBackBtn">← 지도 분포로 돌아가기</button>` : ''}
           <div>
-            <div class="cdash2-title" id="chartCoNameTitle" title="${esc(co.name)}">${esc(co.name)}</div>
+            ${(co.code || co.masterCode) ? `<div class="cdet-head-code" title="업체코드">${esc(co.code || co.masterCode)}</div>` : ''}
+            <div class="cdet-head-name-row">
+              <div class="cdash2-title" id="chartCoNameTitle" title="${esc(co.name)}">${esc(co.name)}</div>
+              <span class="cdash2-tag${isDone ? ' is-done' : ''} is-by-name">${esc(stageText)}</span>
+            </div>
             <div class="cdash2-deal-summary">${esc(dealSummary)}${relationsInline ? ' · ' + esc(relationsInline) : ''}</div>
             <!-- §통합 고객 상세 팝업 라운드 §1 "업체명 + 담당자/연락처/이메일 등 핵심정보" —
                  예전 협약 진행관리 팝업 상단(.agr-top-info)이 보여주던 바로 그 세 가지를
@@ -25017,7 +25036,6 @@ window.SHIN2_CRM_APP_INIT = function(){
               })()}
             </div>
           </div>
-          <span class="cdash2-tag${isDone ? ' is-done' : ''}">${esc(stageText)}</span>
           ${isCore ? `<span class="cdash2-tag is-core">핵심 고객</span>` : ''}
           ${isHurdle ? `<span class="cdash2-tag is-hurdle" title="진행 중인 신규 협약(MOU) 건이 허들·보류 상태입니다">허들·보류</span>` : ''}
         </div>
@@ -25619,7 +25637,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     push('대표', co.repName);
     push('지역', region && region !== '기타' ? region : null);
     push('주요 공종', topCats);
-    push('업체코드', co.code || co.masterCode);
+    // §상세 팝업 2차 라운드 — 업체코드는 헤더(업체명 위)에 작게 표시하므로 여기서는 뺀다.
     push('주소', co.address, true);
     const formerNames = Array.isArray(co.formerNames) ? co.formerNames.filter(Boolean) : [];
     if(formerNames.length) push('이전 상호', formerNames.join(', '), true);
@@ -26202,6 +26220,20 @@ window.SHIN2_CRM_APP_INIT = function(){
     }).filter((line, i, arr)=> line.trim() || arr.length === 1).join('\n');
     return t.trim();
   }
+  // §상세 팝업 2차 라운드(신규) — 활동 목록 한 줄 표시 규칙(표시만, 원본 보존).
+  // 구글시트 요청 기록(분류 배지가 탭 이름이거나 본문에 [탭 이름]이 붙은 기록)은 부가설명을 숨기고,
+  // 컨설팅요청만 "현장명" 값 하나를 보여준다. 전화·미팅·상담 메모 등 직접 남긴 기록은 그대로 보여준다.
+  const SHEET_REQUEST_TYPES = ['기술자문문의','컨설팅요청_통합','컨설팅요청','샘플카달로그요청','공법설명회이력','기타문의답변현황'];
+  function activityTimelineText(it){
+    const raw = String((it && it.text) || '');
+    const type = String((it && it.type) || '');
+    const tagMatch = raw.match(/^\s*\[\s*([^\]]+?)\s*\]/);
+    const sheetType = SHEET_REQUEST_TYPES.includes(type) ? type : (tagMatch && SHEET_REQUEST_TYPES.includes(tagMatch[1]) ? tagMatch[1] : '');
+    if(!sheetType) return cleanActivityDisplayText(raw);
+    if(!/컨설팅요청/.test(sheetType)) return '';
+    const m = raw.match(/현장명\s*[:：]\s*([^·\n]+)/);
+    return m ? m[1].trim() : '';
+  }
   function renderContactTimelineCard(co){
     const wrap = document.getElementById('cdashTimelineCard');
     if(!wrap) return;
@@ -26218,7 +26250,7 @@ window.SHIN2_CRM_APP_INIT = function(){
           <span><span aria-hidden="true">⭐</span> 최근 접촉 기록 ${items.length ? `<span class="chip-count">${esc(items.length)}</span>` : ''}</span>
           <!-- §3 "[+ 접촉기록 추가]" — 새 저장 경로를 만들지 않고, 지금도 접촉기록(상담 메모)을
                남기는 기존 입력창(renderMemoPanel의 작성 모드)을 그대로 연다. -->
-          <button type="button" class="co-text-action primary" id="cdashContactAddBtn" style="font-size:11.5px;padding:3px 10px;white-space:nowrap;">+ 접촉기록 추가</button>
+          <!-- §상세 팝업 2차 라운드 — [+ 접촉기록 추가] 버튼 제거(메모 입력 기능 자체는 그대로) -->
         </div>
         ${items.length ? `
           <div class="cdash2-timeline cdash2-timeline-scroll">
@@ -26229,7 +26261,7 @@ window.SHIN2_CRM_APP_INIT = function(){
                   <span class="cdash2-timeline-date">${esc(fmtMonthDayShort(it.raw))}</span>
                   <span class="cdash2-timeline-type">${esc(it.type)}</span>
                 </div>
-                <div class="cdash2-timeline-text">${esc(cleanActivityDisplayText(it.text))}</div>
+                ${(()=>{ const t = activityTimelineText(it); return t ? `<div class="cdash2-timeline-text">${esc(t)}</div>` : ''; })()}
               </div>
             `).join('')}
           </div>
@@ -26515,7 +26547,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     wrap.innerHTML = `
       <div class="cdash2-card">
         <div class="cdash2-pour-card-head">
-          <div class="cdash2-card-title" style="margin-bottom:0;">최근 POUR 시공실적</div>
+          <div class="cdash2-pour-title-row"><div class="cdash2-card-title" style="margin-bottom:0;">최근 POUR 시공실적</div>${total ? `<button type="button" class="co-text-action cdash2-view-all-btn is-inline" id="cdashPourViewAllBtn">전체 실적 ${esc(total)}건 보기 &gt;</button>` : ''}</div>
           <div class="cdash2-pour-card-counts">전체 ${esc(total)}건 · ${esc(thisYear)}년 ${esc(thisYearCount)}건</div>
         </div>
         ${total ? `
@@ -26535,7 +26567,6 @@ window.SHIN2_CRM_APP_INIT = function(){
               </tbody>
             </table>
           </div>
-          <button type="button" class="co-text-action cdash2-view-all-btn" id="cdashPourViewAllBtn">전체 실적 ${esc(total)}건 보기 &gt;</button>
         ` : `<div class="chart-empty">등록된 시공실적이 없습니다</div>`}
       </div>
     `;
@@ -26561,7 +26592,12 @@ window.SHIN2_CRM_APP_INIT = function(){
           <summary class="cdash-docs-fold-head">서류 <span class="cdash-docs-fold-count" id="agrDocFoldCount">${(()=>{ try{ const c = agrDocCheckedCount(co.id); return c.checked + '/' + c.total; }catch(e){ return ''; } })()}</span></summary>
           <div id="agreementDocSection"></div>
         </details>
-        <button type="button" class="cdash-footer-delete-btn" id="cdashDeleteCoBtn" title="이 업체를 삭제합니다 — 되돌리려면 쓰레기통에서 복구">업체 삭제</button>
+        <!-- §상세 팝업 2차 라운드 — [업체 삭제] 버튼은 요청대로 화면에서 뺐다(삭제 확인 모달·처리 함수는 코드에 그대로 둔다).
+             그 자리에 협약진행 탭 아래 있던 [협약무효][협약종료]를 둔다(같은 id라 기존 처리·확인 절차 그대로). -->
+        <div class="agr-admin-mini-row is-footer">
+          <span id="agrInvalidateSlot"></span>
+          <div id="cdashRelationsCard" class="agr-terminate-holder"></div>
+        </div>
       </div>
       <div class="cdash2-footer" hidden>
         <div class="cdash2-footer-right">
@@ -26571,7 +26607,7 @@ window.SHIN2_CRM_APP_INIT = function(){
         </div>
       </div>
     `;
-    document.getElementById('cdashDeleteCoBtn').addEventListener('click', ()=> openDeleteCompanyModal(co.id));
+    // §상세 팝업 2차 라운드 — [업체 삭제] 버튼 제거(openDeleteCompanyModal 함수는 그대로 남김)
     // §서류현황 삭제 라운드(신규) — "서류 현황"(협약서/질문서 완료 상태 칩) 버튼을
     // 요청대로 없앴다. 그 버튼이 하던 "관련 문서 섹션으로 스크롤" 기능은 그 섹션
     // 자체가 이미 화면 하단에 항상 노출돼 있어(#cdashDocsSectionWrap, §디자인 개편
