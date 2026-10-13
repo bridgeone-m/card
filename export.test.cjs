@@ -37,7 +37,7 @@ test('xlsx: 필수 파일, 머리글 고정, 자동 필터, 열 너비, 문자�
 // 외부용 공개 제한 — 외부 허용 목록 밖의 항목은 체크 상태에 들어가도 출력되지 않음
 const typesSrc=constBlock('PDF_EXPORT_TYPES'),labelsSrc=constBlock('PDF_EXPORT_COLUMN_LABELS');
 function exportCtx(state){
-  const c={pdfExportState:state,PDF_INTERNAL_ALWAYS_COLS:['name'],PDF_EXPORT_REQUIRED_COLUMNS:['no','region','name','repName','address','phone']};
+  const c={pdfExportState:state,PDF_INTERNAL_ALWAYS_COLS:['no','region','name','repName','address','phone'],PDF_EXPORT_REQUIRED_COLUMNS:['no','region','name','repName','address','phone']};
   vm.runInNewContext([typesSrc,labelsSrc,fn('pdfExportTypeColumns'),fn('pdfExportVisibleColumns'),
     'function pdfExportResolveField(co,key,i){ if(key==="no") return String(i+1); return co[key]==null||co[key]===""?"-":String(co[key]); }',fn('pdfExportXlsxTable')].join('\n'),c);
   return c;
@@ -56,14 +56,16 @@ test('외부 발송용 허용 목록 자체에 내부 전용 항목이 없음',(
   const c=exportCtx({type:'external'});const ext=c.PDF_EXPORT_TYPES.find(t=>t.key==='external').columns;
   for(const k of ['bizRegNo','email','fax','mouDate','capital','note'])assert.ok(!ext.includes(k),k);
 });
-test('내부용: 체크한 항목 반영, 번호는 숫자 셀',()=>{
+test('내부용: 필수 6개는 항상, 체크한 항목만 추가, 비고 열 없음, 번호는 숫자 셀',()=>{
   const c=exportCtx({type:'internal',cols:new Set(['no','email','bizRegNo'])});
   const type=c.PDF_EXPORT_TYPES.find(t=>t.key==='internal');
   const cols=c.pdfExportVisibleColumns(type,companies);
-  assert.equal(JSON.stringify(cols),JSON.stringify(['no','name','bizRegNo','email']));
+  assert.equal(JSON.stringify(cols),JSON.stringify(['no','region','name','repName','bizRegNo','address','phone','email']));assert.ok(!type.columns.includes('note'),'비고 열 없음');
   const t=c.pdfExportXlsxTable({columns:cols,companies});
-  assert.equal(JSON.stringify(t.rows[0]),JSON.stringify([{n:1},{s:'가업체'},{s:'012-34'},{s:'a@a.com'}]));
+  assert.equal(JSON.stringify(t.rows[0]),JSON.stringify([{n:1},{s:'서울'},{s:'가업체'},{s:'김'},{s:'012-34'},{s:'서울시'},{s:'010-1'},{s:'a@a.com'}]));
 });
 test('열 때마다 외부 발송용으로 시작(코드 확인)',()=>{
   const open=fn('openPdfExportModal');assert.match(open,/type:'external'/);assert.doesNotMatch(open,/type:'internal'/);
 });
+
+test('내부용 필수 6개 상수와 외부용 체크 목록 없음(코드 확인)',()=>{assert.ok(html.includes("const PDF_INTERNAL_ALWAYS_COLS = ['no','region','name','repName','address','phone'];"));assert.ok(fn('pdfExportColsBlockHtml').includes("if(pdfExportState.type === 'external') return '';"));});

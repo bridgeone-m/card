@@ -10939,6 +10939,9 @@ body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-filters > .map
 .pdfx2-link{ border:0; background:none; padding:0; color:#1B3A66; font:inherit; font-size:12px; font-weight:700; cursor:pointer; text-decoration:underline; text-underline-offset:2px; }
 .pdfx2-link:disabled{ color:#A9B4C4; cursor:default; text-decoration:none; }
 .pdfx2-hint{ font-size:11px; color:#8A97AA; }
+.pdfx2-cols-head{ flex-wrap:wrap; gap:4px 8px; }
+.pdfx2-cols-head .pdfx2-hint{ order:2; flex-basis:100%; line-height:1.4; }
+.pdfx2-cols-head .pdfx2-link{ order:1; margin-left:auto; white-space:nowrap; }
 .pdfx2-cols-grid{ display:grid; grid-template-columns:1fr 1fr; gap:4px 10px; }
 .pdfx2-check{ display:flex; align-items:center; gap:6px; font-size:12.5px; color:#33415A; cursor:pointer; min-width:0; }
 .pdfx2-check input{ width:14px; height:14px; margin:0; accent-color:#1B3A66; flex:none; }
@@ -47304,7 +47307,8 @@ if(!window.__mapxRowDelegated){
     // 그대로 code 컬럼 유지(업체코드는 이 배열의 표시 컬럼 목록에서만 뺀 것이고,
     // co.code 데이터/발급 로직 자체는 전혀 안 건드렸다).
     { key:'internal', label:'내부용', desc:'사내 보관용 전체 정보', fileLabel:'내부용', landscape:true,
-      columns:['no','region','name','repName','bizRegNo','address','phone','fax','email','mouDate','capital','note'] },
+      // §내보내기 2차 — 비고(note) 열은 요청으로 내보내기에서 뺐다(고객 데이터의 비고 값은 그대로).
+      columns:['no','region','name','repName','bizRegNo','address','phone','fax','email','mouDate','capital'] },
     // §사용자 확인(신규) — 외부 발송용도 업체코드 컬럼 제거 요청.
     { key:'external', label:'외부 발송용', desc:'MOU 체결 업체 · 외부 공유용 최소 정보', fileLabel:'외부용', landscape:false,
       columns:['no','region','name','repName','address','phone'] }
@@ -47449,7 +47453,8 @@ if(!window.__mapxRowDelegated){
     ['revenueNoMou','실적있음 · MOU 미체결']
   ];
   // 표시 항목 — 번호·지역·업체명은 항상 나가고, 나머지는 체크로 고른다.
-  const PDF_INTERNAL_ALWAYS_COLS = ['name'];   // §표 머리 체크 라운드 — 업체명만 고정, 나머지는 전부 체크로
+  // §내보내기 2차 — 번호·지역·업체명·대표자·주소·연락처는 내부용 필수(체크 목록에 없음, 항상 출력)
+  const PDF_INTERNAL_ALWAYS_COLS = ['no','region','name','repName','address','phone'];
   let pdfInternalCatMemo = { sig:'', ids:null };
   function pdfInternalCatIdSet(){
     const cats = pdfExportState.cats || new Set();
@@ -47493,7 +47498,7 @@ if(!window.__mapxRowDelegated){
   function pdfExportInternalCandidates(){
     return pdfExportBasePool().filter(co=> pdfExportRegionOk(co) && pdfMatchesSearch(co, pdfExportState.search));
   }
-  function pdfExportEligibleForType(co, mouSignedIdSet){
+  function pdfExportEligibleForType(co, mouSignedIdSet, internalCatIds){
     // §external은 co.distributionLists 태그가 아니라 "MOU 체결" 판정(mouSignedIdSet,
     // getMouSignedCompanies 기반)만 본다 — 사용자 확인: "외부발송용은 mou체결업체야".
     // getMouSignedCompanies는 D.loadActiveCompanies() + matchesFilter(...,'mouDone')이라
@@ -47502,13 +47507,15 @@ if(!window.__mapxRowDelegated){
     if(pdfExportState.type === 'external') return mouSignedIdSet.has(co.id);
     // §internal — 체크한 고객 분류에 해당하는 업체 + "특정 업체"에서 직접 고른 업체(합집합).
     // 분류를 모두 끄면 직접 고른 업체만 나간다(특정 업체만 출력).
-    return pdfExportInternalSelected.has(co.id) || pdfInternalCatIdSet().has(co.id);
+    // §속도 — 분류 집합은 호출부가 한 번만 만들어 넘긴다(업체마다 전체 목록을 다시 읽던 O(n²) 제거)
+    return pdfExportInternalSelected.has(co.id) || (internalCatIds || pdfInternalCatIdSet()).has(co.id);
   }
   function pdfExportFilteredCompanies(){
     const mouSignedIdSet = pdfExportState.type === 'external'
       ? new Set(getMouSignedCompanies().map(c=> c.id)) : null;
+    const internalCatIds = pdfExportState.type === 'internal' ? pdfInternalCatIdSet() : null;
     return pdfExportBasePool().filter(co=>{
-      if(!pdfExportEligibleForType(co, mouSignedIdSet)) return false;
+      if(!pdfExportEligibleForType(co, mouSignedIdSet, internalCatIds)) return false;
       if(!pdfExportRegionOk(co)) return false;
       return pdfMatchesSearch(co, pdfExportState.search);
     });
@@ -47576,7 +47583,7 @@ if(!window.__mapxRowDelegated){
   function pdfExportVisibleColumns(type, companies){
     if(type.key === 'external' && pdfExportState.extCols){
       // 외부 발송용: 허용 목록(type.columns) ∩ 체크한 항목. 업체명은 항상. 선택한 항목은 값이 비어도 유지(기존 필수 규칙과 같게).
-      return type.columns.filter(c=> c === 'name' || pdfExportState.extCols.has(c));
+      return type.columns.filter(c=> c === 'name' || pdfExportState.extCols.has(c));   // extCols는 열 때 허용 항목 전체로 채워지고 화면에서 바꾸지 않는다
     }
     if(type.key === 'internal' && pdfExportState.cols){
       // 내부용: 항상 나가는 3개 + 체크한 항목. 체크했지만 값이 전부 비어 있으면 기존처럼 뺀다.
@@ -47990,15 +47997,33 @@ if(!window.__mapxRowDelegated){
   }
   // 미리보기와 인쇄가 공유하는 유일한 진입점 — 여기 반환값 말고 다른 경로로 문서를
   // 만드는 코드는 없다(§요청 7 "같은 렌더링 함수 재사용").
+  // §속도 — 같은 조건(용도·지역·대상·항목·특정 업체·데이터 변경 번호)이면 직전 결과를 그대로 쓴다.
+  // 페이지 이동·확대·축소·드롭다운 열기·다른 칸 클릭처럼 출력 조건이 그대로인 조작에서 표 측정·페이지 나눔을 다시 하지 않는다.
+  let pdfExportDocCache = { sig:'', at:0, value:null };
+  function pdfExportStateSig(){
+    const st = pdfExportState;
+    const arr = v=> v ? [...v].sort() : null;
+    let n = 0; try{ n = D.loadActiveCompanies().length; }catch(e){}
+    return JSON.stringify([st.type, arr(st.regions), st.search || '', arr(st.cats), arr(st.cols), arr(st.extCols), arr(pdfExportInternalSelected), window.__SHIN2_DATA_GEN || 0, n]);
+  }
   function pdfExportBuildDocHtml(){
+    const sig = pdfExportStateSig();
+    if(pdfExportDocCache.value && pdfExportDocCache.sig === sig && Date.now() - pdfExportDocCache.at < 60000) return pdfExportDocCache.value;
+    const value = pdfExportBuildDocHtmlFresh();
+    pdfExportDocCache = { sig, at: Date.now(), value };
+    return value;
+  }
+  function pdfExportBuildDocHtmlFresh(){
     const ctx = pdfExportBuildDocContext();
     const pages = pdfExportPaginate(ctx);
+    const pagesHtml = pages.map((rowsHtml, i)=> pdfExportPageHtml(ctx, rowsHtml, i, pages.length));
     return {
       ctx,
       type: ctx.type,
       rows: ctx.companies,
       pageCount: pages.length,
-      html: pages.map((rowsHtml, i)=> pdfExportPageHtml(ctx, rowsHtml, i, pages.length)).join('')
+      pagesHtml,
+      html: pagesHtml.join('')
     };
   }
   // §PDF 대상 선정 재구성 라운드(신규) — 내부용 업체 선택 목록. 후보(지역·검색 적용된
@@ -48100,26 +48125,24 @@ if(!window.__mapxRowDelegated){
   let pdfExportPreviewPage = 0;     // 미리보기에서 보고 있는 페이지(0부터)
   let pdfExportPreviewZoom = 1;     // 맞춤 배율에 곱하는 확대·축소 배율
   function pdfExportColsBlockHtml(){
-    const isExt = pdfExportState.type === 'external';
-    const cols = pdfExportTypeColumns(pdfExportState.type);
-    const set = pdfExportColSet() || new Set();
-    const optional = cols.filter(c=> c !== 'name');
+    // §내보내기 2차 — 외부 발송용은 공개 허용 항목 고정이라 체크 목록을 두지 않는다.
+    if(pdfExportState.type === 'external') return '';
+    const set = pdfExportState.cols || new Set();
+    const optional = pdfExportTypeColumns('internal').filter(c=> !PDF_INTERNAL_ALWAYS_COLS.includes(c));
     const allOn = optional.every(c=> set.has(c));
     return `
+      <div class="pdfx2-sec">
       <details class="pdfx2-cols" open>
-        <summary class="pdfx2-sec-title">표 항목 <span class="pdfx2-sec-sub">${optional.filter(c=> set.has(c)).length + 1}/${cols.length}</span></summary>
+        <summary class="pdfx2-sec-title">표 항목 <span class="pdfx2-sec-sub">추가 ${optional.filter(c=> set.has(c)).length}/${optional.length}</span></summary>
         <div class="pdfx2-cols-head">
+          <span class="pdfx2-hint">번호·지역·업체명·대표자·주소·연락처는 항상 포함</span>
           <button type="button" class="pdfx2-link" data-pdf-col-all="1" ${allOn ? 'disabled' : ''}>전체 선택</button>
-          ${isExt ? '<span class="pdfx2-hint">외부 공개 허용 항목만</span>' : ''}
         </div>
         <div class="pdfx2-cols-grid">
-          ${cols.map(c=>{
-            const fixed = c === 'name';
-            const on = fixed || set.has(c);
-            return `<label class="pdfx2-check${fixed ? ' is-fixed' : ''}" title="${fixed ? '업체명은 항상 포함' : ''}"><input type="checkbox" data-pdf-col-check="${esc(c)}" ${on ? 'checked' : ''} ${fixed ? 'disabled' : ''} /><span>${esc(PDF_EXPORT_COLUMN_LABELS[c] || c)}</span></label>`;
-          }).join('')}
+          ${optional.map(c=> `<label class="pdfx2-check"><input type="checkbox" data-pdf-col-check="${esc(c)}" ${set.has(c) ? 'checked' : ''} /><span>${esc(PDF_EXPORT_COLUMN_LABELS[c] || c)}</span></label>`).join('')}
         </div>
-      </details>`;
+      </details>
+      </div>`;
   }
   function pdfExportModalHtml(){
     const isInternal = pdfExportState.type === 'internal';
@@ -48183,11 +48206,11 @@ if(!window.__mapxRowDelegated){
                     <button type="button" class="pdf-dd-btn" data-pdf-dd-toggle="pick" aria-haspopup="true" aria-expanded="${pdfExportOpenDd === 'pick' ? 'true' : 'false'}">
                       <span class="pdf-dd-val" id="pdfExportPickLabel">${esc(pdfExportPickLabel())}</span><span class="pdf-dd-caret" aria-hidden="true">▾</span>
                     </button>
-                    <div class="pdf-dd-menu pdf-dd-menu-pick">${pdfExportInternalPickerHtml()}</div>
+                    <div class="pdf-dd-menu pdf-dd-menu-pick">${pdfExportOpenDd === 'pick' ? pdfExportInternalPickerHtml() : '<div class="co-form-field pdf-pick-block"></div>'}</div>
                   </div>
                 </div>` : ''}
               </div>
-              <div class="pdfx2-sec">${pdfExportColsBlockHtml()}</div>
+              ${pdfExportColsBlockHtml()}
             </aside>
             <section class="pdfx2-main">
               <div class="pdfx2-main-head">
@@ -48280,7 +48303,7 @@ if(!window.__mapxRowDelegated){
       <div class="pdfv-canvas" id="pdfExportPreviewCanvas">
         <div class="pdfv-scaler" id="pdfExportPreviewScaler">
           <style>${pdfExportDocCss(ctx)}</style>
-          <div class="pdf-doc-root pdfv-pages">${built.html}</div>
+          <div class="pdf-doc-root pdfv-pages" id="pdfExportPreviewPages"></div>
         </div>
       </div>`;
     wrap.dataset.pageCount = String(built.pageCount);
@@ -48291,13 +48314,17 @@ if(!window.__mapxRowDelegated){
   function pdfExportShowPage(ctx){
     const wrap = document.getElementById('pdfExportPreviewWrap');
     if(!wrap) return;
-    const pages = wrap.querySelectorAll('.pdf-page');
-    pages.forEach((p, i)=> p.classList.toggle('pdfx2-page-hidden', i !== pdfExportPreviewPage));
+    // §속도 — 페이지 수가 많아도 화면에는 지금 보는 한 장만 넣는다(나머지는 문자열로만 보관).
+    const built = pdfExportBuildDocHtml();
+    const total = built.pagesHtml ? built.pagesHtml.length : 0;
+    if(pdfExportPreviewPage > total - 1) pdfExportPreviewPage = Math.max(0, total - 1);
+    const holder = document.getElementById('pdfExportPreviewPages');
+    if(holder) holder.innerHTML = total ? built.pagesHtml[pdfExportPreviewPage] : '';
     const no = document.getElementById('pdfExportPageNo');
-    if(no) no.textContent = `${pages.length ? pdfExportPreviewPage + 1 : 0} / ${pages.length}`;
+    if(no) no.textContent = `${total ? pdfExportPreviewPage + 1 : 0} / ${total}`;
     const zv = document.getElementById('pdfExportZoomVal');
     if(zv) zv.textContent = Math.round(pdfExportPreviewZoom * 100) + '%';
-    pdfExportFitPreview(ctx || pdfExportBuildDocContext());
+    pdfExportFitPreview(ctx || pdfExportBuildDocHtml().ctx);
   }
   // 미리보기 축소 배율 — A4 폭이 모달 안에 들어가도록 줄이고, 줄어든 만큼 액자 높이를
   // 다시 잡아준다(transform은 레이아웃 크기를 바꾸지 않기 때문).
@@ -48388,12 +48415,12 @@ if(!window.__mapxRowDelegated){
       .forEach(row=> row.classList.remove('pdf-preview-row-hit'));
   }
   function pdfExportHighlightRow(companyId){
+    const built = pdfExportBuildDocHtml();
+    const needle = 'data-co-id="' + esc(companyId) + '"';
+    const idx = (built.pagesHtml || []).findIndex(h=> h.includes(needle));
+    if(idx >= 0 && idx !== pdfExportPreviewPage){ pdfExportPreviewPage = idx; pdfExportShowPage(built.ctx); }
     const row = document.querySelector('#pdfExportPreviewWrap [data-co-id="' + CSS.escape(companyId) + '"]');
     if(!row) return;
-    const page = row.closest('.pdf-page');
-    const pages = Array.from(document.querySelectorAll('#pdfExportPreviewWrap .pdf-page'));
-    const idx = pages.indexOf(page);
-    if(idx >= 0 && idx !== pdfExportPreviewPage){ pdfExportPreviewPage = idx; pdfExportShowPage(); }
     // 미리보기 영역 안에서만 스크롤한다(팝업 전체가 밀려 상단 저장 버튼이 가려지지 않게)
     const box = document.getElementById('pdfExportPreviewWrap');
     row.classList.add('pdf-preview-row-hit');
@@ -48436,6 +48463,7 @@ if(!window.__mapxRowDelegated){
       const key = btn.getAttribute('data-pdf-dd-toggle');
       pdfExportOpenDd = pdfExportOpenDd === key ? null : key;
       sync();
+      if(pdfExportOpenDd === 'pick') refreshPdfExportPicker();   // §속도 — 목록은 펼칠 때 그린다
     }));
     if(!overlay) return;
     overlay.addEventListener('mousedown', (e)=>{
@@ -48451,6 +48479,7 @@ if(!window.__mapxRowDelegated){
       if(label) label.textContent = pdfExportPickLabel();
     });
   }
+  let pdfExportPreviewToken = 0;
   function renderPdfExportModal(){
     const root = document.getElementById('pdfExportModalRoot');
     if(!root) return;
@@ -48505,8 +48534,7 @@ if(!window.__mapxRowDelegated){
     }));
     const colAll = root.querySelector('[data-pdf-col-all]');
     if(colAll) colAll.addEventListener('click', ()=>{
-      const all = new Set(pdfExportTypeColumns(pdfExportState.type).filter(c=> c !== 'name'));
-      if(pdfExportState.type === 'external') pdfExportState.extCols = all; else pdfExportState.cols = all;
+      pdfExportState.cols = new Set(pdfExportTypeColumns('internal').filter(c=> !PDF_INTERNAL_ALWAYS_COLS.includes(c)));
       renderPdfExportModal();
     });
     // §PDF 대상 선정 재구성 라운드(신규) — 내부용 업체 체크. 체크 하나로 목록 전체를
@@ -48540,11 +48568,15 @@ if(!window.__mapxRowDelegated){
       confirmInput.addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); runPdfExportConfirmSearch(); } });
     }
     if(confirmBtn) confirmBtn.addEventListener('click', runPdfExportConfirmSearch);
-    // §요청 10/11 "왼쪽 조건을 바꾸면 오른쪽 미리보기도 즉시 갱신" — 더 이상 "미리보기"
-    // 버튼을 눌러야만 보이지 않고, 모달을 열 때/유형·지역을 바꿀 때마다 항상 최신 상태로
-    // 자동 렌더링한다.
-    renderPdfExportPreview();
-    renderPdfExportConfirmResult();
+    // §요청 10/11 "왼쪽 조건을 바꾸면 오른쪽 미리보기도 즉시 갱신" — 항상 최신 상태로 자동 렌더링한다.
+    // §속도 — 조건이 바뀌어 문서를 새로 만들어야 할 때는 왼쪽(체크·버튼)이 먼저 그려지도록 한 틱 뒤에 만든다.
+    const needsRebuild = pdfExportDocCache.sig !== pdfExportStateSig();
+    const token = ++pdfExportPreviewToken;
+    const run = ()=>{ if(token !== pdfExportPreviewToken) return; renderPdfExportPreview(); renderPdfExportConfirmResult(); };
+    if(needsRebuild){
+      const meta = document.getElementById('pdfExportPreviewMeta'); if(meta) meta.textContent = '미리보기 갱신 중…';
+      setTimeout(run, 16);
+    } else run();
   }
   function openPdfExportModal(){
     // §내보내기 화면 개편 라운드 — 처음 열 때·다시 열 때 모두 외부 발송용. 내부용은 사용자가 직접 바꿀 때만.
@@ -48553,6 +48585,7 @@ if(!window.__mapxRowDelegated){
       extCols: new Set(pdfExportTypeColumns('external').filter(c=> c !== 'name')) };
     pdfExportPreviewPage = 0;
     pdfExportPreviewZoom = 1;
+    pdfExportDocCache = { sig:'', at:0, value:null };   // 열 때는 항상 최신 데이터로
     pdfInternalCatMemo = { sig:'', ids:null };
     // 내부용 선택은 이 창에서만 쓰는 상태라 열 때마다 비운다(저장하지 않음).
     pdfExportInternalSelected = new Set();
@@ -48715,8 +48748,18 @@ if(!window.__mapxRowDelegated){
   // §9736 근처). 새 판정 로직을 만들지 않고 이미 화면이 쓰는 것 그대로 재사용한다.
   // §MOU PDF 스펙 업그레이드 라운드(신규) — 정렬 기준 확정: 1순위 업체코드(co.code)
   // 오름차순, 코드가 없는 업체는 뒤로 밀려서 2순위로 업체명 가나다순.
+  // §속도 — 같은 데이터(변경 번호·업체 수)면 직전 판정 결과를 재사용한다(판정 로직은 그대로).
+  let mouSignedMemo = { key:'', list:null };
   function getMouSignedCompanies(){
     const companies = D.loadActiveCompanies();
+    const memoKey = (window.__SHIN2_DATA_GEN || 0) + ':' + companies.length;
+    if(mouSignedMemo.list && mouSignedMemo.key === memoKey) return mouSignedMemo.list.slice();
+    const list = getMouSignedCompaniesFresh(companies);
+    mouSignedMemo = { key: memoKey, list };
+    return list.slice();
+  }
+  window.addEventListener('shin2-crm-cloud-update', ()=>{ mouSignedMemo = { key:'', list:null }; pdfExportDocCache = { sig:'', at:0, value:null }; });
+  function getMouSignedCompaniesFresh(companies){
     const relationIndex = D.buildRelationIndex(companies);
     return companies
       .filter(co=> matchesFilter(co, buildProgressStages(co), 'mouDone', relationIndex))
