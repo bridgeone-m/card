@@ -27442,7 +27442,19 @@ window.SHIN2_CRM_APP_INIT = function(){
       m2: stageCorrectionToStateFields(findStageCorrection(co, ['m2Done','m2Scheduled'])),
       mou: stageCorrectionToStateFields(findStageCorrection(co, ['mouDone']))
     };
-    const correctedStages = stages.map(s=> correctionOverrides[s.key] ? Object.assign({}, s, correctionOverrides[s.key], { corrected:true }) : s);
+    // §미팅 완료 반영 수정 라운드(신규) — 협약 진행 탭에서 등록한 "예정"(m1Scheduled/m2Scheduled)
+    // 정정이, 그 뒤 MOU 진행상황·알림의 [미팅 완료 처리]로 완료된 미팅을 계속 "예정"으로 덮어
+    // 진행 바·체결 상태가 안 바뀌던 문제. 완료 정정(m1Done/m2Done)이 따로 없고 원래 값이 이미
+    // "완료"면 예정 정정보다 완료를 따른다. 완료 취소 등 완료 키 정정은 지금처럼 그대로 우선한다.
+    const stageCorrMap = getStageCorrections(co);
+    const SCHED_ONLY_DONE_KEY = { m1:'m1Done', m2:'m2Done' };
+    const correctedStages = stages.map(s=>{
+      const ov = correctionOverrides[s.key];
+      if(!ov) return s;
+      const doneKey = SCHED_ONLY_DONE_KEY[s.key];
+      if(doneKey && !stageCorrMap[doneKey] && s.state === 'done' && ov.state !== 'done') return s;
+      return Object.assign({}, s, ov, { corrected:true });
+    });
     // 현재 단계(§6): 마지막으로 완료된 단계의 "다음" 단계. 전부 완료면 MOU, 전부 대기면 질문서.
     let lastDoneIdx = -1;
     correctedStages.forEach((s,i)=>{ if(s.state === 'done') lastDoneIdx = i; });
@@ -28386,6 +28398,18 @@ window.SHIN2_CRM_APP_INIT = function(){
     const current = (co.partnerDashboard && co.partnerDashboard.newMou) || {};
     const merged = Object.assign({}, current, patch);
     const companyPatch = {partnerDashboard:Object.assign({},co.partnerDashboard,{newMou:merged})};
+    // §미팅 완료 반영 수정 라운드 — 협약 진행 탭에서 일정을 정정해 둔 업체라면, 완료도 정정
+    // 레이어(stageCorrections)의 완료 키에 같이 남긴다. 기존 정정은 지우지 않는다.
+    const corrs = (co.partnerDashboard && co.partnerDashboard.stageCorrections) || {};
+    const addDone = (doneKey, schedKey, label)=>{
+      if(!corrs[schedKey] && !corrs[doneKey]) return;
+      const sched = corrs[schedKey] || {};
+      companyPatch.partnerDashboard.stageCorrections = Object.assign({}, companyPatch.partnerDashboard.stageCorrections || corrs, {
+        [doneKey]: { status:'done', dateText: label || '', owner: sched.owner || null, correctedAt: new Date().toISOString(), correctedBy: crmCurrentUserLabel(), source:'workq-done' }
+      });
+    };
+    if(patch.m1Done === true) addDone('m1Done', 'm1Scheduled', patch.m1Label);
+    if(patch.m2Done === true) addDone('m2Done', 'm2Scheduled', patch.m2Label);
     if(patch.m2Done===true || patch.mouDone===true) Object.assign(companyPatch,
       window.WebsiteCleanup.eventPatch(co,patch.mouDone===true?'mou':'m2',patch.mouLabel || patch.m2Label,
         isConfirmedPartner(Object.assign({},co,companyPatch), buildProgressStages(Object.assign({},co,companyPatch)))));
@@ -28503,11 +28527,17 @@ window.SHIN2_CRM_APP_INIT = function(){
     try{ wq = computeWorkQueue().list || []; }catch(e){ wq = []; }
     wq.forEach(it=>{
       if(it.type !== 'm1Scheduled') return;
-      if(typeof it.days !== 'number' || it.days > 0) return;   // 예정일 당일(0) 또는 지난 날(음수)부터
-      // it.days = floor((예정시각-지금)/1일)이라 오늘 일정은 0 또는 -1이 된다 — 달력 기준 지난 일수로 바꾼다.
+      // 예정일은 진행 단계(협약 진행 탭 정정 포함)에서 읽고, 달력 기준으로 오늘·지난 날만 고른다.
+      // (협약 진행 탭에서 등록한 일정은 work queue의 days가 비어 있어 여기서 직접 계산한다.)
       let m1st = null;
       try{ m1st = buildProgressStages(it.co).stages.find(x=> x.key === 'm1'); }catch(e){ m1st = null; }
-      out.m1.push({ co: it.co, scheduledLabel: (m1st && m1st.scheduledLabel) || '', scheduledTime: (m1st && m1st.scheduledTime) || '', overdue: Math.max(0, -it.days - 1) });
+      const label = (m1st && m1st.scheduledLabel) || '';
+      const p = label ? parsePartnerDateLabel(label) : null;
+      if(!p || typeof p.ts !== 'number') return;
+      const day0 = t=>{ const x = new Date(t); x.setHours(0,0,0,0); return x.getTime(); };
+      const overdue = Math.round((day0(Date.now()) - day0(p.ts)) / 86400000);
+      if(overdue < 0) return;   // 아직 미래 일정
+      out.m1.push({ co: it.co, scheduledLabel: label, scheduledTime: (m1st && m1st.scheduledTime) || '', overdue });
     });
     const storedMailOpen = new Set((window.SHIN2_WEBSITE_CLEANUP_ITEMS || [])
       .filter(n=> n && n.type === 'mail' && !n.completedAt && (!window.SHIN2_FOLLOWUP_ALERT_VISIBLE || window.SHIN2_FOLLOWUP_ALERT_VISIBLE(n)))
@@ -29407,13 +29437,14 @@ window.SHIN2_CRM_APP_INIT = function(){
     // workqMergeNewMou·D.updateCompany(companies) 중 일부를 조합해서 쓰므로, 어떤
     // 조합이든 안전하게 셋 다 확인한 뒤에만 닫는다(§요청 "실패하면 입력값 유지" —
     // 실패 시 finishAndClose를 부르지 않아 팝업이 열린 채로 남고 입력값도 그대로다).
+    // §저장 속도 라운드(신규) — 예전에는 클라우드 저장 3곳(업체·활동·메모)이 모두 끝날 때까지
+    // 팝업을 붙잡아 "오래 걸리는데 X로 닫으면 이미 반영돼 있는" 상태가 됐다. 화면 반영(로컬
+    // 저장)은 이미 끝났으므로 바로 닫고, 클라우드 확인은 뒤에서 기다렸다가 실패하면 알린다.
     async function confirmWorkqSaveAndFinish(){
-      root.querySelectorAll('[data-workq-do]').forEach(b=> b.disabled = true);
-      const results = await Promise.all([confirmCloudSave('companies'), confirmCloudSave('customerActivities'), confirmCloudSave('memos')]);
-      root.querySelectorAll('[data-workq-do]').forEach(b=> b.disabled = false);
-      const failed = results.find(r=> !r.ok);
-      if(failed){ alert(cloudSaveErrorMessage(failed.err)); return; }
       finishAndClose();
+      const results = await Promise.all([confirmCloudSave('companies'), confirmCloudSave('customerActivities'), confirmCloudSave('memos')]);
+      const failed = results.find(r=> !r.ok);
+      if(failed) alert('클라우드 저장을 확인하지 못했습니다 — ' + cloudSaveErrorMessage(failed.err) + '\n화면에는 반영돼 있습니다. 잠시 후 다시 확인해 주세요.');
     }
     let workqWriteApplied = false; // §요청 3 재시도 시 중복 저장 방지 — 아래 workqSave*/workqLog*
     // 함수들은 호출될 때마다 customerActivities/memos에 새 항목을 append하거나 이력을 쌓는다
