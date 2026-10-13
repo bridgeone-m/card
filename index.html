@@ -24920,6 +24920,9 @@ window.SHIN2_CRM_APP_INIT = function(){
               <!-- §상세 팝업 compact 라운드 — 고객 인사이트 요약 칸 제거(데이터 보존), 한 열 배치 -->
               <div class="cdet-stack cdet-overview-cols">
                 <div id="cdashCompanySummaryCard"></div>
+                <!-- §기본정보 인사이트 라운드 — 기업 요약 아래: 고객 인사이트(질문지 상담 자동 인사이트) + 추가 고객 메모(직접 작성, 자동 저장) -->
+                <div id="cdashInsightNoteSummary"></div>
+                <div id="cdashInsightNoteEditor"></div>
               </div>
               <div class="cdash2-docs-section" style="margin-top:10px;" id="cdashReactionsCol"></div>
             </div>
@@ -24973,9 +24976,7 @@ window.SHIN2_CRM_APP_INIT = function(){
                   <div id="cdashQuestionnaireCard"></div>
                   <div class="qtab-sec" id="cdashMaterialsBlock"></div>
                 </div>
-                <!-- §통합 팝업 정리 라운드(신규) — 고객 인사이트 자유 입력. 여기서 쓰고
-                     기본정보 탭에서는 요약만 읽는다. 상담 메모와 저장 위치가 다르다. -->
-                <div id="cdashInsightNoteEditor"></div>
+                <!-- 추가 고객 메모 입력칸(#cdashInsightNoteEditor)은 기본정보 탭으로 옮겼다(같은 id·같은 저장 경로). -->
               </div>
             </div>
 
@@ -26540,49 +26541,26 @@ window.SHIN2_CRM_APP_INIT = function(){
         <div class="insight-auto-label">자동 인사이트 <span class="insight-auto-src">질문지 상담 기준</span></div>
         ${tags.length ? `<div class="crv-insight-tags">${tags.map(t=> `<span class="crv-insight-tag">${esc(t)}</span>`).join('')}</div>` : ''}
         <div class="insight-auto-lead">${esc(lead)}</div>
-        <button type="button" class="insight-auto-more" id="cdashAutoInsightMore">질문지 상담에서 전체 보기</button>
+        <button type="button" class="insight-auto-more" id="cdashAutoInsightMore">질문지 상담 기록 전체 보기</button>
       </div>`;
   }
   function renderInsightNoteSummary(co){
+    // §기본정보 인사이트 라운드 — 기본정보 탭 기업 요약 아래. 질문지 상담에서 자동 정리된 인사이트를 보여주고,
+    // 직접 쓰는 "추가 고객 메모"는 바로 아래 입력칸(renderInsightNoteEditor, 같은 저장 경로)에서 쓴다.
     const wrap = document.getElementById('cdashInsightNoteSummary');
     if(!wrap) return;
-    const note = customerInsightNote(co);
     const autoHtml = autoInsightBlockHtml(co);
-    if(!note){
-      wrap.innerHTML = `
-        <div class="cdash2-card insight-note-card">
-          <div class="cdash2-card-title">고객 인사이트</div>
-          ${autoHtml || '<div class="chart-empty">아직 기록된 인사이트가 없습니다 — 질문지 상담 탭에서 작성할 수 있습니다.</div>'}
-        </div>`;
-      return;
-    }
-    // 3~4줄을 넘기면 잘라 보여주고 [더보기]로 전체를 편다(수정은 질문지 상담 탭에서).
-    const isLong = note.length > 150 || note.split('\n').length > 4;
     wrap.innerHTML = `
       <div class="cdash2-card insight-note-card">
-        <div class="cdash2-card-title" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-          <span>고객 인사이트</span>
-          <button type="button" class="co-text-action" id="cdashInsightNoteEditBtn" style="font-size:11px;padding:2px 8px;white-space:nowrap;">질문지 상담에서 수정</button>
-        </div>
-        <div class="insight-manual-label">직접 작성</div>
-        <div class="insight-note-view${isLong ? ' is-clamped' : ''}" id="cdashInsightNoteView">${esc(note)}</div>
-        ${isLong ? `<button type="button" class="insight-note-more" id="cdashInsightNoteMore">더보기</button>` : ''}
-        ${autoHtml}
+        <div class="cdash2-card-title">고객 인사이트</div>
+        ${autoHtml || '<div class="chart-empty">질문지 상담 자동 인사이트가 아직 없습니다 — 아래 추가 고객 메모에 직접 기록할 수 있습니다.</div>'}
       </div>`;
-    const more = document.getElementById('cdashInsightNoteMore');
-    if(more) more.addEventListener('click', ()=>{
-      const view = document.getElementById('cdashInsightNoteView');
-      const open = view.classList.toggle('is-clamped');
-      more.textContent = open ? '더보기' : '접기';
-    });
-    const editBtn = document.getElementById('cdashInsightNoteEditBtn');
-    if(editBtn) editBtn.addEventListener('click', ()=>{
-      setCustomerDetailTab('questionnaire');
-      const el = document.getElementById('cdashInsightNoteInput');
-      if(el) el.focus();
-    });
     const autoMore = document.getElementById('cdashAutoInsightMore');
-    if(autoMore) autoMore.addEventListener('click', ()=> setCustomerDetailTab('questionnaire'));
+    if(autoMore) autoMore.addEventListener('click', ()=>{
+      // 탭이 없어진 "질문지 상담" 대신, 질문서 상담 기록 화면을 바로 연다
+      const doc = D.documentsForCompany(co.id, 'questionnaire')[0];
+      if(doc) openQuestionnaireSession(co.id, doc.id);
+    });
   }
   // §질문지 상담 탭 통합 라운드(신규) — 전에는 이 함수가 "질문지상담 요약"이라는 별도
   // 카드를 그렸고, 그 카드가 바로 위 질문지 카드와 같은 내용(상/중/하 평가 + 종합
