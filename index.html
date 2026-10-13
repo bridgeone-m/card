@@ -17758,6 +17758,7 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
     normCompanyName, findSimilarCompanySuggestions,
     buildUnregisteredCompanies, getCompany2025Revenue, getCompany2024Revenue, getCompanyTotalRevenueAllYears,
     buildRevenue2026Index, getCompany2026Revenue, buildUnregisteredCompanies2026, classifyUnregisteredCompaniesByMouMaster,
+    invalidateNormNameCounts: ()=>{ _crmNormNameCountsCache = null; },
     loadSalesLedger, saveSalesLedgerConfirmed, invalidateRevenue2026IndexCache, buildMergedSalesRowsForYear, salesTxnIdentityKey, salesTxnFingerprintKey, salesTxnCorrectionCandidateKey,
     loadSalesPendingLedger, loadSalesCrossYearReview, loadSalesCompanyReview, mergeIntoReviewLedger, removeResolvedFromReviewLedger, salesReviewIdentityKey,
     saveSalesPendingRows, saveSalesCrossYearRows, saveSalesCompanyReviewRows, resolveSalesPendingByIdentity,
@@ -18205,6 +18206,11 @@ window.SHIN2_CRM_APP_INIT = function(){
       if(q && (q.state === 'done' || q.state === 'scheduled' || (q.dateDisplay && q.dateDisplay !== '—'))) return 'q';
       if(caseByCaseIds && caseByCaseIds.has(String(co.id))) return 'casebycase';
       if(matchesFilter(co, progress, 'revenueNoMou')) return 'unsigned';
+      // §상태 동기화 점검 — 신규 등록(newMou가 빈 객체)만 하고 아무 단계도 없는 업체는 "확인필요"가 아니다.
+      const pdx = co.partnerDashboard || {};
+      const emptyNm = !pdx.newMou || Object.keys(pdx.newMou).length === 0;
+      const noCorr = !pdx.stageCorrections || Object.keys(pdx.stageCorrections).length === 0;
+      if(emptyNm && noCorr && !pdx.mouDate && stages.every(st=> st.state === 'waiting' && (!st.dateDisplay || st.dateDisplay === '—'))) return 'none';
       if(progress && progress.hasAny) return 'check';
       return 'none';
     }catch(err){
@@ -20170,6 +20176,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     const stages = progress.stages;
     const q = stages[0], m1 = stages[1], m2 = stages[2], mou = stages[3];
     if(mou.state === 'done') return null; // §우선순위: 이미 MOU 체결된 업체는 무조건 제외
+    if(isConfirmedPartner(co, progress)) return null; // §상태 동기화 점검 — 수동 MOU 확정 업체도 제외(MOU 체결 탭과 동일 판정)
     if(m2.state === 'done'){
       // 규칙4 대상(2차 미팅 완료, MOU 미체결) — days>=40 여부/후속 연락 여부는 호출부에서 판정
       return { rule:4, ts:m2.ts, label:m2.dateDisplay, days: willpowerDaysSince(m2.ts) };
@@ -21286,7 +21293,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     s = s.replace(/주식회사|유한회사|합자회사|합명회사/g, '');
     s = s.replace(/[(\[{（［｛][주유재사부합][)\]}）］｝]/g, '');   // (주) (유) (재) …
     s = s.replace(/[^0-9a-z가-힣]/g, '');
-    s = s.replace(/주$/, '');                                      // "SH주" → "sh"
+    if(s.length > 2) s = s.replace(/주$/, '');                     // "SH주" → "sh" (§상태 동기화 점검: "광주"·"제주" 같은 두 글자는 그대로)
     return s;
   }
 
@@ -21454,6 +21461,11 @@ window.SHIN2_CRM_APP_INIT = function(){
   function matchesSearch(co, acts, q, parentNameHint){
     if(!q) return true;
     q = q.toLowerCase();
+    // §상태 동기화 점검 — 01012345678 ↔ 010-1234-5678 처럼 하이픈·공백 차이로 전화번호가 안 찾아지던 문제
+    if(/^[0-9\s\-().+]+$/.test(q)){
+      const qd = q.replace(/[^0-9]/g, '');
+      if(qd.length >= 3 && [co.phone, co.mobile, co.fax].some(p=> String(p || '').replace(/[^0-9]/g, '').includes(qd))) return true;
+    }
     const hay = parentNameHint
       ? companySearchHayParts(co, acts, parentNameHint).join(' ').toLowerCase()
       : companySearchHayLower(co, acts);
@@ -21511,8 +21523,8 @@ window.SHIN2_CRM_APP_INIT = function(){
   // 예전처럼 전체 렌더링).
   const LIST_CTX_MAX_AGE_MS = 5 * 60 * 1000;
   function currentDataGen(){ return window.__SHIN2_DATA_GEN || 0; }
-  window.addEventListener('storage', ()=>{ lastListCtx = null; });
-  window.addEventListener('shin2-crm-cloud-update', ()=>{ lastListCtx = null; });
+  window.addEventListener('storage', ()=>{ lastListCtx = null; if(D.invalidateNormNameCounts) D.invalidateNormNameCounts(); });
+  window.addEventListener('shin2-crm-cloud-update', ()=>{ lastListCtx = null; if(D.invalidateNormNameCounts) D.invalidateNormNameCounts(); });
   function closeListRowPopovers(){
     if(typeof closeTotalRevenuePopover === 'function') closeTotalRevenuePopover();
     if(typeof closeInsightPopover === 'function') closeInsightPopover();
@@ -25101,6 +25113,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     // §요청 10 "삭제된 업체는 일반 목록에서 제외" — 카드가 이 업체를 보여주고 있었으므로
     // 그대로 두면 이미 숨겨진 업체 화면이 남는다. 목록으로 돌아가 즉시 반영을 보여준다.
     closeChart();
+    refreshCompanyViews(null);   // §상태 동기화 점검 — MOU 진행상황 등 다른 화면에서도 바로 빠지게
   }
   /* ==========================================================================
      §협약 무효 처리 라운드(신규) — 확인 모달. 협약 종료(terminateAgreement)·영구삭제와
@@ -25213,6 +25226,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     closeAgreementInvalidateModal();
     showMiniSaveToast('협약 무효 처리 — 쓰레기통으로 이동했습니다');
     closeChart();   // 쓰레기통으로 간 업체 카드를 닫고 목록으로(업체 삭제와 같은 흐름)
+    refreshCompanyViews(null);
   }
 
   /* ==========================================================================
@@ -25333,8 +25347,10 @@ window.SHIN2_CRM_APP_INIT = function(){
     const s = permDelModalState;
     if(!s) return;
     const co = D.findCompany(s.companyId);
-    if(!co) return;
-    if(s.typedName.trim() !== (co.name || '').trim()) return; // 방어적 재확인
+    if(!s.applied){   // §상태 동기화 점검 — 이미 적용(로컬 삭제)된 뒤의 재시도는 클라우드 저장만 다시 한다
+      if(!co) return;
+      if(s.typedName.trim() !== (co.name || '').trim()) return; // 방어적 재확인
+    }
     const isErase = s.stage === 'erase';
     s.saving = true; s.err = null;
     renderPermDeleteModal();
@@ -25829,7 +25845,14 @@ window.SHIN2_CRM_APP_INIT = function(){
       id: m.id, kind: 'memo', type: '상담메모',
       text: (m.text || '').trim(), raw: m.updatedAt || m.createdAt, updatedAt: m.updatedAt
     }));
-    return acts.concat(memos)
+    // §상태 동기화 점검 — workqLogEvent는 같은 문장을 활동과 메모에 함께 남긴다. 저장값은 그대로 두고,
+    // 같은 문장·10초 안의 메모는 접촉 기록에서 한 줄로만 보이게 한다.
+    const actKeys = acts.map(a=> ({ text:a.text, t: new Date(a.raw).getTime() }));
+    const memosDedup = memos.filter(m=>{
+      const t = new Date(m.raw).getTime();
+      return !actKeys.some(a=> a.text === m.text && Math.abs(a.t - t) < 10000);
+    });
+    return acts.concat(memosDedup)
       .filter(x=> x.text && x.raw != null && !isNaN(new Date(x.raw).getTime()))
       .sort((a,b)=> new Date(b.raw).getTime() - new Date(a.raw).getTime());
   }
@@ -27294,7 +27317,9 @@ window.SHIN2_CRM_APP_INIT = function(){
       owner: corr.owner || null,
       // §미팅 시각 라운드 — 정정으로 저장한 시각(timeText)도 그대로 실어 나른다.
       scheduledTime: corr.timeText || null,
-      ts: null
+      // §상태 동기화 점검 — 예전엔 항상 null이라 탭에서 등록한 MOU/미팅이 경과일 판정
+      // (관리필요·의지박약·MOU 진행상황 경과)에서 빠졌다. 날짜 문자열에서 그대로 계산한다.
+      ts: (()=>{ const p = corr.dateText ? parsePartnerDateLabel(corr.dateText) : null; return p && typeof p.ts === 'number' ? p.ts : null; })()
     };
   }
   // saveStageCorrection: patch가 객체면 정정을 저장/갱신, null이면 정정을 지우고 원래 계산
@@ -27436,8 +27461,18 @@ window.SHIN2_CRM_APP_INIT = function(){
     // 외부 원본에서 여전히 완료로 남아있어도 그걸로 다시 덮어써지지 않는다). buildAgreementStageRows
     // 쪽의 더 세분화된(qSend/qReply, m1Scheduled/m1Done, m2Scheduled/m2Done) 정정 중 "완료" 계열을
     // 우선 반영해 이 4단계 진행바(고객카드·업무관리 배지 등 공유 화면)에도 같은 정정이 보이게 한다.
+    // §상태 동기화 점검 — 발송(qSend) 정정만 있으면 "회신 대기"(날짜는 발송일)로 둔다. 예전엔
+    // 발송만 등록해도 질문서가 완료로 잡혀 MOU 진행상황엔 "1차미팅 잡기", 탭엔 "회신 대기"로 어긋났다.
+    const qCorrFields = (()=>{
+      const c = getStageCorrections(co);
+      if(c.qReply) return stageCorrectionToStateFields(c.qReply);
+      if(!c.qSend) return null;
+      const f = stageCorrectionToStateFields(c.qSend);
+      if(f && f.state === 'done'){ f.state = 'waiting'; f.qSendOnly = true; }
+      return f;
+    })();
     const correctionOverrides = {
-      q: stageCorrectionToStateFields(findStageCorrection(co, ['qReply','qSend'])),
+      q: qCorrFields,
       m1: stageCorrectionToStateFields(findStageCorrection(co, ['m1Done','m1Scheduled'])),
       m2: stageCorrectionToStateFields(findStageCorrection(co, ['m2Done','m2Scheduled'])),
       mou: stageCorrectionToStateFields(findStageCorrection(co, ['mouDone']))
@@ -27453,6 +27488,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       if(!ov) return s;
       const doneKey = SCHED_ONLY_DONE_KEY[s.key];
       if(doneKey && !stageCorrMap[doneKey] && s.state === 'done' && ov.state !== 'done') return s;
+      if(s.key === 'q' && ov.qSendOnly && s.state === 'done') return s;   // 원본에 회신이 있으면 회신 우선
       return Object.assign({}, s, ov, { corrected:true });
     });
     // 현재 단계(§6): 마지막으로 완료된 단계의 "다음" 단계. 전부 완료면 MOU, 전부 대기면 질문서.
@@ -27462,7 +27498,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     // §업무관리 협약체결 판정 누락 라운드: sourceNm(newMou)이 아예 없어도 agreementDateLabel
     // (실제 협약체결일)만 있는 업체도 "데이터 없음"으로 취급하지 않는다 — 진행정보 자체가
     // 존재하는데도 이 값 하나만으로 progress 전체가 무시되는 걸 막는다.
-    return { stages: correctedStages, currentIdx, hasAny: !!sourceNm || !!agreementDateLabel || !!q.viaMail };
+    return { stages: correctedStages, currentIdx, hasAny: !!sourceNm || !!agreementDateLabel || !!q.viaMail || Object.keys(stageCorrMap).length > 0 };
   }
   const PROGRESS_STATUS_LABEL = { done:'완료', scheduled:'예정', waiting:'대기' };
 
@@ -28116,11 +28152,14 @@ window.SHIN2_CRM_APP_INIT = function(){
        그래서 "더 뒤 단계 업체를 이전 단계로 되돌리지 않는다"(§7)는 요구가 두 계산의
        전제조건이 서로 배타적인 것만으로 자동으로 만족된다.
      ========================================================================== */
-  function classifyWorkQueueMeeting(progress){
+  function classifyWorkQueueMeeting(progress, co){
     if(!progress.hasAny) return null;
     const byKey = {}; progress.stages.forEach(s=> byKey[s.key] = s);
     if(byKey.mou.state === 'done') return null; // MOU 완료 업체는 미팅/MOU 행동 없음(§7 예시)
-    if(byKey.q.state !== 'done') return null; // 질문서 회신 전은 이 화면 판정 대상 아님(§6 전제조건)
+    if(co && isConfirmedPartner(co, progress)) return null; // §상태 동기화 점검 — 수동 MOU 확정도 MOU 완료로(공식 판정)
+    // 질문서 회신 전은 이 화면 판정 대상 아님(§6 전제조건) — 단 1·2차가 이미 잡혔거나 끝난
+    // 업체(협약 진행 탭에서 회신 기록 없이 등록)는 다음 행동이 사라지지 않게 그대로 판정한다.
+    if(byKey.q.state !== 'done' && byKey.m1.state === 'waiting' && byKey.m2.state === 'waiting') return null;
     if(byKey.m1.state !== 'done'){
       // §partner-dashboard 진행정보 동기화 라운드 §6 — 예전엔 예정일이 있으면 그냥 목록에서
       // 빠졌다(§ "1차미팅 잡기" 대상만 아님). 그러면 일정을 잡아둔 업체가 업무관리 어디에도
@@ -28229,7 +28268,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     const waiting=questionnaireWaitingInfo(co,progress);
     if(waiting) return {co,type:'qWaiting',category:'meeting',currentStateLabel:'질문서 발송',
       reasonText:'질문서 회신 대기',questionnaireSentAt:waiting.sentAt,days:waiting.days,actionLabel:'회신 확인',isDelayed:waiting.days!=null && waiting.days>=7};
-    const meeting = classifyWorkQueueMeeting(progress);
+    const meeting = classifyWorkQueueMeeting(progress, co);
     if(meeting){
       const isScheduled = meeting.type === 'm1Scheduled' || meeting.type === 'm2Scheduled';
       if(isScheduled){
@@ -28395,6 +28434,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     return m[1].slice(2) + '.' + m[2] + '.' + m[3];
   }
   function workqMergeNewMou(co, patch){
+    co = (typeof D.findCompany === 'function' && D.findCompany(co.id)) || co;   // §상태 동기화 점검 — 팝업을 연 시점의 옛 co로 partnerDashboard를 되쓰지 않게
     const current = (co.partnerDashboard && co.partnerDashboard.newMou) || {};
     const merged = Object.assign({}, current, patch);
     const companyPatch = {partnerDashboard:Object.assign({},co.partnerDashboard,{newMou:merged})};
@@ -28408,6 +28448,17 @@ window.SHIN2_CRM_APP_INIT = function(){
         [doneKey]: { status:'done', dateText: label || '', owner: sched.owner || null, correctedAt: new Date().toISOString(), correctedBy: crmCurrentUserLabel(), source:'workq-done' }
       });
     };
+    // §상태 동기화 점검 — 탭에서 등록한 예정(정정)이 있으면 MOU 진행상황의 "일정 변경"이
+    // newMou에만 써져 화면엔 옛 날짜가 남았다. 같은 정정 키의 날짜·시각·담당도 같이 바꾼다.
+    const updSched = (schedKey, label, time, owner)=>{
+      if(!corrs[schedKey] || !label) return;
+      const base = companyPatch.partnerDashboard.stageCorrections || corrs;
+      companyPatch.partnerDashboard.stageCorrections = Object.assign({}, base, {
+        [schedKey]: Object.assign({}, corrs[schedKey], { status:'scheduled', dateText: label, timeText: time || '', owner: owner || corrs[schedKey].owner || null, correctedAt: new Date().toISOString(), correctedBy: crmCurrentUserLabel(), source:'workq-schedule' })
+      });
+    };
+    if(patch.m1ScheduledLabel) updSched('m1Scheduled', patch.m1ScheduledLabel, patch.m1ScheduledTime, patch.m1Owner);
+    if(patch.m2ScheduledLabel) updSched('m2Scheduled', patch.m2ScheduledLabel, patch.m2ScheduledTime, patch.m2Owner);
     if(patch.m1Done === true) addDone('m1Done', 'm1Scheduled', patch.m1Label);
     if(patch.m2Done === true) addDone('m2Done', 'm2Scheduled', patch.m2Label);
     if(patch.m2Done===true || patch.mouDone===true) Object.assign(companyPatch,
@@ -28702,7 +28753,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     return `
       <div class="workq-expand-grid">
         <div class="workq-expand-label">담당자</div><div class="workq-expand-value">${co.contactName ? esc(co.contactName) : '—'}</div>
-        <div class="workq-expand-label">전화번호</div><div class="workq-expand-value">${co.phone ? esc(co.phone) : '—'}${co.phone ? `<button type="button" class="workq-copy-btn" data-workq-copy="${esc(co.phone)}">복사</button>` : ''}</div>
+        <div class="workq-expand-label">전화번호</div><div class="workq-expand-value">${(co.phone || co.mobile) ? esc(co.phone || co.mobile) : '—'}${(co.phone || co.mobile) ? `<button type="button" class="workq-copy-btn" data-workq-copy="${esc(co.phone || co.mobile)}">복사</button>` : ''}</div>
       </div>
     `;
   }
@@ -28755,12 +28806,17 @@ window.SHIN2_CRM_APP_INIT = function(){
       // 함수(workqSaveMeetingSchedule)를 그대로 재사용한다.
       const isM1 = item.type === 'm1Scheduled';
       const stageName = isM1 ? '1차미팅' : '2차미팅';
+      let schedSt = null;
+      try{ schedSt = buildProgressStages(D.findCompany(co.id) || co).stages.find(x=> x.key === (isM1 ? 'm1' : 'm2')) || null; }catch(e){ schedSt = null; }
+      const schedLabel = (schedSt && schedSt.scheduledLabel) || item.scheduledLabel || '';
+      const schedTime = (schedSt && schedSt.scheduledTime) || item.scheduledTime || '';
+      const schedOwner = (schedSt && schedSt.owner) || item.owner || '';
       return `
         <div class="workq-expand-title">${esc(co.name)} · ${esc(stageName)} 일정 확인</div>
         ${contact}
         <div class="workq-expand-grid">
-          <div class="workq-expand-label">예정일</div><div class="workq-expand-value">${esc(item.co.partnerDashboard && item.co.partnerDashboard.newMou ? (isM1 ? item.co.partnerDashboard.newMou.m1ScheduledLabel : item.co.partnerDashboard.newMou.m2ScheduledLabel) || '—' : '—')}</div>
-          <div class="workq-expand-label">담당</div><div class="workq-expand-value">${item.co.partnerDashboard && item.co.partnerDashboard.newMou && (isM1 ? item.co.partnerDashboard.newMou.m1Owner : item.co.partnerDashboard.newMou.m2Owner) ? esc(isM1 ? item.co.partnerDashboard.newMou.m1Owner : item.co.partnerDashboard.newMou.m2Owner) : '—'}</div>
+          <div class="workq-expand-label">예정일</div><div class="workq-expand-value">${esc(schedLabel ? fmtScheduleWithTime(schedLabel, schedTime) : '—')}</div>
+          <div class="workq-expand-label">담당</div><div class="workq-expand-value">${schedOwner ? esc(schedOwner) : '—'}</div>
         </div>
         <div class="workq-btn-row">
           <button type="button" class="workq-btn primary" data-workq-do="mark-done-open">미팅 완료 처리</button>
@@ -29067,6 +29123,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       const since = Date.now() - 60 * 864e5;
       (D.loadCompanies() || []).forEach(co=>{
         if(!co || co.deletedAt || !Array.isArray(co.m1MailLog)) return;
+        if(D.isAgreementTerminated && D.isAgreementTerminated(co)) return;   // §상태 동기화 점검 — 협약 종료 업체 제외
         const sent = co.m1MailLog.filter(l=> l && l.status === 'sent' && l.sentAt);
         if(!sent.length) return;
         const last = sent.reduce((a,b)=> String(b.sentAt) > String(a.sentAt) ? b : a);
@@ -29433,7 +29490,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     if(!root) return;
     // §미팅 완료 반영 수정 라운드 — 고객 카드가 뒤에 열려 있으면 상단 요약(1차/2차/체결)도 같이 다시 그린다.
     const finishAndClose = ()=>{ workQueueExpanded = null; closeWorkqActionModal(); renderWorkQueueView();
-      try{ if(cardView.style.display === 'block' && item && item.co && String(currentCompanyId) === String(item.co.id)) refreshChart(); }catch(e){} };
+      refreshCompanyViews(item && item.co ? item.co.id : null); };
     // §요청 3 "진행 단계 변경·취소 / 메모·활동"도 Firestore 확인 대상 — 이 팝업의 모든
     // 저장 버튼이 결국 workqLogEvent(customerActivities)/workqLogMemo(memos)/
     // workqMergeNewMou·D.updateCompany(companies) 중 일부를 조합해서 쓰므로, 어떤
@@ -31791,6 +31848,7 @@ window.SHIN2_CRM_APP_INIT = function(){
           })
           .catch(e=> console.warn('[EMAIL-SEND] 발송 이력 저장 확인 중 오류', e));
         if(typeof renderWorkQueueView === 'function' && document.getElementById('workQueueView') && document.getElementById('workQueueView').style.display === 'block') renderWorkQueueView();
+        try{ renderList(); }catch(err){}   // §상태 동기화 점검 — 목록 배지도 바로
         if(typeof opts.onSent === 'function') opts.onSent();
         perf.mark('ui');
         perf.dump();
@@ -32595,9 +32653,18 @@ window.SHIN2_CRM_APP_INIT = function(){
   // (§낙관적 UI 요청 — "저장 중" 상태를 먼저 보여주고 실제 네트워크 확인은 배경에서).
   // saveStageCorrection이 이미 동기적으로 로컬(list)까지 저장을 끝내 두므로, 그 결과를 그대로
   // confirmCloudSave에 넘겨 localStorage를 다시 읽어 다시 파싱하는 중복도 함께 없앤다.
+  // §상태 동기화 점검 라운드(신규) — 업체 하나를 저장한 뒤, 열려 있는 화면(고객 목록 배지·
+  // 고객 카드 상단 요약·MOU 진행상황)을 같은 값으로 다시 그린다. 예전에는 저장한 탭만
+  // 다시 그려 카드를 닫았다 열어야 바뀌었다. 판정 로직은 그대로(다시 그리기만).
+  function refreshCompanyViews(companyId){
+    try{ renderList(); }catch(e){ console.warn('[refreshCompanyViews] list', e); }
+    try{ if(cardView.style.display === 'block' && (companyId == null || String(currentCompanyId) === String(companyId))) refreshChart(); }catch(e){ console.warn('[refreshCompanyViews] card', e); }
+    try{ const wq = document.getElementById('workQueueView'); if(wq && wq.style.display === 'block') renderWorkQueueView(); }catch(e){ console.warn('[refreshCompanyViews] workq', e); }
+  }
   function commitStageDateSave(companyId, stageKey, patch, meta){
     const result = saveStageCorrection(companyId, stageKey, patch, meta);
     closeStageDateModal();
+    if(result.ok) refreshCompanyViews(companyId);
     if(document.getElementById('agreementPopupBody')) renderAgreementPopupBody(companyId);
     if(!result.ok) { setAgrSaveStatus('저장 실패 · 로컬 저장에 실패했습니다', 'error'); return; }
     if(stageKey === 'qReply' && patch && patch.status === 'done' && typeof window.SHIN2_OPEN_REPLY_CHECKLIST === 'function'){
@@ -32668,6 +32735,7 @@ window.SHIN2_CRM_APP_INIT = function(){
   function openStageDateModal(companyId, stageKey, label){
     const co = D.findCompany(companyId);
     if(!co) return;
+    closeStageDateModal(); // §상태 동기화 점검 — 연속 클릭 시 같은 id 팝업이 두 벌 쌓이던 문제
     const rows = buildAgreementStageRows(co);
     const row = rows.find(r=> r.key === stageKey);
     if(!row) return;
@@ -32727,7 +32795,28 @@ window.SHIN2_CRM_APP_INIT = function(){
     });
     const deleteBtn = document.getElementById('stageDateDeleteBtn');
     if(deleteBtn) deleteBtn.addEventListener('click', ()=>{
-      commitStageDateSave(companyId, stageKey, null, { reason: '날짜 삭제' });
+      // §상태 동기화 점검 — 완료 계열 날짜를 지웠는데 정정을 빼고 계산해도 여전히 완료(원본
+      // newMou가 완료)라면, 지워도 화면이 그대로였다. 그때는 "대기"(1·2차는 예정일이 있으면
+      // "예정") 정정으로 남겨 실제로 되돌린다. 원본 데이터는 건드리지 않는다.
+      const DONE_STAGE = { qReply:'q', m1Done:'m1', m2Done:'m2', mouDone:'mou' };
+      let patch = null;
+      const stKey = DONE_STAGE[stageKey];
+      if(stKey){
+        const cur = D.findCompany(companyId) || co;
+        const pd = cur.partnerDashboard || {};
+        const corr = Object.assign({}, pd.stageCorrections); delete corr[stageKey];
+        let still = false;
+        try{ const st = buildProgressStages(Object.assign({}, cur, { partnerDashboard: Object.assign({}, pd, { stageCorrections: corr }) })).stages.find(x=> x.key === stKey); still = !!st && st.state === 'done'; }catch(e){}
+        if(still){
+          const nm = pd.newMou || {};
+          const schedCorr = corr[stKey + 'Scheduled'];
+          const schedLabel = (stKey === 'm1' || stKey === 'm2') ? ((schedCorr && schedCorr.dateText) || nm[stKey + 'ScheduledLabel'] || '') : '';
+          patch = schedLabel
+            ? { status:'scheduled', dateText: schedLabel, timeText: (schedCorr && schedCorr.timeText) || nm[stKey + 'ScheduledTime'] || '', owner: row.owner || null }
+            : { status:'waiting', dateText:'', owner: row.owner || null };
+        }
+      }
+      commitStageDateSave(companyId, stageKey, patch, { reason: '날짜 삭제' });
     });
   }
   // §질문서 회신 확인 — 기존 workq* 함수들(workqSaveMeetingSchedule 등)과 같은 패턴으로
@@ -32786,6 +32875,7 @@ window.SHIN2_CRM_APP_INIT = function(){
         return;
       }
       closeQuestionnaireReplyModal();
+      if(typeof refreshCompanyViews === 'function') refreshCompanyViews(companyId);   // §상태 동기화 점검 — 목록 배지·카드 상단도 바로
       if(typeof onSaved === 'function') onSaved();
       openMailComposeModal(companyId, 'firstMeeting');
     });
@@ -32811,7 +32901,7 @@ window.SHIN2_CRM_APP_INIT = function(){
   function agreementStageActionButtonsHtml(co, rows){
     const byKeyRow = {}; rows.forEach(r=> byKeyRow[r.key] = r);
     const progress = buildProgressStages(co);
-    const meeting = classifyWorkQueueMeeting(progress);
+    const meeting = classifyWorkQueueMeeting(progress, co);
     const html = [];
     // 질문서 단계
     if(!byKeyRow.qSend.done){
@@ -34611,7 +34701,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       else if(action === 'open-workq-item'){
         const type = btn.getAttribute('data-agr-workq-type');
         const progress = buildProgressStages(co);
-        const meeting = classifyWorkQueueMeeting(progress);
+        const meeting = classifyWorkQueueMeeting(progress, co);
         if(!meeting) return;
         const days = meeting.anchor && typeof meeting.anchor.ts === 'number' ? Math.floor((Date.now() - meeting.anchor.ts) / 86400000) : null;
         const isScheduled = type === 'm1Scheduled' || type === 'm2Scheduled';
@@ -41830,6 +41920,11 @@ window.SHIN2_CRM_APP_INIT = function(){
         <span class="cdash-cloud-save-status" id="crmFormSaveStatus"></span>
       </div>`;
     bindDealStageBlock('editco');
+    // §상태 동기화 점검 — 폼을 연 시점의 진행단계 값. 저장 때 이 값과 같으면(진행단계를 안 건드림)
+    // applyDealStageValues를 부르지 않는다(전화번호만 고쳐도 진행단계 활동이 쌓이던 문제).
+    let editDealInitial = null;
+    try{ editDealInitial = JSON.stringify(validateDealStageBlock('editco').values); }catch(e){ editDealInitial = null; }
+    let editDealApplied = false;
     document.getElementById('crmFormCancel').addEventListener('click', ()=>{ cardState.chartEditing = false; refreshChart(); });
     document.getElementById('crmFormSave').addEventListener('click', async (e)=>{
       const patch = {};
@@ -41853,15 +41948,17 @@ window.SHIN2_CRM_APP_INIT = function(){
       warnEl.style.display = 'none'; warnEl.classList.remove('is-blocking');
       const btn = e.currentTarget;
       const statusEl = document.getElementById('crmFormSaveStatus');
+      if(btn.disabled) return;
       btn.disabled = true;
       D.updateCompany(co.id, patch);
-      applyDealStageValues(co.id, dealCheck.values);
+      const dealNow = JSON.stringify(dealCheck.values);
+      if(dealNow !== editDealInitial && !editDealApplied){ applyDealStageValues(co.id, dealCheck.values); editDealApplied = true; editDealInitial = dealNow; }
       const r = await confirmCloudSave('companies');
       btn.disabled = false;
       showCloudSaveStatus(statusEl, r.ok, r.err);
       if(!r.ok) return; // §요청 3 — 폼은 열린 채로 입력값도 그대로 남는다, 저장 버튼을 다시 누르면 재시도된다
       cardState.chartEditing = false;
-      refreshChart();
+      refreshCompanyViews(co.id);   // 카드 + 목록 + MOU 진행상황(업체명·연락처가 목록에도 바로)
     });
   }
 
@@ -42464,12 +42561,15 @@ window.SHIN2_CRM_APP_INIT = function(){
       if(!text) return;
       const btn = e.currentTarget;
       const statusEl = document.getElementById('crmActAddStatus');
+      if(btn.disabled) return;
       btn.disabled = true;
-      D.addActivity(co.id, text);
+      // §상태 동기화 점검 — 저장 실패 뒤 같은 내용으로 다시 누르면 로컬에 이미 있는 기록은 다시 만들지 않는다.
+      if(btn.__appliedText !== text){ D.addActivity(co.id, text); btn.__appliedText = text; }
       const r = await confirmCloudSave('customerActivities');
       btn.disabled = false;
       showCloudSaveStatus(statusEl, r.ok, r.err);
       if(!r.ok) return; // §요청 3 — 입력값(input.value)은 그대로 남아 다시 누르면 재시도된다
+      btn.__appliedText = null;
       input.value = '';
       renderActivitySection(co);
       renderList();
@@ -42497,6 +42597,7 @@ window.SHIN2_CRM_APP_INIT = function(){
           if(!r.ok){ showCloudSaveStatus(statusEl, false, r.err); return; }
           renderActivitySection(co);
           refreshChartDerived(co);
+          try{ renderList(); }catch(err){}
         });
       });
     });
@@ -42550,7 +42651,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     const memos = (idx && idx.memos) ? (idx.memos.get(String(co.id)) || []) : D.memosFor(co.id);
     memos.forEach(m=> items.push({
       id: 'memo:' + m.id, kind:'memo', memoId: m.id, text: m.text,
-      ts: m.updatedAt || m.createdAt, createdAtIso: new Date(m.createdAt).toISOString()
+      ts: m.createdAt || m.updatedAt, createdAtIso: new Date(m.createdAt).toISOString()
     }));
     const materials = (co.requestedMaterials || []);
     const groups = new Map(); // sourceActivityId(있으면) 또는 개별 id로 그룹
@@ -42723,7 +42824,15 @@ window.SHIN2_CRM_APP_INIT = function(){
         if(!text) return;
         const btn = e.currentTarget;
         btn.disabled = true;
-        if(!memoDraftApplied){ D.addMemo(co.id, text); memoDraftApplied = true; }
+        if(!memoDraftApplied){
+          const before = new Set(D.memosFor(co.id).map(m=> m.id));
+          D.addMemo(co.id, text); memoDraftApplied = true;
+          const added = D.memosFor(co.id).find(m=> !before.has(m.id));
+          btn.__memoId = added ? added.id : null; btn.__memoText = text;
+        } else if(btn.__memoId && btn.__memoText !== text){
+          // §상태 동기화 점검 — 저장 실패 뒤 내용을 고쳐 다시 누르면 고친 내용으로 바꾼다(예전엔 처음 내용만 남았다).
+          D.updateMemo(btn.__memoId, text); btn.__memoText = text;
+        }
         const r = await confirmCloudSave('memos');
         btn.disabled = false;
         if(!r.ok){ alert(cloudSaveErrorMessage(r.err)); return; } // §요청 3 — draftInput 값은 그대로 남아 다시 누르면 재시도된다
@@ -42736,6 +42845,8 @@ window.SHIN2_CRM_APP_INIT = function(){
         try{
           const fresh = D.findCompany(co.id) || co;
           if(typeof renderContactTimelineCard === 'function') renderContactTimelineCard(fresh);
+          if(typeof renderMemoPreviewCard === 'function' && currentCompanyId === co.id) renderMemoPreviewCard(fresh);   // §상태 동기화 점검 — 메모 미리보기 건수도 바로
+          try{ renderList(); }catch(e2){}
           if(typeof renderQuestionnaireSummaryCard === 'function' && currentCompanyId === co.id){
             // 최근 요청(메모 기반) 요약도 같은 데이터를 읽는다.
             renderQuestionnaireSummaryCard(fresh);
@@ -43194,14 +43305,36 @@ window.SHIN2_CRM_APP_INIT = function(){
   // 같은 newMou/agreementDateLabel을 읽음)라 두 표시가 어긋나지 않는다.
   const DEAL_M_SHORT = { undetermined:'미정', scheduled:'예정', done:'완료', skipped:'진행 안 함' };
   const DEAL_MOU_SHORT = { none:'체결 전', inProgress:'진행 중', done:'체결 완료' };
-  function buildDealStageSummaryText(co){
+  // §상태 동기화 점검 라운드(신규) — 표시용 값. resolveDealStageFormValues는 수정 폼 기본값이라
+  // newMou 원본만 읽어, 협약 진행 탭에서 등록한 일정·완료(정정 레이어)가 카드 상단 요약에
+  // 안 보였다("1차 미정"인데 진행 바는 1차 예정). 공식 판정(buildProgressStages)의 완료/예정을
+  // 덮어 표시만 맞춘다. 폼 기본값·저장값은 그대로.
+  function resolveDealStageDisplayValues(co){
     const v = resolveDealStageFormValues(co);
+    let stages = [];
+    try{ stages = buildProgressStages(co).stages || []; }catch(e){ return v; }
+    const by = {}; stages.forEach(x=> by[x.key] = x);
+    const toInput = lbl=> (lbl && partnerLabelToInputValue(lbl)) || '';
+    ['m1','m2'].forEach(k=>{
+      const st = by[k]; if(!st) return;
+      if(st.state === 'done') v[k] = { status:'done', date: toInput(st.dateDisplay) || v[k].date };
+      else if(st.state === 'scheduled') v[k] = { status:'scheduled', date: toInput(st.scheduledLabel || st.dateDisplay) || '' };
+      else if(v[k].status !== 'skipped') v[k] = { status:'undetermined', date:'' };
+    });
+    let confirmed = false;
+    try{ confirmed = isConfirmedPartner(co, buildProgressStages(co)); }catch(e){ confirmed = by.mou && by.mou.state === 'done'; }
+    if(confirmed && v.mou.status !== 'done') v.mou = { status:'done', date: toInput(by.mou && by.mou.dateDisplay) };
+    else if(!confirmed && v.mou.status === 'done') v.mou = { status:'none', date:'' };
+    return v;
+  }
+  function buildDealStageSummaryText(co){
+    const v = resolveDealStageDisplayValues(co);
     return `1차 ${DEAL_M_SHORT[v.m1.status]} → 2차 ${DEAL_M_SHORT[v.m2.status]} → ${DEAL_MOU_SHORT[v.mou.status]}`;
   }
   // 업체명 옆에 붙이는 "최종 단계만 간단히" 표시(§5) — 판정 우선순위 그대로: 협약
   // 완료 > 협약 진행중 > 2차완료 > 2차예정 > 1차완료 > 1차예정 > 미팅 미정.
   function buildDealStageFinalLabel(co){
-    const v = resolveDealStageFormValues(co);
+    const v = resolveDealStageDisplayValues(co);
     if(v.mou.status === 'done') return { text:'체결 완료', cls:'is-done' };
     if(v.mou.status === 'inProgress') return { text:'협약 진행중', cls:'is-scheduled' };
     if(v.m2.status === 'done') return { text:'2차 완료', cls:'is-done' };
@@ -43725,6 +43858,11 @@ window.SHIN2_CRM_APP_INIT = function(){
       // 1회만 만든다(재시도 때 D.addCompany를 또 부르면 같은 업체가 두 번 생긴다). 이미
       // 로컬에 있으면 그 레코드를 그대로 다시 클라우드로 밀어보낼 값만 다시 구한다.
       let rec = pendingNewCompanyId ? D.findCompany(pendingNewCompanyId) : null;
+      if(rec){
+        // §상태 동기화 점검 — 재시도 전에 사용자가 고친 값도 반영한다(업체코드는 처음 발급값 유지).
+        const retryPatch = Object.assign({}, patch); delete retryPatch.code; delete retryPatch.id;
+        rec = D.updateCompany(rec.id, retryPatch) || D.findCompany(rec.id) || rec;
+      }
       if(!rec){
         rec = D.addCompany(patch);
         pendingNewCompanyId = rec.id;
@@ -48708,10 +48846,22 @@ if(!window.__mapxRowDelegated){
   // 동작). 지금 이 탭이 편집/신규등록 폼을 띄워둔 상태라면 사용자의 입력 중인 내용을
   // 덮어쓰지 않도록 재렌더링을 건너뛴다. 새 Firestore/네트워크 동작은 전혀 추가하지 않는다 —
   // 순수 localStorage 재조회 + 화면 재렌더링만 한다.
+  let cardRefreshDeferred = false;
   function refreshVisibleScreenFromLocalCompanies(){
     if(cardState.editingCompany || cardState.chartEditing || addingNewCompany) return;
     if(cardView.style.display === 'block'){
       if(!currentCompanyId) return; // 신규등록 폼 등 id가 아직 없는 화면은 건드리지 않는다
+      // §상태 동기화 점검 — 메모 등 카드 안 입력칸에 쓰는 중이면(자동저장 직후 클라우드가 같은 값을
+      // 되돌려 보내는 경우 포함) 카드를 다시 그려 입력칸·커서가 날아가지 않게, 칸을 벗어날 때 한 번 그린다.
+      const ae = document.activeElement;
+      if(ae && cardView.contains(ae) && (/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName) || ae.isContentEditable)){
+        if(!cardRefreshDeferred){
+          cardRefreshDeferred = true;
+          ae.addEventListener('blur', ()=>{ cardRefreshDeferred = false; setTimeout(refreshVisibleScreenFromLocalCompanies, 0); }, { once:true });
+        }
+        try{ renderList(); }catch(e){}
+        return;
+      }
       const co = D.findCompany(currentCompanyId);
       if(co){ renderChart(co); } else { openList(); }
     } else {
@@ -48734,6 +48884,11 @@ if(!window.__mapxRowDelegated){
   // 재사용해 새 판정을 만들지 않는다.
   window.addEventListener('shin2-crm-cloud-update', (e)=>{
     if(e && e.detail && e.detail.key === 'companies') refreshVisibleScreenFromLocalCompanies();
+    // §상태 동기화 점검 — 매출 장부·활동·메모가 클라우드에서 새로 와도 목록(총매출·최근 요청 등)을 다시 그린다.
+    else if(e && e.detail && /^(salesLedger|customerActivities|memos)$/.test(String(e.detail.key || ''))){
+      if(e.detail.key === 'salesLedger' && D.invalidateRevenue2026IndexCache) { try{ D.invalidateRevenue2026IndexCache(); }catch(err){} }
+      if(cardView.style.display !== 'block'){ try{ renderList(); }catch(err){} }
+    }
   });
 
   // §업체 관계 검토 제거 라운드(신규) — 앱을 켤 때 1회, 확정 정보(이전 상호/자회사·
