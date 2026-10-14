@@ -30073,6 +30073,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     if(root) root.innerHTML = '';
   }
   function openWorkqActionModal(item){
+    if(!window.crmAdminOk('일정 잡기')) return;
     const modalRoot = document.getElementById('workqActionModalRoot');
     if(!modalRoot) return;
     modalRoot.innerHTML = `
@@ -31999,6 +32000,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     return docs.length ? docs[docs.length-1] : null;
   }
   function openMailComposeModal(companyId, mailType, opts){
+    if(!window.crmAdminOk('메일 보내기')) return;
     mailType = mailType || 'firstMeeting';
     opts = opts || {};
     const co = D.findCompany(companyId);
@@ -33356,6 +33358,8 @@ window.SHIN2_CRM_APP_INIT = function(){
     m1Done:'done', m2Done:'done', mouDone:'done'
   };
   function openStageDateModal(companyId, stageKey, label){
+    // 미팅·체결 날짜(일정)는 관리자만 — 질문서 발송/회신 날짜는 그대로 둔다.
+    if(/^(m1|m2|mou)/.test(String(stageKey)) && !window.crmAdminOk('일정 잡기')) return;
     const co = D.findCompany(companyId);
     if(!co) return;
     closeStageDateModal(); // §상태 동기화 점검 — 연속 클릭 시 같은 id 팝업이 두 벌 쌓이던 문제
