@@ -11082,6 +11082,11 @@ body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-filters > .map
   /* ---- 입력칸: iOS 자동 확대 방지(16px) ---- */
   #crmSearchInput, .search-box input, #workqSearchInput{ font-size:16px !important; }
 }
+
+/* §관리자 모드(신규) — 업무 알림(오른쪽 아래)은 관리자 모드를 켠 컴퓨터에서만 보인다 */
+body:not(.crm-admin-mode) #crmAlertDock{ display:none !important; }
+.crm-admin-mode-btn{ font-weight:700; }
+body.crm-admin-mode .crm-admin-mode-btn{ color:#1B3A66; }
 </style>
 </head>
 <body>
@@ -11173,6 +11178,8 @@ body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-filters > .map
         <div class="update-menu" id="crmUpdateMenu">
           <!-- §미팅 후 요청자료 라운드(신규) — 새 알림 시스템을 따로 만들지 않고, 이미 있는
                관리 도구 드롭다운 + 외곽 배지(#crmDataUpdateReviewBadge) 구조를 그대로 쓴다. -->
+          <button type="button" id="crmAdminModeBtn" class="crm-admin-mode-btn">관리자 모드 켜기</button>
+          <div class="update-menu-divider"></div>
           <div class="update-menu-group-label">업무</div>
           <button type="button" id="crmWebsiteCleanupHistoryBtn">홈페이지 정리 완료 이력</button>
           <button type="button" id="crmFollowupHistoryBtn">후속 업무 완료 이력</button>
@@ -11225,6 +11232,7 @@ body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-filters > .map
         <button type="button" class="gnav-drawer-item" id="gnavDrawerTabWorkQueue">MOU 진행상황</button>
         <button type="button" class="gnav-drawer-item" id="gnavDrawerTabMailSettings">메일 설정</button>
         <button type="button" class="gnav-drawer-item" id="gnavDrawerExport">내보내기</button>
+        <button type="button" class="gnav-drawer-item crm-admin-mode-btn" id="gnavDrawerAdminMode">관리자 모드 켜기</button>
       </nav>
     </div>
   </div>
@@ -49492,6 +49500,77 @@ if(!window.__mapxRowDelegated){
      라우팅/상태 없음. Esc/바깥 클릭/닫기버튼으로 닫히고, 열려있는 동안 배경 스크롤을
      막고 Tab 포커스를 drawer 안에 가둔다(focus trap).
      ========================================================================== */
+  /* §관리자 모드(신규) — 알림은 관리자 모드를 켠 컴퓨터에서만 보인다.
+     로그인(공용 비밀번호·Firebase)은 그대로이고, 로그인 뒤 [관리자 모드 켜기]에 관리자 비밀번호를 한 번 넣으면
+     그 컴퓨터(브라우저)에 관리자로 기억된다. 코드에는 비밀번호 원문이 아니라 되돌릴 수 없는 해시(SHA-256)만 둔다.
+     이것은 "알림을 누구에게 보여줄지"를 나누는 화면 설정이며, 데이터 접근 권한을 나누는 보안 장치는 아니다
+     (모든 직원이 같은 고객 데이터를 계속 그대로 본다). */
+  (function initAdminMode(){
+    const ADMIN_KEY = 'shin2-crm-admin-mode';
+    const ADMIN_HASH = '51d6665379fd8750f5365013bc32e082c3ffc4c36c004fde8a57080f14ce3bf6';
+    const isAdmin = ()=>{ try{ return localStorage.getItem(ADMIN_KEY) === '1'; }catch(e){ return false; } };
+    const apply = ()=>{
+      const on = isAdmin();
+      document.body.classList.toggle('crm-admin-mode', on);
+      document.querySelectorAll('.crm-admin-mode-btn').forEach(b=>{ b.textContent = on ? '관리자 모드 끄기 (관리자)' : '관리자 모드 켜기'; });
+      window.dispatchEvent(new CustomEvent('website-cleanup-update'));
+      window.dispatchEvent(new CustomEvent('website-cleanup-update-data'));
+    };
+    async function sha256Hex(text){
+      const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+      return Array.from(new Uint8Array(buf)).map(b=> b.toString(16).padStart(2,'0')).join('');
+    }
+    function openAdminPrompt(){
+      const root = document.createElement('div');
+      root.innerHTML = `
+        <div class="pi-overlay" id="adminModeOverlay" style="z-index:10020;">
+          <div class="pi-panel" style="max-width:340px;" role="dialog" aria-modal="true" aria-label="관리자 모드">
+            <div class="pi-head"><div class="pi-title">관리자 모드</div><button type="button" class="chart-close-btn" id="adminModeClose" aria-label="닫기">&times;</button></div>
+            <div class="pi-body">
+              <div class="co-form-field"><label>관리자 비밀번호</label><input type="password" id="adminModeInput" autocomplete="off" /></div>
+              <div id="adminModeMsg" class="mail-settings-help" style="color:#B3261E; display:none;">비밀번호가 맞지 않습니다.</div>
+              <div class="mail-settings-help">켜면 이 컴퓨터에서만 업무 알림이 보입니다.</div>
+            </div>
+            <div class="pi-actions"><button type="button" class="co-text-action" id="adminModeCancel">취소</button><button type="button" class="co-text-action primary" id="adminModeOk">켜기</button></div>
+          </div>
+        </div>`;
+      const el = root.firstElementChild;
+      document.body.appendChild(el);
+      const close = ()=> el.remove();
+      const input = el.querySelector('#adminModeInput');
+      const ok = async ()=>{
+        const v = input.value;
+        let hash = '';
+        try{ hash = await sha256Hex('netform-crm-admin:' + v); }catch(e){ hash = ''; }
+        if(hash && hash === ADMIN_HASH){
+          try{ localStorage.setItem(ADMIN_KEY, '1'); }catch(e){}
+          close(); apply();
+          if(typeof showMiniSaveToast === 'function') showMiniSaveToast('관리자 모드를 켰습니다 — 이 컴퓨터에서 알림이 보입니다');
+        } else {
+          el.querySelector('#adminModeMsg').style.display = 'block';
+          input.select();
+        }
+      };
+      el.querySelector('#adminModeClose').addEventListener('click', close);
+      el.querySelector('#adminModeCancel').addEventListener('click', close);
+      el.querySelector('#adminModeOk').addEventListener('click', ok);
+      input.addEventListener('keydown', e=>{ if(e.key === 'Enter'){ e.preventDefault(); ok(); } if(e.key === 'Escape') close(); });
+      setTimeout(()=> input.focus(), 0);
+    }
+    function toggle(){
+      if(isAdmin()){
+        if(!confirm('관리자 모드를 끌까요? 이 컴퓨터에서 업무 알림이 보이지 않게 됩니다.')) return;
+        try{ localStorage.removeItem(ADMIN_KEY); }catch(e){}
+        apply();
+      } else openAdminPrompt();
+    }
+    document.querySelectorAll('.crm-admin-mode-btn').forEach(b=> b.addEventListener('click', ()=>{
+      const overlay = document.getElementById('gnavDrawerOverlay');
+      if(overlay && !overlay.hidden){ const c = document.getElementById('gnavDrawerCloseBtn'); if(c) c.click(); }
+      toggle();
+    }));
+    apply();
+  })();
   // §모바일 최적화 — 지도 열고 닫기(휴대폰 폭에서만 의미가 있다. 열면 지도가 크기를 다시 잡도록 resize를 알린다)
   (function initMobileMapToggle(){
     const btn = document.getElementById('crmMobileMapToggle');
