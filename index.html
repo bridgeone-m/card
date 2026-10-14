@@ -16925,7 +16925,9 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
        이미 들어있는 sourceRecordId는 다시 추가하지 않는다(§20 중복 방지, 재실행/최신 엑셀
        교체 모두 안전).
      ========================================================================== */
-  function normCompanyNameForPour(s){ return normCompanyName(s); } // 매칭 규칙 재사용(§2/§3)
+  // §실적 업체명 표기 — 실적 파일에는 같은 업체가 "앤"/"엔"으로 섞여 적힌다(두레이앤씨/두레이엔씨, 풍전이앤씨/이엔씨 등, 사용자 확인: 같은 업체).
+  // 실적 매칭에서만 "앤"을 "엔"으로 맞춘다 — 일반 업체명 정규화(매출·중복 업체 등)는 그대로다.
+  function normCompanyNameForPour(s){ return normCompanyName(s).replace(/앤/g, "엔"); } // 매칭 규칙 재사용(§2/§3)
 
   // previewPourTrackImport: 아무것도 저장하지 않는 순수 분석. 엑셀 스냅샷을 정규화 업체명으로
   // 그룹핑한 뒤, 그룹당 CRM 업체 매칭을 1번만 수행한다(레코드 1149건이 아니라 업체 170개 기준).
@@ -39449,7 +39451,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       const names = [c.name].concat(Array.isArray(c.formerNames) ? c.formerNames : []);
       const seen = new Set();
       names.forEach(n=>{
-        const k = D.normCompanyName(n);
+        const k = D.normCompanyNameForPour(n);
         if(!k || seen.has(k)) return;
         seen.add(k);
         if(!byNorm.has(k)) byNorm.set(k, []);
@@ -39460,7 +39462,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     const items = (rows || []).map(row=>{
       const key = D.pourImportContentKey(row);
       const siteKey = D.pourImportSiteKey(row);
-      const hits = byNorm.get(D.normCompanyName(row.company)) || [];
+      const hits = byNorm.get(D.normCompanyNameForPour(row.company)) || [];
       let status;
       if(row.year == null) status = '연도 확인 필요';
       else if(existingKeys.has(key) || existingKeys.has(siteKey)) status = '중복';
