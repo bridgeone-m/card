@@ -56,7 +56,7 @@ function restoreCtx(cloudOk){
     activitiesForCompany:id=>acts.filter(a=>a.companyId===id),
     restoreDeletedCompany:id=>{Object.assign(co,{deletedAt:null,deletedBy:null,deleteReason:null,deleteType:null,permanentDeletePending:null});acts.push({id:'r'+(++n),companyId:id,originalText:'[업체 복구]'});return co;},
     updateCompany:(id,p)=>Object.assign(co,p),deleteActivity:id=>{acts=acts.filter(a=>a.id!==id);}};
-  const ctx={D,restoreInFlight:new Set(),confirmCloudSave:async()=>{calls++;await new Promise(r=>setTimeout(r,5));return typeof cloudOk==='function'?cloudOk():{ok:cloudOk,err:cloudOk?null:new Error('unavailable')};},Error,Object,Set};
+  const ctx={D,window:{crmAdminOk:()=>true},restoreInFlight:new Set(),confirmCloudSave:async()=>{calls++;await new Promise(r=>setTimeout(r,5));return typeof cloudOk==='function'?cloudOk():{ok:cloudOk,err:cloudOk?null:new Error('unavailable')};},Error,Object,Set};
   const fields=html.match(/const RESTORE_SNAPSHOT_FIELDS = \[[^\]]*\];/)[0].replace('const ','var ');
   vm.runInNewContext(fields+'\n'+fn('snapshotDeleteFields')+'\n'+fn('restoreCompanyConfirmed'),ctx);
   D.snapshotDeleteFields=ctx.snapshotDeleteFields;
@@ -193,7 +193,7 @@ test('5-b. 엑셀 등록+MOU: 업체만 저장되고 MOU 저장 실패 → "부�
   const D={loadCompanies:()=>companies,addCompany:f=>{const c=Object.assign({id:'n'+companies.length},f);companies.push(c);return c;},removeCompanyHard(){throw new Error('호출되면 안 됨');},
     updateCompany:(id,p)=>Object.assign(companies.find(c=>c.id===id),p),addActivity:(id,t)=>acts.push({id,t})};
   const answers=[true,true,false];// 1) 등록 확인 2) 부분완료 → 재시도 3) 다시 실패 → 나중에
-  const ctx={D,Set,Date,Error,
+  const ctx={D,Set,Date,Error,window:{crmAdminOk:()=>true},
     confirm:msg=>{prompts.push(msg);return answers.shift();},alert:msg=>prompts.push('ALERT '+msg),
     findActiveCompanyByExactName:(n,list)=>list.find(c=>c.name===n)||null,
     confirmCloudSave:async name=>{cloudCalls++;await new Promise(r=>setTimeout(r,2));if(name==='companies'){ if(cloudCalls===1) return {ok:true}; return {ok:false,err:new Error('unavailable')}; } return {ok:true};},
@@ -205,4 +205,15 @@ test('5-b. 엑셀 등록+MOU: 업체만 저장되고 MOU 저장 실패 → "부�
   assert.equal(companies.length,1,'업체 1건만');assert.equal(acts.length,1,'활동 1건만');assert.equal(corr.length,1,'MOU 정정 1건만');
   assert.ok(prompts.some(p=>/부분 완료/.test(p)),'부분 완료 안내');
   assert.equal(prompts.filter(p=>/부분 완료/.test(p)).length,2,'재시도 후에도 실패면 다시 안내');
+});
+
+/* ---------- 관리자 전용: 관리자 모드가 아니면 복구·엑셀 등록이 실행되지 않음 ---------- */
+test('관리자 모드가 아니면 업체 복구는 막히고 데이터는 그대로',async()=>{
+  const {ctx,co,acts}=restoreCtx(true);ctx.window.crmAdminOk=()=>false;
+  const r=await ctx.restoreCompanyConfirmed('c1');
+  assert.equal(r.ok,false);assert.equal(co.deletedAt,'2026-10-01T00:00:00Z');assert.equal(acts().length,1);
+});
+test('관리자 전용 가드가 등록·수정·삭제 진입점에 모두 들어 있음(코드 확인)',()=>{
+  for(const name of ['openAddCompanyForm','renderBasicInfoForm','openDeleteCompanyModal','openAgreementInvalidateModal','openPermDeleteModal','restoreCompanyConfirmed','handleConfirmMouFromNonPartnerTab','handleRegisterAndConfirmMouFromExcelName','convertCaseByCaseToCompany','registerCaseByCaseFromReview','openSalesImportModal','openMergeDupModal'])
+    assert.ok(fn(name).includes('window.crmAdminOk('),name);
 });
