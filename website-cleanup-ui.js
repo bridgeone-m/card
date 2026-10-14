@@ -6,11 +6,27 @@
   const cards=new Map(), busy=new Set(), errors=new Map(), retries=new Map(), pendingCommands=new Map();
   let history=null, scheduled=false;
   const visibilityKey='shin2-task-alerts-hidden';
-  // 알림 카드 X — 지운 카드는 그 시점 내용(업체 목록)으로 기억해 두고, 새 업체가 생기는 등 내용이 바뀌면 다시 보인다.
-  const dismissKey='shin2-task-alerts-dismissed';
-  let dismissed={};
-  try{dismissed=JSON.parse(localStorage.getItem(dismissKey)||'{}')||{};}catch(_){}
-  const cardSignature=c=>Array.from(c.querySelectorAll('.consult-req-alert-row:not(.is-history)')).map(r=>{const n=r.querySelector('.consult-req-alert-row-name');return (r.getAttribute('data-cleanup-id')||r.getAttribute('data-meeting-alert')||'')+':'+(r.getAttribute('data-co')||'')+':'+(n?n.textContent.trim():'');}).sort().join('|');
+  // 알림 카드 X — 예전에는 카드 전체 내용을 서명으로 기억해서, 업체 하나만 새로 생겨도 이미 지운 알림까지
+  // 카드째 다시 떴다. 이제 알림 한 줄(항목)마다 기억한다: 지운 항목은 다시 뜨지 않고, 새로 생긴 항목만 보인다.
+  //   업무 알림 = 알림 id / 미팅 알림 = 종류+업체 / 자료 요청 = 업체+요청 내용(같은 업체의 새 요청은 새 항목)
+  const dismissKey='shin2-task-alerts-dismissed';            // 예전 카드 단위 기록(한 번만 항목 단위로 옮겨 읽는다)
+  const dismissRowsKey='shin2-task-alerts-dismissed-rows';
+  let dismissedRows=new Set();
+  try{dismissedRows=new Set(JSON.parse(localStorage.getItem(dismissRowsKey)||'[]')||[]);}catch(_){}
+  const rowKey=(card,r)=>{
+    const cid=r.getAttribute('data-cleanup-id'); if(cid) return 'c:'+cid;
+    const mk=r.getAttribute('data-meeting-alert'); if(mk) return 'm:'+mk+':'+(r.getAttribute('data-co')||'');
+    const q=r.querySelector('[data-consult-req-co]');
+    const text=(r.textContent||'').replace(/\s+/g,' ').trim().slice(0,160);
+    if(q) return 'q:'+q.getAttribute('data-consult-req-co')+':'+text;
+    return 'n:'+(card.id||'')+':'+text;
+  };
+  const activeRows=c=>Array.from(c.querySelectorAll('.consult-req-alert-row:not(.is-history)'));
+  const saveDismissed=()=>{try{localStorage.setItem(dismissRowsKey,JSON.stringify(Array.from(dismissedRows).slice(-3000)));}catch(_){}};
+  // 예전 카드 단위 기록: 그때 지운 줄들(업체 id·이름 기준)을 항목 기록으로 한 번 옮긴다 — 이미 지운 알림이 다시 뜨지 않게
+  let legacyDismissed={};
+  try{legacyDismissed=JSON.parse(localStorage.getItem(dismissKey)||'{}')||{};}catch(_){}
+  const legacySig=r=>{const n=r.querySelector('.consult-req-alert-row-name');return (r.getAttribute('data-cleanup-id')||r.getAttribute('data-meeting-alert')||'')+':'+(r.getAttribute('data-co')||'')+':'+(n?n.textContent.trim():'');};
   // 2차 메일 알림은 1차 미팅 완료 뒤에만 보인다(판정은 index.html의 SHIN2_FOLLOWUP_ALERT_VISIBLE).
   const visibleNow=n=>!window.SHIN2_FOLLOWUP_ALERT_VISIBLE || window.SHIN2_FOLLOWUP_ALERT_VISIBLE(n);
   let alertsHidden=false;
@@ -27,12 +43,22 @@
           if(!c.querySelector(':scope > .alert-dismiss')){
             const x=document.createElement('button');x.type='button';x.className='alert-dismiss';x.textContent='×';
             x.setAttribute('aria-label','이 알림 지우기');x.title='이 알림 지우기';
-            x.onclick=e=>{e.stopPropagation();dismissed[c.id]=cardSignature(c);try{localStorage.setItem(dismissKey,JSON.stringify(dismissed));}catch(_){}refresh();};
+            // 지금 보이는 항목만 지운 것으로 기억한다(나중에 새로 생기는 항목은 따로 뜬다)
+            x.onclick=e=>{e.stopPropagation();activeRows(c).filter(r=>!r.classList.contains('is-dismissed-row')).forEach(r=>dismissedRows.add(rowKey(c,r)));saveDismissed();refresh();};
             c.appendChild(x);
           }
-          const off=!!c.id && dismissed[c.id]!=null && dismissed[c.id]===cardSignature(c);
+          const rows=activeRows(c);
+          // 예전 카드 단위로 지웠던 줄 → 항목 기록으로 옮김(한 번)
+          const legacy=c.id && legacyDismissed[c.id];
+          if(legacy){const parts=new Set(String(legacy).split('|'));let moved=false;rows.forEach(r=>{if(parts.has(legacySig(r))){dismissedRows.add(rowKey(c,r));moved=true;}});if(moved)saveDismissed();}
+          let visible=0;
+          rows.forEach(r=>{
+            const gone=dismissedRows.has(rowKey(c,r));
+            if(r.classList.contains('is-dismissed-row')!==gone)r.classList.toggle('is-dismissed-row',gone);
+            if(gone)hiddenRows++;else visible++;
+          });
+          const off=rows.length>0 && visible===0;
           if(c.classList.contains('is-dismissed')!==off)c.classList.toggle('is-dismissed',off);
-          if(off)hiddenRows+=c.querySelectorAll('.consult-req-alert-row:not(.is-history)').length;
         });
         const cards=allCards.filter(c=>!c.classList.contains('is-dismissed'));
         const pending=(window.SHIN2_WEBSITE_CLEANUP_ITEMS || []).filter(n=>!n.completedAt && visibleNow(n)).length;
