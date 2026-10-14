@@ -8,7 +8,7 @@ const J=x=>JSON.parse(JSON.stringify(x));
 const norm=s=>String(s||'').replace(/\(주\)|㈜|주식회사|\s+/g,'').toLowerCase();
 const ctx={Date,Math,String,Set,Map,Array,Object,parseInt,isFinite,normCompanyNameForPour:norm};
 ctx.D={normCompanyName:norm,normCompanyNameForPour:norm};
-vm.runInNewContext([constBlock('POUR_IMPORT_HEADERS'),fn('pourImportHeaderKey'),fn('pourImportMapHeader'),fn('pourImportYearFrom'),fn('pourImportMonthFrom'),
+vm.runInNewContext([constBlock('POUR_IMPORT_MIN_YEAR'),constBlock('POUR_IMPORT_HEADERS'),fn('pourImportHeaderKey'),fn('pourImportMapHeader'),fn('pourImportYearFrom'),fn('pourImportMonthFrom'),
   fn('parsePourImportSheets'),fn('previewPourImport'),fn('pourImportContentKey'),fn('mergePourImportRecords'),fn('pourImportSiteKey')].join('\n'),ctx);
 ctx.D.pourImportContentKey=ctx.pourImportContentKey;ctx.D.pourImportSiteKey=ctx.pourImportSiteKey;
 
@@ -92,4 +92,9 @@ test('업체명 앤/엔 표기 차이는 같은 업체로 본다(실적 매칭 �
   const p=ctx.previewPourImport([{company:'두레이앤씨㈜',year:2026,client:'새현장',category:'재도장'}],new Set(),[{id:'1',name:'두레이엔씨'}]);
   ctx.D.normCompanyNameForPour=save;
   assert.equal(p.items[0].status,'신규');assert.equal(p.items[0].companyName,'두레이엔씨');
+});
+
+test('2024년 이전 실적은 읽어도 저장하지 않는다',()=>{
+  const p=ctx.previewPourImport([{company:'가',year:2023,client:'A',category:''},{company:'가',year:2024,client:'B',category:''}],new Set(),[]);
+  assert.deepEqual(J(p.items.map(x=>x.status)),['2024년 이전 제외','CRM 미등록 업체']);assert.equal(p.saveCount,1);
 });
