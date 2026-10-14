@@ -12768,7 +12768,7 @@ window.SHIN2_CRM_OCR = (function(){
       // 완전히 같은 메커니즘(push/pull/localRev-snapRev 충돌비교/빈 배열 가드)을 그대로
       // 재사용하며, 키 문자열은 데이터 레이어의 SALES_PENDING_LEDGER_KEY 등과 반드시 같아야
       // 한다(다른 <script> 블록이라 직접 참조 불가, 위 CO_KEY 등과 같은 이유로 리터럴 그대로).
-      const SHARED_ARRAY_KEYS = { companies: 'shin2-companies-staging', customerActivities: 'shin2-customer-activities-v1', memos: 'shin2-memos-v1', mailAssets: 'shin2-mail-assets-v1', salesLedger: 'shin2-sales-ledger-v1', salesPendingReview2026: 'shin2-sales-pending-2026-v1', salesCrossYearReview2026: 'shin2-sales-crossyear-review-2026-v1', salesCompanyReview2026: 'shin2-sales-company-review-2026-v1' };
+      const SHARED_ARRAY_KEYS = { companies: 'shin2-companies-staging', customerActivities: 'shin2-customer-activities-v1', memos: 'shin2-memos-v1', mailAssets: 'shin2-mail-assets-v1', salesLedger: 'shin2-sales-ledger-v1', salesPendingReview2026: 'shin2-sales-pending-2026-v1', salesCrossYearReview2026: 'shin2-sales-crossyear-review-2026-v1', salesCompanyReview2026: 'shin2-sales-company-review-2026-v1', alertDismissals: 'shin2-task-alerts-dismissed-rows' };   // §알림 지우기 공유 — 지운 알림 항목 키(모든 컴퓨터 공통)
       const sharedSyncStarted = {};
       const sharedPushTimers = {};
       const lifecycleSyncLocks = new Set();

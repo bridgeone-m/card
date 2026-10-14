@@ -22,7 +22,35 @@
     return 'n:'+(card.id||'')+':'+text;
   };
   const activeRows=c=>Array.from(c.querySelectorAll('.consult-req-alert-row:not(.is-history)'));
-  const saveDismissed=()=>{try{localStorage.setItem(dismissRowsKey,JSON.stringify(Array.from(dismissedRows).slice(-3000)));}catch(_){}};
+  // 지운 기록은 이 기기(localStorage)와 클라우드(alertDismissals, 모든 컴퓨터 공통) 둘 다에 둔다.
+  // 지운 항목은 늘어나기만 하므로 저장할 때마다 클라우드 값과 "합쳐서" 올린다 — 다른 컴퓨터가 지운 것을 덮어쓰지 않는다.
+  const writeLocalDismissed=()=>{try{localStorage.setItem(dismissRowsKey,JSON.stringify(Array.from(dismissedRows).slice(-3000)));}catch(_){}};
+  const sync=()=>window.SHIN2_CRM_SHARED_SYNC;
+  let cloudPushTimer=null;
+  const pushDismissedToCloud=()=>{
+    clearTimeout(cloudPushTimer);
+    cloudPushTimer=setTimeout(async()=>{
+      const S=sync(); if(!S || !S.push) return;
+      try{ if(S.getOnce){ const remote=await S.getOnce('alertDismissals'); if(Array.isArray(remote)) remote.forEach(k=>dismissedRows.add(k)); } }catch(_){ /* 읽기 실패 시 이 기기 기록만으로 올린다 */ }
+      writeLocalDismissed();
+      try{ S.push('alertDismissals', Array.from(dismissedRows).slice(-3000)); }catch(_){}
+    },400);
+  };
+  const saveDismissed=()=>{writeLocalDismissed();pushDismissedToCloud();};
+  // 다른 컴퓨터에서 지운 기록이 도착하면 합쳐서 바로 숨긴다(이 기기에만 있던 기록이 있으면 다시 올려 맞춘다)
+  window.addEventListener('shin2-crm-cloud-update',e=>{
+    if(!e || !e.detail || e.detail.key!=='alertDismissals') return;
+    let remote=[];try{remote=JSON.parse(localStorage.getItem(dismissRowsKey)||'[]')||[];}catch(_){}
+    const before=dismissedRows.size, remoteSet=new Set(remote);
+    remote.forEach(k=>dismissedRows.add(k));
+    const localOnly=Array.from(dismissedRows).some(k=>!remoteSet.has(k));
+    writeLocalDismissed();
+    if(localOnly) pushDismissedToCloud();
+    if(dismissedRows.size!==before || localOnly) window.dispatchEvent(new CustomEvent('website-cleanup-update'));
+  });
+  // 로그인 직후: 이 기기에만 있던 예전 기록도 클라우드에 한 번 합쳐 올린다
+  window.addEventListener('shin2-crm-firebase-ready',()=>{ if(dismissedRows.size) setTimeout(pushDismissedToCloud,3000); });
+  if(dismissedRows.size) setTimeout(pushDismissedToCloud,8000);
   // 예전 카드 단위 기록: 그때 지운 줄들(업체 id·이름 기준)을 항목 기록으로 한 번 옮긴다 — 이미 지운 알림이 다시 뜨지 않게
   let legacyDismissed={};
   try{legacyDismissed=JSON.parse(localStorage.getItem(dismissKey)||'{}')||{};}catch(_){}
