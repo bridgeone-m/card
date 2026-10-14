@@ -33541,6 +33541,14 @@ window.SHIN2_CRM_APP_INIT = function(){
   //
   // 이미 업로드된 파일(documents)은 지우지 않는다 — 이 화면에서 읽지도 쓰지도 않을 뿐,
   // D.documentsForCompany에 그대로 남아 있어 되돌리면 그대로 다시 보인다.
+  // §MOU 체결 서류 요청 메일 — 요청할 서류 이름(아직 체크 안 된 것, 없으면 전체)
+  function mouDocRequestLabels(companyId){
+    const co = D.findCompany(companyId);
+    let list = [];
+    try{ list = buildAgreementDocSummary(companyId).list || []; }catch(e){ list = []; }
+    const missing = list.filter(it=> !docCheckState(co, it.type, it.doc)).map(it=> it.label);
+    return missing.length ? missing : list.map(it=> it.label);
+  }
   function docCheckState(co, type, doc){
     const m = co && co.docChecks;
     if(m && Object.prototype.hasOwnProperty.call(m, type)) return !!m[type];
@@ -35110,7 +35118,8 @@ window.SHIN2_CRM_APP_INIT = function(){
       'mail-questionnaire': ()=> sentTimes(['questionnaire']),
       'mail-m1-stage': ()=> sentTimes(['firstMeeting']),
       'mail-m2-stage': ()=> sentTimes(['postSecondMeeting','secondMeetingRequest'], ts=> m2DoneTs == null || ts < m2DoneTs),
-      'mail-post-second': ()=> m2DoneTs == null ? [] : sentTimes(['postSecondMeeting'], ts=> ts >= m2DoneTs)
+      'mail-post-second': ()=> m2DoneTs == null ? [] : sentTimes(['postSecondMeeting'], ts=> ts >= m2DoneTs),
+      'mail-mou-docs': ()=> sentTimes(['documentRequest'])
     };
     body.querySelectorAll('.agr-stage-row-actions [data-agr-do]').forEach(btn=>{
       const rule = RULES[btn.getAttribute('data-agr-do')];
@@ -35181,7 +35190,7 @@ window.SHIN2_CRM_APP_INIT = function(){
                 : g.key === 'meeting2' ? agrMeetingRowHtml(g, 2)
                 : g.subRows.map(sr=> agrStageDateChipHtml(sr, g.subRows.length > 1, sr.label.replace('질문서 ', ''))).join('')
                   + (g.key === 'questionnaire' ? agrQuestionnaireAttachHtml(co.id) + agrStageMailBtnHtml('mail-questionnaire')
-                    : g.key === 'mouDone' ? (agrStageMailBtnHtml('mail-post-second') + agrMouManualChipHtml(co)) : '')}
+                    : g.key === 'mouDone' ? (agrStageMailBtnHtml('mail-mou-docs') + agrMouManualChipHtml(co)) : '')}
             </div>
           </div>`).join('')}
       </div>
@@ -35239,6 +35248,9 @@ window.SHIN2_CRM_APP_INIT = function(){
       }
       else if(action === 'mail-first-meeting') openMailComposeModal(co.id, 'firstMeeting');
       else if(action === 'mail-post-second') openMailComposeModal(co.id, 'postSecondMeeting');
+      // §MOU 체결 서류 요청 메일 — MOU 체결 완료 줄의 [메일]. 하단 [서류] 체크에서 아직 체크 안 된 서류를
+      // 본문 {요청서류목록}에 자동으로 넣는다(전부 체크돼 있으면 6종 전체를 넣는다). 메일 문구는 메일 설정의 "서류 요청".
+      else if(action === 'mail-mou-docs') openMailComposeModal(co.id, 'documentRequest', { requestedDocLabels: mouDocRequestLabels(co.id) });
       else if(action === 'mail-custom'){
         const k = btn.getAttribute('data-mail-key');
         const dd = btn.closest('details'); if(dd) dd.open = false;
