@@ -22120,12 +22120,7 @@ window.SHIN2_CRM_APP_INIT = function(){
   // 날짜를 잡자는 메일이라, 1차 미팅이 끝나기 전에 "2차 미팅 제안 메일 보내기"를 띄우면 순서가
   // 맞지 않는다. 그래서 화면에 보일 때만 거른다: 1차 미팅 완료 + 2차 미팅이 아직 잡히지도
   // 끝나지도 않은 업체만 보인다. 조건이 맞으면(1차 미팅 완료 처리) 그때 자동으로 나타난다.
-  // §알림 기준일(신규) — 2026-10-14(오늘)부터 생긴 일만 알린다. 그 전에 있었던 미팅·메일·체결 건은
-  // 알림으로 띄우지 않는다(데이터는 그대로, 화면 표시만 거른다).
-  window.SHIN2_ALERT_SINCE = Date.parse('2026-10-14T00:00:00+09:00');
-  window.SHIN2_ALERT_AFTER_SINCE = function(t){ const ts = typeof t === 'number' ? t : Date.parse(t || ''); return Number.isFinite(ts) && ts >= window.SHIN2_ALERT_SINCE; };
   window.SHIN2_FOLLOWUP_ALERT_VISIBLE = function(n){
-    if(n && !window.SHIN2_ALERT_AFTER_SINCE(n.occurredAt || n.firstSentAt)) return false;
     if(!n || n.type !== 'mail') return true;
     try{
       const co = D.findCompany(n.companyId);
@@ -29201,7 +29196,6 @@ window.SHIN2_CRM_APP_INIT = function(){
       const label = (m1st && m1st.scheduledLabel) || '';
       const p = label ? parsePartnerDateLabel(label) : null;
       if(!p || typeof p.ts !== 'number') return;
-      if(!window.SHIN2_ALERT_AFTER_SINCE(p.ts)) return;   // 기준일 이전 일정은 알리지 않는다
       const day0 = t=>{ const x = new Date(t); x.setHours(0,0,0,0); return x.getTime(); };
       const overdue = Math.round((day0(Date.now()) - day0(p.ts)) / 86400000);
       if(overdue < 0) return;   // 아직 미래 일정
@@ -29215,7 +29209,6 @@ window.SHIN2_CRM_APP_INIT = function(){
     list.forEach(co=>{
       const ask = co.followupM2MailAsk;
       if(!ask || ask.doneAt) return;
-      if(!window.SHIN2_ALERT_AFTER_SINCE(ask.since)) return;
       if(storedMailOpen.has(String(co.id))) return;
       let m2State = 'waiting';
       try{ const st = buildProgressStages(co).stages.find(x=> x.key === 'm2'); if(st) m2State = st.state; }catch(e){}
@@ -29738,7 +29731,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     // [✓]은 그 발송 기록에 replyCheckedAt만 덧붙인다(다른 기록은 그대로).
     const replyWaiting = (()=>{
       const out = [];
-      const since = Math.max(Date.now() - 60 * 864e5, window.SHIN2_ALERT_SINCE || 0);
+      const since = Date.now() - 60 * 864e5;
       (D.loadCompanies() || []).forEach(co=>{
         if(!co || co.deletedAt || !Array.isArray(co.m1MailLog)) return;
         if(D.isAgreementTerminated && D.isAgreementTerminated(co)) return;   // §상태 동기화 점검 — 협약 종료 업체 제외
@@ -34485,7 +34478,6 @@ window.SHIN2_CRM_APP_INIT = function(){
         const st = buildProgressStages(co).find(x=> x.key === 'm1');
         afterM1 = !!(st && st.state === 'done');
       }catch(err){ /* 단계 조회 실패는 우선순위에만 영향 — 알림 자체는 그대로 뜬다 */ }
-      if(!window.SHIN2_ALERT_AFTER_SINCE(r.requestedMaterialsAfterMeeting.notifiedAt)) return;   // 기준일 이전 요청은 알리지 않는다
       items.push({ co, doc:d, memo:r.requestedMaterialsAfterMeeting.memo.trim(), afterM1,
         notifiedAt:r.requestedMaterialsAfterMeeting.notifiedAt });
     });
