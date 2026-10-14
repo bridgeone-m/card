@@ -30,7 +30,8 @@
   // 2차 메일 알림은 1차 미팅 완료 뒤에만 보인다(판정은 index.html의 SHIN2_FOLLOWUP_ALERT_VISIBLE).
   const visibleNow=n=>!window.SHIN2_FOLLOWUP_ALERT_VISIBLE || window.SHIN2_FOLLOWUP_ALERT_VISIBLE(n);
   let alertsHidden=false;
-  try{alertsHidden=localStorage.getItem(visibilityKey)==='1';}catch(_){}
+  // 휴대폰에서는 처음엔 접어 둔다(화면을 가리지 않게). 사용자가 한 번 펼치거나 접으면 그 선택을 따른다.
+  try{const v=localStorage.getItem(visibilityKey);alertsHidden=v==='1'||(v==null&&!!(window.matchMedia&&window.matchMedia('(max-width: 640px)').matches));}catch(_){}
   window.crmAlertDock=function(){
     let el=document.getElementById('crmAlertDock');
     if(!el){

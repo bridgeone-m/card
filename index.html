@@ -10967,6 +10967,118 @@ body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-filters > .map
   .pdfx2-side{ border-right:0; border-bottom:1px solid #E3E8EF; max-height:42vh; }
   .pdfx2-find input{ width:140px; }
 }
+
+/* ==========================================================================
+   §모바일 최적화(신규) — 640px 이하 전용. PC 화면에는 적용되지 않는다.
+   ========================================================================== */
+.crm-mobile-map-toggle{ display:none; }
+@media (max-width: 640px){
+  /* ---- 지도: 기본 접힘, [지도 보기]로 펼침 ---- */
+  .crm-mobile-map-toggle{
+    display:flex; align-items:center; justify-content:center; gap:6px; width:calc(100% - 24px); margin:8px 12px 4px; height:40px;
+    border:1px solid #D5DCE6; border-radius:10px; background:#fff; color:#1B3A66; font:inherit; font-size:14px; font-weight:700; cursor:pointer;
+  }
+  .crm-mobile-map-toggle::before{ content:'📍'; font-size:14px; }
+  body:not(.crm-mobile-map-open) #mapDistributionModalRoot{ display:none !important; }
+  body.crm-mobile-map-open #mapDistributionModalRoot{ display:block !important; }
+
+  /* ---- 바깥 여백: 겹친 여백을 줄여 목록 폭 확보 ---- */
+  body.crm-page-shell{ padding-left:0 !important; padding-right:0 !important; }
+  #appRoot{ margin-left:0 !important; margin-right:0 !important; border-radius:0 !important; }
+  #listView .crm-main-grid{ padding:8px !important; gap:8px !important; }
+  #listView .crm-panel.crm-list-col{ padding:12px !important; }
+  /* ---- 상단 요약 카드: 2×2 ---- */
+  #crmKpiStrip{ grid-template-columns:1fr 1fr !important; gap:8px !important; }
+  #crmKpiStrip .kpi-item, #crmKpiStrip .kpi-item *{ min-width:0; }
+  #crmKpiStrip .kpi-item-label{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  /* ---- 고객 목록: 표 → 카드 ---- */
+  #crmCoTableHead{ display:none !important; }
+  .co-list .co-row{
+    display:grid !important; grid-template-columns:1fr 1fr !important;
+    grid-template-areas:"name name" "rev rev" "pour req" !important;
+    gap:6px 12px !important; padding:12px 14px !important; height:auto !important; min-height:0 !important; align-items:start !important;
+  }
+  .co-list .co-row > .col-name{ grid-area:name; min-width:0; }
+  .co-list .co-row > .col-revenue-combo{ grid-area:rev; min-width:0; }
+  .co-list .co-row > .col-pour{ grid-area:pour; min-width:0; }
+  .co-list .co-row > .col-request{ grid-area:req; min-width:0; }
+  .co-list .co-row > .col-trend, .co-list .co-row > .col-contrib{ display:none !important; }
+  .co-list .co-row *{ writing-mode:horizontal-tb !important; word-break:keep-all; }
+  .co-list .co-row .co-name-badges{ display:flex !important; align-items:center; gap:8px; min-width:0; }
+  .co-list .co-row .co-name-text{ white-space:normal !important; overflow:visible !important; text-overflow:clip !important; font-size:15px !important; font-weight:800 !important; line-height:1.35; }
+  .co-list .co-row .col-revenue-combo{ display:flex !important; flex-wrap:wrap; gap:2px 12px; font-size:12.5px; }
+  .co-list .co-row .revenue-combo-line{ display:flex !important; gap:4px; white-space:nowrap; }
+  .co-list .co-row .col-pour::before, .co-list .co-row .col-request::before{ display:block; font-size:11px; font-weight:700; color:#8A97AA; margin-bottom:2px; }
+  .co-list .co-row .col-pour::before{ content:'최근 실적'; }
+  .co-list .co-row .col-request::before{ content:'최근 요청'; }
+  .co-list .co-row .col-pour, .co-list .co-row .col-request{ display:block !important; font-size:12.5px; text-align:left !important; }
+  .co-list .co-row .col-revenue-combo{ justify-content:flex-start !important; text-align:left !important; }
+  .co-list .co-row .revenue-combo-line{ justify-content:flex-start !important; }
+  .co-list .co-row .request-cell{ text-align:left; padding:0; }
+
+  /* ---- MOU 진행상황: 표 → 카드 ---- */
+  /* 휴대폰에서는 안쪽 스크롤 상자 대신 페이지 전체가 스크롤되게(이중 스크롤 방지) */
+  #workQueueView .workq-results-scroll{ overflow:visible !important; max-height:none !important; height:auto !important; }
+  #listView .crm-main-grid, #listView .crm-list-col, #listView .co-list{ max-height:none !important; height:auto !important; overflow:visible !important; }
+  #workQueueView .workq-results-scroll table{ width:100% !important; min-width:0 !important; table-layout:auto !important; }
+  #workQueueView .workq-results-scroll thead{ display:none !important; }
+  #workQueueView .workq-results-scroll tbody, #workQueueView .workq-results-scroll tr{ display:block !important; }
+  #workQueueView .workq-results-scroll tbody tr{
+    display:grid !important; grid-template-columns:1fr auto; grid-template-areas:"name days" "stage stage" "status mail" "task task";
+    gap:6px 10px; padding:12px 14px; border-bottom:1px solid #E7ECF3; background:#fff;
+  }
+  #workQueueView .workq-results-scroll tbody td{ display:block !important; width:auto !important; padding:0 !important; border:0 !important; min-width:0; text-align:left !important; }
+  #workQueueView .workq-results-scroll tbody td:nth-child(1){ grid-area:name; font-size:15px; font-weight:800; }
+  #workQueueView .workq-results-scroll tbody td.workq-days{ grid-area:days; justify-self:end; font-size:12px; }
+  #workQueueView .workq-results-scroll tbody td.workq-stage-progress{ grid-area:stage; }
+  #workQueueView .workq-results-scroll tbody td.workq-status-cell{ grid-area:status; }
+  #workQueueView .workq-results-scroll tbody td.workq-mailinfo-cell{ grid-area:mail; }
+  #workQueueView .workq-results-scroll tbody td.workq-task-cell{ grid-area:task; }
+  #workQueueView .workq-results-scroll tbody td.workq-status-cell::before{ content:'진행 현황'; display:block; font-size:11px; font-weight:700; color:#8A97AA; margin-bottom:2px; }
+  #workQueueView .workq-results-scroll tbody td.workq-mailinfo-cell::before{ content:'최근 메일'; display:block; font-size:11px; font-weight:700; color:#8A97AA; margin-bottom:2px; }
+  #workQueueView .workq-results-scroll tbody td.workq-task-cell button{ width:100%; min-height:40px; }
+  #workQueueView .wq-st-line{ white-space:normal !important; flex-wrap:wrap; }
+
+  /* ---- 고객 상세 팝업: 전체 화면 ---- */
+  .chart-overlay{ padding:0 !important; align-items:stretch !important; }
+  .chart-overlay .chart-panel, .chart-panel{
+    width:100vw !important; max-width:100vw !important; height:100dvh !important; max-height:100dvh !important;
+    border-radius:0 !important; border:0 !important;
+  }
+  .chart-panel #chartTabBar .cdash2-tab{ min-height:44px; font-size:13.5px; }
+  .chart-panel .cdash2-header-close{ width:40px; height:40px; }
+  .chart-panel .cdet-head-contacts{ flex-wrap:wrap; gap:4px 10px; }
+  #agreementPopupBody .agr-stage-row{ flex-wrap:wrap !important; row-gap:6px; }
+  #agreementPopupBody .agr-stage-row-actions{ width:100%; justify-content:flex-start !important; flex-wrap:wrap; gap:6px; }
+  #agreementPopupBody .agr-stage-row-actions.is-slotted{ display:flex !important; }
+  #agreementPopupBody .agr-stage-row-actions .agr-slot-empty{ display:none !important; }
+  #agreementPopupBody .agr-stage-row-actions .agr-meeting-row{ display:flex !important; flex-wrap:wrap; gap:6px; width:auto !important; }
+  #agreementPopupBody .agr-stage-row-actions > *, #agreementPopupBody .agr-stage-row-actions .agr-meeting-row > *{ width:auto !important; max-width:none !important; flex:none !important; grid-column:auto !important; justify-self:auto !important; }
+  /* 팝업(고객 상세·내보내기 등)이 열려 있으면 알림 버튼이 팝업 아래 버튼을 가리지 않게 숨긴다 */
+  body.chart-lock .crm-alert-dock, body:has(#pdfExportOverlay) .crm-alert-dock{ display:none !important; }
+  #agreementPopupBody .agr-stage-row .agr-stage-row-actions.is-slotted .agr-slot-mail, #agreementPopupBody .agr-stage-row .agr-stage-row-actions.is-slotted .agr-slot-main, #agreementPopupBody .agr-stage-row .agr-stage-row-actions.is-slotted .agr-slot-pre{ width:auto !important; max-width:none !important; flex:none !important; }
+  .chart-panel button, .chart-panel .co-text-action{ min-height:34px; }
+  .cdash-footer-docs-row{ padding:8px 12px calc(8px + env(safe-area-inset-bottom)) !important; }
+
+  /* ---- 작은 확인 창(날짜 입력 등): 화면 폭에 맞춤 ---- */
+  .pi-overlay .pi-panel{ width:calc(100vw - 16px) !important; max-width:calc(100vw - 16px) !important; }
+  .pi-overlay input[type=date], .pi-overlay select, .pi-overlay input[type=text], .pi-overlay textarea{ font-size:16px !important; }  /* iOS 확대 방지 */
+
+  /* ---- 내보내기: 머리 버튼 줄바꿈, 설정 위 / 미리보기 아래 ---- */
+  .pi-overlay:has(.pdfx2-panel){ padding:0 !important; align-items:stretch !important; justify-content:stretch !important; }
+  .pi-overlay .pi-panel.pdfx2-panel{ width:100vw !important; max-width:100vw !important; height:100dvh !important; max-height:100dvh !important; border-radius:0 !important; margin:0 !important; }
+  .pdfx2-head{ flex-wrap:wrap; gap:8px; padding:10px 12px; }
+  .pdfx2-head-actions{ width:100%; justify-content:flex-end; }
+  .pdfx2-main-head{ flex-wrap:wrap; gap:6px; }
+  .pdfx2-find, .pdfx2-find input{ width:100%; }
+
+  /* ---- 알림: 화면 아래 작게, 펼쳐도 절반까지만 ---- */
+  .crm-alert-dock{ left:8px !important; right:8px !important; width:auto !important; max-width:none !important; bottom:calc(8px + env(safe-area-inset-bottom)) !important; max-height:55vh !important; }
+  .crm-alert-dock .consult-req-alert{ width:100% !important; max-width:none !important; }
+
+  /* ---- 입력칸: iOS 자동 확대 방지(16px) ---- */
+  #crmSearchInput, .search-box input, #workqSearchInput{ font-size:16px !important; }
+}
 </style>
 </head>
 <body>
@@ -11109,6 +11221,7 @@ body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-filters > .map
         <button type="button" class="gnav-drawer-item is-active" id="gnavDrawerTabCustomer">고객관리</button>
         <button type="button" class="gnav-drawer-item" id="gnavDrawerTabWorkQueue">MOU 진행상황</button>
         <button type="button" class="gnav-drawer-item" id="gnavDrawerTabMailSettings">메일 설정</button>
+        <button type="button" class="gnav-drawer-item" id="gnavDrawerExport">내보내기</button>
       </nav>
     </div>
   </div>
@@ -11120,6 +11233,8 @@ body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-filters > .map
   <div id="listView">
     <!-- §지도 왼쪽 고정 라운드 — 지도 패널 root를 #listView 맨 앞으로 옮겼다(넓은 화면에선 position:fixed로
          왼쪽에 고정되고, 좁은 화면에선 고객관리 위에 그대로 놓인다). id는 이것 하나뿐이다. -->
+    <!-- §모바일 최적화 — 휴대폰에서는 지도를 접어 두고 이 버튼으로 연다(PC에서는 버튼이 보이지 않고 지도는 그대로). -->
+    <button type="button" class="crm-mobile-map-toggle" id="crmMobileMapToggle" aria-expanded="false" aria-controls="mapDistributionModalRoot">지도 보기</button>
     <div id="mapDistributionModalRoot"></div>
     <!-- §상단 헤더 재정리 라운드 2(신규) — 사용자가 빨간 X로 지적한 "고객 N" 큰 타이틀
          영역을 화면에서 완전히 뺐다. #crmListTitle에 여러 렌더 함수(renderList/
@@ -49362,6 +49477,18 @@ if(!window.__mapxRowDelegated){
      라우팅/상태 없음. Esc/바깥 클릭/닫기버튼으로 닫히고, 열려있는 동안 배경 스크롤을
      막고 Tab 포커스를 drawer 안에 가둔다(focus trap).
      ========================================================================== */
+  // §모바일 최적화 — 지도 열고 닫기(휴대폰 폭에서만 의미가 있다. 열면 지도가 크기를 다시 잡도록 resize를 알린다)
+  (function initMobileMapToggle(){
+    const btn = document.getElementById('crmMobileMapToggle');
+    if(!btn) return;
+    btn.addEventListener('click', ()=>{
+      const open = !document.body.classList.contains('crm-mobile-map-open');
+      document.body.classList.toggle('crm-mobile-map-open', open);
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      btn.textContent = open ? '지도 닫기' : '지도 보기';
+      setTimeout(()=> window.dispatchEvent(new Event('resize')), 60);
+    });
+  })();
   (function initGnavDrawer(){
     const hamburgerBtn = document.getElementById('gnavMenuBtn');
     const overlay = document.getElementById('gnavDrawerOverlay');
@@ -49409,6 +49536,9 @@ if(!window.__mapxRowDelegated){
     if(dCust) dCust.addEventListener('click', ()=>{ showCustomerTab(); closeDrawer(); });
     if(dWq) dWq.addEventListener('click', ()=>{ showWorkQueueTab(); closeDrawer(); });
     if(dMail) dMail.addEventListener('click', ()=>{ showMailSettingsTab(); closeDrawer(); });
+    // §모바일 최적화 — 휴대폰에서는 상단 [내보내기] 버튼이 숨겨지므로 메뉴에서 같은 화면을 연다
+    const dExport = document.getElementById('gnavDrawerExport');
+    if(dExport) dExport.addEventListener('click', ()=>{ closeDrawer(); if(typeof openPdfExportModal === 'function') openPdfExportModal(); });
   })();
   // §속도 개선 라운드: 기존엔 키 입력마다 바로 renderList()(목록 전체 재계산+DOM 재생성)를
   // 불렀다 — 빠르게 타이핑하면 글자 수만큼 전체 재렌더링이 반복돼 느려진다. 이 input
