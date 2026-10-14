@@ -9,8 +9,8 @@ const norm=s=>String(s||'').replace(/\(주\)|㈜|주식회사|\s+/g,'').toLowerC
 const ctx={Date,Math,String,Set,Map,Array,Object,parseInt,isFinite,normCompanyNameForPour:norm};
 ctx.D={normCompanyName:norm};
 vm.runInNewContext([constBlock('POUR_IMPORT_HEADERS'),fn('pourImportHeaderKey'),fn('pourImportMapHeader'),fn('pourImportYearFrom'),fn('pourImportMonthFrom'),
-  fn('parsePourImportSheets'),fn('previewPourImport'),fn('pourImportContentKey'),fn('mergePourImportRecords')].join('\n'),ctx);
-ctx.D.pourImportContentKey=ctx.pourImportContentKey;
+  fn('parsePourImportSheets'),fn('previewPourImport'),fn('pourImportContentKey'),fn('mergePourImportRecords'),fn('pourImportSiteKey')].join('\n'),ctx);
+ctx.D.pourImportContentKey=ctx.pourImportContentKey;ctx.D.pourImportSiteKey=ctx.pourImportSiteKey;
 
 const sheet={name:'2026년',rows:[
   ['2026년 POUR 시공실적 리스트'],
@@ -54,4 +54,31 @@ test('병합은 추가만: 기존·클라우드 실적을 하나도 빼지 않�
   const m=ctx.mergePourImportRecords(old,remote,add);
   assert.equal(m.length,3);assert.equal(m[0],old[0]);
   assert.equal(ctx.mergePourImportRecords(m,null,add).length,3);
+});
+
+// §실제 POUR 실적 List 형식 — 업체명 머리글이 없고 표 오른쪽 이름 없는 열에 시공사, 데이터 칸에 "업체선정"·"현장 설명회" 같은 글자
+const pourList={name:'2023년',rows:[
+  [],['2023년도 POUR공법 실적 List'],[],
+  ['순번','공종','지역','도시','특허번호','발주처(아파트 명)','공   사   명','공사범위','전화번호','세대수','공사 품질'],
+  [1,'재도장','충남','서산','제10-1호','서산 한라비발디아파트 ','아파트 균열보수 및 재도장공사 업체선정 입찰공고','가. 현장 설명회 참가 업체에 한하여 교부','041',845,'','㈜석민이앤씨'],
+  [2,'재도장','부산','진구','제10-2호','백양산삼정그린코아아파트','외벽 재도장공사 업체 선정 입찰공고','','051',215,'','가나랜드㈜'],
+]};
+const noCompany={name:'2022년',rows:pourList.rows.map(r=>r.slice(0,11))};
+test('POUR 실적 List: 현장명=발주처(아파트명), 업체명=이름 없는 오른쪽 열 — 공사명/공사범위를 업체·현장으로 쓰지 않음',()=>{
+  const r=ctx.parsePourImportSheets([pourList,noCompany],'f.xlsx',2026);
+  assert.deepEqual(J(r.rows.map(x=>[x.company,x.client,x.year,x.households])),[['㈜석민이앤씨','서산 한라비발디아파트',2023,845],['가나랜드㈜','백양산삼정그린코아아파트',2023,215]]);
+  const skip=r.sheets.find(x=>x.sheetName==='2022년');assert.ok(skip.skipped);assert.match(skip.skipReason,/시공사/);
+});
+test('중복: 업체명 표기만 다른(앤씨/엔씨) 같은 연도·현장·공종 실적도 중복으로 막는다',()=>{
+  ctx.D.pourImportSiteKey=ctx.pourImportSiteKey;
+  const existing=new Set([ctx.pourImportSiteKey({company:'두레이엔씨㈜',year:2026,client:'옥길 센트리뷰아파트',category:'우레탄\n재도장'})]);
+  const p=ctx.previewPourImport([{company:'두레이앤씨㈜',year:2026,client:'옥길 센트리뷰아파트 ',category:'우레탄\r\n재도장'}],existing,[]);
+  assert.equal(p.items[0].status,'중복');assert.equal(p.saveCount,0);
+});
+test('되돌리기: 그 업로드 실적만 빠지고, 다른 컴퓨터에 남은 같은 업로드가 다시 합쳐져도 살아나지 않음',()=>{
+  const a={company:'가',year:2026,client:'A',category:'',importBatchId:'b1'},b={company:'나',year:2026,client:'B',category:'',importBatchId:'b2'};
+  const undone=ctx.mergePourImportRecords([a,b],null,[{removedBatchId:'b1'}]);
+  assert.deepEqual(J(undone.filter(r=>!r.removedBatchId).map(r=>r.company)),['나']);
+  const again=ctx.mergePourImportRecords([a,b],undone,[]);
+  assert.deepEqual(J(again.filter(r=>!r.removedBatchId).map(r=>r.company)),['나']);
 });

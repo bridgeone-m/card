@@ -17000,24 +17000,34 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
     return [normCompanyNameForPour(r && r.company), r && r.year != null ? r.year : '', t(r && r.client), t(r && r.category)].join('|');
   }
   // 이미 있는 모든 실적(정적 스냅샷 + 라이브 낙찰 + 업로드)의 내용 키
+  // 업체명 없이 연도·현장·공종만으로 만든 키 — 업체명 표기만 바뀐(예: 앤씨/엔씨) 같은 실적도 중복으로 잡는다
+  function pourImportSiteKey(r){
+    const t = v=> String(v == null ? '' : v).replace(/\s+/g, '').toLowerCase();
+    return 'site|' + [r && r.year != null ? r.year : '', t(r && r.client), t(r && r.category)].join('|');
+  }
   function buildPourExistingContentKeys(){
     const keys = new Set();
-    buildPourRecordIndex().forEach(list=> list.forEach(r=> keys.add(pourImportContentKey(r))));
+    buildPourRecordIndex().forEach(list=> list.forEach(r=>{ keys.add(pourImportContentKey(r)); keys.add(pourImportSiteKey(r)); }));
     return keys;
   }
   // mergePourImportRecords: 기존(로컬 + 클라우드에서 받은 것) 합집합에 새 실적을 붙인다. 아무것도 빼지 않는다.
+  // 되돌린 업로드는 {removedBatchId} 표시를 남겨, 다른 컴퓨터에 남아 있던 같은 업로드가 다시 합쳐져 살아나지 않게 한다.
+  // (이 표시에는 업체명이 없어 실적 목록·지도에는 나오지 않는다.) 업로드 실적 외의 데이터는 건드리지 않는다.
   function mergePourImportRecords(existing, remote, newRecs){
+    const all = [].concat(existing || [], remote || [], newRecs || []);
+    const removed = new Set(all.filter(r=> r && r.removedBatchId).map(r=> r.removedBatchId));
     const out = [], seen = new Set();
-    [existing || [], remote || [], newRecs || []].forEach(arr=> arr.forEach(r=>{
+    all.forEach(r=>{
       if(!r) return;
-      const k = pourImportContentKey(r);
+      if(!r.removedBatchId && r.importBatchId && removed.has(r.importBatchId)) return;
+      const k = r.removedBatchId ? 'removed|' + r.removedBatchId : pourImportContentKey(r);
       if(seen.has(k)) return;
       seen.add(k); out.push(r);
-    }));
+    });
     return out;
   }
-  function savePourImportRecords(merged){
-    const ok = writeArr(POUR_IMPORT_KEY, merged);
+  function savePourImportRecords(merged, allowShrink){
+    const ok = writeArr(POUR_IMPORT_KEY, merged, allowShrink ? { allowShrink:true } : undefined);
     invalidatePourRecordIndexCache();
     return ok;
   }
@@ -18199,7 +18209,7 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
     previewMergeDuplicateCompanies, applyMergeDuplicateCompanies,
     findDuplicateCompanyGroupsByName, findDuplicateCompanyGroupsByBizNo,
     previewPourTrackImport, applyPourTrackImport, applyPourExcelImportRecords,
-    loadPourImportRecords, pourImportContentKey, buildPourExistingContentKeys, mergePourImportRecords, savePourImportRecords, restorePourImportRecords,
+    loadPourImportRecords, pourImportContentKey, pourImportSiteKey, buildPourExistingContentKeys, mergePourImportRecords, savePourImportRecords, restorePourImportRecords,
     REQUESTED_MATERIAL_TYPES, REQUESTED_MATERIAL_STATUSES,
     addRequestedMaterial, addRequestedMaterialIfNew, removeRequestedMaterial, setRequestedMaterialStatus, extractRequestedMaterialsFromActivities,
     normCompanyName, findSimilarCompanySuggestions,
@@ -39310,7 +39320,7 @@ window.SHIN2_CRM_APP_INIT = function(){
      ========================================================================== */
   const POUR_IMPORT_HEADERS = {
     company: ['시공사','업체명','시공업체','시공사명','회사명','협력사','협력업체','업체'],
-    client: ['현장명','단지명','아파트명','현장','공사명','발주처'],
+    client: ['현장명','단지명','아파트명','발주처','현장'],
     category: ['공종','공법','공사종류','시공내용','공사내용','공정','공사구분'],
     region: ['지역','시도','광역시도'],
     city: ['시군구','시/군/구','시/군','시군','도시','시군명'],
@@ -39330,7 +39340,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       let idx = -1;
       for(const n of names){ idx = cells.findIndex((c, i)=> !used.has(i) && c === n); if(idx >= 0) break; }
       if(idx < 0) for(const n of names){
-        idx = cells.findIndex((c, i)=> !used.has(i) && c && c.includes(n) && !(field !== 'patentNo' && /코드|번호|담당|소장|연락/.test(c)));
+        idx = cells.findIndex((c, i)=> !used.has(i) && c && c.length <= 12 && c.includes(n) && !(field !== 'patentNo' && /코드|번호|담당|소장|연락/.test(c)));
         if(idx >= 0) break;
       }
       if(idx >= 0){ map[field] = idx; used.add(idx); }
@@ -39372,10 +39382,28 @@ window.SHIN2_CRM_APP_INIT = function(){
       const rows = sh.rows || [];
       let headerAt = -1, map = null;
       for(let i = 0; i < Math.min(rows.length, 25); i++){
-        const m = pourImportMapHeader(rows[i]);
-        if(m.company != null && m.client != null){ headerAt = i; map = m; break; }
+        const row = rows[i] || [];
+        // 머리글 줄은 칸이 모두 짧다(긴 공사 설명이 들어 있는 데이터 줄은 머리글이 아니다)
+        if(row.some(v=> typeof v === 'string' && v.trim().length > 30)) continue;
+        const m = pourImportMapHeader(row);
+        if(m.client == null) continue;
+        if(m.company != null || Object.keys(m).length >= 3){ headerAt = i; map = m; break; }
       }
-      if(headerAt < 0){ info.push({ sheetName: sh.name, skipped:true, skipReason:'업체명·현장명 머리글 없음', count:0 }); return; }
+      if(headerAt < 0){ info.push({ sheetName: sh.name, skipped:true, skipReason:'현장명(발주처) 머리글 없음', count:0 }); return; }
+      if(map.company == null){
+        // POUR 실적 List: 머리글이 없는 오른쪽 열에 시공사가 적혀 있다 — 현장이 있는 줄의 절반 이상이 채워진 열만 인정
+        const hdrLen = (rows[headerAt] || []).reduce((n, v, i)=> String(v == null ? '' : v).trim() ? i + 1 : n, 0);
+        const data = rows.slice(headerAt + 1).filter(r=> r && cellText(r[map.client]));
+        let best = -1, bestCnt = 0;
+        const cnt = {};
+        data.forEach(r=> (r || []).forEach((v, i)=>{ if(i >= hdrLen && cellText(v) && cellText(v).length <= 40) cnt[i] = (cnt[i] || 0) + 1; }));
+        Object.keys(cnt).forEach(i=>{ if(cnt[i] > bestCnt){ bestCnt = cnt[i]; best = +i; } });
+        if(best < 0 || bestCnt < data.length * 0.5){
+          info.push({ sheetName: sh.name, skipped:true, skipReason:'시공사(업체명) 열 없음', count:0 });
+          return;
+        }
+        map.company = best;
+      }
       const sheetYear = pourImportYearFrom(sh.name);
       let count = 0, noYear = 0;
       for(let i = headerAt + 1; i < rows.length; i++){
@@ -39383,7 +39411,7 @@ window.SHIN2_CRM_APP_INIT = function(){
         const company = cellText(r[map.company]);
         const client = cellText(r[map.client]);
         if(!company || !client) continue;
-        if(pourImportHeaderKey(company) === pourImportHeaderKey(rows[headerAt][map.company])) continue; // 반복 머리글
+        if(pourImportHeaderKey(company) === pourImportHeaderKey(rows[headerAt][map.company]) || pourImportHeaderKey(client) === pourImportHeaderKey(rows[headerAt][map.client])) continue; // 반복 머리글
         const dateVal = map.date != null ? r[map.date] : null;
         let year = map.year != null ? pourImportYearFrom(r[map.year]) : null;
         if(year == null) year = pourImportYearFrom(dateVal);
@@ -39427,15 +39455,16 @@ window.SHIN2_CRM_APP_INIT = function(){
     const inFile = new Set();
     const items = (rows || []).map(row=>{
       const key = D.pourImportContentKey(row);
+      const siteKey = D.pourImportSiteKey(row);
       const hits = byNorm.get(D.normCompanyName(row.company)) || [];
       let status;
       if(row.year == null) status = '연도 확인 필요';
-      else if(existingKeys.has(key)) status = '중복';
-      else if(inFile.has(key)) status = '파일 내 중복';
+      else if(existingKeys.has(key) || existingKeys.has(siteKey)) status = '중복';
+      else if(inFile.has(key) || inFile.has(siteKey)) status = '파일 내 중복';
       else if(hits.length > 1) status = '업체 확인 필요';
       else if(hits.length === 1) status = '신규';
       else status = 'CRM 미등록 업체';
-      inFile.add(key);
+      inFile.add(key); inFile.add(siteKey);
       return { row, key, status, companyName: hits.length === 1 ? hits[0].name : '', candidates: hits.length };
     });
     const counts = {};
@@ -39458,6 +39487,26 @@ window.SHIN2_CRM_APP_INIT = function(){
     });
     return Array.from(byBatch.values()).sort((a,b)=> String(b.importedAt||'').localeCompare(String(a.importedAt||'')));
   }
+  // undoPourImportBatch: 한 번의 업로드로 들어간 실적만 빼낸다(관리자, 확인 후). 기존 실적·다른 업로드는 그대로.
+  async function undoPourImportBatch(batchId){
+    if(!window.crmAdminOk('실적 업로드 되돌리기')) return { ok:false, message:'관리자 모드에서만 할 수 있습니다.' };
+    const S = window.SHIN2_CRM_SHARED_SYNC;
+    if(!S || !S.pushAsync) return { ok:false, message:'클라우드에 연결되지 않아 되돌리지 않았습니다.' };
+    let remote = null;
+    try{ if(S.getOnce) remote = await S.getOnce('pourImportRecords'); }
+    catch(e){ return { ok:false, message:'클라우드의 기존 실적을 확인하지 못해 되돌리지 않았습니다 — 잠시 뒤 다시 시도해 주세요.' }; }
+    const prev = D.loadPourImportRecords();
+    const before = D.mergePourImportRecords(prev, remote, []);
+    const merged = D.mergePourImportRecords(prev, remote, [{ removedBatchId: batchId, removedAt: new Date().toISOString() }]);
+    const removedCount = before.filter(r=> r.importBatchId === batchId && !r.removedBatchId).length;
+    if(!D.savePourImportRecords(merged, true)) return { ok:false, message:'이 컴퓨터에 저장하지 못했습니다.' };
+    try{ await S.pushAsync('pourImportRecords', merged); }
+    catch(e){
+      D.restorePourImportRecords(prev);
+      return { ok:false, message:'클라우드 저장에 실패해 되돌리기를 취소했습니다: ' + (e && e.message || e) };
+    }
+    return { ok:true, removedCount };
+  }
   // applyPourImport: 새 실적만 추가 저장. 클라우드 저장이 확인되지 않으면 이 컴퓨터 저장도 되돌린다.
   async function applyPourImport(preview, meta){
     const S = window.SHIN2_CRM_SHARED_SYNC;
@@ -39476,7 +39525,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     const prev = D.loadPourImportRecords();
     const merged = D.mergePourImportRecords(prev, remote, newRecs);
     const added = merged.length - D.mergePourImportRecords(prev, remote, []).length;
-    if(!D.savePourImportRecords(merged)) return { ok:false, message:'이 컴퓨터에 저장하지 못했습니다(저장 공간 확인).' };
+    if(!D.savePourImportRecords(merged, true)) return { ok:false, message:'이 컴퓨터에 저장하지 못했습니다(저장 공간 확인).' };
     try{ await S.pushAsync('pourImportRecords', merged); }
     catch(e){
       D.restorePourImportRecords(prev);
@@ -39543,7 +39592,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       ${skipped.length ? `<div class="sales-import-skip-note">건너뛴 시트: ${skipped.map(x=> esc(x.sheetName) + '(' + esc(x.skipReason) + ')').join(', ')}</div>` : ''}
       ${noYear ? `<div class="sales-import-skip-note">연도 열·시트 이름에서 연도를 찾지 못한 ${noYear}건은 위에서 정한 연도로 반영됩니다(표에 * 표시).</div>` : ''}
       ${st.error ? `<div class="delete-co-modal-err">${esc(st.error)}</div>` : ''}
-      ${st.result ? (st.result.ok ? `<div style="color:#1E7B34;margin:8px 0;">확정 반영 완료 — 새 실적 ${st.result.added}건을 추가했습니다.</div>` : `<div class="delete-co-modal-err">${esc(st.result.message)}</div>`) : ''}
+      ${st.result ? (st.result.ok ? `<div style="color:#1E7B34;margin:8px 0;">${st.result.undone != null ? '되돌리기 완료 — 그 업로드의 실적 ' + st.result.undone + '건을 뺐습니다.' : '확정 반영 완료 — 새 실적 ' + st.result.added + '건을 추가했습니다.'}</div>` : `<div class="delete-co-modal-err">${esc(st.result.message)}</div>`) : ''}
       ${p ? `
       <div class="sales-import-summary">
         <span>인식 <b>${p.total}</b>건</span>
@@ -39563,7 +39612,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       ${history.length ? `
       <div class="sales-import-history">
         <div class="sales-import-history-title">업로드 이력</div>
-        ${history.map(h=> `<div class="sales-import-history-row">${esc(h.fileName || h.batchId)} · ${esc(h.importedAt ? new Date(h.importedAt).toLocaleString('ko-KR', { dateStyle:'short', timeStyle:'short' }) : '')} · ${h.count}건 · 반영완료</div>`).join('')}
+        ${history.map(h=> `<div class="sales-import-history-row">${esc(h.fileName || h.batchId)} · ${esc(h.importedAt ? new Date(h.importedAt).toLocaleString('ko-KR', { dateStyle:'short', timeStyle:'short' }) : '')} · ${h.count}건 · 반영완료 <button type="button" class="co-text-action" data-pour-undo="${esc(h.batchId)}" data-pour-undo-count="${h.count}" style="margin-left:6px;font-size:11.5px;padding:1px 8px;">되돌리기</button></div>`).join('')}
       </div>` : ''}
     `;
     const canApply = p && p.saveCount > 0 && !st.applying;
@@ -39607,6 +39656,24 @@ window.SHIN2_CRM_APP_INIT = function(){
       }catch(e){ st.error = '엑셀을 읽는 중 오류가 발생했습니다: ' + (e && e.message || e); }
       renderPourImportModal();
     });
+    root.querySelectorAll('[data-pour-undo]').forEach(btn=> btn.addEventListener('click', async ()=>{
+      if(st.applying) return;
+      const id = btn.getAttribute('data-pour-undo');
+      if(!confirm(`이 업로드로 추가된 실적 ${btn.getAttribute('data-pour-undo-count')}건을 빼냅니다.\n기존 실적과 다른 업로드는 그대로입니다. 계속할까요?`)) return;
+      st.applying = true;
+      renderPourImportModal();
+      let r;
+      try{ r = await undoPourImportBatch(id); }
+      catch(e){ r = { ok:false, message:'되돌리는 중 오류가 발생했습니다: ' + (e && e.message || e) }; }
+      st.applying = false;
+      if(pourImportState !== st) return;
+      st.result = r.ok ? { ok:true, added:0, undone:r.removedCount } : { ok:false, message:r.message };
+      if(r.ok){
+        if(st.parsed && st.parsed.rows.length) st.preview = previewPourImport(st.parsed.rows, D.buildPourExistingContentKeys(), D.loadActiveCompanies ? D.loadActiveCompanies() : D.loadCompanies());
+        renderList();
+      }
+      renderPourImportModal();
+    }));
     const applyBtn = document.getElementById('pourImportApplyBtn');
     if(applyBtn) applyBtn.addEventListener('click', async ()=>{
       if(!p || !p.saveCount || st.applying) return;
