@@ -11087,6 +11087,14 @@ body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-filters > .map
 body:not(.crm-admin-mode) #crmAlertDock{ display:none !important; }
 .crm-admin-mode-btn{ font-weight:700; }
 body.crm-admin-mode .crm-admin-mode-btn{ color:#1B3A66; }
+.gnav-tool-btn.crm-admin-lock{ min-width:38px; padding:0 9px !important; font-size:16px !important; line-height:1; justify-content:center; }
+body.crm-admin-mode .gnav-tool-btn.crm-admin-lock{ background:#EEF4FF !important; border-color:#B9D0EE !important; }
+/* 알림 카드 — PC에서는 크기를 절반 정도로(글자·여백을 함께 줄인다). 휴대폰 화면은 기존 모바일 배치 그대로. */
+@media (min-width:761px){
+  .crm-alert-dock{ width:238px !important; max-height:calc(60dvh) !important; }
+  .crm-alert-dock > .consult-req-alert{ zoom:.72; }
+  .crm-alert-dock .alert-dock-toggle{ zoom:.85; }
+}
 
 /* §관리자 전용 작업(신규) — 관리자 모드가 아니면 등록·수정·삭제 계열 버튼을 숨긴다(눌러도 막히지만 보이지도 않게) */
 body:not(.crm-admin-mode) #crmAddBtn,
@@ -11184,21 +11192,13 @@ body:not(.crm-admin-mode) #crmSalesImportBtn{ display:none !important; }
       <!-- §상단 검색창 삭제 라운드(신규) — 사용자 요청으로 상단 메뉴의 "업체 검색" 칸을 뺐다.
            고객목록 검색창(#crmSearchInput)과 같은 검색을 하던 중복 입력칸이었다.
            bindNfNavSearch()는 이 칸이 없으면 첫 줄에서 그냥 빠져나온다. -->
+      <button type="button" id="crmAdminModeBtn" class="gnav-tool-btn crm-admin-mode-btn crm-admin-lock" title="관리자 모드 켜기" aria-label="관리자 모드 켜기">🔒</button>
       <div class="update-menu-wrap gnav-tool-wrap" id="crmUpdateMenuWrap">
         <button type="button" id="crmDataUpdateBtn" class="gnav-tool-btn">관리 도구 <span id="crmDataUpdateReviewBadge" class="unreg-badge" style="display:none;"></span> ▾</button>
         <div class="update-menu" id="crmUpdateMenu">
           <!-- §미팅 후 요청자료 라운드(신규) — 새 알림 시스템을 따로 만들지 않고, 이미 있는
                관리 도구 드롭다운 + 외곽 배지(#crmDataUpdateReviewBadge) 구조를 그대로 쓴다. -->
-          <button type="button" id="crmAdminModeBtn" class="crm-admin-mode-btn">관리자 모드 켜기</button>
-          <div class="update-menu-divider"></div>
-          <div class="update-menu-group-label">업무</div>
-          <button type="button" id="crmWebsiteCleanupHistoryBtn">홈페이지 정리 완료 이력</button>
-          <button type="button" id="crmFollowupHistoryBtn">후속 업무 완료 이력</button>
-          <button type="button" id="crmReqMatBtn">미팅 후 요청자료 <span id="crmReqMatCount" class="update-menu-count"></span></button>
-          <div class="update-menu-divider"></div>
           <div class="update-menu-group-label">데이터 정리</div>
-          <button type="button" id="crmMergeDupBtn">중복 업체 병합 <span id="crmMergeDupCount" class="update-menu-count"></span></button>
-          <button type="button" id="crmAffiliateReviewBtn">계열사 관계 후보 검토</button>
           <button type="button" id="crmGsheetReviewBtn">Google Sheets 확인 필요 <span id="crmGsheetReviewCount"></span></button>
           <span id="pourWonSyncNote" style="font-size:12px;color:var(--muted,#888);margin-left:4px;"></span>
           <span id="orphanedDeletedNote" style="font-size:12px;color:#B23B3B;margin-left:4px;cursor:pointer;"></span>
@@ -37691,7 +37691,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     const item = document.getElementById('crmReqMatCount');
     if(item) item.textContent = pending.length ? ('(' + pending.length + ')') : '';
     const gs = (gsheetImportState.reviewItems || []).length;
-    const total = gs + pending.length;
+    const total = gs;
     const outerBadge = document.getElementById('crmDataUpdateReviewBadge');
     if(outerBadge){
       if(total){ outerBadge.textContent = String(total); outerBadge.style.display = ''; }
@@ -49468,7 +49468,6 @@ if(!window.__mapxRowDelegated){
   // §외부 동기화 제거 라운드(신규) — 전체 동기화/협력업체 동기화/진행현황 동기화/공개범위
   // 가져오기/레거시 데이터 업데이트/동기화 진단 버튼과 그 리스너를 전부 제거했다(§요청 3).
   // "관리 도구" 드롭다운 자체와, 외부 사이트를 부르지 않는 "계열사 관계 후보 검토"만 남긴다.
-  document.getElementById('crmAffiliateReviewBtn').addEventListener('click', ()=>{ closeUpdateMenu(); openAffiliateReviewModal(); });
   document.getElementById('crmSignOutBtn').addEventListener('click', ()=>{
     closeUpdateMenu();
     if(!confirm('로그아웃할까요? 이 컴퓨터에서 다시 이용하려면 공용 비밀번호를 다시 입력해야 합니다.')) return;
@@ -49481,14 +49480,11 @@ if(!window.__mapxRowDelegated){
   document.getElementById('crmLocalCloudDiagBtn').addEventListener('click', ()=>{ closeUpdateMenu(); openLocalCloudDiagModal(); });
   document.getElementById('crmGiftGradeBtn').addEventListener('click', ()=>{ closeUpdateMenu(); openGiftGradeModal(); });
   document.getElementById('crmGsheetReviewBtn').addEventListener('click', ()=>{ closeUpdateMenu(); openGsheetReviewModal(); });
-  // §미팅 후 요청자료 라운드(신규) — 기존 드롭다운 항목과 같은 방식(메뉴 닫고 모달 열기).
-  document.getElementById('crmReqMatBtn').addEventListener('click', ()=>{ closeUpdateMenu(); openRequestMaterialModal(); });
   renderRequestMaterialBadge();   // 첫 진입 시 발송대기 건수를 배지에 반영
   // §관리 도구 정리 라운드(신규) — 위 두 버튼을 메뉴에서 뺐으므로 바인딩도 함께 뺀다.
   // (버튼이 없는 상태에서 getElementById(...).addEventListener를 부르면 그 뒤의 다른
   //  바인딩까지 통째로 죽는다.)
   document.getElementById('crmSalesImportBtn').addEventListener('click', ()=>{ closeUpdateMenu(); openSalesImportModal(); });
-  document.getElementById('crmMergeDupBtn').addEventListener('click', ()=>{ closeUpdateMenu(); openDupListModal(); });
   function closeUpdateMenu(){ document.getElementById('crmUpdateMenu').classList.remove('is-open'); }
   // §디자인 진단 P2-5: 드롭다운을 열 때만 건수를 계산해 배지에 채운다(무거운 연산을
   // 매 렌더마다 돌리지 않기 위해 열 때만 호출) — 이미 있는 조회 함수만 재사용한다.
@@ -49545,7 +49541,14 @@ if(!window.__mapxRowDelegated){
     const apply = ()=>{
       const on = isAdmin();
       document.body.classList.toggle('crm-admin-mode', on);
-      document.querySelectorAll('.crm-admin-mode-btn').forEach(b=>{ b.textContent = on ? '관리자 모드 끄기 (관리자)' : '관리자 모드 켜기'; });
+      document.querySelectorAll('.crm-admin-mode-btn').forEach(b=>{
+        if(b.classList.contains('crm-admin-lock')){
+          b.textContent = on ? '🔓' : '🔒';
+          b.title = on ? '관리자 모드 켜짐 — 누르면 끕니다' : '관리자 모드 켜기';
+          b.setAttribute('aria-label', b.title);
+          b.setAttribute('aria-pressed', String(on));
+        } else b.textContent = on ? '관리자 모드 끄기 (관리자)' : '관리자 모드 켜기';
+      });
       window.dispatchEvent(new CustomEvent('website-cleanup-update'));
       window.dispatchEvent(new CustomEvent('website-cleanup-update-data'));
     };
