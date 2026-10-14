@@ -11087,6 +11087,13 @@ body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-filters > .map
 body:not(.crm-admin-mode) #crmAlertDock{ display:none !important; }
 .crm-admin-mode-btn{ font-weight:700; }
 body.crm-admin-mode .crm-admin-mode-btn{ color:#1B3A66; }
+#adminOnlyNotice{ z-index:10020 !important; }
+.admin-only-panel{ max-width:300px !important; width:calc(100vw - 40px); padding:20px 18px 16px !important; text-align:center; }
+.admin-only-ico{ font-size:26px; line-height:1; margin-bottom:8px; }
+.admin-only-title{ font-size:15px; font-weight:800; color:#17345F; margin-bottom:4px; }
+.admin-only-text{ font-size:12.5px; color:#5B6B82; line-height:1.5; }
+.admin-only-actions{ display:flex; gap:8px; justify-content:center; margin-top:14px; }
+.admin-only-actions .co-text-action{ min-width:96px; justify-content:center; }
 .gnav-tool-btn.crm-admin-lock{ min-width:38px; padding:0 9px !important; font-size:16px !important; line-height:1; justify-content:center; }
 body.crm-admin-mode .gnav-tool-btn.crm-admin-lock{ background:#EEF4FF !important; border-color:#B9D0EE !important; }
 /* 알림 카드 — PC에서는 크기를 절반 정도로(글자·여백을 함께 줄인다). 휴대폰 화면은 기존 모바일 배치 그대로. */
@@ -11097,7 +11104,6 @@ body.crm-admin-mode .gnav-tool-btn.crm-admin-lock{ background:#EEF4FF !important
 }
 
 /* §관리자 전용 작업(신규) — 관리자 모드가 아니면 등록·수정·삭제 계열 버튼을 숨긴다(눌러도 막히지만 보이지도 않게) */
-body:not(.crm-admin-mode) #crmAddBtn,
 body:not(.crm-admin-mode) #cdashCompanySummaryEditBtn,
 body:not(.crm-admin-mode) #cdashInfoEditBtn,
 body:not(.crm-admin-mode) .agr-admin-mini-row,
@@ -32661,6 +32667,7 @@ window.SHIN2_CRM_APP_INIT = function(){
   // 없어 가볍지만, 다른 두 탭과 일관되게 "화면 전환 먼저, 렌더는 다음 프레임" 원칙을
   // 똑같이 적용한다(§요청 5 "메인 탭 클릭 후 기본 화면 표시" 전부에 적용).
   function showMailSettingsTab(){
+    if(!window.crmAdminOk('메일 설정')) return;
     listView.style.display = 'none';
     cardView.style.display = 'none';
     document.getElementById('workQueueView').style.display = 'none';
@@ -49531,9 +49538,37 @@ if(!window.__mapxRowDelegated){
   // 버튼은 숨기고, 다른 경로로 들어와도 여기서 한 번 더 막는다(데이터는 바꾸지 않고 안내만).
   window.crmAdminOk = function(what){
     if(document.body.classList.contains('crm-admin-mode')) return true;
-    alert((what || '이 작업') + '은(는) 관리자 모드에서만 할 수 있습니다.\n[관리 도구] 또는 메뉴의 [관리자 모드 켜기]를 이용해 주세요.');
+    showAdminOnlyNotice(what);
     return false;
   };
+  // 관리자 전용 안내 팝업 — 작게 띄우고, [관리자 모드 켜기]를 누르면 🔒 버튼과 같은 비밀번호 확인으로 이어진다.
+  function showAdminOnlyNotice(what){
+    const prev = document.getElementById('adminOnlyNotice');
+    if(prev) prev.remove();
+    const el = document.createElement('div');
+    el.className = 'pi-overlay';
+    el.id = 'adminOnlyNotice';
+    el.innerHTML = `
+      <div class="pi-panel admin-only-panel" role="alertdialog" aria-modal="true" aria-labelledby="adminOnlyTitle">
+        <div class="admin-only-ico" aria-hidden="true">🔒</div>
+        <div class="admin-only-title" id="adminOnlyTitle">관리자만 가능합니다</div>
+        <div class="admin-only-text">${String(what || '이 작업').replace(/[&<>"]/g, c=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}은(는) 관리자 모드에서만 할 수 있습니다.</div>
+        <div class="admin-only-actions">
+          <button type="button" class="co-text-action" data-admin-only-close>닫기</button>
+          <button type="button" class="co-text-action primary" data-admin-only-on>관리자 모드 켜기</button>
+        </div>
+      </div>`;
+    document.body.appendChild(el);
+    const close = ()=> el.remove();
+    el.querySelector('[data-admin-only-close]').addEventListener('click', close);
+    el.querySelector('[data-admin-only-on]').addEventListener('click', ()=>{
+      close();
+      const lock = document.getElementById('crmAdminModeBtn') || document.getElementById('gnavDrawerAdminMode');
+      if(lock) lock.click();
+    });
+    el.addEventListener('mousedown', e=>{ if(e.target === el) close(); });
+    el.querySelector('[data-admin-only-on]').focus();
+  }
   (function initAdminMode(){
     const ADMIN_KEY = 'shin2-crm-admin-mode';
     const ADMIN_HASH = '51d6665379fd8750f5365013bc32e082c3ffc4c36c004fde8a57080f14ce3bf6';
@@ -49598,6 +49633,8 @@ if(!window.__mapxRowDelegated){
         if(!confirm('관리자 모드를 끌까요? 이 컴퓨터에서 업무 알림이 보이지 않게 됩니다.')) return;
         try{ localStorage.removeItem(ADMIN_KEY); }catch(e){}
         apply();
+        const mailView = document.getElementById('mailSettingsView');
+        if(mailView && mailView.style.display === 'block') showCustomerTab();
       } else openAdminPrompt();
     }
     document.querySelectorAll('.crm-admin-mode-btn').forEach(b=> b.addEventListener('click', ()=>{
