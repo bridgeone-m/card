@@ -11105,6 +11105,7 @@ body.crm-admin-mode .crm-admin-mode-btn{ color:#1B3A66; }
 .admin-only-text{ font-size:12.5px; color:#5B6B82; line-height:1.5; }
 .admin-only-actions{ display:flex; gap:8px; justify-content:center; margin-top:14px; }
 .admin-only-actions .co-text-action{ min-width:96px; justify-content:center; }
+.gnav-right .gnav-tool-btn#crmDataUpdateBtn.crm-tools-gear, .gnav-tool-btn#crmDataUpdateBtn.crm-tools-gear{ min-width:38px; padding:0 9px !important; font-size:16px !important; line-height:1; justify-content:center; }
 .gnav-tool-btn.crm-admin-lock{ min-width:38px; padding:0 9px !important; font-size:16px !important; line-height:1; justify-content:center; }
 body.crm-admin-mode .gnav-tool-btn.crm-admin-lock{ background:#EEF4FF !important; border-color:#B9D0EE !important; }
 /* 알림 카드 — PC에서는 크기를 절반 정도로(글자·여백을 함께 줄인다). 휴대폰 화면은 기존 모바일 배치 그대로. */
@@ -11462,7 +11463,7 @@ body.crm-risk-view #listView .co-row .col-request, body.crm-risk-view #crmCoTabl
            bindNfNavSearch()는 이 칸이 없으면 첫 줄에서 그냥 빠져나온다. -->
       <button type="button" id="crmAdminModeBtn" class="gnav-tool-btn crm-admin-mode-btn crm-admin-lock" title="관리자 모드 켜기" aria-label="관리자 모드 켜기">🔒</button>
       <div class="update-menu-wrap gnav-tool-wrap" id="crmUpdateMenuWrap">
-        <button type="button" id="crmDataUpdateBtn" class="gnav-tool-btn">관리 도구 <span id="crmDataUpdateReviewBadge" class="unreg-badge" style="display:none;"></span> ▾</button>
+        <button type="button" id="crmDataUpdateBtn" class="gnav-tool-btn crm-tools-gear" title="관리 도구" aria-label="관리 도구" aria-haspopup="menu">⚙️</button>
         <div class="update-menu" id="crmUpdateMenu">
           <!-- §미팅 후 요청자료 라운드(신규) — 새 알림 시스템을 따로 만들지 않고, 이미 있는
                관리 도구 드롭다운 + 외곽 배지(#crmDataUpdateReviewBadge) 구조를 그대로 쓴다. -->
