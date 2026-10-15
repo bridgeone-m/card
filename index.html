@@ -10277,15 +10277,38 @@ body.crm-mapdock[data-crm-view="listView"] #crmMiniMapAlarm .sa-alarm-list > *{ 
 body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-tabs{
   padding-top:8px !important; padding-bottom:8px !important;
 }
-/* §지도 패널 폭 축소 라운드 — 좁아진 패널에서 탭 3개가 [필터 초기화]·[PDF 내보내기]와 한 줄에 몰려 글자가 잘렸다.
-   탭은 한 줄 전체를 쓰고, 버튼은 그 아래 줄 오른쪽으로. 제목·설명은 위아래로 놓아 제목이 꺾이지 않게. */
-body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-tabs{ flex-wrap:wrap !important; row-gap:8px !important; }
-body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-tabs-list{ flex:1 1 100% !important; width:100% !important; min-width:0 !important; }
-body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-tabs-actions:not(:empty){ flex:1 1 100% !important; display:flex !important; justify-content:flex-end !important; gap:6px !important; flex-wrap:wrap; }
+/* §지도 패널 정리 라운드 — ① 머리글(아이콘·제목·설명) 없애고 탭을 맨 위로
+   ② 결과 목록은 지도 왼쪽에 떠 있는 작은 팝업(머리를 누르면 접힘)
+   ③ [필터 초기화]·[PDF 내보내기]는 그 팝업 머리 오른쪽에 작게. 지도는 남는 높이를 전부 쓴다. */
+body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-head{ display:none !important; }
+body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-tabs{ padding-top:10px !important; padding-bottom:8px !important; }
+body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-tabs-list{ width:100% !important; }
 body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-tab-btn{ flex:1 1 0 !important; min-width:0 !important; white-space:nowrap !important; }
-body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-title-wrap{ display:flex !important; flex-direction:column !important; align-items:flex-start !important; gap:2px !important; min-width:0; }
-body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-title{ white-space:nowrap !important; }
-body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-subtitle{ white-space:normal !important; }
+@media (min-width:1101px){
+  body.crm-mapdock[data-crm-view="listView"] #mapDistributionModalRoot .map-modal-panel > #mapModalBody{ grid-template-rows:auto auto minmax(0,1fr) !important; }
+  body.crm-mapdock[data-crm-view="listView"] #mapDistributionModalRoot .map-modal-mapcol{ grid-row:3 !important; min-height:0 !important; }
+  body.crm-mapdock[data-crm-view="listView"] #mapDistributionModalRoot .map-modal-infocol{
+    position:fixed !important; right:calc(var(--mapdock-w) + var(--crm-frame-x, 28px) + 12px) !important; top:calc(var(--crm-frame-y, 20px) + 96px) !important; left:auto !important;
+    width:300px !important; height:auto !important; max-height:min(520px, calc(100dvh - 140px)) !important; min-height:0 !important; z-index:30 !important;
+    display:flex !important; flex-direction:column !important; overflow-y:auto !important; box-sizing:border-box;
+    background:#fff !important; border:1px solid #DCE5EF !important; border-radius:14px !important; box-shadow:0 14px 34px rgba(15,23,42,.16) !important; padding:0 10px 8px !important;
+  }
+  body.crm-mapdock[data-crm-view="listView"] #mapDistributionModalRoot .map-modal-infocol.is-collapsed{ max-height:40px !important; overflow:hidden !important; }
+
+  body.crm-mapdock[data-crm-view="listView"] #mapDistributionModalRoot .map-sidelist-block{ flex:1 1 auto !important; min-height:0 !important; overflow-y:auto !important; }
+  body.crm-mapdock[data-crm-view="listView"] #mapDistributionModalRoot .map-sidelist-head, body.crm-mapdock[data-crm-view="listView"] #mapDistributionModalRoot .map-modal-infocol .map-info-block-title{ cursor:pointer; padding:10px 74px 8px 2px !important; margin:0 !important; user-select:none; position:sticky; top:0; background:#fff; z-index:1; }
+  body.crm-mapdock[data-crm-view="listView"] #mapDistributionModalRoot .map-sidelist-head::after, body.crm-mapdock[data-crm-view="listView"] #mapDistributionModalRoot .map-modal-infocol .map-info-block-title::after{ content:"▾"; margin-left:6px; font-size:11px; color:#7C8BA1; }
+  body.crm-mapdock[data-crm-view="listView"] #mapDistributionModalRoot .map-modal-infocol.is-collapsed .map-sidelist-head::after, body.crm-mapdock[data-crm-view="listView"] #mapDistributionModalRoot .map-modal-infocol.is-collapsed .map-info-block-title::after{ content:"▸"; }
+  /* 필터 초기화·PDF 내보내기 — 목록 팝업 머리 오른쪽 */
+  body.crm-mapdock[data-crm-view="listView"] #mapDistributionModalRoot .map-docked .map-modal-tabs-actions:not(:empty){
+    position:fixed !important; top:calc(calc(var(--crm-frame-y, 20px) + 96px) + 6px) !important; right:calc(calc(var(--mapdock-w) + var(--crm-frame-x, 28px) + 12px) + 8px) !important; z-index:31 !important;
+    display:flex !important; gap:4px !important; margin:0 !important;
+  }
+  body.crm-mapdock[data-crm-view="listView"] #mapDistributionModalRoot .map-docked .map-modal-tabs-actions .map-modal-retry-btn{ width:30px !important; min-width:30px !important; height:28px !important; min-height:28px !important; padding:0 !important; font-size:0 !important; display:inline-flex !important; align-items:center !important; justify-content:center !important; }
+  body.crm-mapdock[data-crm-view="listView"] #mapDistributionModalRoot .map-docked .map-modal-tabs-actions .map-modal-retry-btn > span{ display:none !important; }
+  body.crm-mapdock[data-crm-view="listView"] #mapDistributionModalRoot .map-docked .map-modal-tabs-actions .map-modal-retry-btn .map-btn-ico{ width:15px; height:15px; margin:0 !important; }
+  body.crm-mapdock[data-crm-view="listView"] #mapDistributionModalRoot .map-docked #aptFilterResetBtn::before{ content:"↺"; font-size:16px; font-weight:700; line-height:1; }
+}
 
 /* §지도 필터 드롭다운 잘림 수정(신규) — 근처 시공 탭에서 연도·공법 드롭다운이 min-width:0이라
    검색칸 옆으로 46px까지 눌려 "연"/"공"만 보였다. 최소 폭을 줘서 자리가 모자라면 다음 줄로
@@ -50902,6 +50925,21 @@ if(!window.__mapxRowDelegated){
     apply();
   })();
   // §모바일 최적화 — 지도 열고 닫기(휴대폰 폭에서만 의미가 있다. 열면 지도가 크기를 다시 잡도록 resize를 알린다)
+  // §지도 목록 팝업 접기(신규) — 지도 왼쪽에 뜬 결과 목록 팝업의 머리를 누르면 접고 편다(이 컴퓨터에만 기억).
+  (function initMapListPopupToggle(){
+    const KEY = 'shin2-map-list-collapsed';
+    const collapsed = ()=>{ try{ return localStorage.getItem(KEY) === '1'; }catch(e){ return false; } };
+    const apply = ()=>{ document.querySelectorAll('#mapDistributionModalRoot .map-modal-infocol').forEach(el=> el.classList.toggle('is-collapsed', collapsed())); };
+    document.addEventListener('click', e=>{
+      const head = e.target.closest && e.target.closest('#mapDistributionModalRoot .map-sidelist-head, #mapDistributionModalRoot .map-modal-infocol .map-info-block-title');
+      if(!head || window.innerWidth <= 1100) return;
+      try{ localStorage.setItem(KEY, collapsed() ? '0' : '1'); }catch(err){}
+      apply();
+    });
+    const root = document.getElementById('mapDistributionModalRoot');
+    if(root && typeof MutationObserver !== 'undefined') new MutationObserver(apply).observe(root, { childList:true, subtree:true });
+    apply();
+  })();
   (function initMobileMapToggle(){
     const btn = document.getElementById('crmMobileMapToggle');
     if(!btn) return;
