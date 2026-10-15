@@ -11432,6 +11432,32 @@ body.crm-risk-view #listView .co-row .col-request, body.crm-risk-view #crmCoTabl
 #kpiView .kgoal-row.is-total .kgoal-cur{ background:#fff !important; }
 #kpiView .kgoal-row.is-total .kgoal-val b.is-total{ color:#fff; font-size:34px !important; line-height:1; }
 @media (max-width:640px){ #kpiView .kgoal-row.is-total{ grid-template-columns:minmax(0,1fr) 90px; } }
+
+/* §B2B KPI 넓게 쓰기 + 종합 달성률 결과 상자 */
+#kpiView .kpiv-wrap{ max-width:none !important; width:100%; margin:0 !important; box-sizing:border-box; }
+body.crm-page-shell #kpiView{ padding:14px 20px 16px !important; }
+.kgoal-main{ display:grid; grid-template-columns:minmax(0,1fr) 220px; gap:16px; align-items:stretch; }
+.kgoal-rows{ min-width:0; }
+.kgoal-total-box{ display:flex; flex-direction:column; justify-content:center; gap:8px; padding:16px 18px; border-radius:14px; background:linear-gradient(135deg, #17345F, #2F6FB5); color:#fff; }
+.kgoal-total-label{ font-size:14px; font-weight:800; letter-spacing:.02em; }
+.kgoal-total-val{ font-size:52px; font-weight:800; line-height:1; font-variant-numeric:tabular-nums; }
+.kgoal-total-val small{ font-size:24px; margin-left:2px; }
+.kgoal-total-bar{ height:10px; border-radius:999px; background:rgba(255,255,255,.25); overflow:hidden; }
+.kgoal-total-bar i{ display:block; height:100%; border-radius:999px; background:#fff; }
+.kgoal-total-sub{ font-size:11.5px; line-height:1.45; color:#D6E4F5; }
+/* 넓은 화면: 선행지표 카드 6개 한 줄, 상세 목록 3열 */
+@media (min-width:1280px){
+  #kpiView .b2b-cards{ grid-template-columns:repeat(6, minmax(0,1fr)) !important; }
+  #kpiView .b2b-card-val{ font-size:24px !important; }
+  #kpiView .b2b-card-detail-list{ grid-template-columns:repeat(3, minmax(0,1fr)); }
+}
+@media (max-width:760px){
+  .kgoal-main{ grid-template-columns:minmax(0,1fr); }
+  .kgoal-total-box{ flex-direction:row; flex-wrap:wrap; align-items:center; }
+  .kgoal-total-val{ font-size:36px; }
+  .kgoal-total-bar{ flex:1 1 100%; }
+  body.crm-page-shell #kpiView{ padding:12px 12px 14px !important; }
+}
 </style>
 </head>
 <body>
@@ -21550,11 +21576,14 @@ window.SHIN2_CRM_APP_INIT = function(){
     el.innerHTML = `
       <div class="kgoal-head"><div class="kgoal-title">B2B KPI</div>
         <div class="kgoal-legend"><span><i class="is-cur"></i>현재</span><span><i class="is-goal"></i>상향 공식 목표</span><span><i class="is-gap"></i>남은 구간</span><span class="is-muted">| 기존 · ┆ 도전</span></div></div>
-      ${rows}
-      <div class="kgoal-row is-total">
-        <div class="kgoal-name"><b>종합 달성률</b><span>세 KPI 목표 대비 평균</span></div>
-        <div class="kgoal-bar"><div class="kgoal-track is-total"><div class="kgoal-cur" style="width:${avg}%"></div></div></div>
-        <div class="kgoal-val"><b class="is-total">${avg}%</b></div>
+      <div class="kgoal-main">
+        <div class="kgoal-rows">${rows}</div>
+        <div class="kgoal-total-box" aria-label="종합 달성률 ${avg}%">
+          <div class="kgoal-total-label">종합 달성률</div>
+          <div class="kgoal-total-val">${avg}<small>%</small></div>
+          <div class="kgoal-total-bar"><i style="width:${avg}%"></i></div>
+          <div class="kgoal-total-sub">첫 요청률 · 재사용률 · L3 도달률<br>목표 대비 평균</div>
+        </div>
       </div>`;
   }
   /* §B2B 선행지표 모니터링(임시, 신규) — 발표자료 "B2B 종합 선행지표 체계 구축" 기준으로 지금 CRM에 있는 데이터만 끌어와 계산한다.
