@@ -12484,6 +12484,9 @@ window.SHIN2_ADMIN_VAULT = {"v":1,"it":310000,"s":"LR69gP2hfdC4DCenIz+Grw==","iv
   function setSessionGate(){ try{ sessionStorage.setItem(SESSION_GATE_KEY, '1'); }catch(e){} }
   function clearSessionGate(){ try{ sessionStorage.removeItem(SESSION_GATE_KEY); }catch(e){} }
   window.SHIN2_CRM_CLEAR_SESSION_GATE = clearSessionGate;
+  // §매번 비밀번호 라운드(신규) — 직원·관리자 구분을 확실히 하려고, 새로고침·새 탭 등 페이지를 새로 열 때마다
+  // 비밀번호를 다시 묻는다(같은 탭 유지 기록을 페이지 시작 때 지움). Firebase 로그인·데이터는 그대로다.
+  clearSessionGate();
   // 이 탭에서 사용자가 비밀번호를 직접 입력해 로그인을 시도 중인지(성공 시에만 입장 허용).
   let explicitLoginPending = false;
 
