@@ -11324,6 +11324,16 @@ body.crm-risk-view #listView .co-row .col-request, body.crm-risk-view #crmCoTabl
 .risk-card-strip.is-danger{ background:#FDEEEE; } .risk-card-strip.is-warn{ background:#FFF6E8; }
 .risk-card-lines{ flex:1; min-width:180px; display:flex; flex-direction:column; gap:2px; font-size:12.5px; color:#5B1A1A; }
 .risk-card-lines b{ display:inline-block; width:34px; font-weight:800; }
+
+/* §B2B KPI ③ — 위험 신호 · 요인 · 필요한 조치(임시) */
+.b2b-risk-table{ background:#fff; border:1px solid #E3EAF3; border-radius:12px; overflow:hidden; }
+.b2b-risk-head, .b2b-risk-row{ display:grid; grid-template-columns:minmax(0,1.1fr) minmax(0,0.9fr) minmax(0,1.3fr) minmax(0,1.1fr); gap:10px; align-items:center; padding:9px 14px; }
+.b2b-risk-head{ background:#F5F8FC; font-size:11.5px; font-weight:700; color:#6B7A90; }
+.b2b-risk-row{ border-top:1px solid #EEF2F7; }
+.b2b-risk-name b{ font-size:13.5px; color:#17345F; display:block; margin-bottom:3px; }
+.b2b-risk-name .b2b-pill{ margin-right:4px; }
+.b2b-risk-why{ font-size:12.5px; color:#17345F; line-height:1.45; }
+@media (max-width:760px){ .b2b-risk-head{ display:none; } .b2b-risk-row{ grid-template-columns:minmax(0,1fr) minmax(0,1fr); } }
 </style>
 </head>
 <body>
@@ -11544,7 +11554,6 @@ body.crm-risk-view #listView .co-row .col-request, body.crm-risk-view #crmCoTabl
             <option value="contribDesc">실적↔매출 높은순</option>
             <option value="trend">최근 흐름순</option>
             <option value="name">업체명순</option>
-            <option value="riskSignal" class="crm-admin-only-opt">위험 신호순 (임시)</option>
             <!-- §신규 협약사 탭 라운드(신규) — "신규 협약사" 탭에서만 의미가 있는 정렬이라
                  평소엔 숨겨 둔다(renderList에서 filterKey에 따라 hidden 토글). -->
             <option value="newPartnerUrgent" id="crmSortOptNewUrgent" hidden>90일 임박순</option>
@@ -21687,10 +21696,11 @@ window.SHIN2_CRM_APP_INIT = function(){
       </section>
       <section class="kpiv-sec">
         <div class="kpiv-head"><h2 class="kpiv-title">③ 확인이 필요한 협력사</h2><span class="kpiv-sub">확인필요 ${flagged.length}곳(최근 문의 끊김 ${silentCount}곳) · 관찰 ${watch.length}곳 · VIP 먼저</span></div>
-        ${attention.length ? `<div class="b2b-attn">${attention.slice(0, 15).map(x=> `<div class="b2b-attn-row is-${x.status.key}">
-            <span class="b2b-pill is-${x.status.key}">${esc(x.status.label)}</span>${x.vip ? '<span class="b2b-pill is-vip">VIP</span>' : ''}
-            <b>${esc(x.co.name)}</b>
-            <span class="b2b-attn-why">${esc(b2bReasonText(x))}</span></div>`).join('')}</div>`
+        ${attention.length ? `<div class="b2b-risk-table"><div class="b2b-risk-head"><span>협력사</span><span>위험 신호</span><span>요인</span><span>필요한 조치</span></div>${attention.slice(0, 15).map(x=>{ const rk = b2bRiskOf(x) || { key:x.status.key, signal:x.status.label, factors:b2bReasonText(x), action:'고객 의견(VOC) 확인' }; return `<div class="b2b-risk-row">
+            <div class="b2b-risk-name"><b>${esc(x.co.name)}</b><div><span class="b2b-pill is-${x.status.key}">${esc(x.status.label)}</span>${x.vip ? '<span class="b2b-pill is-vip">VIP</span>' : ''}</div></div>
+            <div><span class="risk-signal is-${rk.key}">${esc(rk.signal)}</span></div>
+            <div class="b2b-risk-why">${esc(rk.factors)}</div>
+            <div><span class="risk-act is-${rk.key}">${esc(rk.action)}</span></div></div>`; }).join('')}</div>`
           : '<div class="b2b-empty">지금 기준으로 확인이 필요한 협력사가 없습니다.</div>'}
         ${attention.length > 15 ? `<div class="b2b-more">외 ${attention.length - 15}곳은 아래 [자세히 보기]의 전체 표 또는 [협력사 찾기]에서 확인</div>` : ''}
         <div class="b2b-note">임시 · "최근 문의 끊김" = 직전 1년 문의 3건 이상(VIP는 1건 이상)인데 최근 90일 문의 0건 · VIP = 작년 매출 3억↑ 또는 작년 공고 10건↑ · 원인·VOC·조치·결과 기록은 다음 단계에서 추가</div>
@@ -23288,7 +23298,6 @@ window.SHIN2_CRM_APP_INIT = function(){
                에서만 뺐다. co.code 값·genCompanyCode()·B2B 카운터·엑셀 반영 로직은 전혀
                건드리지 않았고, 고객 상세/협약종료 정보/삭제 목록/PDF에서는 그대로 보인다. -->
           ${formerNameSubtextHtml(co)}
-          ${(()=>{ const h = b2bRiskBadgeHtml(co.id); return h ? `<div class="risk-badge-line">${h}</div>` : ""; })()}
         </div>
         ${riskView ? (()=>{ const rk = b2bRiskFor(co.id); return rk
           ? `<div class="col-pour"><span class="risk-signal is-${rk.key}">${esc(rk.signal)}</span></div><div class="col-revenue-combo risk-why">${esc(rk.factors)}</div><div class="col-request risk-act-cell"><span class="risk-act is-${rk.key}">${esc(rk.action)}</span></div>`
@@ -23316,7 +23325,8 @@ window.SHIN2_CRM_APP_INIT = function(){
       </div>${terminatedInfoHtml}`;
     };
     // §위험 신호(임시) — 관리자가 "위험 신호순"을 고르면 칸을 [위험 신호 · 요인 · 필요한 조치]로 바꾼다
-    var riskView = sortMode === 'riskSignal' && document.body.classList.contains('crm-admin-mode');
+    var riskView = false; // §B2B KPI에서만 알람 — 고객관리 목록에는 위험 신호를 표시하지 않는다(임시 기능은 B2B KPI 탭으로 이동)
+    if(sortMode === 'riskSignal') sortMode = 'yearPour';
     document.body.classList.toggle('crm-risk-view', riskView);
     (function(){
       const head = document.getElementById('crmCoTableHead');
@@ -25961,7 +25971,6 @@ window.SHIN2_CRM_APP_INIT = function(){
               <span class="cdash2-tag${isDone ? ' is-done' : ''} is-by-name">${esc(stageText)}</span>
             </div>
             <div class="cdash2-deal-summary">${esc(dealSummary)}${relationsInline ? ' · ' + esc(relationsInline) : ''}</div>
-            ${(()=>{ try{ return b2bRiskCardStripHtml(co); }catch(e){ return ''; } })()}
             <!-- §통합 고객 상세 팝업 라운드 §1 "업체명 + 담당자/연락처/이메일 등 핵심정보" —
                  예전 협약 진행관리 팝업 상단(.agr-top-info)이 보여주던 바로 그 세 가지를
                  통합 팝업 헤더로 옮겼다(같은 필드, 같은 '—' 표기). -->
