@@ -11299,6 +11299,31 @@ body:not(.crm-admin-mode) .crm-toolrow-v3 #crmAddBtn{ display:none !important; }
 .b2b-lookup-grid span{ color:#6B7A90; }
 .b2b-lookup-grid b{ color:#17345F; font-weight:600; }
 @media (max-width:640px){ .b2b-lookup-grid{ grid-template-columns:minmax(0,1fr); } }
+
+/* §위험 신호(임시) — 관리자 화면 전용 */
+body:not(.crm-admin-mode) option.crm-admin-only-opt{ display:none; }
+body:not(.crm-admin-mode) .risk-badge, body:not(.crm-admin-mode) .risk-card-strip{ display:none !important; }
+.risk-badge{ display:inline-block; margin-left:5px; padding:1px 7px; border-radius:999px; font-size:10.5px; font-weight:800; vertical-align:middle; white-space:nowrap; }
+.risk-badge.is-danger{ background:#FDE7E7; color:#C62828; }
+.risk-badge.is-warn{ background:#FFF0DC; color:#B26A00; }
+.risk-badge.is-vip{ background:#17345F; color:#fff; }
+.risk-signal{ display:inline-block; max-width:100%; box-sizing:border-box; padding:6px 10px; border-radius:8px; color:#fff; font-size:12px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.risk-signal.is-danger{ background:#E24B4A; }
+.risk-signal.is-warn{ background:#EF9F27; }
+.risk-none{ font-size:11.5px; color:#A9B4C4; }
+.risk-badge-line{ margin-top:3px; line-height:1; } .risk-badge-line .risk-badge:first-child{ margin-left:0; }
+.risk-why{ text-align:left !important; justify-content:flex-start !important; font-size:12px !important; color:#17345F; line-height:1.45; white-space:normal !important; }
+.risk-act{ display:inline-block; padding:5px 9px; border-radius:8px; font-size:12px; font-weight:700; line-height:1.35; border:1px solid; }
+.risk-act.is-danger{ background:#FDEEEE; color:#9B1C1C; border-color:#F2B8B5; }
+.risk-act.is-warn{ background:#FFF6E8; color:#8A5200; border-color:#F3C98A; }
+body.crm-risk-view #listView .co-row .col-trend, body.crm-risk-view #listView .co-row .col-contrib{ display:none !important; }
+body.crm-risk-view #listView .co-row .col-request, body.crm-risk-view #crmCoTableHead .col-request{ grid-column:span 3; }
+.risk-temp{ display:inline-block; margin-left:4px; padding:0 6px; border-radius:999px; background:#FDE7E7; color:#C62828; font-size:10px; font-weight:800; vertical-align:middle; }
+.risk-list-note{ font-size:11.5px; color:#C62828; padding:6px 10px; }
+.risk-card-strip{ margin-top:8px; display:flex; align-items:flex-start; gap:10px; padding:8px 10px; border-radius:10px; flex-wrap:wrap; }
+.risk-card-strip.is-danger{ background:#FDEEEE; } .risk-card-strip.is-warn{ background:#FFF6E8; }
+.risk-card-lines{ flex:1; min-width:180px; display:flex; flex-direction:column; gap:2px; font-size:12.5px; color:#5B1A1A; }
+.risk-card-lines b{ display:inline-block; width:34px; font-weight:800; }
 </style>
 </head>
 <body>
@@ -11519,6 +11544,7 @@ body:not(.crm-admin-mode) .crm-toolrow-v3 #crmAddBtn{ display:none !important; }
             <option value="contribDesc">실적↔매출 높은순</option>
             <option value="trend">최근 흐름순</option>
             <option value="name">업체명순</option>
+            <option value="riskSignal" class="crm-admin-only-opt">위험 신호순 (임시)</option>
             <!-- §신규 협약사 탭 라운드(신규) — "신규 협약사" 탭에서만 의미가 있는 정렬이라
                  평소엔 숨겨 둔다(renderList에서 filterKey에 따라 hidden 토글). -->
             <option value="newPartnerUrgent" id="crmSortOptNewUrgent" hidden>90일 임박순</option>
@@ -21046,6 +21072,24 @@ window.SHIN2_CRM_APP_INIT = function(){
   // co.partnerDashboard.gradeSales(상세 카드의 "토탈 매출"과 같은 값)로 정렬한다. 새 계산을
   // 만든 게 아니라 이미 있는 값을 정렬 기준으로만 쓴 것이다.
   function applySort(rows, contribIndex){
+    if(sortMode === 'riskSignal'){
+      // §위험 신호(임시) — 확인필요 → 관찰 → 나머지, 같은 단계에서는 VIP·문의 끊김·감소 폭 순
+      const rm = (typeof b2bRiskMap === 'function' && document.body.classList.contains('crm-admin-mode')) ? b2bRiskMap() : new Map();
+      const ord = k=> k === 'danger' ? 0 : k === 'warn' ? 1 : 2;
+      rows.sort((a,b)=>{
+        const ra = rm.get(a.co.id), rb = rm.get(b.co.id);
+        const oa = ord(ra && ra.key), ob = ord(rb && rb.key);
+        if(oa !== ob) return oa - ob;
+        if(ra && rb){
+          if(!!rb.vip !== !!ra.vip) return rb.vip ? 1 : -1;
+          if(!!rb.silent !== !!ra.silent) return rb.silent ? 1 : -1;
+          const wa = ra.worst == null ? 0 : ra.worst, wb = rb.worst == null ? 0 : rb.worst;
+          if(wa !== wb) return wa - wb;
+        }
+        return String(a.co.name||'').localeCompare(String(b.co.name||''), 'ko');
+      });
+      return rows;
+    }
     if(sortMode === 'yearPour'){
       // §최근 1년 실적순 정렬 수정 라운드: sortGroup(0=실제 숫자 있음, 1=데이터 없음)을
       // 먼저 비교하고, 같은 그룹 안에서만 sortValue(실제 숫자 내림차순)를 비교한다(§요청
@@ -21535,6 +21579,62 @@ window.SHIN2_CRM_APP_INIT = function(){
     </svg>`;
   }
   let b2bLastResult = null;
+  /* §위험 신호(임시, 신규) — B2B 선행지표 계산(computeB2bLeading) 결과를 업체별 "위험 신호 · 요인 · 필요한 조치"로 바꾼다.
+     ※ 지금은 임시 기준이다. 끌어오는 데이터·반영 값·신호 이름·조치 문구는 추후 모두 바뀔 수 있으므로
+       B2B_RISK_ACTIONS 표와 b2bRiskOf()만 고치면 고객관리 목록·고객카드·B2B KPI 탭이 같이 바뀌게 했다. */
+  const B2B_RISK_ACTIONS = {
+    silent: (x)=> x.vip ? '담당자 직접 연락 (VIP 재접촉)' : '재접촉 (안부·진행 현장 확인)',
+    l2: ()=> '기술자료 제공 · 공법설명회 제안',
+    l3: ()=> '컨설팅 · 설명회 다시 제안',
+    l4: ()=> '진행 현장 정보 확인',
+    rev: ()=> '가격 · 조건 의견 확인',
+    mixed: ()=> '고객 의견(VOC) 확인'
+  };
+  const B2B_RISK_SIGNAL = { silent:'90일 문의 끊김', l2:'기술자문 급감', l3:'설명회·컨설팅 급감', l4:'공고 감소', rev:'매출 감소', mixed:'전반적 감소' };
+  function b2bRiskOf(x){
+    if(!x || !x.included || !(x.status.key === 'danger' || x.status.key === 'warn')) return null;
+    const LABEL = { l2:'기술자문', l3:'설명회·컨설팅', l4:'공고', rev:'매출' };
+    let kind = 'mixed';
+    if(x.silent) kind = 'silent';
+    else {
+      let worstK = null;
+      ['l2','l3','l4','rev'].forEach(k=>{ const v = x.ch[k]; if(v != null && (worstK == null || v < x.ch[worstK])) worstK = k; });
+      if(worstK && x.ch[worstK] <= -20) kind = worstK;
+    }
+    const factors = [];
+    if(x.silent) factors.push('마지막 문의 ' + (x.lastReqTs ? (new Date(x.lastReqTs).getMonth() + 1) + '/' + new Date(x.lastReqTs).getDate() : '없음') + ' (직전 1년 ' + x.beforeReq + '건)');
+    ['l2','l3','l4','rev'].forEach(k=>{ const v = x.ch[k]; if(v != null && v <= -10) factors.push(LABEL[k] + ' ' + Math.abs(v) + '%↓'); });
+    return { key: x.status.key, label: x.status.label, vip: x.vip, kind, signal: B2B_RISK_SIGNAL[kind], factors: factors.join(' · ') || '여러 항목이 조금씩 감소', action: B2B_RISK_ACTIONS[kind](x) };
+  }
+  // 목록·카드가 매번 다시 계산하지 않게, 데이터가 바뀔 때만 다시 만든다
+  let b2bRiskCache = { key:null, map:null };
+  function b2bRiskMap(){
+    let reqLen = 0; try{ reqLen = (localStorage.getItem('shin2-sheet-requests-cache-v1') || '').length; }catch(e){}
+    const key = (window.__SHIN2_DATA_GEN || 0) + ':' + reqLen;
+    if(b2bRiskCache.key === key && b2bRiskCache.map) return b2bRiskCache.map;
+    const map = new Map();
+    try{ computeB2bLeading().evaluated.forEach(x=>{ const r = b2bRiskOf(x); if(r) map.set(x.co.id, Object.assign(r, { worst: x.status.worst, silent: x.silent })); }); }
+    catch(e){ console.warn('[위험 신호] 계산 실패', e); }
+    b2bRiskCache = { key, map };
+    return map;
+  }
+  function b2bRiskFor(coId){
+    if(!document.body.classList.contains('crm-admin-mode')) return null; // 관리자 화면에서만
+    return b2bRiskMap().get(coId) || null;
+  }
+  function b2bRiskBadgeHtml(coId){
+    const r = b2bRiskFor(coId);
+    if(!r) return '';
+    return `<span class="risk-badge is-${r.key}">${esc(r.label)}</span>${r.vip ? '<span class="risk-badge is-vip">VIP</span>' : ''}`;
+  }
+  function b2bRiskCardStripHtml(co){
+    const r = b2bRiskFor(co.id);
+    if(!r) return '';
+    return `<div class="risk-card-strip is-${r.key}">
+      <span class="risk-signal is-${r.key}">${esc(r.signal)}</span>
+      <div class="risk-card-lines"><div><b>요인</b><span>${esc(r.factors)}</span></div><div><b>조치</b><span>${esc(r.action)}</span></div></div>
+      <span class="risk-temp">임시</span></div>`;
+  }
   function b2bReasonText(x){
     const parts = x.reasons.slice();
     const add = (k, label)=>{ const v = x.ch[k]; if(v != null && v <= -20) parts.push(label + ' ' + Math.abs(v) + '% 감소'); };
@@ -23188,15 +23288,18 @@ window.SHIN2_CRM_APP_INIT = function(){
                에서만 뺐다. co.code 값·genCompanyCode()·B2B 카운터·엑셀 반영 로직은 전혀
                건드리지 않았고, 고객 상세/협약종료 정보/삭제 목록/PDF에서는 그대로 보인다. -->
           ${formerNameSubtextHtml(co)}
+          ${(()=>{ const h = b2bRiskBadgeHtml(co.id); return h ? `<div class="risk-badge-line">${h}</div>` : ""; })()}
         </div>
-        <div class="col-pour">${lastActHtml}</div>
+        ${riskView ? (()=>{ const rk = b2bRiskFor(co.id); return rk
+          ? `<div class="col-pour"><span class="risk-signal is-${rk.key}">${esc(rk.signal)}</span></div><div class="col-revenue-combo risk-why">${esc(rk.factors)}</div><div class="col-request risk-act-cell"><span class="risk-act is-${rk.key}">${esc(rk.action)}</span></div>`
+          : '<div class="col-pour"><span class="risk-none">이상 신호 없음</span></div><div class="col-revenue-combo"></div><div class="col-request"></div>'; })() : `<div class="col-pour">${lastActHtml}</div>`}
         <!-- §P1-1 목록 열 재구성 라운드(신규): "고객 성향" 열(col-insight)은 화면에서만
              뺀다 — insightHtml 변수 계산과 고객카드 쪽 인사이트 표시는 그대로다. -->
-        <div class="col-revenue-combo">
+        ${riskView ? '' : `<div class="col-revenue-combo">
           <div class="revenue-combo-line revenue-combo-total">${totalRevenueHtml}</div>
           <div class="revenue-combo-line revenue-combo-yr"><span class="revenue-combo-yr-label">2026년</span>${yrRevenueHtml}</div>
         </div>
-        <div class="col-request">${nameRequestCellHtml}</div>
+        <div class="col-request">${nameRequestCellHtml}</div>`}
         <!-- §고객관리 메인화면 재배치 라운드(신규, §요청 7/12) — "최근 흐름"·"실적-매출"을
              각각 독립된 그리드 칸(col-trend/col-contrib)으로 분리했다. trendHtml/contribHtml
              값·클릭 핸들러(data-trend-detail/data-contrib-detail 위임)는 전혀 안 바꿨다 —
@@ -23212,7 +23315,21 @@ window.SHIN2_CRM_APP_INIT = function(){
         ${revenueNoMouActionHtml}
       </div>${terminatedInfoHtml}`;
     };
-    listEl.innerHTML = pageRows.map(r=>{
+    // §위험 신호(임시) — 관리자가 "위험 신호순"을 고르면 칸을 [위험 신호 · 요인 · 필요한 조치]로 바꾼다
+    var riskView = sortMode === 'riskSignal' && document.body.classList.contains('crm-admin-mode');
+    document.body.classList.toggle('crm-risk-view', riskView);
+    (function(){
+      const head = document.getElementById('crmCoTableHead');
+      if(!head) return;
+      if(!head.dataset.origHtml) head.dataset.origHtml = head.innerHTML;
+      if(riskView && head.dataset.mode !== 'risk'){
+        head.innerHTML = '<div class="col-name">업체명</div><div class="col-pour">위험 신호</div><div class="col-revenue-combo">요인</div><div class="col-request">필요한 조치 <span class="risk-temp">임시</span></div>';
+        head.dataset.mode = 'risk';
+      } else if(!riskView && head.dataset.mode === 'risk'){
+        head.innerHTML = head.dataset.origHtml; head.dataset.mode = '';
+      }
+    })();
+    listEl.innerHTML = (riskView ? '<div class="risk-list-note">임시 — 위험 신호·요인·조치는 지금 CRM 데이터로 만든 임시 기준입니다. 끌어오는 데이터와 기준·문구는 추후 바뀔 수 있습니다.</div>' : '') + pageRows.map(r=>{
       let html = rowHtmlCache.get(r);
       if(html === undefined){ html = buildListRowHtml(r); rowHtmlCache.set(r, html); }
       return html;
@@ -25844,6 +25961,7 @@ window.SHIN2_CRM_APP_INIT = function(){
               <span class="cdash2-tag${isDone ? ' is-done' : ''} is-by-name">${esc(stageText)}</span>
             </div>
             <div class="cdash2-deal-summary">${esc(dealSummary)}${relationsInline ? ' · ' + esc(relationsInline) : ''}</div>
+            ${(()=>{ try{ return b2bRiskCardStripHtml(co); }catch(e){ return ''; } })()}
             <!-- §통합 고객 상세 팝업 라운드 §1 "업체명 + 담당자/연락처/이메일 등 핵심정보" —
                  예전 협약 진행관리 팝업 상단(.agr-top-info)이 보여주던 바로 그 세 가지를
                  통합 팝업 헤더로 옮겼다(같은 필드, 같은 '—' 표기). -->
