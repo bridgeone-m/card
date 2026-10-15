@@ -11179,6 +11179,19 @@ body:not(.crm-admin-mode) #crmPourImportBtn{ display:none !important; }
 .crm-toolrow-bottom .search-box.crm-toolrow-search{ flex:1 1 auto !important; width:auto; }
 .crm-toolrow-bottom .list-sort-select{ flex:none; width:auto !important; min-width:120px !important; height:34px !important; font-size:12px; border:1px solid #dce5ef; border-radius:8px; background:#fff; padding:0 8px; }
 .crm-toolrow-bottom .kpi-trash-summary-btn{ flex:none; height:34px; width:34px; }
+
+/* §내부직원·관리자 로그인 분리(신규) — 내부직원(관리자 모드 아님)은 고객관리 화면만 */
+body:not(.crm-admin-mode) #crmTabWorkQueue,
+body:not(.crm-admin-mode) #crmTabMailSettings,
+body:not(.crm-admin-mode) #gnavDrawerTabWorkQueue,
+body:not(.crm-admin-mode) #gnavDrawerTabMailSettings,
+body:not(.crm-admin-mode) #crmUpdateMenuWrap,
+body:not(.crm-admin-mode) #crmKpiGoalPanel{ display:none !important; }
+/* 관리자 비밀번호가 설정되면 역할은 로그인 비밀번호로만 정한다(🔒 버튼 숨김) */
+body.crm-admin-vault .crm-admin-mode-btn{ display:none !important; }
+.crm-staff-signout, .crm-staff-signout-item{ display:none !important; }
+body:not(.crm-admin-mode) .crm-staff-signout{ display:inline-flex !important; }
+body:not(.crm-admin-mode) .crm-staff-signout-item{ display:block !important; }
 </style>
 </head>
 <body>
@@ -11297,10 +11310,12 @@ body:not(.crm-admin-mode) #crmPourImportBtn{ display:none !important; }
                만드는 분석 화면이라 관리 도구 드롭다운의 "분석" 그룹에 넣었다. -->
           <button type="button" id="crmGiftGradeBtn">🎁 선물 등급</button>
           <div class="update-menu-divider"></div>
+          <button type="button" id="crmAdminVaultBtn">관리자 비밀번호 설정</button>
           <button type="button" id="crmSignOutBtn" class="update-menu-signout">로그아웃</button>
         </div>
       </div>
       <button type="button" class="gnav-tool-btn" id="crmMouPdfBtn">내보내기</button>
+      <button type="button" class="gnav-tool-btn crm-staff-signout" id="crmStaffSignOutBtn">로그아웃</button>
       <button type="button" class="gnav-hamburger" id="gnavMenuBtn" aria-expanded="false" aria-controls="gnavDrawer" aria-label="메뉴 열기">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
       </button>
@@ -11319,6 +11334,7 @@ body:not(.crm-admin-mode) #crmPourImportBtn{ display:none !important; }
         <button type="button" class="gnav-drawer-item" id="gnavDrawerTabMailSettings">메일 설정</button>
         <button type="button" class="gnav-drawer-item" id="gnavDrawerExport">내보내기</button>
         <button type="button" class="gnav-drawer-item crm-admin-mode-btn" id="gnavDrawerAdminMode">관리자 모드 켜기</button>
+        <button type="button" class="gnav-drawer-item crm-staff-signout-item" id="gnavDrawerSignOut">로그아웃</button>
       </nav>
     </div>
   </div>
@@ -12389,6 +12405,49 @@ window.SHIN2_CRM_OCR = (function(){
    블록의 onAuthStateChanged가 판정) 화면을 연다 — 성공 여부를 알기 전에 먼저 화면부터
    보여주지 않는다(§요청 5의 "성공 후에만 표시" 원칙을 로그인 자체에도 그대로 적용).
    ========================================================================== */
+/* §내부직원·관리자 로그인 분리(신규) — 로그인 비밀번호로 역할을 나눈다(아이디 없음).
+   - 공용 비밀번호 → 내부직원(고객관리 화면만)
+   - 관리자 비밀번호 → 관리자(모든 화면). 로그인은 같은 공용 Firebase 계정으로 한다:
+     공용 비밀번호를 관리자 비밀번호로 잠근(PBKDF2+AES-GCM) 암호문만 아래 SHIN2_ADMIN_VAULT에 둔다.
+     코드에는 비밀번호 원문이 없고, 관리자 비밀번호를 모르면 풀 수 없다.
+   - 금고가 비어 있으면(아직 설정 전) 예전 그대로: 로그인 후 🔒 버튼으로 관리자 모드를 켠다.
+   주의: 같은 Firebase 계정을 쓰므로 화면 구분이며, Firebase 데이터 권한 자체를 나누는 장치는 아니다. */
+window.SHIN2_ADMIN_VAULT = null;
+(function(){
+  'use strict';
+  const b64 = u8=> btoa(String.fromCharCode.apply(null, Array.from(u8)));
+  const unb64 = t=> Uint8Array.from(atob(t), c=> c.charCodeAt(0));
+  async function keyFrom(pw, salt, it){
+    const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveKey']);
+    return crypto.subtle.deriveKey({ name:'PBKDF2', salt, iterations:it, hash:'SHA-256' }, base, { name:'AES-GCM', length:256 }, false, ['encrypt','decrypt']);
+  }
+  // 관리자 비밀번호로 금고를 연다 — 맞으면 공용 비밀번호, 틀리면 예외
+  window.SHIN2_ADMIN_VAULT_OPEN = async function(vault, adminPw){
+    const key = await keyFrom(adminPw, unb64(vault.s), vault.it);
+    const out = await crypto.subtle.decrypt({ name:'AES-GCM', iv:unb64(vault.iv) }, key, unb64(vault.ct));
+    return new TextDecoder().decode(out);
+  };
+  // 금고 만들기(관리 도구의 설정 화면에서만 사용)
+  window.SHIN2_ADMIN_VAULT_SEAL = async function(sharedPw, adminPw){
+    const it = 310000;
+    const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12));
+    const key = await keyFrom(adminPw, salt, it);
+    const ct = new Uint8Array(await crypto.subtle.encrypt({ name:'AES-GCM', iv }, key, new TextEncoder().encode(sharedPw)));
+    return { v:1, it, s:b64(salt), iv:b64(iv), ct:b64(ct) };
+  };
+  window.SHIN2_ADMIN_VAULT_ON = ()=> !!(window.SHIN2_ADMIN_VAULT && window.SHIN2_ADMIN_VAULT.ct && window.crypto && crypto.subtle);
+  // 입력한 비밀번호 → { 로그인에 쓸 공용 비밀번호, 역할 }
+  window.SHIN2_RESOLVE_LOGIN_ROLE = async function(pw){
+    if(!window.SHIN2_ADMIN_VAULT_ON()) return { pw, role:null };
+    try{ return { pw: await window.SHIN2_ADMIN_VAULT_OPEN(window.SHIN2_ADMIN_VAULT, pw), role:'admin' }; }
+    catch(e){ return { pw, role:'staff' }; }
+  };
+  window.SHIN2_SET_LOGIN_ROLE = function(role){
+    if(!role) return; // 금고 설정 전에는 예전 관리자 모드 상태를 그대로 둔다
+    try{ if(role === 'admin') localStorage.setItem('shin2-crm-admin-mode', '1'); else localStorage.removeItem('shin2-crm-admin-mode'); }catch(e){}
+    window.dispatchEvent(new CustomEvent('shin2-crm-role-change'));
+  };
+})();
 (function(){
   'use strict';
   const gateScreen = document.getElementById('gateScreen');
@@ -12462,11 +12521,19 @@ window.SHIN2_CRM_OCR = (function(){
   const GATE_TIMEOUT_MS = 10000;
   let gateTimeoutTimer = null;
   function handleGateEnter(){
-    const pw = gatePasswordInput.value;
+    const typed = gatePasswordInput.value;
     showGateError('');
-    if(!pw) return;
+    if(!typed) return;
     gateEnterBtn.disabled = true;
     explicitLoginPending = true;
+    // §내부직원·관리자 로그인 분리 — 관리자 비밀번호면 금고를 열어 공용 비밀번호로 로그인하고 관리자 역할을 켠다.
+    const resolver = window.SHIN2_RESOLVE_LOGIN_ROLE ? window.SHIN2_RESOLVE_LOGIN_ROLE(typed) : Promise.resolve({ pw:typed, role:null });
+    resolver.then(r=>{
+      if(window.SHIN2_SET_LOGIN_ROLE) window.SHIN2_SET_LOGIN_ROLE(r.role);
+      continueGateEnter(r.pw);
+    }, ()=> continueGateEnter(typed));
+  }
+  function continueGateEnter(pw){
     if(!tryLogin){
       pendingPassword = pw;
       clearTimeout(gateTimeoutTimer);
@@ -13517,6 +13584,8 @@ window.SHIN2_CRM_OCR = (function(){
         });
       };
       if(window.SHIN2_CRM_SET_LOGIN_FN) window.SHIN2_CRM_SET_LOGIN_FN(trySignInWithPassword);
+      // §내부직원·관리자 로그인 분리 — 관리자 비밀번호 설정 화면에서 "공용 비밀번호가 맞는지"만 확인한다(같은 계정 재로그인, 계정 생성 없음).
+      window.SHIN2_CRM_VERIFY_SHARED_PW = (pw) => signInWithEmailAndPassword(auth, HANSOL2_FIXED_EMAIL, pw).then(()=> true);
       // §요청 3 "공용 컴퓨터를 고려해 화면에 로그아웃 버튼은 유지" — 렌더 계층(별도
       // <script> 블록)에서 로그아웃 버튼 클릭 시 이 함수만 부른다. signOut 성공 시
       // onAuthStateChanged가 user=null로 다시 불려 게이트 스크립트가 자동으로 로그인
@@ -50170,6 +50239,75 @@ if(!window.__mapxRowDelegated){
   }
   (function initAdminMode(){
     const ADMIN_KEY = 'shin2-crm-admin-mode';
+    document.body.classList.toggle('crm-admin-vault', !!(window.SHIN2_ADMIN_VAULT_ON && window.SHIN2_ADMIN_VAULT_ON()));
+    window.addEventListener('shin2-crm-role-change', ()=> apply());
+    // 직원 로그아웃 버튼 → 기존 로그아웃과 같은 동작
+    ['crmStaffSignOutBtn','gnavDrawerSignOut'].forEach(id=>{
+      const b = document.getElementById(id);
+      if(b) b.addEventListener('click', ()=>{
+        const overlay = document.getElementById('gnavDrawerOverlay');
+        if(overlay && !overlay.hidden){ const c = document.getElementById('gnavDrawerCloseBtn'); if(c) c.click(); }
+        const so = document.getElementById('crmSignOutBtn'); if(so) so.click();
+      });
+    });
+    const vaultBtn = document.getElementById('crmAdminVaultBtn');
+    if(vaultBtn) vaultBtn.addEventListener('click', ()=>{
+      document.getElementById('crmUpdateMenu').classList.remove('is-open');
+      if(!window.crmAdminOk('관리자 비밀번호 설정')) return;
+      openAdminVaultSetup();
+    });
+    function openAdminVaultSetup(){
+      const old = document.getElementById('adminVaultOverlay'); if(old) old.remove();
+      const wrap = document.createElement('div');
+      wrap.innerHTML = `
+        <div class="pi-overlay" id="adminVaultOverlay" style="z-index:10020;">
+          <div class="pi-panel" style="max-width:440px;" role="dialog" aria-modal="true" aria-label="관리자 비밀번호 설정">
+            <div class="pi-head"><div class="pi-title">관리자 비밀번호 설정</div><button type="button" class="chart-close-btn" data-av="close" aria-label="닫기">&times;</button></div>
+            <div class="pi-body">
+              <div class="mail-settings-help">로그인 화면에 <b>관리자 비밀번호</b>를 치면 관리자로, <b>공용 비밀번호</b>를 치면 내부직원으로 들어가게 합니다. 아래 두 비밀번호는 이 컴퓨터에서만 쓰이고 어디에도 저장·전송되지 않습니다(공용 비밀번호 확인용 로그인만 1번 함).</div>
+              <div class="co-form-field"><label>공용 비밀번호(지금 로그인에 쓰는 것)</label><input type="password" data-av="shared" autocomplete="off" /></div>
+              <div class="co-form-field"><label>새 관리자 비밀번호(10자 이상)</label><input type="password" data-av="admin" autocomplete="new-password" /></div>
+              <div class="co-form-field"><label>새 관리자 비밀번호 확인</label><input type="password" data-av="admin2" autocomplete="new-password" /></div>
+              <div class="delete-co-modal-err" data-av="err" style="display:none;"></div>
+              <div data-av="out" style="display:none;">
+                <div class="mail-settings-help">아래 설정 문구를 <b>복사해서 채팅으로 보내주세요</b>. 반영·배포하면 그때부터 로그인 비밀번호로 역할이 나뉩니다. (비밀번호 원문은 들어 있지 않은 암호문입니다.)</div>
+                <textarea data-av="code" readonly style="width:100%;height:96px;font-family:monospace;font-size:11.5px;"></textarea>
+                <button type="button" class="co-text-action" data-av="copy">문구 복사</button>
+              </div>
+            </div>
+            <div class="pi-actions"><button type="button" class="co-text-action" data-av="cancel">닫기</button><button type="button" class="co-text-action primary" data-av="make">설정 문구 만들기</button></div>
+          </div>
+        </div>`;
+      const el = wrap.firstElementChild;
+      document.body.appendChild(el);
+      const q = k=> el.querySelector('[data-av="' + k + '"]');
+      const close = ()=> el.remove();
+      const err = m=>{ q('err').textContent = m; q('err').style.display = m ? 'block' : 'none'; };
+      q('close').addEventListener('click', close);
+      q('cancel').addEventListener('click', close);
+      q('copy').addEventListener('click', ()=>{ q('code').select(); try{ navigator.clipboard.writeText(q('code').value); }catch(e){ document.execCommand('copy'); } q('copy').textContent = '복사됨'; });
+      q('make').addEventListener('click', async ()=>{
+        const shared = q('shared').value, admin = q('admin').value, admin2 = q('admin2').value;
+        err('');
+        if(!shared) return err('공용 비밀번호를 입력해 주세요.');
+        if(admin.length < 10) return err('관리자 비밀번호는 10자 이상으로 정해 주세요.');
+        if(admin !== admin2) return err('관리자 비밀번호 확인이 일치하지 않습니다.');
+        if(admin === shared) return err('관리자 비밀번호는 공용 비밀번호와 달라야 합니다.');
+        q('make').disabled = true; q('make').textContent = '확인 중…';
+        try{
+          if(!window.SHIN2_CRM_VERIFY_SHARED_PW) throw new Error('로그인 연결이 준비되지 않았습니다.');
+          try{ await window.SHIN2_CRM_VERIFY_SHARED_PW(shared); }
+          catch(e){ throw new Error('공용 비밀번호가 맞지 않습니다.'); }
+          const vault = await window.SHIN2_ADMIN_VAULT_SEAL(shared, admin);
+          if(await window.SHIN2_ADMIN_VAULT_OPEN(vault, admin) !== shared) throw new Error('암호문 확인에 실패했습니다.');
+          q('code').value = 'window.SHIN2_ADMIN_VAULT = ' + JSON.stringify(vault) + ';';
+          q('out').style.display = 'block';
+          q('shared').value = ''; q('admin').value = ''; q('admin2').value = '';
+        }catch(e){ err(e && e.message || String(e)); }
+        q('make').disabled = false; q('make').textContent = '설정 문구 만들기';
+      });
+      setTimeout(()=> q('shared').focus(), 0);
+    }
     const ADMIN_HASH = '51d6665379fd8750f5365013bc32e082c3ffc4c36c004fde8a57080f14ce3bf6';
     const isAdmin = ()=>{ try{ return localStorage.getItem(ADMIN_KEY) === '1'; }catch(e){ return false; } };
     const apply = ()=>{
@@ -50185,6 +50323,9 @@ if(!window.__mapxRowDelegated){
       });
       window.dispatchEvent(new CustomEvent('website-cleanup-update'));
       window.dispatchEvent(new CustomEvent('website-cleanup-update-data'));
+      // 내부직원은 고객관리 화면만 — 다른 화면에 있었다면 고객관리로 돌린다
+      const view = document.body.getAttribute('data-crm-view');
+      if(!on && view && view !== 'listView' && typeof showCustomerTab === 'function') showCustomerTab();
     };
     async function sha256Hex(text){
       const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
