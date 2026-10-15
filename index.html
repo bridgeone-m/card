@@ -11211,6 +11211,19 @@ body[data-crm-view="kpiView"] #kpiView{ display:block !important; }
 #kpiView .kgoal-track{ height:12px; } #kpiView .kgoal-track.is-total{ height:14px; }
 #kpiView .kgoal-val b{ font-size:18px; } #kpiView .kgoal-val b.is-total{ font-size:22px; }
 @media (max-width:640px){ #kpiView .kgoal-row{ grid-template-columns:minmax(0,1fr) 72px; } }
+
+/* §검색줄 배치 라운드 3(신규) — 1행 KPI 카드 + 업체 필터, 2행 검색·정렬·쓰레기통. 고객 등록은 관리자만. */
+.crm-toolrow.crm-toolrow-v3{ flex-direction:column !important; flex-wrap:nowrap !important; gap:8px; }
+.crm-toolrow-v3 .crm-toolrow-r1{ display:flex; align-items:stretch; gap:8px; min-width:0; }
+.crm-toolrow-v3 .crm-toolrow-r1 > .kpi-strip{ flex:1 1 auto !important; min-width:0; display:grid !important; grid-template-columns:repeat(3, minmax(0,1fr)) !important; }
+.crm-toolrow-v3 .crm-toolrow-top{ flex:none; display:flex; align-items:center; }
+.crm-toolrow-v3 #crmAddBtn{ flex:none; align-self:center; margin:0 !important; }
+body:not(.crm-admin-mode) .crm-toolrow-v3 #crmAddBtn{ display:none !important; }
+.crm-toolrow-v3 .crm-toolrow-bottom{ display:flex; align-items:center; gap:7px; min-width:0; box-sizing:border-box; padding:7px 10px; background:#fff; border:1px solid #E3EAF3; border-radius:12px; }
+@media (max-width:640px){
+  .crm-toolrow-v3 .crm-toolrow-r1{ flex-wrap:wrap; }
+  .crm-toolrow-v3 .crm-toolrow-r1 > .kpi-strip{ flex:1 1 100% !important; }
+}
 </style>
 </head>
 <body>
@@ -11409,13 +11422,17 @@ body[data-crm-view="kpiView"] #kpiView{ display:block !important; }
       <div class="kpi-strip-row crm-kpi-cell">
         <!-- §검색줄 이동 라운드(신규) — 왼쪽: 1행 [+ 고객 등록][전체 업체 ▾], 2행 검색창 / 오른쪽: KPI 카드 3장.
              id(crmAddBtn/crmFilterRow/crmSearchInput/crmKpiStrip)는 그대로라 기존 동작·바인딩은 같다. -->
-        <div class="crm-toolrow">
-          <div class="crm-toolrow-left">
+        <!-- §검색줄 배치 라운드 3(신규) — 1행: [전체 업체][MOU 체결][실적 상승 TOP 5] 카드 + [전체 업체 ▾] (관리자는 끝에 [+ 고객 등록])
+             2행: 검색창 · 총 실적순 · 쓰레기통. id는 그대로라 기존 동작·바인딩은 같다. -->
+        <div class="crm-toolrow crm-toolrow-v3">
+          <div class="crm-toolrow-r1">
+            <div class="kpi-strip" id="crmKpiStrip"></div>
             <div class="crm-toolrow-top" id="crmToolrowTop">
-              <button type="button" id="crmAddBtn" class="list-add-btn list-add-btn-inline">+ 고객 등록</button>
               <div class="list-filter-row" id="crmFilterRow"></div>
             </div>
-            <div class="crm-toolrow-bottom">
+            <button type="button" id="crmAddBtn" class="list-add-btn list-add-btn-inline">+ 고객 등록</button>
+          </div>
+          <div class="crm-toolrow-bottom">
               <label class="search-box crm-toolrow-search">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
               <input type="text" id="crmSearchInput" placeholder="업체명 / 담당자 / 주소 / 활동내용 검색" />
@@ -11447,8 +11464,6 @@ body[data-crm-view="kpiView"] #kpiView{ display:block !important; }
             <span class="kpi-trash-summary-badge" id="crmTrashSummaryBadge" hidden>0</span>
           </button>
             </div>
-          </div>
-          <div class="kpi-strip" id="crmKpiStrip"></div>
         </div>
       </div>
       <!-- 좌: 업체 목록 카드 — 검색/정렬/필터 pill/표는 전부 기존 DOM·id·렌더 함수
