@@ -11458,6 +11458,10 @@ body.crm-page-shell #kpiView{ padding:14px 20px 16px !important; }
   .kgoal-total-bar{ flex:1 1 100%; }
   body.crm-page-shell #kpiView{ padding:12px 12px 14px !important; }
 }
+
+/* §시공사 목록 팝업 — 검색 결과가 있을 때만 */
+body.crm-mapdock[data-crm-view="listView"] #mapDistributionModalRoot .map-modal-infocol.is-idle-hidden{ display:none !important; }
+body.crm-mapdock.crm-map-list-idle[data-crm-view="listView"] #mapDistributionModalRoot .map-docked .map-modal-tabs-actions{ display:none !important; }
 </style>
 </head>
 <body>
@@ -47118,6 +47122,8 @@ if(!window.__mapxRowDelegated){
       ? '위치 미확인 업체'
       : (mapFocusedCompanyList ? `${mapFocusedCompanyList.label} 시공사` : (searchActive ? `${searchQ} 검색결과` : '시공사 목록'));
     const listCountText = `총 ${listEntries.length.toLocaleString('ko-KR')}개`;
+    // §시공사 목록 팝업 — 평소엔 숨기고, 지도에서 검색(또는 지역·위치미확인 선택)했을 때만 결과 목록으로 띄운다
+    infoCol.dataset.listMode = (searchActive || focusedEntries || mapFilterState.listView === 'unlocated') ? 'result' : 'idle';
     infoCol.innerHTML = `
       <button type="button" class="map-embed-panel-close-btn" id="mapEmbedPanelCloseBtn" aria-label="지역 요약 패널 닫기">&times;</button>
       <div id="mapCompanyListBlock" class="map-sidelist-block">
@@ -50966,9 +50972,21 @@ if(!window.__mapxRowDelegated){
     const KEY = 'shin2-map-list-collapsed';
     const collapsed = ()=>{ try{ return localStorage.getItem(KEY) === '1'; }catch(e){ return false; } };
     const apply = ()=>{
-      const cols = document.querySelectorAll('#mapDistributionModalRoot .map-modal-infocol');
-      cols.forEach(el=> el.classList.toggle('is-collapsed', collapsed()));
-      const open = !!cols.length && !collapsed() && window.innerWidth > 1100;
+      const cols = Array.from(document.querySelectorAll('#mapDistributionModalRoot .map-modal-infocol'));
+      const companyTab = (typeof mapActiveTab === 'undefined') || mapActiveTab === 'company';
+      let shown = 0, idleAny = false;
+      cols.forEach(el=>{
+        const idle = companyTab && el.dataset.listMode === 'idle';
+        const result = companyTab && el.dataset.listMode === 'result';
+        el.classList.toggle('is-idle-hidden', idle);
+        // 검색 결과가 새로 나오는 순간에는 접혀 있어도 펼쳐서 보여준다(그 뒤 사용자가 접으면 그대로 둔다)
+        if(result && el.dataset.prevMode !== 'result'){ try{ localStorage.setItem(KEY, '0'); }catch(err){} }
+        el.dataset.prevMode = el.dataset.listMode || '';
+        el.classList.toggle('is-collapsed', !idle && collapsed());
+        if(idle) idleAny = true; else shown++;
+      });
+      document.body.classList.toggle('crm-map-list-idle', idleAny && !shown);
+      const open = shown > 0 && !cols.some(el=> !el.classList.contains('is-idle-hidden') && el.classList.contains('is-collapsed')) && window.innerWidth > 1100;
       if(document.body.classList.contains('crm-map-list-open') !== open) document.body.classList.toggle('crm-map-list-open', open);
     };
     // 어두운 배경(body::after)을 누르면 팝업을 접는다 — 클릭 대상이 body 자신일 때만
