@@ -11160,6 +11160,25 @@ body:not(.crm-admin-mode) #crmPourImportBtn{ display:none !important; }
   .kgoal-name{ grid-column:1 / -1; }
   .kgoal-name b{ display:inline; } .kgoal-name span{ display:inline; margin-left:6px; }
 }
+
+/* §검색줄 이동 라운드(신규) — 왼쪽 2줄(고객 등록·전체 업체 / 검색) + 오른쪽 KPI 카드 */
+.crm-toolrow{ flex:1 1 100%; min-width:0; display:flex; gap:10px; align-items:stretch; }
+.crm-toolrow-left{ flex:1 1 50%; min-width:0; display:flex; flex-direction:column; justify-content:center; gap:7px; box-sizing:border-box; padding:9px 12px; background:#fff; border:1px solid #E3EAF3; border-radius:12px; box-shadow:0 1px 3px rgba(15,23,42,.04); }
+.crm-toolrow-top{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.crm-toolrow-top .list-add-btn{ margin:0 !important; }
+.crm-toolrow-left .search-box.crm-toolrow-search{ flex:none !important; width:100%; height:34px !important; box-sizing:border-box; }
+.crm-toolrow > .kpi-strip{ flex:1 1 50% !important; min-width:0; display:grid !important; grid-template-columns:repeat(3, minmax(0,1fr)) !important; }
+#listView .crm-list-col .list-search-row{ justify-content:flex-end; }
+#listView .crm-list-col .list-search-row > .list-sort-select{ flex:none; width:auto; }
+.kpi-strip-row.crm-kpi-cell{ container-type:inline-size; }
+@container (max-width:820px){ .crm-toolrow{ flex-wrap:wrap; } .crm-toolrow-left, .crm-toolrow > .kpi-strip{ flex:1 1 100% !important; } .crm-toolrow > .kpi-strip{ justify-content:flex-start; } }
+@media (max-width:640px){ .crm-toolrow{ flex-wrap:wrap; } .crm-toolrow-left, .crm-toolrow > .kpi-strip{ flex:1 1 100% !important; } }
+
+/* §검색줄 이동 라운드 2 — 정렬·쓰레기통도 검색창 옆으로(목록 위 여백 제거) */
+.crm-toolrow-bottom{ display:flex; align-items:center; gap:7px; min-width:0; }
+.crm-toolrow-bottom .search-box.crm-toolrow-search{ flex:1 1 auto !important; width:auto; }
+.crm-toolrow-bottom .list-sort-select{ flex:none; width:auto !important; min-width:120px !important; height:34px !important; font-size:12px; border:1px solid #dce5ef; border-radius:8px; background:#fff; padding:0 8px; }
+.crm-toolrow-bottom .kpi-trash-summary-btn{ flex:none; height:34px; width:34px; }
 </style>
 </head>
 <body>
@@ -11352,7 +11371,49 @@ body:not(.crm-admin-mode) #crmPourImportBtn{ display:none !important; }
            동일하므로 KPI 계산/렌더 로직은 전혀 안 건드린다. -->
       <div class="kpi-strip-row crm-kpi-cell">
         <div class="kgoal" id="crmKpiGoalPanel"></div>
-        <div class="kpi-strip" id="crmKpiStrip"></div>
+        <!-- §검색줄 이동 라운드(신규) — 왼쪽: 1행 [+ 고객 등록][전체 업체 ▾], 2행 검색창 / 오른쪽: KPI 카드 3장.
+             id(crmAddBtn/crmFilterRow/crmSearchInput/crmKpiStrip)는 그대로라 기존 동작·바인딩은 같다. -->
+        <div class="crm-toolrow">
+          <div class="crm-toolrow-left">
+            <div class="crm-toolrow-top" id="crmToolrowTop">
+              <button type="button" id="crmAddBtn" class="list-add-btn list-add-btn-inline">+ 고객 등록</button>
+              <div class="list-filter-row" id="crmFilterRow"></div>
+            </div>
+            <div class="crm-toolrow-bottom">
+              <label class="search-box crm-toolrow-search">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+              <input type="text" id="crmSearchInput" placeholder="업체명 / 담당자 / 주소 / 활동내용 검색" />
+            </label>
+              <select class="list-sort-select" id="crmSortSelect">
+            <option value="yearPour">총 실적순</option>
+            <option value="totalRevDesc">총 매출순</option>
+            <option value="revenue2026">2026 매출순</option>
+            <option value="contribDesc">실적↔매출 높은순</option>
+            <option value="trend">최근 흐름순</option>
+            <option value="name">업체명순</option>
+            <!-- §신규 협약사 탭 라운드(신규) — "신규 협약사" 탭에서만 의미가 있는 정렬이라
+                 평소엔 숨겨 둔다(renderList에서 filterKey에 따라 hidden 토글). -->
+            <option value="newPartnerUrgent" id="crmSortOptNewUrgent" hidden>90일 임박순</option>
+            <option value="newPartnerRecent" id="crmSortOptNewRecent" hidden>최근 체결순</option>
+            <!-- §디자인 개편 라운드(신규) — "정렬 select 최근 활동순을 검색창 오른쪽에 배치"
+                 (§요청 2-9). 새 정렬 기준을 만들지 않고, 이미 각 행에 있는 r.summary.createdAt
+                 (최근 활동 컬럼과 같은 값)를 그대로 내림차순 정렬만 한다. -->
+            <option value="newPartnerActivity" id="crmSortOptNewActivity" hidden>최근 활동순</option>
+          </select>
+              <button type="button" class="kpi-trash-summary-btn" id="crmTrashSummaryBtn" title="쓰레기통(협약종료·삭제된 업체)" aria-label="쓰레기통(협약종료·삭제된 업체)">
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M4.5 7h15"></path>
+              <path d="M9.5 7l.5-1.8a1 1 0 0 1 .96-.7h2.08a1 1 0 0 1 .96.7l.5 1.8"></path>
+              <path d="M6.3 7l.75 11.1a1.6 1.6 0 0 0 1.6 1.4h6.7a1.6 1.6 0 0 0 1.6-1.4L17.7 7"></path>
+              <path d="M10 10.5v6"></path>
+              <path d="M14 10.5v6"></path>
+            </svg>
+            <span class="kpi-trash-summary-badge" id="crmTrashSummaryBadge" hidden>0</span>
+          </button>
+            </div>
+          </div>
+          <div class="kpi-strip" id="crmKpiStrip"></div>
+        </div>
       </div>
       <!-- 좌: 업체 목록 카드 — 검색/정렬/필터 pill/표는 전부 기존 DOM·id·렌더 함수
            (renderFilterChips/renderList/applySort 등) 그대로, 카드 틀만 새로 씌운다. -->
@@ -11374,71 +11435,6 @@ body:not(.crm-admin-mode) #crmPourImportBtn{ display:none !important; }
              class="list-add-btn" 그대로, DOM 위치만 이동 — onclick 바인딩은 아래
              "진입" 섹션의 기존 addEventListener 한 줄 그대로 재사용된다(재바인딩 불필요,
              이 버튼 노드 자체가 옮겨진 것뿐이라 리스너가 그대로 붙어 있다). -->
-        <div class="list-filter-row-wrap" id="crmFilterRowWrap">
-          <div class="list-filter-row" id="crmFilterRow"></div>
-          <button type="button" id="crmAddBtn" class="list-add-btn list-add-btn-inline">+ 고객 등록</button>
-          <!-- §목록 compact 라운드(신규) — 칩 줄에 있던 "시공사 지역 분포" 버튼을 뺐다.
-               오른쪽에 진짜 지도 카드가 있고 그 카드와 그 안의 ↗ 버튼이 같은
-               openMapDistributionModal()을 열기 때문에 중복이었다. 지도 팝업·마커·
-               클러스터·탭은 전혀 건드리지 않았다(아래 리스너도 버튼이 없을 때만 건너뛴다). -->
-          <!-- §쓰레기통 중복 정리 라운드(신규) — KPI 스트립 오른쪽에 있던 쓰레기통 아이콘
-               버튼을 이 줄(= "+ 고객 등록" 줄) 맨 오른쪽으로 옮겼다. id/배지 id/클릭 동작
-               (filterKey='trash' → renderList() → renderTrashTab())은 그대로라
-               renderTrashSummaryBtn()의 바인딩·배지 갱신 코드는 한 줄도 안 바뀌었다 —
-               노드 위치와 모양(원형 → 네모 상자)만 달라졌다. -->
-          <button type="button" class="kpi-trash-summary-btn" id="crmTrashSummaryBtn" title="쓰레기통(협약종료·삭제된 업체)" aria-label="쓰레기통(협약종료·삭제된 업체)">
-            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M4.5 7h15"></path>
-              <path d="M9.5 7l.5-1.8a1 1 0 0 1 .96-.7h2.08a1 1 0 0 1 .96.7l.5 1.8"></path>
-              <path d="M6.3 7l.75 11.1a1.6 1.6 0 0 0 1.6 1.4h6.7a1.6 1.6 0 0 0 1.6-1.4L17.7 7"></path>
-              <path d="M10 10.5v6"></path>
-              <path d="M14 10.5v6"></path>
-            </svg>
-            <span class="kpi-trash-summary-badge" id="crmTrashSummaryBadge" hidden>0</span>
-          </button>
-        </div>
-        <div class="list-search-row">
-          <!-- §검색창 클릭 영역 수정 라운드 — div였을 때는 아이콘·좌우 padding·input 세로 여백을
-               클릭해도 아무 반응이 없었다. label로 바꾸면 새 JS 이벤트 없이도 "label 영역 클릭
-               -> 그 안의 input에 포커스"라는 표준 브라우저 동작만으로 박스 전체가 클릭 가능해진다
-               (§확인 4 "CSS/label 구조만으로 해결되면 불필요한 이벤트 추가 안 함"). -->
-          <label class="search-box">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-            <input type="text" id="crmSearchInput" placeholder="업체명 / 담당자 / 주소 / 활동내용 검색" />
-          </label>
-          <!-- §정렬 드롭다운 정리 라운드: "전체 실적순"(pour, 옛 co.pourTrackRecords 상태값
-               기준)/"최근 1년 매출순"(revenue, co.partnerDashboard.gradeSales 단일 스냅샷
-               기준)은 메인 테이블에 더 이상 없는 옛 용어라 드롭다운에서 뺐다(계산 코드 자체는
-               지우지 않음, applySort 안에 그대로 남아있음). 새 6개 옵션은 전부 메인 컬럼명과
-               동일한 함수를 그대로 재사용한다(계산 새로 안 만듦) — 총 실적순(yearPour)/총
-               매출순(totalRevDesc, "총 매출" 헤더 클릭 정렬과 완전히 같은 모드)/2026
-               매출순(revenue2026)/실적↔매출 높은순(contribDesc)/최근 흐름순(trend)/
-               업체명순(name). -->
-          <select class="list-sort-select" id="crmSortSelect">
-            <option value="yearPour">총 실적순</option>
-            <option value="totalRevDesc">총 매출순</option>
-            <option value="revenue2026">2026 매출순</option>
-            <option value="contribDesc">실적↔매출 높은순</option>
-            <option value="trend">최근 흐름순</option>
-            <option value="name">업체명순</option>
-            <!-- §신규 협약사 탭 라운드(신규) — "신규 협약사" 탭에서만 의미가 있는 정렬이라
-                 평소엔 숨겨 둔다(renderList에서 filterKey에 따라 hidden 토글). -->
-            <option value="newPartnerUrgent" id="crmSortOptNewUrgent" hidden>90일 임박순</option>
-            <option value="newPartnerRecent" id="crmSortOptNewRecent" hidden>최근 체결순</option>
-            <!-- §디자인 개편 라운드(신규) — "정렬 select 최근 활동순을 검색창 오른쪽에 배치"
-                 (§요청 2-9). 새 정렬 기준을 만들지 않고, 이미 각 행에 있는 r.summary.createdAt
-                 (최근 활동 컬럼과 같은 값)를 그대로 내림차순 정렬만 한다. -->
-            <option value="newPartnerActivity" id="crmSortOptNewActivity" hidden>최근 활동순</option>
-          </select>
-          <!-- §PDF 내보내기/목록 출력 통합 라운드(신규) — 이전엔 이 자리의 "목록 출력"
-               텍스트버튼(#crmPdfExportBtn, 내부용/시공사발송용/외부발송용 3종)과 상단
-               "PDF 내보내기" 버튼(#crmMouPdfBtn, MOU 체결 협력사 전용 내부/외부 2택)이
-               별개 진입점으로 공존해 중복 기능처럼 보였다. 사용자가 눌러 들어가는 대표
-               진입점을 상단 "PDF 내보내기" 버튼 하나로 통일하고(아래 openPdfExportModal
-               바인딩 참고), 이 자리의 중복 텍스트버튼만 제거한다 — 열리던 모달의 실제
-               로직(pdfExportState/PDF_EXPORT_TYPES/co.distributionLists 판정)은 전혀
-              안 지우고 그대로 재사용한다. -->
-        </div>
         <!-- §고객관리 메인화면 재배치 라운드(신규) — 컬럼 재구성(§요청 7): 업체명/최근실적/
              총매출/최근요청/최근흐름/실적-매출 6개만 남긴다. 지역/업종/고객상태/담당자/
              연락처/최근활동일/비고 컬럼은 원래 이 표에 없었다(전수 검색 결과 없음) — 삭제할
@@ -21057,8 +21053,11 @@ window.SHIN2_CRM_APP_INIT = function(){
     const countOf = key=> key === 'trash' ? (counts.trash || 0) : pillCount(key, counts);
     const labelOf = key=> key === 'all' ? '전체 업체' : ((DROPDOWN_DEFS.find(d=> d[0] === key) || [key, ''])[1] || '전체 업체');
     const curKey = DROPDOWN_DEFS.some(d=> d[0] === filterKey) ? filterKey : 'all';
+    // §검색줄 이동 라운드 — 드롭다운은 위쪽 1행([+ 고객 등록] 옆)에 둔다. 그 줄이 없으면 예전처럼 검색줄 앞에.
+    const toolTop = document.getElementById('crmToolrowTop');
     const searchRow = document.querySelector('#listView .list-search-row');
-    if(searchRow && wrap.parentElement !== searchRow) searchRow.insertBefore(wrap, searchRow.firstElementChild);
+    if(toolTop){ if(wrap.parentElement !== toolTop) toolTop.appendChild(wrap); }
+    else if(searchRow && wrap.parentElement !== searchRow) searchRow.insertBefore(wrap, searchRow.firstElementChild);
     wrap.classList.add('is-dropdown');
     wrap.innerHTML = `
       <div class="crm-status-dd" id="crmStatusDd">
