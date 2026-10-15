@@ -1,7 +1,7 @@
 // §내부직원·관리자 로그인 분리 — 관리자 금고(암호화)와 로그인 역할 판정(index.html의 실제 코드 사용, 테스트용 가짜 비밀번호만 씀)
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('fs'),vm=require('vm');
 const html=fs.readFileSync(__dirname+'/index.html','utf8');
-const start=html.indexOf('window.SHIN2_ADMIN_VAULT = null;');
+const start=html.indexOf('window.SHIN2_ADMIN_VAULT = ');
 const end=html.indexOf('})();',start)+5;
 assert.ok(start>0&&end>start,'vault block');
 function makeWin(){
@@ -25,6 +25,7 @@ test('금고: 관리자 비밀번호로만 열리고, 원문은 암호문에 없
 
 test('금고 설정 전: 입력한 비밀번호 그대로 로그인, 역할(관리자 모드 기록)은 건드리지 않음',async()=>{
   const {win,store}=makeWin();
+  win.SHIN2_ADMIN_VAULT=null;
   store['shin2-crm-admin-mode']='1';
   const r=await win.SHIN2_RESOLVE_LOGIN_ROLE(SHARED);
   assert.equal(r.pw,SHARED);assert.equal(r.role,null);
