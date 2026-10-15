@@ -11334,6 +11334,33 @@ body.crm-risk-view #listView .co-row .col-request, body.crm-risk-view #crmCoTabl
 .b2b-risk-name .b2b-pill{ margin-right:4px; }
 .b2b-risk-why{ font-size:12.5px; color:#17345F; line-height:1.45; }
 @media (max-width:760px){ .b2b-risk-head{ display:none; } .b2b-risk-row{ grid-template-columns:minmax(0,1fr) minmax(0,1fr); } }
+
+/* §선행지표 카드 = 탭(임시) */
+.b2b-card-tab{ cursor:pointer; font:inherit; width:100%; transition:box-shadow .15s, transform .15s; }
+.b2b-card-tab:hover{ box-shadow:0 2px 8px rgba(23,52,95,.12); }
+.b2b-card-tab:focus-visible{ outline:2px solid #378ADD; outline-offset:2px; }
+.b2b-card-tab.is-selected{ outline:2.5px solid #17345F; outline-offset:-1px; }
+.b2b-card-more{ margin-top:6px; font-size:11.5px; font-weight:700; color:#2F6FB5; }
+.b2b-card-hint{ font-size:12px; color:#8A97AB; }
+.b2b-card-detail{ background:#fff; border:1px solid #E3EAF3; border-left:5px solid #2F6FB5; border-radius:0; padding:12px 16px; display:flex; flex-direction:column; gap:8px; }
+.b2b-card-detail.is-danger{ border-left-color:#E24B4A; } .b2b-card-detail.is-warn{ border-left-color:#EF9F27; } .b2b-card-detail.is-ok{ border-left-color:#3B9A5A; }
+.b2b-card-detail-title{ font-size:14px; font-weight:800; color:#17345F; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.b2b-card-detail-title b{ font-size:18px; }
+.b2b-card-detail-how{ font-size:12.5px; color:#55657C; line-height:1.5; }
+.b2b-card-detail-sub{ font-size:12.5px; font-weight:800; color:#17345F; }
+.b2b-card-detail-list{ list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:6px 14px; }
+.b2b-card-detail-list li{ display:flex; justify-content:space-between; gap:8px; font-size:12.5px; padding:6px 8px; background:#F7F9FC; border-radius:8px; min-width:0; }
+.b2b-card-detail-list li b{ color:#17345F; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.b2b-card-detail-list li span{ color:#6B7A90; white-space:nowrap; }
+@media (max-width:640px){ .b2b-card-detail-list{ grid-template-columns:minmax(0,1fr); } }
+/* §종합 달성률 돋보이게 */
+#kpiView .kgoal-row.is-total{ margin-top:6px; padding:12px 14px !important; border-top:0 !important; border-radius:12px; background:linear-gradient(90deg, #17345F, #2F6FB5); grid-template-columns:200px minmax(0,1fr) 130px; }
+#kpiView .kgoal-row.is-total .kgoal-name b{ color:#fff; font-size:16px; }
+#kpiView .kgoal-row.is-total .kgoal-name span{ color:#CFE0F5; }
+#kpiView .kgoal-row.is-total .kgoal-track{ height:16px !important; background:rgba(255,255,255,.22); }
+#kpiView .kgoal-row.is-total .kgoal-cur{ background:#fff !important; }
+#kpiView .kgoal-row.is-total .kgoal-val b.is-total{ color:#fff; font-size:34px !important; line-height:1; }
+@media (max-width:640px){ #kpiView .kgoal-row.is-total{ grid-template-columns:minmax(0,1fr) 90px; } }
 </style>
 </head>
 <body>
@@ -21561,13 +21588,32 @@ window.SHIN2_CRM_APP_INIT = function(){
     const rateStatus = (v, okMin, watchMin, warnMin)=> v == null ? { key:'na', label:'데이터 부족' } : v >= okMin ? { key:'ok', label:'정상' } : v >= watchMin ? { key:'watch', label:'관심' } : v >= warnMin ? { key:'warn', label:'주의' } : { key:'danger', label:'위험' };
     const inactStatus = inactiveRate == null ? { key:'na', label:'데이터 부족' } : inactiveRate <= 20 ? { key:'ok', label:'정상' } : inactiveRate <= 30 ? { key:'watch', label:'관심' } : inactiveRate <= 40 ? { key:'warn', label:'주의' } : { key:'danger', label:'위험' };
     const cards = [
-      { name:'핵심 시공사 이용률', value: coreRate == null ? '—' : coreRate + '%', sub: core.length ? `작년 공고 3건↑ ${core.length}곳 중 ${coreUsed.length}곳 올해 이용` : '대상 없음', status: rateStatus(coreRate, 80, 60, 40) },
-      { name:'L2→L3 전환율', value: l2l3Rate == null ? '—' : l2l3Rate + '%*', sub:'신규 협약 기준값 · 전체 재산출 필요', status:{ key:'na', label:'재산출' } },
-      { name:'공법 요청량', value: reqPct == null ? '—' : (reqPct > 0 ? '+' : '') + reqPct + '%', sub: `요청 ${sum('allc')}건 (작년 같은 기간 ${sum('allp')}건)`, status: b2bPctStatus(reqPct) },
-      { name:'현장등록(기술자문)', value: l2Pct == null ? '—' : (l2Pct > 0 ? '+' : '') + l2Pct + '%', sub: `기술자문문의 ${sum('l2c')}건 (작년 ${sum('l2p')}건)`, status: b2bPctStatus(l2Pct) },
-      { name:'공고 건수(L4)', value: l4Pct == null ? '—' : (l4Pct > 0 ? '+' : '') + l4Pct + '%', sub: `올해 ${sum('l4c')}건 (작년 환산 ${Math.round(sum('l4p'))}건)`, status: b2bPctStatus(l4Pct) },
-      { name:'장기 무활동', value: inactiveRate == null ? '—' : inactiveRate + '%', sub: `90일 이상 활동·요청 없음 ${rows.filter(r=> r.inactive).length}곳`, status: inactStatus }
+      { id:'core', name:'핵심 시공사 이용률', value: coreRate == null ? '—' : coreRate + '%', sub: core.length ? `작년 공고 3건↑ ${core.length}곳 중 ${coreUsed.length}곳 올해 이용` : '대상 없음', status: rateStatus(coreRate, 80, 60, 40) },
+      { id:'l2l3', name:'L2→L3 전환율', value: l2l3Rate == null ? '—' : l2l3Rate + '%*', sub:'신규 협약 기준값 · 전체 재산출 필요', status:{ key:'na', label:'재산출' } },
+      { id:'req', name:'공법 요청량', value: reqPct == null ? '—' : (reqPct > 0 ? '+' : '') + reqPct + '%', sub: `요청 ${sum('allc')}건 (작년 같은 기간 ${sum('allp')}건)`, status: b2bPctStatus(reqPct) },
+      { id:'l2', name:'현장등록(기술자문)', value: l2Pct == null ? '—' : (l2Pct > 0 ? '+' : '') + l2Pct + '%', sub: `기술자문문의 ${sum('l2c')}건 (작년 ${sum('l2p')}건)`, status: b2bPctStatus(l2Pct) },
+      { id:'l4', name:'공고 건수(L4)', value: l4Pct == null ? '—' : (l4Pct > 0 ? '+' : '') + l4Pct + '%', sub: `올해 ${sum('l4c')}건 (작년 환산 ${Math.round(sum('l4p'))}건)`, status: b2bPctStatus(l4Pct) },
+      { id:'inactive', name:'장기 무활동', value: inactiveRate == null ? '—' : inactiveRate + '%', sub: `90일 이상 활동·요청 없음 ${rows.filter(r=> r.inactive).length}곳`, status: inactStatus }
     ];
+    // §선행지표 카드 클릭 상세(임시) — 카드를 누르면 보여줄 "계산 방식"과 "관련 협력사"
+    const fmtD = ts=> ts ? (new Date(ts).getMonth() + 1) + '/' + new Date(ts).getDate() : '기록 없음';
+    const decl = (c, p)=> (p > 0 ? Math.round((c - p) / p * 100) : null);
+    const top = (arr, n)=> arr.slice(0, n || 10);
+    const details = {
+      core: { how:'핵심 시공사(임시) = 작년 공고(L4) 3건 이상 협력사. 올해 요청이나 공고가 1건이라도 있으면 "이용"으로 봅니다.',
+        title:'올해 아직 이용이 없는 핵심 시공사', items: top(core.filter(r=> !(r.allc > 0 || r.l4c > 0)).sort((a,b)=> b.l4PrevFull - a.l4PrevFull)).map(r=> ({ name:r.co.name, text:`작년 공고 ${r.l4PrevFull}건 → 올해 요청·공고 없음` })) },
+      l2l3: { how:'지금 값은 신규 협약(5/20 이후) 기준입니다. 발표자료 기준(전체 협력사 · 동일 시공사+동일 현장)으로 다시 계산해야 합니다.',
+        title:'', items: [] },
+      req: { how:'협력사 요청(기술자문·컨설팅·설명회·샘플·기타) 건수를 올해 1/1~오늘과 작년 같은 기간으로 비교합니다.',
+        title:'요청이 가장 많이 줄어든 협력사', items: top(rows.filter(r=> r.allp >= 2 && r.allc < r.allp).sort((a,b)=> (a.allc - a.allp) - (b.allc - b.allp))).map(r=> ({ name:r.co.name, text:`작년 ${r.allp}건 → 올해 ${r.allc}건 (${decl(r.allc, r.allp)}%)` })) },
+      l2: { how:'현장등록 = 기술자문문의 건수(영업보고는 아직 미연동). 올해 1/1~오늘과 작년 같은 기간 비교.',
+        title:'기술자문이 가장 많이 줄어든 협력사', items: top(rows.filter(r=> r.l2p >= 2 && r.l2c < r.l2p).sort((a,b)=> (a.l2c - a.l2p) - (b.l2c - b.l2p))).map(r=> ({ name:r.co.name, text:`작년 ${r.l2p}건 → 올해 ${r.l2c}건 (${decl(r.l2c, r.l2p)}%)` })) },
+      l4: { how:'POUR 공고·실적 건수. 연 단위 자료라 작년 건수를 올해 경과 비율로 환산해 비교합니다.',
+        title:'공고가 가장 많이 줄어든 협력사', items: top(rows.filter(r=> r.l4p >= 1.5 && r.l4c < r.l4p).sort((a,b)=> (a.l4c - a.l4p) - (b.l4c - b.l4p))).map(r=> ({ name:r.co.name, text:`작년 ${r.l4PrevFull}건(환산 ${r.l4p.toFixed(1)}) → 올해 ${r.l4c}건` })) },
+      inactive: { how:'90일 이상 활동 기록과 요청이 모두 없는 협력사 비율입니다.',
+        title:'오래 조용한 협력사 (VIP 먼저)', items: top(rows.filter(r=> r.inactive).sort((a,b)=> ((b.vip ? 1 : 0) - (a.vip ? 1 : 0)) || ((a.lastTs || 0) - (b.lastTs || 0))), 12).map(r=> ({ name:r.co.name + (r.vip ? ' · VIP' : ''), text:'마지막 활동 ' + fmtD(r.lastTs) })) }
+    };
+    cards.forEach(c=> c.detail = details[c.id]);
     const order = { danger:0, warn:1, ok:2, na:3 };
     rows.sort((a,b)=> (order[a.status.key] - order[b.status.key]) || ((b.vip ? 1 : 0) - (a.vip ? 1 : 0)) || ((b.silent ? 1 : 0) - (a.silent ? 1 : 0)) || ((a.status.worst == null ? 999 : a.status.worst) - (b.status.worst == null ? 999 : b.status.worst)));
     return { Y, rows, cards, monthly, curMonth: now.getMonth(), partnerCount: rows.length, evaluated,
@@ -21588,6 +21634,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     </svg>`;
   }
   let b2bLastResult = null;
+  let b2bSelectedCard = null; // 선행지표 카드(탭) 선택 상태
   /* §위험 신호(임시, 신규) — B2B 선행지표 계산(computeB2bLeading) 결과를 업체별 "위험 신호 · 요인 · 필요한 조치"로 바꾼다.
      ※ 지금은 임시 기준이다. 끌어오는 데이터·반영 값·신호 이름·조치 문구는 추후 모두 바뀔 수 있으므로
        B2B_RISK_ACTIONS 표와 b2bRiskOf()만 고치면 고객관리 목록·고객카드·B2B KPI 탭이 같이 바뀌게 했다. */
@@ -21672,11 +21719,12 @@ window.SHIN2_CRM_APP_INIT = function(){
         <span>매출</span><b>올해 ${b2bFmtWon(x.revc)} / 작년 ${b2bFmtWon(x.revPrevFull)} → ${pct(x.ch.rev)}</b>
       </div></div>`).join('');
   }
-  function renderB2bLeading(){
+  function renderB2bLeading(useCache){
     const root = document.getElementById('b2bLeadRoot');
     if(!root) return;
     let r;
-    try{ r = computeB2bLeading(); }
+    if(useCache === true && b2bLastResult) r = b2bLastResult;
+    else try{ r = computeB2bLeading(); }
     catch(e){ console.warn('[B2B 선행지표] 계산 실패', e); root.innerHTML = '<div class="b2b-note">지표 계산 중 오류가 발생했습니다(임시 화면).</div>'; return; }
     b2bLastResult = r;
     const fmtPct = v=> v == null ? '<span class="b2b-na">—</span>' : `<span class="${v < 0 ? 'b2b-neg' : 'b2b-pos'}">${v > 0 ? '▲' : v < 0 ? '▼' : ''}${Math.abs(v)}%</span>`;
@@ -21688,10 +21736,18 @@ window.SHIN2_CRM_APP_INIT = function(){
     root.innerHTML = `
       <section class="kpiv-sec">
         <div class="kpiv-head"><h2 class="kpiv-title">② 선행지표 — 지금 상태</h2><span class="kpiv-sub">전체 협력사 ${r.partnerCount}곳 · 작년 같은 기간과 비교</span></div>
-        <div class="b2b-cards">${r.cards.map(c=> `<div class="b2b-card is-${c.status.key}">
+        <div class="b2b-cards" role="tablist">${r.cards.map(c=> `<button type="button" role="tab" aria-selected="${b2bSelectedCard === c.id}" class="b2b-card b2b-card-tab is-${c.status.key}${b2bSelectedCard === c.id ? ' is-selected' : ''}" data-b2b-card="${esc(c.id)}">
           <div class="b2b-card-top"><span class="b2b-card-name">${esc(c.name)}</span><span class="b2b-pill is-${c.status.key}">${esc(c.status.label)}</span></div>
           <div class="b2b-card-val">${esc(c.value)}</div>
-          <div class="b2b-card-sub">${esc(c.sub)}</div></div>`).join('')}</div>
+          <div class="b2b-card-sub">${esc(c.sub)}</div>
+          <div class="b2b-card-more">${b2bSelectedCard === c.id ? '닫기 ▴' : '자세히 ▾'}</div></button>`).join('')}</div>
+        ${(()=>{ const c = r.cards.find(x=> x.id === b2bSelectedCard); if(!c || !c.detail) return '<div class="b2b-card-hint">카드를 누르면 계산 방식과 관련 협력사가 아래에 나옵니다.</div>';
+          const d = c.detail;
+          return `<div class="b2b-card-detail is-${c.status.key}" role="tabpanel">
+            <div class="b2b-card-detail-title">${esc(c.name)} <b>${esc(c.value)}</b> <span class="b2b-pill is-${c.status.key}">${esc(c.status.label)}</span></div>
+            <div class="b2b-card-detail-how">${esc(d.how)}</div>
+            ${d.title ? `<div class="b2b-card-detail-sub">${esc(d.title)}</div>${d.items.length ? `<ul class="b2b-card-detail-list">${d.items.map(it=> `<li><b>${esc(it.name)}</b><span>${esc(it.text)}</span></li>`).join('')}</ul>` : '<div class="b2b-empty">해당하는 협력사가 없습니다.</div>'}` : ''}
+            <div class="b2b-note">임시 · 정의와 기준은 데이터 연동 후 바뀔 수 있음</div></div>`; })()}
         <div class="b2b-note">임시 · 대상 = CRM MOU 완료 ${r.popCounts.crm}곳 + MOU 명단 체결 ${r.popCounts.master}곳 + 최근 2년 요청·매출·공고 자료가 있는 업체 ${r.popCounts.data}곳 · 기준(-10% 관심 / -20% 주의 / -30% 위험)은 데이터가 쌓인 뒤 조정</div>
       </section>
       <section class="kpiv-sec">
@@ -21722,6 +21778,11 @@ window.SHIN2_CRM_APP_INIT = function(){
           <div class="b2b-note">임시 · ▼ 감소 / ▲ 증가 · "—"는 작년 자료가 적어 비교 안 함 · 공고·매출은 연 단위라 작년 값을 올해 경과 비율로 환산</div>
         </div>
       </details>`;
+    root.querySelectorAll('[data-b2b-card]').forEach(btn=> btn.addEventListener('click', ()=>{
+      const id = btn.getAttribute('data-b2b-card');
+      b2bSelectedCard = (b2bSelectedCard === id) ? null : id;
+      renderB2bLeading(true); // 다시 계산하지 않고 화면만 다시 그림
+    }));
     const inp = document.getElementById('b2bLookupInput');
     if(inp){
       let t = null;
