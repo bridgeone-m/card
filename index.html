@@ -32079,6 +32079,7 @@ window.SHIN2_CRM_APP_INIT = function(){
             ` : ''}
             ${tpl.enabled === false ? `<div class="mail-compose-warn">메일 설정에서 이 템플릿이 "사용 안 함"으로 꺼져 있습니다 — 발송은 되지만, 메일 설정에서 다시 켜는 걸 권장합니다.</div>` : ''}
             ${alreadySent ? `<div class="mail-compose-warn">최근 발송: ${esc((lastSent && lastSent.sentAt) ? lastSent.sentAt.slice(0,16).replace('T',' ') : '')} — 다시 보내려면 [재발송]을 눌러주세요.</div>` : ''}
+            <div class="co-form-field"><label>메일 종류</label><select id="mailComposeType">${allMailKeys(s).filter(k=> s.mailTemplates[k] && (s.mailTemplates[k].enabled !== false || k === mailType)).map(k=> `<option value="${esc(k)}" ${k === mailType ? 'selected' : ''}>${esc(mailTabDisplayName(s.mailTemplates[k], k))}${s.mailTemplates[k].enabled === false ? ' (사용 안 함)' : ''}</option>`).join('')}</select></div>
             <div class="co-form-field"><label>보내는사람</label><input type="text" id="mailComposeFrom" value="${esc(s.fromName)}${s.fromEmail ? ' <' + esc(s.fromEmail) + '>' : ''}" disabled /></div>
             <div class="co-form-field"><label>받는사람</label><input type="text" id="mailComposeTo" value="${esc(co.email || '')}" placeholder="받는 이메일 주소" /></div>
             <div class="co-form-field"><label>참조(선택)</label><input type="text" id="mailComposeCc" value="" placeholder="참조 이메일(콤마로 구분)" /></div>
@@ -32142,6 +32143,29 @@ window.SHIN2_CRM_APP_INIT = function(){
       window.ModalManager.setOptions('mailComposeOverlay', {
         closeOnBackdrop: false,
         isDirty: ()=>{ const el = document.getElementById('mailComposeBody'); return !!el && el.innerHTML !== initialBodyHtml; }
+      });
+    }
+    // §메일 고르기(신규) — 메일 종류를 바꾸면 그 메일의 제목·본문·첨부로 다시 채운다(작성한 내용이 있으면 먼저 확인).
+    const typeSel = document.getElementById('mailComposeType');
+    if(typeSel){
+      const initSubject = subjectFilled;
+      const initBody = (document.getElementById('mailComposeBody') || {}).innerHTML || '';
+      typeSel.addEventListener('change', ()=>{
+        const next = typeSel.value;
+        if(!next || next === mailType) return;
+        const subjEl = document.getElementById('mailComposeSubject'), bodyEl = document.getElementById('mailComposeBody');
+        const edited = (subjEl && subjEl.value !== initSubject) || (bodyEl && bodyEl.innerHTML !== initBody);
+        if(edited && !confirm('작성 중인 제목·본문이 선택한 메일 내용으로 바뀝니다. 바꿀까요?')){ typeSel.value = mailType; return; }
+        const toEl = document.getElementById('mailComposeTo'), ccEl = document.getElementById('mailComposeCc');
+        const keepTo = toEl ? toEl.value : '', keepCc = ccEl ? ccEl.value : '';
+        const nextOpts = (next === 'documentRequest' && typeof mouDocRequestLabels === 'function') ? { requestedDocLabels: mouDocRequestLabels(co.id) } : {};
+        closeMailComposeModal();
+        openMailComposeModal(co.id, next, nextOpts);
+        // 받는사람·참조는 직접 고친 값을 그대로 유지
+        const to2 = document.getElementById('mailComposeTo'), cc2 = document.getElementById('mailComposeCc');
+        if(to2 && keepTo !== (co.email || '')) to2.value = keepTo;
+        if(cc2 && keepCc) cc2.value = keepCc;
+        const sel2 = document.getElementById('mailComposeType'); if(sel2) sel2.focus();
       });
     }
     const goSettingsBtn = document.getElementById('mailComposeGoSettings');
@@ -33569,7 +33593,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     // §메일 직접 추가 라운드(신규) — 메일 설정에서 직접 만든 메일(사용 켜짐)을 여기서 골라 보낸다.
     try{
       const ms = D.loadMailSettings();
-      const keys = customMailKeys(ms).filter(k=> ms.mailTemplates[k].enabled !== false);
+      const keys = allMailKeys(ms).filter(k=> ms.mailTemplates[k] && ms.mailTemplates[k].enabled !== false); // §메일 고르기 — 모든 메일
       if(keys.length){
         html.push(`<details class="agr-more agr-custom-mail">
           <summary class="workq-btn agr-custom-mail-btn">${agrIcon('mail')}메일 보내기 ▾</summary>
