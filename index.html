@@ -11287,6 +11287,18 @@ body:not(.crm-admin-mode) .crm-toolrow-v3 #crmAddBtn{ display:none !important; }
 .b2b-detail > summary::after{ content:' ▾'; color:#8A97AB; }
 .b2b-detail[open] > summary::after{ content:' ▴'; }
 @media (max-width:640px){ .b2b-cards{ grid-template-columns:repeat(2, minmax(0,1fr)) !important; } }
+
+/* §B2B 선행지표 — VIP·협력사 찾기(임시) */
+.b2b-pill.is-vip{ background:#17345F; color:#fff; }
+.b2b-lookup-input{ width:100%; max-width:420px; height:36px; box-sizing:border-box; border:1px solid #D5DEEA; border-radius:8px; padding:0 12px; font-size:13.5px; background:#fff; }
+.b2b-lookup-card{ background:#fff; border:1px solid #E3EAF3; border-radius:10px; padding:12px 14px; display:flex; flex-direction:column; gap:6px; margin-top:6px; }
+.b2b-lookup-head{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.b2b-lookup-head b{ font-size:15px; color:#17345F; }
+.b2b-lookup-why{ font-size:13px; color:#C62828; font-weight:700; }
+.b2b-lookup-grid{ display:grid; grid-template-columns:140px minmax(0,1fr); gap:4px 12px; font-size:12.5px; }
+.b2b-lookup-grid span{ color:#6B7A90; }
+.b2b-lookup-grid b{ color:#17345F; font-weight:600; }
+@media (max-width:640px){ .b2b-lookup-grid{ grid-template-columns:minmax(0,1fr); } }
 </style>
 </head>
 <body>
@@ -17782,6 +17794,8 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
       .replace(/\(\s*주\s*\)|주식회사|㈜/g, '')
       .replace(/[^\p{L}\p{N}]/gu, '');
   }
+  // §B2B 선행지표(전체 협력사) — MOU 마스터 명단상 체결 업체인지(읽기 전용)
+  function isMouMasterSigned(name){ const n = normCompanyNameForMouMaster(name); return !!n && MOU_MASTER_SIGNED_NORMS.has(n); }
   function classifyUnregisteredCompaniesByMouMaster(list){
     const mou = [], caseByCase = [], seen = new Set();
     (list || []).forEach(item=>{
@@ -18437,7 +18451,7 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
     addRequestedMaterial, addRequestedMaterialIfNew, removeRequestedMaterial, setRequestedMaterialStatus, extractRequestedMaterialsFromActivities,
     normCompanyName, findSimilarCompanySuggestions,
     buildUnregisteredCompanies, getCompany2025Revenue, getCompany2024Revenue, getCompanyTotalRevenueAllYears,
-    buildRevenue2026Index, getCompany2026Revenue, buildUnregisteredCompanies2026, classifyUnregisteredCompaniesByMouMaster,
+    buildRevenue2026Index, getCompany2026Revenue, buildUnregisteredCompanies2026, classifyUnregisteredCompaniesByMouMaster, isMouMasterSigned,
     invalidateNormNameCounts: ()=>{ _crmNormNameCountsCache = null; },
     loadSalesLedger, saveSalesLedgerConfirmed, invalidateRevenue2026IndexCache, buildMergedSalesRowsForYear, salesTxnIdentityKey, salesTxnFingerprintKey, salesTxnCorrectionCandidateKey,
     loadSalesPendingLedger, loadSalesCrossYearReview, loadSalesCompanyReview, mergeIntoReviewLedger, removeResolvedFromReviewLedger, salesReviewIdentityKey,
@@ -21411,24 +21425,31 @@ window.SHIN2_CRM_APP_INIT = function(){
   }
   function computeB2bLeading(){
     const now = new Date(), Y = now.getFullYear();
+    const DAY = 86400000;
     const startCur = new Date(Y, 0, 1).getTime(), endCur = now.getTime();
     const startPrev = new Date(Y - 1, 0, 1).getTime(), endPrev = new Date(Y - 1, now.getMonth(), now.getDate(), 23, 59, 59).getTime();
     const frac = Math.max(0.01, (endCur - startCur) / (new Date(Y + 1, 0, 1).getTime() - startCur));
-    let partners = (typeof getMouSignedCompanies === 'function') ? getMouSignedCompanies() : D.loadActiveCompanies();
-    partners = partners.filter(co=> !(D.isAgreementTerminated && D.isAgreementTerminated(co)));
+    const RECENT_DAYS = 90, BEFORE_DAYS = 365;            // 최근 90일 vs 그 직전 1년
+    const recentFrom = endCur - RECENT_DAYS * DAY, beforeFrom = recentFrom - BEFORE_DAYS * DAY;
+    // 대상: 발표자료 기준 "전체 협력사" — CRM MOU 완료 + MOU 명단상 체결 + 최근 2년 요청·매출·공고가 있는 업체(삭제·협약종료 제외)
+    const crmMou = new Set(((typeof getMouSignedCompanies === 'function') ? getMouSignedCompanies() : []).map(c=> c.id));
     const reqIdx = D.buildSheetRequestsIndex();
     const monthly = { cur: new Array(12).fill(0), prev: new Array(12).fill(0) };
-    const INACTIVE_DAYS = 90;
-    const rows = partners.map(co=>{
+    const all = D.loadActiveCompanies().filter(co=> !(D.isAgreementTerminated && D.isAgreementTerminated(co)));
+    const evalCo = co=>{
       const reqs = reqIdx.get(String(co.id)) || [];
-      let l2c = 0, l2p = 0, l3c = 0, l3p = 0, allc = 0, allp = 0, lastTs = 0;
+      let l2c = 0, l2p = 0, l3c = 0, l3p = 0, allc = 0, allp = 0, lastTs = 0, lastReqTs = 0, recentReq = 0, beforeReq = 0, req2y = 0;
+      const mon = { cur: new Array(12).fill(0), prev: new Array(12).fill(0) };
       reqs.forEach(r=>{
         const t = new Date(r.requestDate).getTime();
         if(isNaN(t) || t > endCur) return;
         if(t > lastTs) lastTs = t;
+        if(t > lastReqTs) lastReqTs = t;
         const d = new Date(t);
-        if(d.getFullYear() === Y) monthly.cur[d.getMonth()]++;
-        else if(d.getFullYear() === Y - 1) monthly.prev[d.getMonth()]++;
+        if(d.getFullYear() === Y) mon.cur[d.getMonth()]++;
+        else if(d.getFullYear() === Y - 1){ mon.prev[d.getMonth()]++; }
+        if(t >= startPrev) req2y++;
+        if(t >= recentFrom) recentReq++; else if(t >= beforeFrom) beforeReq++;
         const inC = t >= startCur, inP = t >= startPrev && t <= endPrev;
         if(inC) allc++; if(inP) allp++;
         if(B2B_L2_TYPES.has(r.requestType)){ if(inC) l2c++; if(inP) l2p++; }
@@ -21444,10 +21465,21 @@ window.SHIN2_CRM_APP_INIT = function(){
       const rc = D.getCompany2026Revenue ? D.getCompany2026Revenue(co) : null;
       const rp = D.getCompany2025Revenue ? D.getCompany2025Revenue(co) : null;
       const revc = (Y === 2026 && rc) ? rc.total : null;
-      const revp = (Y === 2026 && rp && !rp.ambiguous) ? rp.total * frac : null;
+      const revPrevFull = (rp && !rp.ambiguous) ? rp.total : null;
+      const revp = (Y === 2026 && revPrevFull != null) ? revPrevFull * frac : null;
+      const inMouCrm = crmMou.has(co.id);
+      const inMouMaster = !!(D.isMouMasterSigned && D.isMouMasterSigned(co.name));
+      const hasData = req2y > 0 || (revc || 0) > 0 || (revPrevFull || 0) > 0 || l4c > 0 || l4PrevFull > 0;
+      const included = inMouCrm || inMouMaster || hasData;
+      // VIP(임시 정의): 작년 매출 3억 이상 또는 작년 공고 10건 이상
+      const vip = (revPrevFull || 0) >= 300000000 || l4PrevFull >= 10;
+      // 최근 끊김: 직전 1년 요청 3건 이상(또는 VIP라 요청 이력 1건 이상)인데 최근 90일 요청 0건
+      const silent = recentReq === 0 && (beforeReq >= 3 || (vip && beforeReq >= 1));
       const ch = { l2: b2bPct(l2c, l2p, 2), l3: b2bPct(l3c, l3p, 2), l4: b2bPct(l4c, l4p, 1.5), rev: b2bPct(revc, revp, 1000000) };
       const vals = Object.values(ch).filter(v=> v != null);
       let status = { key:'na', label:'데이터 부족' };
+      const reasons = [];
+      if(silent) reasons.push(`최근 ${RECENT_DAYS}일 문의 0건(직전 1년 ${beforeReq}건)`);
       if(vals.length){
         const worst = Math.min.apply(null, vals), neg = vals.filter(v=> v < 0).length;
         if(worst <= -30 && neg >= 2) status = { key:'danger', label:'확인필요' };
@@ -21455,11 +21487,15 @@ window.SHIN2_CRM_APP_INIT = function(){
         else status = { key:'ok', label:'정상' };
         status.worst = worst;
       }
-      const inactive = !lastTs || (endCur - lastTs) > INACTIVE_DAYS * 86400000;
-      return { co, l2c, l2p, l3c, l3p, l4c, l4p, l4PrevFull, revc, revp, allc, allp, ch, status, lastTs, inactive };
-    });
+      if(silent){ status = Object.assign({}, status, { key:'danger', label:'확인필요' }); if(status.worst == null) status.worst = -100; }
+      const inactive = !lastTs || (endCur - lastTs) > RECENT_DAYS * DAY;
+      return { co, l2c, l2p, l3c, l3p, l4c, l4p, l4PrevFull, revc, revp, revPrevFull, allc, allp, ch, status, lastTs, lastReqTs, inactive,
+        recentReq, beforeReq, silent, vip, reasons, inMouCrm, inMouMaster, hasData, included, mon };
+    };
+    const evaluated = all.map(evalCo);
+    const rows = evaluated.filter(x=> x.included);
+    rows.forEach(x=>{ for(let i = 0; i < 12; i++){ monthly.cur[i] += x.mon.cur[i]; monthly.prev[i] += x.mon.prev[i]; } });
     const sum = (k)=> rows.reduce((t, r)=> t + (r[k] || 0), 0);
-    // 핵심 시공사(임시 정의): 작년 공고(L4) 3건 이상 협력사 → 올해 요청·공고가 1건이라도 있으면 "이용"
     const core = rows.filter(r=> r.l4PrevFull >= 3);
     const coreUsed = core.filter(r=> r.allc > 0 || r.l4c > 0);
     const coreRate = core.length ? Math.round(coreUsed.length / core.length * 100) : null;
@@ -21480,8 +21516,9 @@ window.SHIN2_CRM_APP_INIT = function(){
       { name:'장기 무활동', value: inactiveRate == null ? '—' : inactiveRate + '%', sub: `90일 이상 활동·요청 없음 ${rows.filter(r=> r.inactive).length}곳`, status: inactStatus }
     ];
     const order = { danger:0, warn:1, ok:2, na:3 };
-    rows.sort((a,b)=> (order[a.status.key] - order[b.status.key]) || ((a.status.worst == null ? 999 : a.status.worst) - (b.status.worst == null ? 999 : b.status.worst)));
-    return { Y, rows, cards, monthly, curMonth: now.getMonth(), partnerCount: rows.length };
+    rows.sort((a,b)=> (order[a.status.key] - order[b.status.key]) || ((b.vip ? 1 : 0) - (a.vip ? 1 : 0)) || ((b.silent ? 1 : 0) - (a.silent ? 1 : 0)) || ((a.status.worst == null ? 999 : a.status.worst) - (b.status.worst == null ? 999 : b.status.worst)));
+    return { Y, rows, cards, monthly, curMonth: now.getMonth(), partnerCount: rows.length, evaluated,
+      popCounts: { crm: rows.filter(r=> r.inMouCrm).length, master: rows.filter(r=> !r.inMouCrm && r.inMouMaster).length, data: rows.filter(r=> !r.inMouCrm && !r.inMouMaster).length } };
   }
   function b2bTrendSvg(m, curMonth){
     const W = 560, H = 150, pl = 28, pr = 8, pt = 10, pb = 22;
@@ -21497,53 +21534,90 @@ window.SHIN2_CRM_APP_INIT = function(){
       <circle cx="${x(curMonth)}" cy="${y(m.cur[curMonth])}" r="3.5" fill="#D9534F"/>
     </svg>`;
   }
+  let b2bLastResult = null;
+  function b2bReasonText(x){
+    const parts = x.reasons.slice();
+    const add = (k, label)=>{ const v = x.ch[k]; if(v != null && v <= -20) parts.push(label + ' ' + Math.abs(v) + '% 감소'); };
+    add('l2', '기술자문'); add('l3', '설명회·컨설팅'); add('l4', '공고'); add('rev', '매출');
+    return parts.length ? parts.join(' · ') : '여러 항목이 조금씩 감소';
+  }
+  function b2bFmtDate(ts){ if(!ts) return '없음'; const d = new Date(ts); return d.getFullYear() + '.' + String(d.getMonth() + 1).padStart(2,'0') + '.' + String(d.getDate()).padStart(2,'0'); }
+  function b2bFmtWon(v){ return v == null ? '자료 없음' : (Math.round(v / 1000000) / 100).toLocaleString('ko-KR') + '억'; }
+  function renderB2bLookup(q){
+    const out = document.getElementById('b2bLookupOut');
+    if(!out || !b2bLastResult) return;
+    const key = String(q || '').replace(/\s+/g, '').replace(/\(주\)|㈜|주식회사/g, '');
+    if(!key){ out.innerHTML = ''; return; }
+    const hits = b2bLastResult.evaluated.filter(x=> String(x.co.name || '').replace(/\s+/g, '').replace(/\(주\)|㈜|주식회사/g, '').includes(key)).slice(0, 5);
+    if(!hits.length){ out.innerHTML = '<div class="b2b-empty">CRM에 그런 이름의 업체가 없습니다(삭제·협약종료 업체 제외).</div>'; return; }
+    const pct = v=> v == null ? '비교 안 함' : (v > 0 ? '▲' : v < 0 ? '▼' : '') + Math.abs(v) + '%';
+    out.innerHTML = hits.map(x=> `<div class="b2b-lookup-card">
+      <div class="b2b-lookup-head"><b>${esc(x.co.name)}</b>${x.vip ? '<span class="b2b-pill is-vip">VIP</span>' : ''}<span class="b2b-pill is-${x.included ? x.status.key : 'na'}">${esc(x.included ? x.status.label : '대상 아님')}</span></div>
+      <div class="b2b-lookup-why">${x.included ? (x.status.key === 'danger' || x.status.key === 'warn' ? '판정 이유: ' + esc(b2bReasonText(x)) : '판정 이유: 크게 줄어든 항목 없음') : '대상 아님: MOU 완료·MOU 명단·최근 2년 요청/매출/공고 자료가 모두 없음'}</div>
+      <div class="b2b-lookup-grid">
+        <span>분석 대상 근거</span><b>${[x.inMouCrm ? 'CRM MOU 완료' : '', x.inMouMaster ? 'MOU 명단 체결' : '', x.hasData ? '요청·매출·공고 자료' : ''].filter(Boolean).join(' · ') || '없음'}</b>
+        <span>최근 90일 문의</span><b>${x.recentReq}건 (직전 1년 ${x.beforeReq}건) · 마지막 문의 ${b2bFmtDate(x.lastReqTs)}</b>
+        <span>기술자문(L2)</span><b>올해 ${x.l2c} / 작년 같은 기간 ${x.l2p} → ${pct(x.ch.l2)}</b>
+        <span>설명회·컨설팅(L3)</span><b>올해 ${x.l3c} / 작년 같은 기간 ${x.l3p} → ${pct(x.ch.l3)}</b>
+        <span>공고(L4)</span><b>올해 ${x.l4c} / 작년 ${x.l4PrevFull}(환산 ${x.l4p.toFixed(1)}) → ${pct(x.ch.l4)}</b>
+        <span>매출</span><b>올해 ${b2bFmtWon(x.revc)} / 작년 ${b2bFmtWon(x.revPrevFull)} → ${pct(x.ch.rev)}</b>
+      </div></div>`).join('');
+  }
   function renderB2bLeading(){
     const root = document.getElementById('b2bLeadRoot');
     if(!root) return;
     let r;
     try{ r = computeB2bLeading(); }
     catch(e){ console.warn('[B2B 선행지표] 계산 실패', e); root.innerHTML = '<div class="b2b-note">지표 계산 중 오류가 발생했습니다(임시 화면).</div>'; return; }
+    b2bLastResult = r;
     const fmtPct = v=> v == null ? '<span class="b2b-na">—</span>' : `<span class="${v < 0 ? 'b2b-neg' : 'b2b-pos'}">${v > 0 ? '▲' : v < 0 ? '▼' : ''}${Math.abs(v)}%</span>`;
     const flagged = r.rows.filter(x=> x.status.key === 'danger');
     const watch = r.rows.filter(x=> x.status.key === 'warn');
     const attention = flagged.concat(watch);
-    const reason = x=>{
-      const parts = [];
-      const add = (k, label)=>{ const v = x.ch[k]; if(v != null && v <= -20) parts.push(label + ' ' + Math.abs(v) + '% 감소'); };
-      add('l2', '기술자문'); add('l3', '설명회·컨설팅'); add('l4', '공고'); add('rev', '매출');
-      return parts.length ? parts.join(' · ') : '여러 항목이 조금씩 감소';
-    };
+    const silentCount = r.rows.filter(x=> x.silent).length;
+    const prevQ = (document.getElementById('b2bLookupInput') || {}).value || '';
     root.innerHTML = `
       <section class="kpiv-sec">
-        <div class="kpiv-head"><h2 class="kpiv-title">② 선행지표 — 지금 상태</h2><span class="kpiv-sub">작년 같은 기간과 비교해 평소보다 떨어졌는지 봅니다</span></div>
+        <div class="kpiv-head"><h2 class="kpiv-title">② 선행지표 — 지금 상태</h2><span class="kpiv-sub">전체 협력사 ${r.partnerCount}곳 · 작년 같은 기간과 비교</span></div>
         <div class="b2b-cards">${r.cards.map(c=> `<div class="b2b-card is-${c.status.key}">
           <div class="b2b-card-top"><span class="b2b-card-name">${esc(c.name)}</span><span class="b2b-pill is-${c.status.key}">${esc(c.status.label)}</span></div>
           <div class="b2b-card-val">${esc(c.value)}</div>
           <div class="b2b-card-sub">${esc(c.sub)}</div></div>`).join('')}</div>
-        <div class="b2b-note">임시 · CRM에 있는 데이터로만 계산 · 기준(-10% 관심 / -20% 주의 / -30% 위험)은 데이터가 쌓인 뒤 조정</div>
+        <div class="b2b-note">임시 · 대상 = CRM MOU 완료 ${r.popCounts.crm}곳 + MOU 명단 체결 ${r.popCounts.master}곳 + 최근 2년 요청·매출·공고 자료가 있는 업체 ${r.popCounts.data}곳 · 기준(-10% 관심 / -20% 주의 / -30% 위험)은 데이터가 쌓인 뒤 조정</div>
       </section>
       <section class="kpiv-sec">
-        <div class="kpiv-head"><h2 class="kpiv-title">③ 확인이 필요한 협력사</h2><span class="kpiv-sub">확인필요 ${flagged.length}곳 · 관찰 ${watch.length}곳</span></div>
-        ${attention.length ? `<div class="b2b-attn">${attention.slice(0, 12).map(x=> `<div class="b2b-attn-row is-${x.status.key}">
-            <span class="b2b-pill is-${x.status.key}">${esc(x.status.label)}</span>
+        <div class="kpiv-head"><h2 class="kpiv-title">③ 확인이 필요한 협력사</h2><span class="kpiv-sub">확인필요 ${flagged.length}곳(최근 문의 끊김 ${silentCount}곳) · 관찰 ${watch.length}곳 · VIP 먼저</span></div>
+        ${attention.length ? `<div class="b2b-attn">${attention.slice(0, 15).map(x=> `<div class="b2b-attn-row is-${x.status.key}">
+            <span class="b2b-pill is-${x.status.key}">${esc(x.status.label)}</span>${x.vip ? '<span class="b2b-pill is-vip">VIP</span>' : ''}
             <b>${esc(x.co.name)}</b>
-            <span class="b2b-attn-why">${esc(reason(x))}</span></div>`).join('')}</div>`
+            <span class="b2b-attn-why">${esc(b2bReasonText(x))}</span></div>`).join('')}</div>`
           : '<div class="b2b-empty">지금 기준으로 확인이 필요한 협력사가 없습니다.</div>'}
-        ${attention.length > 12 ? `<div class="b2b-more">외 ${attention.length - 12}곳은 아래 [자세히 보기]의 전체 표에서 확인</div>` : ''}
-        <div class="b2b-note">임시 · 원인·VOC·조치·결과 기록은 다음 단계에서 추가</div>
+        ${attention.length > 15 ? `<div class="b2b-more">외 ${attention.length - 15}곳은 아래 [자세히 보기]의 전체 표 또는 [협력사 찾기]에서 확인</div>` : ''}
+        <div class="b2b-note">임시 · "최근 문의 끊김" = 직전 1년 문의 3건 이상(VIP는 1건 이상)인데 최근 90일 문의 0건 · VIP = 작년 매출 3억↑ 또는 작년 공고 10건↑ · 원인·VOC·조치·결과 기록은 다음 단계에서 추가</div>
+      </section>
+      <section class="kpiv-sec">
+        <div class="kpiv-head"><h2 class="kpiv-title">협력사 찾기</h2><span class="kpiv-sub">업체 이름을 넣으면 왜 그렇게 판정됐는지 보여줍니다</span></div>
+        <input type="text" id="b2bLookupInput" class="b2b-lookup-input" placeholder="예: 기림이앤씨" value="${esc(prevQ)}" />
+        <div id="b2bLookupOut"></div>
       </section>
       <details class="kpiv-sec b2b-detail">
         <summary>④ 자세히 보기 — 월별 추이 · 협력사 전체 표</summary>
         <div class="b2b-panel"><div class="b2b-panel-title">월별 요청 건수 <span>올해(진한 선) vs 작년(연한 선)</span></div>${b2bTrendSvg(r.monthly, r.curMonth)}</div>
         <div class="b2b-panel">
-          <div class="b2b-panel-title">협력사별 전년 대비 <span>MOU 체결 협력사 ${r.partnerCount}곳</span></div>
+          <div class="b2b-panel-title">협력사별 전년 대비 <span>전체 협력사 ${r.partnerCount}곳</span></div>
           <div class="b2b-table-wrap"><table class="b2b-table">
-            <thead><tr><th>협력사</th><th>기술자문(L2)</th><th>설명회·컨설팅(L3)</th><th>공고(L4)</th><th>매출</th><th>상태</th></tr></thead>
-            <tbody>${r.rows.map(x=> `<tr><td>${esc(x.co.name)}</td><td title="올해 ${x.l2c} / 작년 ${x.l2p}">${fmtPct(x.ch.l2)}</td><td title="올해 ${x.l3c} / 작년 ${x.l3p}">${fmtPct(x.ch.l3)}</td><td title="올해 ${x.l4c} / 작년 환산 ${x.l4p.toFixed(1)}">${fmtPct(x.ch.l4)}</td><td>${fmtPct(x.ch.rev)}</td><td><span class="b2b-pill is-${x.status.key}">${esc(x.status.label)}</span></td></tr>`).join('')}</tbody>
+            <thead><tr><th>협력사</th><th>최근 90일 문의</th><th>기술자문(L2)</th><th>설명회·컨설팅(L3)</th><th>공고(L4)</th><th>매출</th><th>상태</th></tr></thead>
+            <tbody>${r.rows.map(x=> `<tr><td>${esc(x.co.name)}${x.vip ? ' <span class="b2b-pill is-vip">VIP</span>' : ''}</td><td>${x.recentReq}건${x.silent ? ' <span class="b2b-neg">끊김</span>' : ''}</td><td title="올해 ${x.l2c} / 작년 ${x.l2p}">${fmtPct(x.ch.l2)}</td><td title="올해 ${x.l3c} / 작년 ${x.l3p}">${fmtPct(x.ch.l3)}</td><td title="올해 ${x.l4c} / 작년 환산 ${x.l4p.toFixed(1)}">${fmtPct(x.ch.l4)}</td><td>${fmtPct(x.ch.rev)}</td><td><span class="b2b-pill is-${x.status.key}">${esc(x.status.label)}</span></td></tr>`).join('')}</tbody>
           </table></div>
           <div class="b2b-note">임시 · ▼ 감소 / ▲ 증가 · "—"는 작년 자료가 적어 비교 안 함 · 공고·매출은 연 단위라 작년 값을 올해 경과 비율로 환산</div>
         </div>
       </details>`;
+    const inp = document.getElementById('b2bLookupInput');
+    if(inp){
+      let t = null;
+      inp.addEventListener('input', ()=>{ clearTimeout(t); t = setTimeout(()=> renderB2bLookup(inp.value), 150); });
+      if(prevQ) renderB2bLookup(prevQ);
+    }
   }
   function renderKpiStrip(counts){
     renderKpiGoalPanel();
