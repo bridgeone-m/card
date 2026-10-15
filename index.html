@@ -11120,6 +11120,46 @@ body:not(.crm-admin-mode) #crmPourImportBtn{ display:none !important; }
 
 /* §체결 완료 확인 — 기술지원플랫폼 아이디 발급 확인 창 */
 .techid-confirm-msg{ font-size:14.5px; line-height:1.55; color:var(--text, #1F2937); margin-bottom:8px; }
+
+/* §핵심 KPI 목표 라운드(신규) — 메인 화면 맨 위 KPI 목표 막대(연한 톤) */
+.kpi-strip-row{ flex-wrap:wrap; }
+.kgoal{ flex:1 1 100%; min-width:0; box-sizing:border-box; background:#fff; border:1px solid #E3EAF3; border-radius:12px; padding:7px 16px 5px; box-shadow:0 1px 3px rgba(15,23,42,.04); }
+.kgoal-head{ display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:6px; margin-bottom:0; }
+.kgoal-title{ font-size:12.5px; font-weight:800; color:#17345F; }
+.kgoal-legend{ display:flex; gap:12px; font-size:11.5px; color:#55657C; align-items:center; }
+.kgoal-legend i{ display:inline-block; width:12px; height:8px; border-radius:2px; margin-right:4px; vertical-align:0; }
+.kgoal-legend i.is-cur{ background:#85B7EB; }
+.kgoal-legend i.is-gap{ background:#EEF5FC; box-shadow:inset 0 0 0 1px #CFE2F6; }
+.kgoal-legend i.is-goal{ width:3px; height:12px; border-radius:1px; background:#185FA5; vertical-align:-2px; }
+.kgoal-legend .is-muted{ color:#9AA6B8; }
+.kgoal-row{ display:grid; grid-template-columns:170px minmax(0,1fr) 92px; gap:14px; align-items:center; padding:1px 0; border-top:1px solid #EEF2F7; }
+.kgoal-name b{ display:block; font-size:12.5px; line-height:1.25; font-weight:700; color:#17345F; }
+.kgoal-name span{ display:block; font-size:10.5px; line-height:1.25; color:#8A97AB; }
+.kgoal-bar{ padding:15px 0 13px; }
+.kgoal-track{ position:relative; height:9px; border-radius:999px; background:#F3F6FA; }
+.kgoal-track.is-total{ height:10px; }
+.kgoal-cur{ position:absolute; left:0; top:0; bottom:0; border-radius:999px; background:#85B7EB; }
+.kgoal-track.is-total .kgoal-cur{ background:#B5D4F4; box-shadow:none; }
+.kgoal-gap{ position:absolute; top:0; bottom:0; border-radius:0 999px 999px 0; background:repeating-linear-gradient(135deg,#CFE2F6 0 5px,#EEF5FC 5px 9px); }
+.kgoal-goal{ position:absolute; top:-4px; bottom:-4px; width:0; border-left:2.5px solid #185FA5; margin-left:-1px; }
+.kgoal-goal-tag{ position:absolute; bottom:calc(100% + 1px); left:-1px; transform:translateX(-50%); padding:0 6px; line-height:14px; border-radius:999px; background:#185FA5; color:#fff; font-size:10px; font-weight:800; font-style:normal; white-space:nowrap; font-variant-numeric:tabular-nums; }
+.kgoal-now{ position:absolute; top:calc(100% + 1px); transform:translateX(-100%); font-size:10.5px; line-height:12px; font-weight:800; color:#2F6FB5; white-space:nowrap; font-variant-numeric:tabular-nums; }
+.kgoal-tick{ position:absolute; top:0; bottom:0; width:0; border-left:1px solid #C5CFDC; }
+.kgoal-tick.is-stretch{ border-left-style:dashed; }
+.kgoal-lbl{ position:absolute; top:17px; transform:translateX(-50%); font-size:10.5px; color:#9AA6B8; white-space:nowrap; font-variant-numeric:tabular-nums; }
+.kgoal-lbl.is-target{ color:#378ADD; font-weight:700; }
+.kgoal-row.is-total .kgoal-bar{ padding:0; }
+.kgoal-row.is-total{ padding:4px 0 2px; }
+.kgoal-val{ text-align:right; }
+.kgoal-val b{ display:block; font-size:15px; line-height:1.2; font-weight:800; color:#17345F; font-variant-numeric:tabular-nums; }
+.kgoal-val b.is-total{ font-size:17px; color:#378ADD; }
+.kgoal-val span{ display:block; font-size:10.5px; line-height:1.2; color:#8A97AB; }
+@media (max-width:640px){
+  .kgoal{ padding:10px 12px 8px; }
+  .kgoal-row{ grid-template-columns:minmax(0,1fr) 70px; gap:4px 10px; }
+  .kgoal-name{ grid-column:1 / -1; }
+  .kgoal-name b{ display:inline; } .kgoal-name span{ display:inline; margin-left:6px; }
+}
 </style>
 </head>
 <body>
@@ -11311,6 +11351,7 @@ body:not(.crm-admin-mode) #crmPourImportBtn{ display:none !important; }
            #crmKpiStrip은 .kpi-strip만 남긴다 — renderKpiStrip()이 채우는 대상 id는
            동일하므로 KPI 계산/렌더 로직은 전혀 안 건드린다. -->
       <div class="kpi-strip-row crm-kpi-cell">
+        <div class="kgoal" id="crmKpiGoalPanel"></div>
         <div class="kpi-strip" id="crmKpiStrip"></div>
       </div>
       <!-- 좌: 업체 목록 카드 — 검색/정렬/필터 pill/표는 전부 기존 DOM·id·렌더 함수
@@ -21130,7 +21171,49 @@ window.SHIN2_CRM_APP_INIT = function(){
   // 재사용)만 보조문구로 덧붙인다. "지난달 대비" 같은 전월 비교 데이터는 이 코드베이스에
   // 아예 없어서(별도 스냅샷 저장 로직 없음) 새로 만들지 않고 스킵했다(§요청사항 "없으면
   // 스킵, 없는 데이터를 새로 계산하는 대규모 로직 만들지 말 것").
+  /* §핵심 KPI 목표 라운드(신규) — 메인 화면 맨 위 "핵심 KPI · 목표까지" 가로 막대.
+     지금은 사용자가 준 표의 수치를 그대로 고정해서 보여준다(연동은 나중에 — 이 표 하나만 바꾸면 된다).
+     막대는 0~100 기준: 연한 색 = 현재, 빗금 = 상향 공식 목표까지 남은 구간, 세로선 = 기존 목표(실선)·도전 목표(점선). */
+  const CRM_KPI_GOALS = [
+    { name:'첫 요청률', sub:'신규 MOU 후 첫 인정 요청', current:37.5, base:50, target:60, stretch:70 },
+    { name:'재사용률', sub:'첫 현장 후 60일 내 다른 현장 사용', current:80.6, base:80, target:85, stretch:90 },
+    { name:'L3 도달률', sub:'현장·공종·시공사 기준', current:24.9, base:30, target:35, stretch:40 }
+  ];
+  function renderKpiGoalPanel(){
+    const el = document.getElementById('crmKpiGoalPanel');
+    if(!el) return;
+    const clamp = v=> Math.max(0, Math.min(100, Number(v) || 0));
+    const fmt = v=> (Math.round(v * 10) / 10).toString();
+    const achieve = g=> g.target ? Math.round(g.current / g.target * 100) : 0;
+    const avg = Math.round(CRM_KPI_GOALS.reduce((t, g)=> t + Math.min(100, g.current / g.target * 100), 0) / CRM_KPI_GOALS.length);
+    const rows = CRM_KPI_GOALS.map(g=>{
+      const cur = clamp(g.current), tgt = clamp(g.target);
+      const gapW = Math.max(0, tgt - cur);
+      return `<div class="kgoal-row" role="group" aria-label="${esc(g.name)} 현재 ${fmt(g.current)}%, 목표 ${fmt(g.target)}%">
+        <div class="kgoal-name"><b>${esc(g.name)}</b><span>${esc(g.sub)}</span></div>
+        <div class="kgoal-bar"><div class="kgoal-track">
+          <div class="kgoal-cur" style="width:${cur}%"></div>
+          ${gapW ? `<div class="kgoal-gap" style="left:${cur}%;width:${gapW}%"></div>` : ''}
+          <i class="kgoal-tick" style="left:${clamp(g.base)}%" title="기존 목표 ${fmt(g.base)}%"></i>
+          <i class="kgoal-tick is-stretch" style="left:${clamp(g.stretch)}%" title="도전 목표 ${fmt(g.stretch)}%"></i>
+          <span class="kgoal-now" style="left:${Math.max(14, cur)}%">현재 ${fmt(g.current)}</span>
+          <i class="kgoal-goal" style="left:${tgt}%"><span class="kgoal-goal-tag">목표 ${fmt(g.target)}</span></i>
+        </div></div>
+        <div class="kgoal-val"><b>${fmt(g.current)}%</b><span>달성 ${achieve(g)}%</span></div>
+      </div>`;
+    }).join('');
+    el.innerHTML = `
+      <div class="kgoal-head"><div class="kgoal-title">B2B KPI</div>
+        <div class="kgoal-legend"><span><i class="is-cur"></i>현재</span><span><i class="is-goal"></i>상향 공식 목표</span><span><i class="is-gap"></i>남은 구간</span><span class="is-muted">| 기존 · ┆ 도전</span></div></div>
+      ${rows}
+      <div class="kgoal-row is-total">
+        <div class="kgoal-name"><b>종합 달성률</b><span>세 KPI 목표 대비 평균</span></div>
+        <div class="kgoal-bar"><div class="kgoal-track is-total"><div class="kgoal-cur" style="width:${avg}%"></div></div></div>
+        <div class="kgoal-val"><b class="is-total">${avg}%</b></div>
+      </div>`;
+  }
   function renderKpiStrip(counts){
+    renderKpiGoalPanel();
     const wrap = document.getElementById('crmKpiStrip');
     if(!wrap) return;
     const l2l3 = computeL2L3ManageAnalysis(npCmpPeriodDays);
@@ -21147,7 +21230,8 @@ window.SHIN2_CRM_APP_INIT = function(){
       // 안 건드렸고, 이 카드가 유일한 진입점이었던 터라 목록에서 그 필터로 들어가는 길만
       // 없어진다(다른 pill/탭에는 원래 없던 키다).
       // { key:'trendUp', label:'상승 업체', value: counts.trendUp || 0, cls:'is-up', sub: counts.all ? `전체 ${counts.all}곳 중` : '' },
-      { key:'l2l3Manage', label:'L2→L3 전환율', value: `${l2l3.rate}%`, cls: l2l3.rate < 50 ? 'is-warn' : '', sub: `${l2l3.total}곳 중 ${l2l3.converted.length}곳 · 5/20 이후 협약 기준` },
+      // §핵심 KPI 목표 라운드(신규) — 사용자 요청으로 "L2→L3 전환율" 카드는 상단에서 뺐다(계산 함수는 그대로).
+      // { key:'l2l3Manage', label:'L2→L3 전환율', value: `${l2l3.rate}%`, cls: l2l3.rate < 50 ? 'is-warn' : '', sub: `${l2l3.total}곳 중 ${l2l3.converted.length}곳 · 5/20 이후 협약 기준` },
       // §TOP5 KPI 카드 이동 라운드(신규) — 5번째 카드. 앞 4개와 달리 목록 필터를 바꾸지
       // 않고 팝오버만 여는 카드다(아래 클릭 핸들러의 risingTop5 분기 참고).
       // §1단계 안전정비 라운드 — 연도 문구를 계산과 같은 소스(risingCompareLabel)에서 읽는다.
