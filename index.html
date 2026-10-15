@@ -11117,6 +11117,9 @@ body:not(.crm-admin-mode) #crmSalesImportBtn{ display:none !important; }
 body:not(.crm-admin-mode) #crmPourImportBtn{ display:none !important; }
 /* §로그인 화면 — 관리자 모드 안내(빨간색, 작게) */
 .gate-admin-note{ margin-top:10px; font-size:11.5px; line-height:1.4; color:#C62828; text-align:center; }
+
+/* §체결 완료 확인 — 기술지원플랫폼 아이디 발급 확인 창 */
+.techid-confirm-msg{ font-size:14.5px; line-height:1.55; color:var(--text, #1F2937); margin-bottom:8px; }
 </style>
 </head>
 <body>
@@ -30163,7 +30166,9 @@ window.SHIN2_CRM_APP_INIT = function(){
       } else if(action === 'mou-doc'){
         workqApplyOnce(()=> workqSaveMouStatus(item, 'docRequested', memoVal));
       } else if(action === 'mou-done'){
-        workqApplyOnce(()=> workqSaveMouStatus(item, 'done', memoVal));
+        window.crmConfirmTechPlatformId(item.co && item.co.name).then(ok=>{
+          if(ok) workqApplyOnce(()=> workqSaveMouStatus(item, 'done', memoVal));
+        });
       } else if(action === 'log'){
         const label = btn.getAttribute('data-workq-label');
         if(label === '보류'){
@@ -49991,6 +49996,38 @@ if(!window.__mapxRowDelegated){
      (모든 직원이 같은 고객 데이터를 계속 그대로 본다). */
   // §관리자 전용 작업(신규) — 고객 등록·정보 수정·삭제/복구·협약 무효/종료·업체 병합·매출 업로드는 관리자 모드에서만.
   // 버튼은 숨기고, 다른 경로로 들어와도 여기서 한 번 더 막는다(데이터는 바꾸지 않고 안내만).
+  // §체결 완료 확인(신규) — MOU 체결 완료를 누르면 "기술지원플랫폼 아이디 발급했나요?"를 먼저 묻는다.
+  // [발급했어요]면 원래 완료 처리를 그대로 진행하고, [아직이에요]면 완료하지 않고 닫는다. 데이터는 따로 저장하지 않는다.
+  window.crmConfirmTechPlatformId = function(companyName){
+    return new Promise(resolve=>{
+      const old = document.getElementById('techIdConfirmOverlay');
+      if(old) old.remove();
+      const wrap = document.createElement('div');
+      const name = String(companyName || '').replace(/[&<>"']/g, c=> ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[c]);
+      wrap.innerHTML = `
+        <div class="pi-overlay" id="techIdConfirmOverlay" style="z-index:10030;">
+          <div class="pi-panel" style="max-width:360px;" role="alertdialog" aria-modal="true" aria-labelledby="techIdConfirmTitle">
+            <div class="pi-head"><div class="pi-title" id="techIdConfirmTitle">기술지원플랫폼 아이디 확인</div></div>
+            <div class="pi-body">
+              <div class="techid-confirm-msg">${name ? '<b>' + name + '</b><br>' : ''}기술지원플랫폼 아이디를 발급했나요?</div>
+              <div class="mail-settings-help">발급 전이면 [아직이에요]를 누르고, 발급한 뒤 다시 체결 완료를 눌러 주세요.</div>
+            </div>
+            <div class="pi-actions">
+              <button type="button" class="co-text-action" data-techid="no">아직이에요</button>
+              <button type="button" class="co-text-action primary" data-techid="yes">발급했어요 · 체결 완료</button>
+            </div>
+          </div>
+        </div>`;
+      const el = wrap.firstElementChild;
+      document.body.appendChild(el);
+      const done = ok=>{ el.remove(); document.removeEventListener('keydown', onKey, true); resolve(ok); };
+      const onKey = e=>{ if(e.key === 'Escape'){ e.stopPropagation(); done(false); } };
+      document.addEventListener('keydown', onKey, true);
+      el.querySelector('[data-techid="no"]').addEventListener('click', ()=> done(false));
+      el.querySelector('[data-techid="yes"]').addEventListener('click', ()=> done(true));
+      setTimeout(()=>{ const b = el.querySelector('[data-techid="yes"]'); if(b) b.focus(); }, 0);
+    });
+  };
   window.crmAdminOk = function(what){
     if(document.body.classList.contains('crm-admin-mode')) return true;
     showAdminOnlyNotice(what);

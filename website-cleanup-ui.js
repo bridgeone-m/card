@@ -150,7 +150,11 @@
       complete.disabled=pending || (!errors.has(n.id) && n.type!=='mail' && !def.checks.every(([key])=>checked(key)));
       const label=pending && command.kind==='complete'?'처리 중…':errors.has(n.id)?'재시도':n.type==='mail'?'발송 완료':'완료';
       if(complete.textContent!==label)complete.textContent=label;
-      complete.onclick=()=>save(errors.has(n.id)?retries.get(n.id):{kind:'complete',id:n.id,...(n.type==='mail'?{confirmSingle:true}:{})});
+      complete.onclick=async()=>{
+        // MOU 체결 완료 전에 기술지원플랫폼 아이디 발급 여부 확인(아직이면 완료하지 않음)
+        if(!errors.has(n.id) && n.type==='mou' && window.crmConfirmTechPlatformId && !(await window.crmConfirmTechPlatformId(n.companyName)))return;
+        save(errors.has(n.id)?retries.get(n.id):{kind:'complete',id:n.id,...(n.type==='mail'?{confirmSingle:true}:{})});
+      };
     }
     setText('.alert-status',errors.get(n.id) || (pending?'저장 중…':''));
   }
