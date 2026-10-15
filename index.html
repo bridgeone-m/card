@@ -3288,6 +3288,26 @@ html,body{background:radial-gradient(circle at 75% -10%,rgba(27,68,128,.05),tran
 /* 지도 위 두 번째 세그먼트(클러스터/히트맵)는 첫 줄 아래로 */
 .mapx-seg-view{ top:58px !important; }
 .mapx-zoom-btn svg{ width:16px; height:16px; display:block; }
+/* §지도 안 버튼·범례 배치 복원 — 예전 정리 때 이 규칙이 빠져 확대/축소 버튼과 범례가 왼쪽 위에 엉켜 쌓였다. */
+.mapx-zoom{ position:absolute; top:14px; left:14px; display:flex; flex-direction:column; gap:5px; }
+.mapx-zoom-btn{
+  width:34px; height:34px; padding:0; border-radius:11px; cursor:pointer; font-family:inherit;
+  font-size:16px; font-weight:700; line-height:1; color:#142033;
+  background:rgba(255,255,255,.96); border:1px solid #E6ECF3;
+  box-shadow:0 8px 18px rgba(15,23,42,.08);
+  display:flex; align-items:center; justify-content:center;
+}
+.mapx-zoom-btn:hover{ background:#fff; border-color:#C7D7EE; }
+.mapx-zoom-btn:focus-visible{ outline:2px solid #2563EB; outline-offset:2px; }
+.mapx-zoom-btn.is-home{ font-size:14px; }
+.mapx-legend{
+  position:absolute; right:12px; bottom:12px; min-width:112px; box-sizing:border-box;
+  background:rgba(255,255,255,.95); border:1px solid #E6ECF3; border-radius:12px;
+  padding:8px 11px; box-shadow:0 8px 18px rgba(15,23,42,.08);
+}
+.mapx-legend-title{ font-size:11px; font-weight:800; color:#142033; margin-bottom:4px; white-space:nowrap; }
+.mapx-legend-row{ display:flex; align-items:center; gap:7px; font-size:11px; color:#6B778C; line-height:1.8; white-space:nowrap; }
+.mapx-legend-dot{ width:10px; height:10px; border-radius:50%; flex:none; border:1px solid rgba(15,23,42,.08); }
 
 /* 근처 찾기 반경 — 칩 줄 대신 드롭다운 하나. 옆 검색칸을 밀지 않게 폭을 고정한다. */
 .map-near-radius-select{ flex:none !important; width:84px !important; min-width:84px !important; }
@@ -10159,7 +10179,7 @@ body.crm-fixed-view #crmFilterRow.is-dropdown > .crm-status-dd{ height:auto !imp
    (#mapDistributionModalRoot .map-modal-panel …)를 그대로 쓰고, 여기서는 위치·높이·
    테두리만 바꾼다. 고객목록 화면(#listView)이 보일 때만 적용된다.
    ========================================================================== */
-:root{ --mapdock-w: clamp(476px, calc(32vw + 76px), 576px); }
+:root{ --mapdock-w: clamp(400px, calc(25vw + 64px), 500px); } /* 화면의 약 29% — 예전(약 36%)보다 가로 0.7/10 줄임 */
 
 body.crm-mapdock[data-crm-view="listView"] #mapDistributionModalRoot.crm-mapdock-root{
   position:fixed; top:var(--crm-frame-y, 20px); right:var(--crm-frame-x, 28px); left:auto; bottom:var(--crm-frame-y, 20px); width:var(--mapdock-w); /* 바깥 여백 — MOU 진행상황과 같은 프레임 값 */
@@ -10257,6 +10277,15 @@ body.crm-mapdock[data-crm-view="listView"] #crmMiniMapAlarm .sa-alarm-list > *{ 
 body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-tabs{
   padding-top:8px !important; padding-bottom:8px !important;
 }
+/* §지도 패널 폭 축소 라운드 — 좁아진 패널에서 탭 3개가 [필터 초기화]·[PDF 내보내기]와 한 줄에 몰려 글자가 잘렸다.
+   탭은 한 줄 전체를 쓰고, 버튼은 그 아래 줄 오른쪽으로. 제목·설명은 위아래로 놓아 제목이 꺾이지 않게. */
+body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-tabs{ flex-wrap:wrap !important; row-gap:8px !important; }
+body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-tabs-list{ flex:1 1 100% !important; width:100% !important; min-width:0 !important; }
+body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-tabs-actions:not(:empty){ flex:1 1 100% !important; display:flex !important; justify-content:flex-end !important; gap:6px !important; flex-wrap:wrap; }
+body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-tab-btn{ flex:1 1 0 !important; min-width:0 !important; white-space:nowrap !important; }
+body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-title-wrap{ display:flex !important; flex-direction:column !important; align-items:flex-start !important; gap:2px !important; min-width:0; }
+body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-title{ white-space:nowrap !important; }
+body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-subtitle{ white-space:normal !important; }
 
 /* §지도 필터 드롭다운 잘림 수정(신규) — 근처 시공 탭에서 연도·공법 드롭다운이 min-width:0이라
    검색칸 옆으로 46px까지 눌려 "연"/"공"만 보였다. 최소 폭을 줘서 자리가 모자라면 다음 줄로
