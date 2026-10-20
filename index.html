@@ -47761,9 +47761,18 @@ if(!window.__mapxRowDelegated){
     const geocoder = new kakao.maps.services.Geocoder();
     const missing = entries.filter(e=> !e.co.address && e.co.geocodeStatus !== 'missing');
     missing.forEach(e=> D.updateCompany(e.co.id, { geocodeStatus:'missing', latitude:null, longitude:null, geocodedAddress:null }));
-    const pending = entries.filter(e=> e.co.address && e.co.geocodedAddress !== e.co.address);
+    // §주소 검색 저장 줄이기(신규) — 예전엔 검색에 실패한 주소를 화면을 열 때마다 다시 검색하고, 결과가 또
+    // 실패여도 geocodedAt(시각)만 새로 써서 로그인할 때마다 업체 목록이 저장됐다.
+    //  · 실패한 주소는 GEOCODE_RETRY_DAYS 동안 다시 검색하지 않는다(주소를 고치면 바로 다시 검색)
+    //  · 다시 검색해도 결과가 같으면(계속 실패 / 같은 좌표) 아무것도 저장하지 않는다
+    //  · 저장할 때는 주소 검색 필드만 바꾼다(변경분 저장이라 다른 직원이 고친 다른 정보는 그대로)
+    const GEOCODE_RETRY_DAYS = 30;
+    const failedRecently = co=> co.geocodeStatus === 'failed'
+      && (!co.geocodeFailedAddress || co.geocodeFailedAddress === co.address)
+      && co.geocodedAt && (Date.now() - Date.parse(co.geocodedAt)) < GEOCODE_RETRY_DAYS * 86400000;
+    const pending = entries.filter(e=> e.co.address && e.co.geocodedAddress !== e.co.address && !failedRecently(e.co));
     if(!pending.length) return Promise.resolve(missing.length > 0);
-    let changed = true;
+    let changed = missing.length > 0;
     let i = 0;
     return new Promise((resolve)=>{
       function next(){
@@ -47776,12 +47785,21 @@ if(!window.__mapxRowDelegated){
           const latest = D.findCompany(e.co.id);
           if(latest && latest.address === address){
             if(status === kakao.maps.services.Status.OK && result && result[0]){
-              D.updateCompany(e.co.id, {
-                latitude: parseFloat(result[0].y), longitude: parseFloat(result[0].x),
-                geocodedAddress: address, geocodedAt: new Date().toISOString(), geocodeStatus:'ok'
-              });
+              const lat = parseFloat(result[0].y), lng = parseFloat(result[0].x);
+              const same = latest.geocodeStatus === 'ok' && latest.geocodedAddress === address && latest.latitude === lat && latest.longitude === lng;
+              if(!same){
+                const patch = { latitude: lat, longitude: lng, geocodedAddress: address, geocodedAt: new Date().toISOString(), geocodeStatus:'ok' };
+                if(latest.geocodeFailedAddress) patch.geocodeFailedAddress = null;
+                D.updateCompany(e.co.id, patch);
+                changed = true;
+              }
             } else {
-              D.updateCompany(e.co.id, { geocodeStatus:'failed', geocodedAt: new Date().toISOString() });
+              // 이미 같은 주소로 실패 기록이 있으면 결과가 바뀌지 않은 것 — 저장하지 않는다(시각도 갱신 안 함)
+              const sameFail = latest.geocodeStatus === 'failed' && (!latest.geocodeFailedAddress || latest.geocodeFailedAddress === address);
+              if(!sameFail){
+                D.updateCompany(e.co.id, { geocodeStatus:'failed', geocodedAt: new Date().toISOString(), geocodeFailedAddress: address });
+                changed = true;
+              }
             }
           }
           // 카카오 Geocoder 호출 과부하를 피하려고 짧은 간격을 둔다(요청 폭주 방지).
