@@ -12982,7 +12982,7 @@ window.SHIN2_ADMIN_VAULT = {"v":1,"it":310000,"s":"LR69gP2hfdC4DCenIz+Grw==","iv
       // Firestore 클라우드에만 있던 경우 — 에서 고객 목록이 0건으로 보이는 실제 장애를
       // 일으켰다. 원인 확인 즉시 원래의 공유 키·공유 Firestore 문서로 되돌렸다 — v2와 다시
       // 공유하지만, 그게 실제로 데이터가 안전하게 보존/동기화되고 있던 유일한 경로였다).
-      const { getFirestore, doc, getDoc, setDoc, onSnapshot, serverTimestamp, collection, getDocs, writeBatch, runTransaction } =
+      const { getFirestore, doc, getDoc, getDocFromServer, setDoc, onSnapshot, serverTimestamp, collection, getDocs, writeBatch, runTransaction } =
         await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js');
 
       const app = initializeApp(cfg, 'shin2crm');
@@ -13422,7 +13422,8 @@ window.SHIN2_ADMIN_VAULT = {"v":1,"it":310000,"s":"LR69gP2hfdC4DCenIz+Grw==","iv
         recordLocalChange(storageKey, data);
         clearTimeout(sharedPushTimers[name]);
         delete sharedPushTimers[name];
-        return flushSharedKey(name, storageKey).then(()=> undefined);
+        // §저장 후 검증(신규) — 실제로 서버에 보냈는지 돌려준다. 보낼 변경이 없으면 요청 자체를 하지 않는다(중복 저장 없음).
+        return flushSharedKey(name, storageKey).then(out=> out ? { saved:true, rev: out.rev } : { saved:false, reason:'nothing-to-save' });
       }
       // §로컬-클라우드 비교 화면 라운드(신규) — onSnapshot은 항상 "로컬에 이미 병합된
       // 뒤의" 최신 상태만 보여준다. 이 기기의 localStorage와 Firestore 원본을 있는
@@ -13440,9 +13441,14 @@ window.SHIN2_ADMIN_VAULT = {"v":1,"it":310000,"s":"LR69gP2hfdC4DCenIz+Grw==","iv
       // §B2B 전용번호 일괄 적용 안전장치(신규) — 업체 목록은 클라우드 문서 1개(전체 배열)라 업체별
       // 부분 저장이 없다. 그래서 일괄 적용은 "읽은 시점의 localRev 그대로일 때만" 트랜잭션으로
       // 저장한다 — 그사이 다른 기기가 저장했으면 아무것도 쓰지 않고 CONFLICT로 멈춘다.
+      // §저장 후 검증(신규) — 저장 직후 getDoc은 이 기기의 구독 캐시(저장 전 값)를 돌려줄 수 있었다(10/20 성심건설
+      // 연결·B2B 일괄 적용 때 "저장 안 된 것처럼" 보인 원인). 검증·비교용 읽기는 항상 서버에서 직접 읽고,
+      // 서버에 닿지 못하면 캐시로 대신하지 않고 "조회 지연"(SERVER_UNAVAILABLE)으로 알린다.
       async function getSharedKeyDocWithRev(storageKey){
         if(!currentUid) throw new Error('로그인이 필요합니다.');
-        const snap = await getDoc(doc(db, 'users', currentUid, 'shin2', storageKey));
+        let snap;
+        try{ snap = await getDocFromServer(doc(db, 'users', currentUid, 'shin2', storageKey)); }
+        catch(e){ throw Object.assign(new Error('서버에서 최신 데이터를 읽지 못했습니다(조회 지연) — 잠시 후 다시 확인하세요.'), { code:'SERVER_UNAVAILABLE', cause:e }); }
         if(!snap.exists()) return { value:null, localRev:0 };
         const p = snap.data();
         return { value: Array.isArray(p.value) ? p.value : null, localRev: typeof p.localRev === 'number' ? p.localRev : 0 };
@@ -13463,7 +13469,25 @@ window.SHIN2_ADMIN_VAULT = {"v":1,"it":310000,"s":"LR69gP2hfdC4DCenIz+Grw==","iv
         writeSharedMirror(name, storageKey, data, rev, true);
         return rev;
       }
+      // §저장 후 검증(신규) — 서버 최신 값으로 저장 결과를 확인한다. check(value, doc)가 참이면 "저장됨".
+      //  saved: 서버에 반영 확인 / failed: 서버에 닿았는데 반영이 안 보임 / delayed: 서버에 닿지 못해 판단 보류
+      // 짧게 몇 번 다시 읽어 서버 전파 지연과 실패를 구분한다. 읽기만 하며, 다시 저장하지 않는다.
+      async function verifySharedSaved(storageKey, check, opts){
+        opts = opts || {};
+        const tries = Math.max(1, opts.tries || 4), gap = opts.intervalMs == null ? 700 : opts.intervalMs;
+        let last = null, lastErr = null;
+        for(let i = 0; i < tries; i++){
+          try{
+            last = await getSharedKeyDocWithRev(storageKey); lastErr = null;
+            if(check(last.value || [], last)) return { status:'saved', localRev:last.localRev, savedAt: last.localRev ? new Date(last.localRev).toISOString() : null, attempts:i + 1 };
+          }catch(e){ lastErr = e; }
+          if(i < tries - 1) await new Promise(r=> setTimeout(r, gap));
+        }
+        if(lastErr) return { status:'delayed', error:lastErr.message, attempts:tries };
+        return { status:'failed', localRev: last ? last.localRev : 0, savedAt: last && last.localRev ? new Date(last.localRev).toISOString() : null, attempts:tries };
+      }
       window.SHIN2_CRM_SHARED_SYNC = {
+        verifySaved: (name, check, opts)=> SHARED_ARRAY_KEYS[name] ? verifySharedSaved(SHARED_ARRAY_KEYS[name], check, opts) : Promise.reject(new Error('알 수 없는 저장소: ' + name)),
         getOnceWithRev: (name)=> SHARED_ARRAY_KEYS[name] ? getSharedKeyDocWithRev(SHARED_ARRAY_KEYS[name]) : Promise.reject(new Error('알 수 없는 저장소: ' + name)),
         compareAndSet: (name, expectedRev, data)=> SHARED_ARRAY_KEYS[name] ? compareAndSetSharedKey(name, SHARED_ARRAY_KEYS[name], expectedRev, data) : Promise.reject(new Error('알 수 없는 저장소: ' + name)),
         push: (name, data)=>{ if(SHARED_ARRAY_KEYS[name]) pushSharedKeyToCloud(name, SHARED_ARRAY_KEYS[name], data); },
@@ -45380,6 +45404,9 @@ window.SHIN2_CRM_APP_INIT = function(){
       try{ D.bumpCompanyCodeB2BCounter(plan.maxSeq); }catch(e){}
       try{ localStorage.setItem('shin2-b2b-bulk-assign-undo-v1', JSON.stringify({ at:new Date().toISOString(), changes: plan.changes })); }catch(e){}
       await S.compareAndSet('companies', cur.localRev, plan.after);
+      const want = new Map(assignments.map(a=> [a.id, a.code]));
+      const verify = await S.verifySaved('companies', list=>{ const m = new Map(list.map(c=> [c.id, c])); return assignments.every(a=> m.get(a.id) && String(m.get(a.id).code).trim() === want.get(a.id)); });
+      if(verify.status !== 'saved') return { changed: plan.changes.length, verify, changes: plan.changes, mismatch: verify.status === 'failed' ? assignments.map(a=> a.id) : [] };
       const back = await S.getOnceWithRev('companies');
       const m = new Map((back.value || []).map(c=> [c.id, c]));
       const mismatch = assignments.filter(a=> !m.get(a.id) || String(m.get(a.id).code).trim() !== a.code).map(a=> a.id);

@@ -10,10 +10,10 @@ function journalApi(){
 const SJ=journalApi();
 
 /* 실제 공유 목록 동기화 코드 + 가짜 Firestore */
-function harness({local, cloud, failFirst=0, shared=null}){
+function harness({local, cloud, failFirst=0, shared=null, serverDown=false}){
   const store=new Map(Object.entries({'shin2-companies-staging':JSON.stringify(local)}));
   const cloudDocs=shared||{'shin2-companies-staging':{value:J(cloud),localRev:100}};
-  let txCount=0; const snapCbs={}; const events=[];
+  let txCount=0; const snapCbs={}; const events=[]; const ctl={serverDown};
   const window={SHIN2_SYNC_JOURNAL:SJ,dispatchEvent:e=>events.push(e.type),localStorage:null};
   const ctx={window,console,setTimeout,clearTimeout,
     localStorage:{getItem:k=>store.has(k)?store.get(k):null,setItem:(k,v)=>store.set(k,String(v)),removeItem:k=>store.delete(k)},
@@ -21,14 +21,14 @@ function harness({local, cloud, failFirst=0, shared=null}){
     SHARED_ARRAY_KEYS:{companies:'shin2-companies-staging'},DOC_SYNC_STORAGE_KEY:'docs',
     ALLOW_EMPTY_SYNC_NAMES:new Set(),sharedSyncStarted:{},sharedPushTimers:{},lifecycleSyncLocks:new Set(),
     currentUid:'u',db:{},doc:(...a)=>a.at(-1),serverTimestamp:()=>'ts',publishCleanup(){},
-    onSnapshot:(ref,cb)=>{snapCbs[ref]=cb;return ()=>{};},getDoc:async k=>({exists:()=>!!cloudDocs[k],data:()=>J(cloudDocs[k])}),
+    onSnapshot:(ref,cb)=>{snapCbs[ref]=cb;return ()=>{};},getDoc:async k=>({exists:()=>!!cloudDocs[k],data:()=>J(cloudDocs[k])}),getDocFromServer:async k=>{ if(ctl.serverDown) throw new Error('unavailable'); return {exists:()=>!!cloudDocs[k],data:()=>J(cloudDocs[k])}; },
     runTransaction:async(db,fn)=>{txCount++;if(failFirst>0){failFirst--;throw new Error('OFFLINE');}const writes={};const out=await fn({get:async k=>({exists:()=>!!cloudDocs[k],data:()=>J(cloudDocs[k])}),set:(k,v)=>writes[k]=J(v)});Object.assign(cloudDocs,writes);return out;}};
   const a=html.indexOf('      // §저장 안전장치(신규, 2026-10-20) — 위 SHIN2_SYNC_JOURNAL 설명 참고.'),b=html.indexOf('      window.SHIN2_CRM_SHARED_SYNC = {',a);
   assert.ok(a>0&&b>a,'sync block');
-  vm.runInNewContext(html.slice(a,b)+';globalThis.__t={cas:compareAndSetSharedKey,read:getSharedKeyDocWithRev,pushAsync:pushSharedKeyToCloudAsync,push:pushSharedKeyToCloud,start:startSharedKeySync,journal:loadSyncJournal};',ctx);
+  vm.runInNewContext(html.slice(a,b)+';globalThis.__t={verify:verifySharedSaved,cas:compareAndSetSharedKey,read:getSharedKeyDocWithRev,pushAsync:pushSharedKeyToCloudAsync,push:pushSharedKeyToCloud,start:startSharedKeySync,journal:loadSyncJournal};',ctx);
   return {t:ctx.__t,cloud:()=>cloudDocs['shin2-companies-staging'],local:()=>JSON.parse(store.get('shin2-companies-staging')),txCount:()=>txCount,
     snapshot:(fromCache=false)=>snapCbs['shin2-companies-staging']({exists:()=>true,data:()=>J(cloudDocs['shin2-companies-staging']),metadata:{fromCache}}),
-    shared:cloudDocs,setCloud:v=>{cloudDocs['shin2-companies-staging']={value:J(v),localRev:cloudDocs['shin2-companies-staging'].localRev+1};},events};
+    ctl,shared:cloudDocs,setCloud:v=>{cloudDocs['shin2-companies-staging']={value:J(v),localRev:cloudDocs['shin2-companies-staging'].localRev+1};},events};
 }
 // 10/20 사고와 같은 모양: 클라우드엔 최신(두경건업 신규·선두건설 주소·넷폼 협약종료), 이 기기엔 며칠 전 값
 const cloudNow=[
@@ -131,4 +131,33 @@ test('일괄 적용 뒤, 적용 전 화면을 가진 직원 PC가 저장해도 �
   const c=admin.cloud().value;
   assert.equal(c[0].code,'B2B376');assert.equal(c[1].code,'B2B201','번호 유지');
   assert.equal(c[1].phone,'02-000','직원 수정 반영');assert.equal(c[1].masterCode,'25054','옛 코드 보존');
+});
+
+/* 저장 후 검증: 서버 최신 값 기준, 저장됨/실패/조회 지연 구분, 중복 저장 없음 */
+test('저장 결과를 서버 최신 값으로 확인하고, 다시 불러도 같은 저장을 또 보내지 않는다',async()=>{
+  const base=[{id:'a',name:'가',formerNames:[]}];
+  const h=harness({local:base,cloud:base});h.t.start('companies',SK);h.snapshot(false);
+  const next=J(base);next[0].formerNames=['옛이름'];
+  const r1=await h.t.pushAsync('companies',SK,next);
+  assert.equal(r1.saved,true);assert.equal(h.txCount(),1);
+  const r2=await h.t.pushAsync('companies',SK,next);
+  assert.equal(r2.saved,false);assert.equal(r2.reason,'nothing-to-save');assert.equal(h.txCount(),1,'두 번째는 요청 자체가 없음');
+  const v=await h.t.verify(SK,list=>list[0].formerNames.includes('옛이름'),{intervalMs:0});
+  assert.equal(v.status,'saved');assert.equal(v.attempts,1);
+});
+test('서버에 반영이 안 보이면 failed, 서버에 닿지 못하면 delayed(캐시로 대신하지 않음)',async()=>{
+  const base=[{id:'a',name:'가'}];
+  const h=harness({local:base,cloud:base});h.t.start('companies',SK);h.snapshot(false);
+  const f1=await h.t.verify(SK,list=>list[0].name==='나',{tries:3,intervalMs:0});
+  assert.equal(f1.status,'failed');assert.equal(f1.attempts,3);
+  h.ctl.serverDown=true;
+  const d1=await h.t.verify(SK,()=>true,{tries:2,intervalMs:0});
+  assert.equal(d1.status,'delayed');
+  await assert.rejects(h.t.read(SK),e=>e.code==='SERVER_UNAVAILABLE');
+});
+test('서버 전파가 늦어도 몇 번 다시 읽어 saved로 판정(실패로 오판하지 않음)',async()=>{
+  const base=[{id:'a',name:'가'}];
+  const h=harness({local:base,cloud:base});h.t.start('companies',SK);h.snapshot(false);
+  let n=0;const v=await h.t.verify(SK,list=>{ if(++n===2) h.setCloud([{id:'a',name:'나'}]); return list[0].name==='나'; },{tries:4,intervalMs:0});
+  assert.equal(v.status,'saved');assert.equal(v.attempts,3);
 });
