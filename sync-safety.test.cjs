@@ -10,9 +10,9 @@ function journalApi(){
 const SJ=journalApi();
 
 /* 실제 공유 목록 동기화 코드 + 가짜 Firestore */
-function harness({local, cloud, failFirst=0}){
+function harness({local, cloud, failFirst=0, shared=null}){
   const store=new Map(Object.entries({'shin2-companies-staging':JSON.stringify(local)}));
-  const cloudDocs={'shin2-companies-staging':{value:J(cloud),localRev:100}};
+  const cloudDocs=shared||{'shin2-companies-staging':{value:J(cloud),localRev:100}};
   let txCount=0; const snapCbs={}; const events=[];
   const window={SHIN2_SYNC_JOURNAL:SJ,dispatchEvent:e=>events.push(e.type),localStorage:null};
   const ctx={window,console,setTimeout,clearTimeout,
@@ -21,14 +21,14 @@ function harness({local, cloud, failFirst=0}){
     SHARED_ARRAY_KEYS:{companies:'shin2-companies-staging'},DOC_SYNC_STORAGE_KEY:'docs',
     ALLOW_EMPTY_SYNC_NAMES:new Set(),sharedSyncStarted:{},sharedPushTimers:{},lifecycleSyncLocks:new Set(),
     currentUid:'u',db:{},doc:(...a)=>a.at(-1),serverTimestamp:()=>'ts',publishCleanup(){},
-    onSnapshot:(ref,cb)=>{snapCbs[ref]=cb;return ()=>{};},
+    onSnapshot:(ref,cb)=>{snapCbs[ref]=cb;return ()=>{};},getDoc:async k=>({exists:()=>!!cloudDocs[k],data:()=>J(cloudDocs[k])}),
     runTransaction:async(db,fn)=>{txCount++;if(failFirst>0){failFirst--;throw new Error('OFFLINE');}const writes={};const out=await fn({get:async k=>({exists:()=>!!cloudDocs[k],data:()=>J(cloudDocs[k])}),set:(k,v)=>writes[k]=J(v)});Object.assign(cloudDocs,writes);return out;}};
-  const a=html.indexOf('      // §저장 안전장치(신규, 2026-10-20) — 위 SHIN2_SYNC_JOURNAL 설명 참고.'),b=html.indexOf('      // §로컬-클라우드 비교 화면 라운드(신규)',a);
+  const a=html.indexOf('      // §저장 안전장치(신규, 2026-10-20) — 위 SHIN2_SYNC_JOURNAL 설명 참고.'),b=html.indexOf('      window.SHIN2_CRM_SHARED_SYNC = {',a);
   assert.ok(a>0&&b>a,'sync block');
-  vm.runInNewContext(html.slice(a,b)+';globalThis.__t={pushAsync:pushSharedKeyToCloudAsync,push:pushSharedKeyToCloud,start:startSharedKeySync,journal:loadSyncJournal};',ctx);
+  vm.runInNewContext(html.slice(a,b)+';globalThis.__t={cas:compareAndSetSharedKey,read:getSharedKeyDocWithRev,pushAsync:pushSharedKeyToCloudAsync,push:pushSharedKeyToCloud,start:startSharedKeySync,journal:loadSyncJournal};',ctx);
   return {t:ctx.__t,cloud:()=>cloudDocs['shin2-companies-staging'],local:()=>JSON.parse(store.get('shin2-companies-staging')),txCount:()=>txCount,
     snapshot:(fromCache=false)=>snapCbs['shin2-companies-staging']({exists:()=>true,data:()=>J(cloudDocs['shin2-companies-staging']),metadata:{fromCache}}),
-    setCloud:v=>{cloudDocs['shin2-companies-staging']={value:J(v),localRev:cloudDocs['shin2-companies-staging'].localRev+1};},events};
+    shared:cloudDocs,setCloud:v=>{cloudDocs['shin2-companies-staging']={value:J(v),localRev:cloudDocs['shin2-companies-staging'].localRev+1};},events};
 }
 // 10/20 사고와 같은 모양: 클라우드엔 최신(두경건업 신규·선두건설 주소·넷폼 협약종료), 이 기기엔 며칠 전 값
 const cloudNow=[
@@ -106,4 +106,29 @@ test('변경 기록: 새 항목·삭제·필드 삭제, 저장 도중 새 변경
   const snap=J(j);const cur=SJ.diffInto(J(j),next,[{id:'a',x:3},{id:'n',z:1},'s1','s2']);
   SJ.removeApplied(cur,snap);
   assert.ok(cur.set['id:a'],'저장 도중 바뀐 a는 남는다');assert.ok(!cur.set['id:n'],'그대로인 n은 지운다');
+});
+
+/* B2B 전용번호 일괄 적용(compareAndSet)과 다른 직원 저장의 공존 */
+const SK='shin2-companies-staging';
+const twoCos=[{id:'a',name:'가',phone:'1'},{id:'b',name:'나',masterCode:'25054'}];
+test('일괄 적용: 읽은 뒤 다른 직원이 저장하면 적용을 멈추고 클라우드는 그대로',async()=>{
+  const admin=harness({local:twoCos,cloud:twoCos});admin.t.start('companies',SK);admin.snapshot(false);
+  const read=await admin.t.read(SK);
+  const staff=harness({local:twoCos,cloud:null,shared:admin.shared});staff.t.start('companies',SK);staff.snapshot(false);
+  const edit=J(twoCos);edit[0].phone='2';await staff.t.pushAsync('companies',SK,edit);   // 직원 수정
+  const planned=J(read.value).map((c,i)=>Object.assign(c,{code:i?'B2B201':'B2B376'}));
+  await assert.rejects(admin.t.cas('companies',SK,read.localRev,planned),e=>e.code==='CONFLICT');
+  assert.equal(admin.cloud().value[0].phone,'2','직원 수정 보존');assert.ok(!admin.cloud().value.some(c=>c.code),'번호는 아직 미적용');
+});
+test('일괄 적용 뒤, 적용 전 화면을 가진 직원 PC가 저장해도 번호는 지워지지 않고 직원 수정도 반영',async()=>{
+  const admin=harness({local:twoCos,cloud:twoCos});admin.t.start('companies',SK);admin.snapshot(false);
+  const staff=harness({local:twoCos,cloud:null,shared:admin.shared});staff.t.start('companies',SK);staff.snapshot(false);
+  const read=await admin.t.read(SK);
+  const planned=J(read.value).map((c,i)=>Object.assign(c,{code:i?'B2B201':'B2B376'}));
+  await admin.t.cas('companies',SK,read.localRev,planned);
+  const edit=J(twoCos);edit[1].phone='02-000';   // 직원 화면은 아직 번호 없는 옛 값
+  await staff.t.pushAsync('companies',SK,edit);
+  const c=admin.cloud().value;
+  assert.equal(c[0].code,'B2B376');assert.equal(c[1].code,'B2B201','번호 유지');
+  assert.equal(c[1].phone,'02-000','직원 수정 반영');assert.equal(c[1].masterCode,'25054','옛 코드 보존');
 });
