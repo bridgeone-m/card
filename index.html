@@ -11257,10 +11257,7 @@ body:not(.crm-admin-mode) #crmTabMailSettings,
 body:not(.crm-admin-mode) #gnavDrawerTabWorkQueue,
 body:not(.crm-admin-mode) #gnavDrawerTabMailSettings,
 body:not(.crm-admin-mode) #crmUpdateMenuWrap,
-body:not(.crm-admin-mode) #crmKpiGoalPanel,
-body:not(.crm-admin-mode) #crmTabKpi,
-body:not(.crm-admin-mode) #gnavDrawerTabKpi,
-body:not(.crm-admin-mode) #kpiView{ display:none !important; }
+body:not(.crm-admin-mode) #crmKpiGoalPanel{ display:none !important; }
 /* 관리자 비밀번호가 설정되면 역할은 로그인 비밀번호로만 정한다(🔒 버튼 숨김) */
 body.crm-admin-vault .crm-admin-mode-btn{ display:none !important; }
 .crm-staff-signout, .crm-staff-signout-item{ display:none !important; }
@@ -11268,20 +11265,10 @@ body:not(.crm-admin-mode) .crm-staff-signout{ display:inline-flex !important; }
 body:not(.crm-admin-mode) .crm-staff-signout-item{ display:block !important; }
 
 /* §B2B KPI 탭(신규) — 독립 화면 */
-body.crm-page-shell #kpiView{ flex:1 1 auto; min-height:0; overflow:auto; padding:14px 16px 12px; box-sizing:border-box; }
-body[data-crm-view="kpiView"] #kpiView{ display:block !important; }
 .kpiv-wrap{ max-width:1100px; margin:0 auto; display:flex; flex-direction:column; gap:10px; }
 .kpiv-head{ display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
 .kpiv-title{ margin:0; font-size:18px; font-weight:800; color:#17345F; }
 .kpiv-sub{ font-size:12px; color:#7C8BA1; }
-#kpiView .kgoal{ padding:14px 20px 12px; }
-#kpiView .kgoal-title{ display:none; } #kpiView .kgoal-head{ justify-content:flex-end; }
-#kpiView .kgoal-row{ grid-template-columns:200px minmax(0,1fr) 110px; padding:6px 0; }
-#kpiView .kgoal-name b{ font-size:14px; } #kpiView .kgoal-name span{ font-size:11.5px; }
-#kpiView .kgoal-bar{ padding:20px 0 16px; }
-#kpiView .kgoal-track{ height:12px; } #kpiView .kgoal-track.is-total{ height:14px; }
-#kpiView .kgoal-val b{ font-size:18px; } #kpiView .kgoal-val b.is-total{ font-size:22px; }
-@media (max-width:640px){ #kpiView .kgoal-row{ grid-template-columns:minmax(0,1fr) 72px; } }
 
 /* §검색줄 배치 라운드 3(신규) — 1행 KPI 카드 + 업체 필터, 2행 검색·정렬·쓰레기통. 고객 등록은 관리자만. */
 .crm-toolrow.crm-toolrow-v3{ flex-direction:column !important; flex-wrap:nowrap !important; gap:8px; }
@@ -11329,10 +11316,7 @@ body:not(.crm-admin-mode) .crm-toolrow-v3 #crmAddBtn{ display:none !important; }
 @media (max-width:520px){ .b2b-cards{ grid-template-columns:repeat(2, minmax(0,1fr)); } }
 
 /* §B2B KPI 보기 쉽게(임시) — 번호 붙인 섹션, 큰 숫자, 상태 알약, 자세한 표는 접기 */
-#kpiView .kpiv-wrap{ gap:16px; }
 .kpiv-sec{ display:flex; flex-direction:column; gap:8px; }
-#kpiView .kpiv-title{ font-size:16px; }
-#kpiView .kpiv-sub{ font-size:12.5px; }
 .b2b-note{ color:#C62828 !important; font-size:11.5px !important; }
 .b2b-cards{ grid-template-columns:repeat(3, minmax(0,1fr)) !important; gap:10px !important; }
 .b2b-card{ text-align:left !important; padding:12px 14px !important; }
@@ -11425,17 +11409,8 @@ body.crm-risk-view #listView .co-row .col-request, body.crm-risk-view #crmCoTabl
 .b2b-card-detail-list li span{ color:#6B7A90; white-space:nowrap; }
 @media (max-width:640px){ .b2b-card-detail-list{ grid-template-columns:minmax(0,1fr); } }
 /* §종합 달성률 돋보이게 */
-#kpiView .kgoal-row.is-total{ margin-top:6px; padding:12px 14px !important; border-top:0 !important; border-radius:12px; background:linear-gradient(90deg, #17345F, #2F6FB5); grid-template-columns:200px minmax(0,1fr) 130px; }
-#kpiView .kgoal-row.is-total .kgoal-name b{ color:#fff; font-size:16px; }
-#kpiView .kgoal-row.is-total .kgoal-name span{ color:#CFE0F5; }
-#kpiView .kgoal-row.is-total .kgoal-track{ height:16px !important; background:rgba(255,255,255,.22); }
-#kpiView .kgoal-row.is-total .kgoal-cur{ background:#fff !important; }
-#kpiView .kgoal-row.is-total .kgoal-val b.is-total{ color:#fff; font-size:34px !important; line-height:1; }
-@media (max-width:640px){ #kpiView .kgoal-row.is-total{ grid-template-columns:minmax(0,1fr) 90px; } }
 
 /* §B2B KPI 넓게 쓰기 + 종합 달성률 결과 상자 */
-#kpiView .kpiv-wrap{ max-width:none !important; width:100%; margin:0 !important; box-sizing:border-box; }
-body.crm-page-shell #kpiView{ padding:14px 20px 16px !important; }
 .kgoal-main{ display:grid; grid-template-columns:minmax(0,1fr) 220px; gap:16px; align-items:stretch; }
 .kgoal-rows{ min-width:0; }
 .kgoal-total-box{ display:flex; flex-direction:column; justify-content:center; gap:8px; padding:16px 18px; border-radius:14px; background:linear-gradient(135deg, #17345F, #2F6FB5); color:#fff; }
@@ -11447,16 +11422,12 @@ body.crm-page-shell #kpiView{ padding:14px 20px 16px !important; }
 .kgoal-total-sub{ font-size:11.5px; line-height:1.45; color:#D6E4F5; }
 /* 넓은 화면: 선행지표 카드 6개 한 줄, 상세 목록 3열 */
 @media (min-width:1280px){
-  #kpiView .b2b-cards{ grid-template-columns:repeat(6, minmax(0,1fr)) !important; }
-  #kpiView .b2b-card-val{ font-size:24px !important; }
-  #kpiView .b2b-card-detail-list{ grid-template-columns:repeat(3, minmax(0,1fr)); }
 }
 @media (max-width:760px){
   .kgoal-main{ grid-template-columns:minmax(0,1fr); }
   .kgoal-total-box{ flex-direction:row; flex-wrap:wrap; align-items:center; }
   .kgoal-total-val{ font-size:36px; }
   .kgoal-total-bar{ flex:1 1 100%; }
-  body.crm-page-shell #kpiView{ padding:12px 12px 14px !important; }
 }
 
 /* §시공사 목록 팝업 — 검색 결과가 있을 때만 */
@@ -11548,7 +11519,6 @@ body.crm-fixed-view .crm-list-col .list-pagination{ display:grid !important; }
          버튼은 그대로, class/부모만 gnav-menu로 바꿨다. -->
     <nav class="gnav-menu" id="crmTopTabs" aria-label="주요 메뉴">
       <button type="button" class="top-tab is-active" id="crmTabCustomer" data-tab="customer"><svg class="top-tab-ico" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.4"/><path d="M3 19.5a6 6 0 0 1 12 0"/><path d="M15.5 4.8a3.2 3.2 0 0 1 0 6.3M17.5 14a5.5 5.5 0 0 1 3.5 5.5"/></svg>고객관리</button>
-      <button type="button" class="top-tab" id="crmTabKpi" data-tab="kpi"><svg class="top-tab-ico" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19h16"/><path d="M4 15h9"/><path d="M4 11h13"/><path d="M4 7h6"/></svg>B2B KPI</button>
       <button type="button" class="top-tab" id="crmTabWorkQueue" data-tab="workqueue"><svg class="top-tab-ico" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="m8.5 12 2 2 4-4.5M8.5 17.5h7"/></svg>MOU 진행상황</button>
       <button type="button" class="top-tab" id="crmTabMailSettings" data-tab="mailsettings"><svg class="top-tab-ico" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3.5 6.5 8.5 6 8.5-6"/></svg>메일 설정</button>
     </nav>
@@ -11623,7 +11593,6 @@ body.crm-fixed-view .crm-list-col .list-pagination{ display:grid !important; }
       </div>
       <nav class="gnav-drawer-menu" aria-label="주요 메뉴(모바일)">
         <button type="button" class="gnav-drawer-item is-active" id="gnavDrawerTabCustomer">고객관리</button>
-        <button type="button" class="gnav-drawer-item" id="gnavDrawerTabKpi">B2B KPI</button>
         <button type="button" class="gnav-drawer-item" id="gnavDrawerTabWorkQueue">MOU 진행상황</button>
         <button type="button" class="gnav-drawer-item" id="gnavDrawerTabMailSettings">메일 설정</button>
         <button type="button" class="gnav-drawer-item" id="gnavDrawerExport">내보내기</button>
@@ -11793,17 +11762,6 @@ body.crm-fixed-view .crm-list-col .list-pagination{ display:grid !important; }
   <!-- §1차미팅 메일 자동발송 라운드(신규): listView/cardView/workQueueView와 완전히
        별개인 네 번째 최상위 view — 메일 발신자/문구 템플릿 + EmailJS 연동 설정 전용. -->
   <div id="mailSettingsView" style="display:none;"></div>
-  <!-- §B2B KPI 탭(신규) — 관리자 전용. KPI 목표 그래프를 고객관리 화면에서 분리해 따로 관리한다(알림·추적은 이 화면에 추가 예정). -->
-  <div id="kpiView" style="display:none;">
-    <div class="kpiv-wrap">
-      <section class="kpiv-sec">
-        <div class="kpiv-head"><h2 class="kpiv-title">① 상향 공식 목표</h2><span class="kpiv-sub">우리가 달려가는 목표</span></div>
-        <div class="kgoal" id="crmKpiGoalPanel"></div>
-        <div class="b2b-note">임시 · 현재 값은 직접 입력한 숫자(연동 예정)</div>
-      </section>
-      <div id="b2bLeadRoot"></div>
-    </div>
-  </div>
   <!-- §1차미팅 메일 자동발송 라운드(신규): 업무관리 "1차미팅 잡기" 목록의 [메일발송]이
        여는 발송 팝업 전용 root — 다른 중앙 모달과 같은 .pi-overlay/.pi-panel 패턴. -->
   <div id="mailComposeModalRoot"></div>
@@ -22883,11 +22841,12 @@ window.SHIN2_CRM_APP_INIT = function(){
   // 길목(renderList / openCard / 탭 전환)에서 모두 이 함수 하나만 부른다.
   // 메인 탭 세 개(고객관리 / MOU 진행상황 / 메일 설정)의 view id. 전체화면 상세
   // (#cardView)는 원래대로 길이에 따라 페이지가 늘어난다 — 탭이 아니라서 제외했다.
-  const CRM_SHELL_VIEW_IDS = ['listView', 'workQueueView', 'mailSettingsView', 'kpiView'];
+  
   // 이 세 화면을 켜고 끄는 유일한 스위치는 인라인 style.display다. 아래 CSS가
   // "지금 보이는 화면"에만 display:flex !important를 걸기 때문에, computed display로
   // 판정하면 방금 숨긴 화면도 계속 보인다고 읽혀 탭이 바뀌어도 값이 안 따라온다
   // (실제로 메일 탭에서 겪었다). 그래서 인라인 값을 먼저 본다.
+  const CRM_SHELL_VIEW_IDS = ['listView', 'workQueueView', 'mailSettingsView'];   // §B2B KPI 탭 삭제(2026-10-20) — kpiView 제외
   function isCrmViewShown(el){
     if(!el) return false;
     if(el.style && el.style.display) return el.style.display !== 'none';
@@ -33867,7 +33826,6 @@ window.SHIN2_CRM_APP_INIT = function(){
   // 전환 로직 자체(openList/openCard)는 전혀 건드리지 않았다(§2 "기존 고객관리 화면 절대
   // 변경 금지").
   function showCustomerTab(){
-    { const kv = document.getElementById('kpiView'); if(kv) kv.style.display = 'none'; }
     document.getElementById('workQueueView').style.display = 'none';
     renderConsultRequestAlert();   // MOU 진행상황 화면에서만 뜨는 알림이라 여기서 치운다
     document.getElementById('mailSettingsView').style.display = 'none';
@@ -33892,7 +33850,6 @@ window.SHIN2_CRM_APP_INIT = function(){
   // 스스로 다시 부르는 renderWorkQueueView() 호출(필터 칩·정렬 등, 이미 이 화면이 보이는
   // 상태)은 건드리지 않았다 — 거기까지 미루면 오히려 반응이 느려 보인다.
   function showWorkQueueTab(){
-    { const kv = document.getElementById('kpiView'); if(kv) kv.style.display = 'none'; }
     listView.style.display = 'none';
     cardView.style.display = 'none';
     document.getElementById('mailSettingsView').style.display = 'none';
@@ -33906,7 +33863,6 @@ window.SHIN2_CRM_APP_INIT = function(){
   // 똑같이 적용한다(§요청 5 "메인 탭 클릭 후 기본 화면 표시" 전부에 적용).
   function showMailSettingsTab(){
     if(!window.crmAdminOk('메일 설정')) return;
-    { const kv = document.getElementById('kpiView'); if(kv) kv.style.display = 'none'; }
     listView.style.display = 'none';
     cardView.style.display = 'none';
     document.getElementById('workQueueView').style.display = 'none';
@@ -33915,23 +33871,8 @@ window.SHIN2_CRM_APP_INIT = function(){
     updateTopTabsUI('mailsettings');
     requestAnimationFrame(()=> requestAnimationFrame(renderMailSettingsView));
   }
-  // §B2B KPI 탭(신규) — 다른 탭과 같은 전환 방식(관리자 전용)
-  function showKpiTab(){
-    if(!window.crmAdminOk('B2B KPI')) return;
-    listView.style.display = 'none';
-    cardView.style.display = 'none';
-    document.getElementById('workQueueView').style.display = 'none';
-    document.getElementById('mailSettingsView').style.display = 'none';
-    renderConsultRequestAlert();
-    document.getElementById('kpiView').style.display = 'block';
-    updateTopTabsUI('kpi');
-    if(typeof renderKpiGoalPanel === 'function') renderKpiGoalPanel();
-    requestAnimationFrame(()=> requestAnimationFrame(()=>{ if(typeof renderB2bLeading === 'function') renderB2bLeading(); }));
-  }
   function updateTopTabsUI(tab){
     syncCrmFixedViewClass();
-    { const k = document.getElementById('crmTabKpi'); if(k) k.classList.toggle('is-active', tab === 'kpi');
-      const dk = document.getElementById('gnavDrawerTabKpi'); if(dk) dk.classList.toggle('is-active', tab === 'kpi'); }
     const custBtn = document.getElementById('crmTabCustomer');
     const wqBtn = document.getElementById('crmTabWorkQueue');
     const mailBtn = document.getElementById('crmTabMailSettings');
@@ -51327,7 +51268,6 @@ if(!window.__mapxRowDelegated){
   // searchInput/필터/정렬 등 리스너는 전혀 건드리지 않았다.
   document.getElementById('crmTabCustomer').addEventListener('click', showCustomerTab);
   document.getElementById('crmTabWorkQueue').addEventListener('click', showWorkQueueTab);
-  document.getElementById('crmTabKpi').addEventListener('click', showKpiTab);
   document.getElementById('crmTabMailSettings').addEventListener('click', showMailSettingsTab);
 
   /* ==========================================================================
@@ -51655,8 +51595,6 @@ if(!window.__mapxRowDelegated){
     if(dCust) dCust.addEventListener('click', ()=>{ showCustomerTab(); closeDrawer(); });
     if(dWq) dWq.addEventListener('click', ()=>{ showWorkQueueTab(); closeDrawer(); });
     if(dMail) dMail.addEventListener('click', ()=>{ showMailSettingsTab(); closeDrawer(); });
-    const dKpi = document.getElementById('gnavDrawerTabKpi');
-    if(dKpi) dKpi.addEventListener('click', ()=>{ showKpiTab(); closeDrawer(); });
     // §모바일 최적화 — 휴대폰에서는 상단 [내보내기] 버튼이 숨겨지므로 메뉴에서 같은 화면을 연다
     const dExport = document.getElementById('gnavDrawerExport');
     if(dExport) dExport.addEventListener('click', ()=>{ closeDrawer(); if(typeof openPdfExportModal === 'function') openPdfExportModal(); });
