@@ -17789,11 +17789,29 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
   // (buildPourRecordIndex와 같은 문제, §같은 패턴으로 고침). 결과는 순수 계산이라 캐시해도
   // 값이 바뀌지 않는다.
   let _revenue2025IndexCache = null;
+  /* §B2B 매출 중복 방지(신규, 2026-10-20 원본 검증) — 2025 매출 스냅샷의 아래 4개 행은 원본 거래 단위
+     대조로 "다른 행에 이미 들어 있는 같은 거래"임이 확정됐다(협력업체 행의 값이 이 이름들의 원본 거래로만
+     구성됨). 지금은 어느 업체에도 연결되지 않아 집계에 안 들어가지만, 이전 상호·별칭·B2B 전용번호 연결로
+     다시 이어지면 같은 매출이 두 번 더해진다. 그래서 매칭과 무관하게 집계에서 항상 제외한다.
+     원본 자료(SHIN2_REVENUE_2025_SNAPSHOT) 자체는 그대로 둔다 — 차단은 집계 단계에서만. 행 번호·이름·금액이
+     모두 같을 때만 차단하므로, 원본이 바뀌면 차단도 자동으로 풀리고 검토가 다시 필요해진다. */
+  const REVENUE_DUPLICATE_BLOCKLIST = Object.freeze([
+    { year:2025, sourceRow:279, name:'에스에이치', amount:111256100, includedIn:'SH㈜(2025 64행)', reason:'SH㈜ 행 금액이 에스에이치 원본 거래 5건 합과 같고 SH 이름 거래는 0건' },
+    { year:2025, sourceRow:271, name:'삼정ING', amount:43476400, includedIn:'삼정아이엔지건설㈜(2025 30행)', reason:'삼정아이엔지건설㈜ 행 = 삼정ING + 삼정ING건설 원본 거래 합, 한글 이름 거래 0건' },
+    { year:2025, sourceRow:272, name:'삼정ING건설', amount:1288050, includedIn:'삼정아이엔지건설㈜(2025 30행)', reason:'위와 같음' },
+    { year:2025, sourceRow:280, name:'에스피플래닝', amount:33793100, includedIn:'㈜다수건설(2025 65행)', reason:'다수건설 행 금액이 에스피플래닝 원본 거래 19건 합과 같고 다수건설 이름 거래는 0건' }
+  ]);
+  function revenueBlockOf(year, r){
+    if(!r) return null;
+    const amt = Number(r.revenue2025 != null ? r.revenue2025 : r.amount);
+    return REVENUE_DUPLICATE_BLOCKLIST.find(b=> b.year === year && Number(r.sourceRow) === b.sourceRow && String(r.name || '').trim() === b.name && amt === b.amount) || null;
+  }
   function buildRevenue2025Index(){
     if(_revenue2025IndexCache) return _revenue2025IndexCache;
     const snapshot = window.SHIN2_REVENUE_2025_SNAPSHOT || [];
     const index = new Map(); // normName -> { sampleName, rows:[{name,revenue2025,sourceRow}], total }
     snapshot.forEach(r=>{
+      if(revenueBlockOf(2025, r)) return;   // §B2B 매출 중복 방지 — 확정된 중복 행은 어떤 이름으로 연결돼도 합산하지 않음
       const norm = normCompanyNameForRevenue(r.name);
       if(!norm) return;
       if(!index.has(norm)) index.set(norm, { sampleName: r.name, rows: [], total: 0 });
@@ -18466,6 +18484,74 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
   // getAllPourRecordsForCompany: "최근 시공 Drawer"용 — 그 업체의 매칭되는 POUR 레코드
   // 전부(최신순: 연도 내림차순, 동률이면 sourceRow 내림차순). getLatestPourRecordForCompany
   // 와 같은 매칭/정렬 기준을 그대로 쓴다.
+  /* §B2B 매출 중복 방지(신규) — 이전 상호(=매출·실적 연결 이름)를 추가하기 "전에" 무엇이 합산되는지 검사한다.
+     저장하지 않는 순수 계산. level: ok(그대로 진행 가능) / warn(확인 후 진행) / block(연결 금지).
+     - 다른 운영 업체가 이미 쓰는 이름이면 block(한 매출이 두 업체에 잡힘)
+     - 확정 중복 행은 합산되지 않는다는 사실을 알림(차단 목록)
+     - 이 업체의 기존 매출과 같은 금액(또는 추가분 합이 기존 한 행과 같음)·같은 거래(일자·현장·금액)면 warn
+     - 마스터 명단상 사업자번호가 다른 회사 이름이면 warn(자동 연결 금지 원칙) */
+  function checkAliasRevenueOverlap(companyId, alias){
+    const co = findCompany(companyId);
+    const out = { alias: String(alias || '').trim(), norm:'', added:{ y2024:0, y2025:0, y2026:0, pour:0 }, rows:[], blocked:[], conflicts:[], warnings:[], level:'ok' };
+    if(!co){ out.conflicts.push('업체를 찾을 수 없습니다.'); out.level = 'block'; return out; }
+    const norm = normCompanyNameForRevenue(out.alias); out.norm = norm;
+    if(!norm){ out.conflicts.push('이름이 비어 있습니다.'); out.level = 'block'; return out; }
+    const ownNorms = new Set(revenueNormsForCompany(co));
+    if(ownNorms.has(norm)){ out.warnings.push('이미 이 업체의 이름 또는 이전 상호와 같습니다 — 추가해도 매출·실적은 바뀌지 않습니다.'); out.level = 'warn'; return out; }
+    loadCompanies().forEach(c=>{
+      if(c.id === co.id || !revenueNormsForCompany(c).includes(norm)) return;
+      if(c.deletedAt) out.warnings.push('삭제된 업체 "' + c.name + '"와 같은 이름입니다.');
+      else out.conflicts.push('다른 운영 업체 "' + c.name + '"' + (c.code ? '(' + c.code + ')' : '') + '가 이미 이 이름으로 매출·실적을 받고 있습니다 — 한 매출이 두 업체에 잡힙니다.');
+    });
+    const ownRows = { 2024:[], 2025:[], 2026:[] };
+    (window.SHIN2_REVENUE_2024_SNAPSHOT || []).forEach(r=>{ const n = normCompanyNameForRevenue(r.name);
+      if(n === norm){ out.added.y2024 += r.revenue2024; out.rows.push({ year:2024, name:r.name, amount:r.revenue2024, sourceRow:r.sourceRow }); }
+      else if(ownNorms.has(n)) ownRows[2024].push(r.revenue2024); });
+    (window.SHIN2_REVENUE_2025_SNAPSHOT || []).forEach(r=>{ const n = normCompanyNameForRevenue(r.name);
+      if(n === norm){ const b = revenueBlockOf(2025, r);
+        if(b) out.blocked.push({ year:2025, name:r.name, amount:r.revenue2025, sourceRow:r.sourceRow, includedIn:b.includedIn, reason:b.reason });
+        else { out.added.y2025 += r.revenue2025; out.rows.push({ year:2025, name:r.name, amount:r.revenue2025, sourceRow:r.sourceRow }); } }
+      else if(ownNorms.has(n) && !revenueBlockOf(2025, r)) ownRows[2025].push(r.revenue2025); });
+    const fp = r=> [String(r.date || ''), String(r.site || '').replace(/\s|아파트/g, ''), Number(r.amount)].join('|');
+    const own26 = new Set();
+    const rows26 = filterConfirmedYearRows(buildMergedSalesRowsForYear(2026), 2026);
+    rows26.forEach(r=>{ if(ownNorms.has(normCompanyNameForRevenue(r.name))) own26.add(fp(r)); });
+    let dup26 = 0;
+    rows26.forEach(r=>{ if(normCompanyNameForRevenue(r.name) !== norm) return; out.added.y2026 += r.amount; out.rows.push({ year:2026, name:r.name, amount:r.amount, date:r.date, site:r.site }); if(own26.has(fp(r))) dup26++; });
+    const pn = normCompanyNameForPour(out.alias);
+    if(!new Set(pourNormsForCompany(co)).has(pn)) out.added.pour = (buildPourRecordIndex().get(pn) || []).length;
+    [2024, 2025].forEach(y=>{
+      const add = out.rows.filter(r=> r.year === y).map(r=> r.amount), sumAdd = add.reduce((a, b)=> a + b, 0);
+      if(!add.length || !ownRows[y].length) return;
+      if(add.some(a=> a && ownRows[y].includes(a)) || (sumAdd && ownRows[y].includes(sumAdd)))
+        out.warnings.push(y + '년: 추가될 금액이 이 업체의 기존 매출 행 금액과 같습니다 — 같은 매출이 이름만 달리 적혔을 수 있어 원본 확인이 필요합니다.');
+    });
+    if(dup26) out.warnings.push('2026년: 일자·현장·금액이 기존 매출과 똑같은 거래 ' + dup26 + '건이 있습니다(중복 의심).');
+    const digits = v=> String(v || '').replace(/\D/g, '');
+    const m = (window.SHIN2_MASTER_COMPANY_SNAPSHOT || []).find(x=> normCompanyNameForRevenue(x.name) === norm && digits(x.bizno).length === 10);
+    if(m && digits(co.bizRegNo).length === 10 && digits(m.bizno) !== digits(co.bizRegNo))
+      out.warnings.push('마스터 명단의 "' + m.name + '" 사업자번호(' + m.bizno + ')가 이 업체(' + co.bizRegNo + ')와 다릅니다 — 다른 회사일 수 있습니다.');
+    if(out.blocked.length) out.warnings.push('확정 중복으로 차단된 2025 매출 ' + out.blocked.reduce((a, b)=> a + b.amount, 0).toLocaleString('ko-KR') + '원은 연결해도 합산되지 않습니다(' + out.blocked.map(b=> b.includedIn).join(', ') + '에 이미 포함).');
+    out.level = out.conflicts.length ? 'block' : out.warnings.length ? 'warn' : 'ok';
+    return out;
+  }
+  // §B2B 매출 중복 방지(신규) — 이전 상호(별칭)를 붙였을 때 연도별 총매출·실적과 업체별 값이 어떻게 바뀌는지
+  // 저장 없이 계산한다. aliasMap = { companyId: ['추가할 이름', ...] }.
+  function previewRevenueLink(aliasMap){
+    aliasMap = aliasMap || {};
+    const val = x=> x && !x.ambiguous && typeof x.total === 'number' ? x.total : 0;
+    const one = c=> ({ y2024: val(getCompany2024Revenue(c)), y2025: val(getCompany2025Revenue(c)), y2026: val(getCompany2026Revenue(c)), pour: getAllPourRecordsForCompany(c).length });
+    const tot = { before:{ y2024:0, y2025:0, y2026:0, pour:0 }, after:{ y2024:0, y2025:0, y2026:0, pour:0 } };
+    const companies = [];
+    loadActiveCompanies().forEach(c=>{
+      const b = one(c);
+      const extra = aliasMap[c.id];
+      const a = extra && extra.length ? one(Object.assign({}, c, { formerNames: (Array.isArray(c.formerNames) ? c.formerNames : []).concat(extra) })) : b;
+      Object.keys(b).forEach(k=>{ tot.before[k] += b[k]; tot.after[k] += a[k]; });
+      if(extra && extra.length) companies.push({ id:c.id, code:c.code || '', name:c.name, aliases:extra.slice(), before:b, after:a });
+    });
+    return Object.assign(tot, { companies });
+  }
   function getAllPourRecordsForCompany(co){
     const norms = pourNormsForCompany(co);
     if(!norms.length) return [];
@@ -18886,6 +18972,7 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
     addRequestedMaterial, addRequestedMaterialIfNew, removeRequestedMaterial, setRequestedMaterialStatus, extractRequestedMaterialsFromActivities,
     normCompanyName, findSimilarCompanySuggestions,
     buildUnregisteredCompanies, getCompany2025Revenue, getCompany2024Revenue, getCompanyTotalRevenueAllYears,
+    checkAliasRevenueOverlap, previewRevenueLink, revenueDuplicateBlocklist: ()=> REVENUE_DUPLICATE_BLOCKLIST.slice(),
     buildRevenue2026Index, getCompany2026Revenue, buildUnregisteredCompanies2026, classifyUnregisteredCompaniesByMouMaster, isMouMasterSigned,
     invalidateNormNameCounts: ()=>{ _crmNormNameCountsCache = null; },
     loadSalesLedger, saveSalesLedgerConfirmed, invalidateRevenue2026IndexCache, buildMergedSalesRowsForYear, salesTxnIdentityKey, salesTxnFingerprintKey, salesTxnCorrectionCandidateKey,
@@ -21879,7 +21966,9 @@ window.SHIN2_CRM_APP_INIT = function(){
     if(p <= -10) return { key:'watch', label:'관심' };
     return { key:'ok', label:'정상' };
   }
-  function computeB2bLeading(){
+  // §B2B 매출 중복 방지(신규) — dataOverride가 있으면 그 데이터로 계산한다(연결 전후 KPI 미리보기 전용).
+  function computeB2bLeading(dataOverride){
+    const D = dataOverride || window.SHIN2_CRM_DATA;
     const now = new Date(), Y = now.getFullYear();
     const DAY = 86400000;
     const startCur = new Date(Y, 0, 1).getTime(), endCur = now.getTime();
@@ -22094,6 +22183,45 @@ window.SHIN2_CRM_APP_INIT = function(){
         <span>공고(L4)</span><b>올해 ${x.l4c} / 작년 ${x.l4PrevFull}(환산 ${x.l4p.toFixed(1)}) → ${pct(x.ch.l4)}</b>
         <span>매출</span><b>올해 ${b2bFmtWon(x.revc)} / 작년 ${b2bFmtWon(x.revPrevFull)} → ${pct(x.ch.rev)}</b>
       </div></div>`).join('');
+  }
+  // §B2B 매출 중복 방지(신규) — 별칭 연결 전후의 B2B KPI 카드·업체별 상태 변화(저장 없음)
+  window.SHIN2_B2B_KPI_PREVIEW = function(aliasMap){
+    aliasMap = aliasMap || {};
+    const real = window.SHIN2_CRM_DATA;
+    const over = Object.assign(Object.create(real), {
+      loadActiveCompanies: ()=> real.loadActiveCompanies().map(c=> (aliasMap[c.id] && aliasMap[c.id].length)
+        ? Object.assign({}, c, { formerNames: (Array.isArray(c.formerNames) ? c.formerNames : []).concat(aliasMap[c.id]) }) : c)
+    });
+    const b = computeB2bLeading(), a = computeB2bLeading(over);
+    const cards = b.cards.map((c, i)=> ({ id:c.id, name:c.name, before:c.value, after:a.cards[i] ? a.cards[i].value : c.value, beforeSub:c.sub, afterSub:a.cards[i] ? a.cards[i].sub : c.sub }));
+    const bm = new Map(b.evaluated.map(x=> [x.co.id, x]));
+    const sig = x=> JSON.stringify([x.included, x.status && x.status.key, x.ch, x.vip, x.l4c, Math.round(x.l4PrevFull), x.revc, x.revPrevFull]);
+    const companies = a.evaluated.filter(x=> bm.has(x.co.id) && sig(x) !== sig(bm.get(x.co.id))).map(x=>{ const y = bm.get(x.co.id);
+      return { id:x.co.id, code:x.co.code || '', name:x.co.name,
+        before:{ status:y.status && y.status.label, revPct:y.ch.rev, l4c:y.l4c, l4PrevFull:y.l4PrevFull, rev2026:y.revc, rev2025:y.revPrevFull, included:y.included, vip:y.vip },
+        after:{ status:x.status && x.status.label, revPct:x.ch.rev, l4c:x.l4c, l4PrevFull:x.l4PrevFull, rev2026:x.revc, rev2025:x.revPrevFull, included:x.included, vip:x.vip } }; });
+    return { cards, cardsChanged: cards.filter(c=> c.before !== c.after || c.beforeSub !== c.afterSub), companies };
+  };
+  // §B2B 매출 중복 방지(신규) — 이전 상호를 추가하기 직전에 검사·미리보기를 보여 주고, 연결 금지면 막는다.
+  function confirmAliasLink(companyId, name){
+    if(!D.checkAliasRevenueOverlap) return true;
+    const chk = D.checkAliasRevenueOverlap(companyId, name);
+    const co = D.findCompany(companyId) || { name:'' };
+    const won = n=> Math.round(n || 0).toLocaleString('ko-KR') + '원';
+    const lines = ['"' + String(name).trim() + '"을(를) "' + co.name + '"의 이전 상호로 추가하면 이 이름의 매출·실적이 이 업체에 합산됩니다.', ''];
+    const ad = chk.added;
+    lines.push('합산될 매출: 2024 ' + won(ad.y2024) + ' · 2025 ' + won(ad.y2025) + ' · 2026 ' + won(ad.y2026) + ' / 시공실적 ' + ad.pour + '건');
+    let kpi = null;
+    try{ if((ad.y2025 || ad.y2026 || ad.pour) && window.SHIN2_B2B_KPI_PREVIEW) kpi = window.SHIN2_B2B_KPI_PREVIEW({ [companyId]: [String(name).trim()] }); }catch(e){}
+    if(kpi){
+      const me = kpi.companies.find(x=> x.id === companyId);
+      if(me) lines.push('B2B KPI 상태: ' + me.before.status + ' → ' + me.after.status + (me.before.revPct !== me.after.revPct ? ' (매출 증감 ' + (me.before.revPct == null ? '—' : me.before.revPct + '%') + ' → ' + (me.after.revPct == null ? '—' : me.after.revPct + '%') + ')' : ''));
+      kpi.cardsChanged.forEach(c=> lines.push('KPI 카드 "' + c.name + '": ' + c.before + ' → ' + c.after));
+    }
+    if(chk.conflicts.length){ lines.push('', '연결할 수 없습니다:'); chk.conflicts.forEach(t=> lines.push('· ' + t)); alert(lines.join('\n')); return false; }
+    if(chk.warnings.length){ lines.push('', '확인 필요:'); chk.warnings.forEach(t=> lines.push('· ' + t)); }
+    if(chk.level === 'ok' && !(ad.y2024 || ad.y2025 || ad.y2026 || ad.pour)) return true;
+    return confirm(lines.join('\n') + '\n\n계속 추가할까요?');
   }
   function renderB2bLeading(useCache){
     const root = document.getElementById('b2bLeadRoot');
@@ -28376,7 +28504,10 @@ window.SHIN2_CRM_APP_INIT = function(){
       const v = input.value.trim();
       if(!v) return;
       formerAddBtn.disabled = true;
-      if(!formerAddApplied){ D.addFormerName(co.id, v); formerAddApplied = true; }
+      if(!formerAddApplied){
+        if(!confirmAliasLink(co.id, v)){ formerAddBtn.disabled = false; return; }   // §B2B 매출 중복 방지 — 합산 전 검사
+        D.addFormerName(co.id, v); formerAddApplied = true;
+      }
       const r = await confirmCloudSave('companies');
       formerAddBtn.disabled = false;
       showCloudSaveStatus(statusEl, r.ok, r.err);
@@ -37795,6 +37926,7 @@ window.SHIN2_CRM_APP_INIT = function(){
         const name = cb.getAttribute('data-ambiguous-merge-name');
         const companyId = cb.getAttribute('data-ambiguous-merge-company');
         if(cb.checked){
+          if(!confirmAliasLink(companyId, name)){ cb.checked = false; return; }   // §B2B 매출 중복 방지 — 합산 전 검사
           D.addFormerName(companyId, name);
         } else {
           // §버그 수정 — updateCompany 저장 시 formerNames 값이 정규화(㈜/（주）→(주),
@@ -37853,7 +37985,7 @@ window.SHIN2_CRM_APP_INIT = function(){
             const unregName = btn.getAttribute('data-unreg-manual-connect-name');
             const co = D.findCompany(companyId);
             if(!co) return;
-            if(!confirm(`"${unregName}"을(를) "${co.name}"의 이전 상호로 연결할까요?\n두 업체의 매출이 합산되고, 이 이름은 미등록 목록에서 빠집니다.`)) return;
+            if(!confirmAliasLink(companyId, unregName)) return;   // §B2B 매출 중복 방지 — 합산될 매출·KPI 변화 미리보기 + 중복·충돌 검사
             D.addFormerName(companyId, unregName);
             unregManualLinkOpenFor = null;
             renderUnregisteredBadge();
