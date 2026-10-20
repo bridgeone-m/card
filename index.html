@@ -13094,16 +13094,45 @@ window.SHIN2_ADMIN_VAULT = {"v":1,"it":310000,"s":"LR69gP2hfdC4DCenIz+Grw==","iv
       }
       let docsSyncStarted = false;
       let docsPushTimer = null;
+      // §저장 안전장치(신규) — 서류함도 공유 목록과 같은 원칙: 최신 값 수신 전엔 저장하지 않고,
+      // 이 기기가 바꾼 항목·필드만 클라우드 최신 값 위에 트랜잭션으로 얹는다. (함수들은 아래 공유
+      // 목록 블록에서 정의되며, 이 함수들은 로그인 뒤에만 호출되므로 그 시점엔 이미 준비돼 있다.)
+      function flushDocsToCloud(){
+        const sk = DOC_SYNC_STORAGE_KEY;
+        const run = async ()=>{
+          if(!currentUid) throw new Error('로그인이 필요합니다.');
+          await waitSyncFresh(sk, 20000);
+          const J = deepCopy(loadSyncJournal(sk));
+          if(SJ.isEmpty(J)) return null;
+          const ref = doc(db, 'users', currentUid, 'shin2', sk);
+          const out = await runTransaction(db, async tx=>{
+            const snap = await tx.get(ref);
+            const cur = snap.exists() ? snap.data() : null;
+            const cloudArr = cur && Array.isArray(cur.value) ? cur.value : null;
+            const merged = cloudArr ? SJ.applyJournal(cloudArr, J) : SJ.applyJournal(window.SHIN2_CRM_DOCS_MEMORY || [], SJ.emptyJournal());
+            const rev = Math.max(Date.now(), ((cur && cur.localRev) || 0) + 1);
+            tx.set(ref, { value: merged, updatedAt: serverTimestamp(), localRev: rev });
+            return { merged, rev };
+          });
+          saveSyncJournal(sk, SJ.removeApplied(loadSyncJournal(sk), J));
+          const mirror = SJ.applyJournal(out.merged, loadSyncJournal(sk));
+          setDocsMemory(mirror, true);
+          syncLastLocal[sk] = deepCopy(mirror);
+          try{ localStorage.setItem(docSyncLocalRevKey(), String(out.rev)); }catch(e){}
+          return out;
+        };
+        const p = (syncFlushChain[sk] || Promise.resolve()).catch(()=>{}).then(run);
+        syncFlushChain[sk] = p;
+        return p;
+      }
       function pushDocsToCloud(data){
         if(!currentUid) return;
         setDocsMemory(data, false);
-        const rev = Date.now();
-        try{ localStorage.setItem(docSyncLocalRevKey(), String(rev)); }catch(e){}
+        recordLocalChange(DOC_SYNC_STORAGE_KEY, data);
         clearTimeout(docsPushTimer);
-        docsPushTimer = setTimeout(async ()=>{
+        docsPushTimer = setTimeout(()=>{
           docsPushTimer=null;
-          try{ await setDoc(doc(db, 'users', currentUid, 'shin2', DOC_SYNC_STORAGE_KEY), { value: data, updatedAt: serverTimestamp(), localRev: rev }); }
-          catch(e){ console.error('[CRM/Firebase] 서류함 메타데이터 저장 실패', e); }
+          flushDocsToCloud().catch(e=> console.error('[CRM/Firebase] 서류함 메타데이터 저장 실패(변경 기록은 이 기기에 남아 다음에 다시 저장)', e));
         }, 500);
       }
       // §모든 저장 지점 Firestore 확인 라운드(신규) — §요청 3 "서류 메타데이터"도 저장
@@ -13112,11 +13141,10 @@ window.SHIN2_ADMIN_VAULT = {"v":1,"it":310000,"s":"LR69gP2hfdC4DCenIz+Grw==","iv
       function pushDocsToCloudAsync(data){
         if(!currentUid) return Promise.reject(new Error('로그인이 필요합니다.'));
         setDocsMemory(data, false);
-        const rev = Date.now();
-        try{ localStorage.setItem(docSyncLocalRevKey(), String(rev)); }catch(e){}
+        recordLocalChange(DOC_SYNC_STORAGE_KEY, data);
         clearTimeout(docsPushTimer);
         docsPushTimer=null;
-        return setDoc(doc(db, 'users', currentUid, 'shin2', DOC_SYNC_STORAGE_KEY), { value: data, updatedAt: serverTimestamp(), localRev: rev });
+        return flushDocsToCloud().then(()=> undefined);
       }
       // Complete only this request against the latest shared documents. No optimistic hide.
       const consultCompletionBusy = new Set();
@@ -13125,10 +13153,8 @@ window.SHIN2_ADMIN_VAULT = {"v":1,"it":310000,"s":"LR69gP2hfdC4DCenIz+Grw==","iv
         if(consultCompletionBusy.has(docId)) throw new Error('저장 중입니다.');
         consultCompletionBusy.add(docId);
         try{
-          if(docsPushTimer){
-            clearTimeout(docsPushTimer); docsPushTimer=null;
-            await pushDocsToCloudAsync(window.SHIN2_CRM_DOCS_MEMORY || []);
-          }
+          if(docsPushTimer){ clearTimeout(docsPushTimer); docsPushTimer=null; }
+          if(!SJ.isEmpty(loadSyncJournal(DOC_SYNC_STORAGE_KEY))) await flushDocsToCloud();
           const ref=doc(db,'users',currentUid,'shin2',DOC_SYNC_STORAGE_KEY);
           const result=await runTransaction(db,async tx=>{
             const snap=await tx.get(ref), previous=snap.exists()?snap.data():{};
@@ -13144,7 +13170,8 @@ window.SHIN2_ADMIN_VAULT = {"v":1,"it":310000,"s":"LR69gP2hfdC4DCenIz+Grw==","iv
           });
           let localRev=0;try{localRev=Number(localStorage.getItem(docSyncLocalRevKey()) || 0);}catch(e){}
           if((result.localRev || 0)>=localRev){
-            setDocsMemory(result.value,true);
+            setDocsMemory(SJ.applyJournal(result.value, loadSyncJournal(DOC_SYNC_STORAGE_KEY)),true);
+            syncLastLocal[DOC_SYNC_STORAGE_KEY] = deepCopy(window.SHIN2_CRM_DOCS_MEMORY || []);
             try{localStorage.setItem(docSyncLocalRevKey(),String(result.localRev));}catch(e){}
           }
           return result.value.find(d=>d.id===docId);
@@ -13156,13 +13183,28 @@ window.SHIN2_ADMIN_VAULT = {"v":1,"it":310000,"s":"LR69gP2hfdC4DCenIz+Grw==","iv
         const ref = doc(db, 'users', currentUid, 'shin2', DOC_SYNC_STORAGE_KEY);
         onSnapshot(ref, {includeMetadataChanges:true}, (snap)=>{
           if(snap.metadata.hasPendingWrites) return;
-          if(!snap.exists()) return;
+          const fromServer = !snap.metadata.fromCache;
+          if(!snap.exists()){ if(fromServer) markSyncFresh(DOC_SYNC_STORAGE_KEY); return; }
           const payload = snap.data();
           if(payload.value == null || !Array.isArray(payload.value)) return;
           let localRev = 0;
           try{ localRev = parseInt(localStorage.getItem(docSyncLocalRevKey()) || '0', 10) || 0; }catch(e){}
           const snapRev = (typeof payload.localRev === 'number') ? payload.localRev : 0;
-          if(localRev && localRev > snapRev) return; // 이 기기의 아직 반영 안 된 최신 변경(삭제 포함)을 되돌리지 않는다.
+          // §저장 안전장치 — 아직 안 나간 이 기기 변경이 있으면, 클라우드 최신 값 위에 그 변경만 얹어 보여주고
+          // 곧 저장한다(예전엔 "이 기기 rev가 더 크면 클라우드 값을 무시" → 오래된 값이 다시 올라갈 수 있었다).
+          if(!SJ.isEmpty(loadSyncJournal(DOC_SYNC_STORAGE_KEY))){
+            const mirror = SJ.applyJournal(payload.value, loadSyncJournal(DOC_SYNC_STORAGE_KEY));
+            setDocsMemory(mirror, true);
+            syncLastLocal[DOC_SYNC_STORAGE_KEY] = deepCopy(mirror);
+            if(fromServer){
+              markSyncFresh(DOC_SYNC_STORAGE_KEY);
+              clearTimeout(docsPushTimer);
+              docsPushTimer = setTimeout(()=>{ docsPushTimer=null; flushDocsToCloud().catch(e=> console.error('[CRM/Firebase] 서류함 메타데이터 저장 실패', e)); }, 500);
+            }
+            window.dispatchEvent(new CustomEvent('shin2-crm-docs-cloud-update'));
+            return;
+          }
+          if(fromServer) markSyncFresh(DOC_SYNC_STORAGE_KEY);
           // 이 기기에서 이미 낙관적으로 localStorage에 반영한 저장의 확인 스냅샷은 같은
           // localRev로 돌아온다. 데이터가 이미 같으므로 전체 documents 배열을 다시
           // stringify하고 서류 목록 7종을 다시 그리는 이벤트를 발생시키지 않는다.
@@ -13172,6 +13214,7 @@ window.SHIN2_ADMIN_VAULT = {"v":1,"it":310000,"s":"LR69gP2hfdC4DCenIz+Grw==","iv
           // localStorage가 용량 초과여도 Firestore의 최신 메타데이터는 메모리 미러에서
           // 즉시 읽을 수 있게 한다. 기존 로컬 전용 파일 메타데이터는 함께 보존한다.
           setDocsMemory(payload.value, true);
+          syncLastLocal[DOC_SYNC_STORAGE_KEY] = deepCopy(window.SHIN2_CRM_DOCS_MEMORY || []);
           try{localStorage.setItem(docSyncLocalRevKey(),String(snapRev));}catch(e){}
           if(localRev && payload.alertOnlyBaseRev === localRev){
             window.dispatchEvent(new CustomEvent('consult-request-alert-update'));
@@ -13233,100 +13276,153 @@ window.SHIN2_ADMIN_VAULT = {"v":1,"it":310000,"s":"LR69gP2hfdC4DCenIz+Grw==","iv
       // 즉 이 경로로 들어오는 빈 배열은 항상 "사람이 실제로 pending/review를 전부 해소한"
       // 결과이지, 네트워크 실패나 미로딩으로 인한 빈 값이 아니다.
       const ALLOW_EMPTY_SYNC_NAMES = new Set(['salesPendingReview2026', 'salesCrossYearReview2026', 'salesCompanyReview2026']);
-      // Company state and its explicit follow-up event commit together. Other saves keep their existing path.
-      async function saveSharedPayload(name, storageKey, data, rev){
-        const ref = doc(db, 'users', currentUid, 'shin2', storageKey);
-        if(name !== 'companies' || !data.some(c=> c.followupEvents))
-          return setDoc(ref, {value:data, updatedAt:serverTimestamp(), localRev:rev});
-        const noticeRef = doc(db, 'users', currentUid, 'shin2', window.WebsiteCleanup.KEY);
-        const actor = {uid:currentUid,label:'사용자 ' + (localStorage.getItem('shin2-active-user-id') || '1')};
-        const payload = await runTransaction(db, async tx=>{
-          const snap = await tx.get(noticeRef);
-          const previous = snap.exists() ? snap.data() : {};
-          const next = window.WebsiteCleanup.applyEvents(previous, data, actor, new Date().toISOString());
-          tx.set(ref, {value:data, updatedAt:serverTimestamp(), localRev:rev});
-          if(!next.changed) return null;
-          const result = {value:next.value,processedEvents:next.processedEvents,localRev:Math.max(Date.now(),(previous.localRev || 0)+1)};
-          tx.set(noticeRef, Object.assign({},result,{updatedAt:serverTimestamp()}),{merge:true});
-          return result;
-        });
-        if(payload) publishCleanup(payload);
+      // §저장 안전장치(신규, 2026-10-20) — 위 SHIN2_SYNC_JOURNAL 설명 참고.
+      //  ① 로그인 후 서버에서 최신 값을 한 번 받기 전(syncFresh)에는 클라우드에 아무것도 쓰지 않는다.
+      //  ② 저장은 "이 기기가 바꾼 항목·필드"(journal)만, 클라우드 최신 값을 트랜잭션으로 읽어 그 위에 얹는다.
+      //  ③ journal은 이 기기에 보관되어 새로고침·네트워크 오류 뒤에도 남고, 다음 저장 때 다시 반영된다.
+      const SJ = window.SHIN2_SYNC_JOURNAL;
+      const syncLastLocal = {};     // storageKey -> 이 기기가 마지막으로 알고 있는 배열(변경 계산 기준)
+      const syncFresh = {};         // storageKey -> 로그인 후 서버 최신 값을 받았는지
+      const syncFreshWaiters = {};
+      const syncFlushChain = {};
+      const syncJournalMem = {};
+      function readLocalArr(sk){ try{ const raw = localStorage.getItem(sk); const v = raw ? JSON.parse(raw) : null; return Array.isArray(v) ? v : null; }catch(e){ return null; } }
+      function deepCopy(v){ return JSON.parse(JSON.stringify(v)); }
+      function journalStoreKey(sk){ return 'shin2-sync-journal-' + sk; }
+      function loadSyncJournal(sk){
+        if(syncJournalMem[sk]) return syncJournalMem[sk];
+        let j = null;
+        try{ j = JSON.parse(localStorage.getItem(journalStoreKey(sk)) || 'null'); }catch(e){}
+        syncJournalMem[sk] = (j && j.set) ? j : SJ.emptyJournal();
+        return syncJournalMem[sk];
       }
+      function saveSyncJournal(sk, j){
+        syncJournalMem[sk] = j;
+        try{ if(SJ.isEmpty(j)) localStorage.removeItem(journalStoreKey(sk)); else localStorage.setItem(journalStoreKey(sk), JSON.stringify(j)); }
+        catch(e){ console.error('[CRM/Firebase] 변경 기록 보관 실패(이 창이 열려 있는 동안은 유지)', e); }
+      }
+      function recordLocalChange(sk, data){
+        const prev = syncLastLocal[sk] || [];
+        saveSyncJournal(sk, SJ.diffInto(loadSyncJournal(sk), prev, data));
+        syncLastLocal[sk] = deepCopy(data);
+      }
+      function markSyncFresh(sk){
+        if(syncFresh[sk]) return;
+        syncFresh[sk] = true;
+        (syncFreshWaiters[sk] || []).forEach(fn=> fn());
+        delete syncFreshWaiters[sk];
+      }
+      function waitSyncFresh(sk, ms){
+        if(syncFresh[sk]) return Promise.resolve();
+        return new Promise((resolve, reject)=>{
+          const t = setTimeout(()=> reject(Object.assign(new Error('최신 데이터를 아직 받지 못해 저장을 미뤘습니다. 잠시 후 다시 시도하세요.'), { code:'NOT_READY' })), ms);
+          (syncFreshWaiters[sk] = syncFreshWaiters[sk] || []).push(()=>{ clearTimeout(t); resolve(); });
+        });
+      }
+      // 페이지가 열릴 때의 이 기기 값이 변경 계산의 출발점이다(그 뒤 바뀐 것만 기록된다).
+      Object.keys(SHARED_ARRAY_KEYS).forEach(name=>{ const sk = SHARED_ARRAY_KEYS[name]; syncLastLocal[sk] = readLocalArr(sk) || []; });
+      syncLastLocal[DOC_SYNC_STORAGE_KEY] = deepCopy(Array.isArray(window.SHIN2_CRM_DOCS_MEMORY) ? window.SHIN2_CRM_DOCS_MEMORY : (readLocalArr(DOC_SYNC_STORAGE_KEY) || []));
       function sharedLocalRevKey(storageKey){ return 'shin2-sync-rev-' + storageKey; }
+      // 클라우드에서 받은(또는 방금 저장한) 값 + 아직 안 나간 이 기기 변경 = 이 기기 화면 값
+      function writeSharedMirror(name, sk, cloudValue, rev, forceEvent){
+        const local = SJ.applyJournal(cloudValue, loadSyncJournal(sk));
+        const before = localStorage.getItem(sk);
+        const text = JSON.stringify(local);
+        try{ localStorage.setItem(sk, text); if(rev) localStorage.setItem(sharedLocalRevKey(sk), String(rev)); }catch(e){}
+        syncLastLocal[sk] = JSON.parse(text);
+        if(forceEvent || before !== text) window.dispatchEvent(new CustomEvent('shin2-crm-cloud-update', { detail: { key: name } }));
+      }
       let sharedPushInFlight = 0;
+      function flushSharedKey(name, sk){
+        const run = async ()=>{
+          if(!currentUid) throw new Error('로그인이 필요합니다.');
+          await waitSyncFresh(sk, 20000);
+          const J = deepCopy(loadSyncJournal(sk));
+          if(SJ.isEmpty(J)) return null;
+          const ref = doc(db, 'users', currentUid, 'shin2', sk);
+          const noticeRef = (name === 'companies' && window.WebsiteCleanup) ? doc(db, 'users', currentUid, 'shin2', window.WebsiteCleanup.KEY) : null;
+          const actor = {uid:currentUid,label:'사용자 ' + (localStorage.getItem('shin2-active-user-id') || '1')};
+          const out = await runTransaction(db, async tx=>{
+            const snap = await tx.get(ref);
+            const noticeSnap = noticeRef ? await tx.get(noticeRef) : null;
+            const cur = snap.exists() ? snap.data() : null;
+            const cloudArr = cur && Array.isArray(cur.value) ? cur.value : null;
+            // 클라우드 문서가 아예 없을 때만(처음 쓰는 저장소) 이 기기 전체 값으로 만든다.
+            const merged = cloudArr ? SJ.applyJournal(cloudArr, J) : (readLocalArr(sk) || SJ.applyJournal([], J));
+            if(merged.length === 0 && !ALLOW_EMPTY_SYNC_NAMES.has(name)) throw Object.assign(new Error('빈 목록은 저장하지 않습니다.'), { code:'EMPTY_GUARD' });
+            const rev = Math.max(Date.now(), ((cur && cur.localRev) || 0) + 1);
+            tx.set(ref, { value:merged, updatedAt:serverTimestamp(), localRev:rev });
+            let cleanupPayload = null;
+            if(noticeRef && merged.some(c=> c && c.followupEvents)){
+              const previous = noticeSnap.exists() ? noticeSnap.data() : {};
+              const next = window.WebsiteCleanup.applyEvents(previous, merged, actor, new Date().toISOString());
+              if(next.changed){
+                cleanupPayload = {value:next.value,processedEvents:next.processedEvents,localRev:Math.max(Date.now(),(previous.localRev || 0)+1)};
+                tx.set(noticeRef, Object.assign({}, cleanupPayload, {updatedAt:serverTimestamp()}), {merge:true});
+              }
+            }
+            return { merged, rev, cleanupPayload };
+          });
+          if(out.cleanupPayload) publishCleanup(out.cleanupPayload);
+          saveSyncJournal(sk, SJ.removeApplied(loadSyncJournal(sk), J));
+          writeSharedMirror(name, sk, out.merged, out.rev, false);
+          return out;
+        };
+        const p = (syncFlushChain[sk] || Promise.resolve()).catch(()=>{}).then(run);
+        syncFlushChain[sk] = p;
+        return p;
+      }
+      function scheduleSharedFlush(name, sk){
+        clearTimeout(sharedPushTimers[name]);
+        sharedPushTimers[name] = setTimeout(()=>{
+          delete sharedPushTimers[name];
+          sharedPushInFlight++;   // §데이터 저장 안정성 — 창 닫기 확인용 전송 중 건수
+          flushSharedKey(name, sk)
+            .catch(e=> console.error(`[CRM/Firebase] ${name} 저장 실패(변경 기록은 이 기기에 남아 다음에 다시 저장)`, e))
+            .finally(()=>{ sharedPushInFlight = Math.max(0, sharedPushInFlight - 1); });
+        }, 500);
+      }
       function pushSharedKeyToCloud(name, storageKey, data){
         if(!currentUid) return;
         if(!Array.isArray(data)) return;
         if(data.length === 0 && !ALLOW_EMPTY_SYNC_NAMES.has(name)) return; // §15와 동일한 빈 값 가드 — 다른 키는 그대로
-        const rev = Date.now();
-        try{ localStorage.setItem(sharedLocalRevKey(storageKey), String(rev)); }catch(e){}
-        clearTimeout(sharedPushTimers[name]);
-        sharedPushTimers[name] = setTimeout(async ()=>{
-          delete sharedPushTimers[name];
-          sharedPushInFlight++;   // §데이터 저장 안정성 — 창 닫기 확인용 전송 중 건수
-          try{ await saveSharedPayload(name, storageKey, data, rev); }
-          catch(e){ console.error(`[CRM/Firebase] ${name} 저장 실패`, e); }
-          finally{ sharedPushInFlight = Math.max(0, sharedPushInFlight - 1); }
-        }, 500);
+        recordLocalChange(storageKey, data);
+        scheduleSharedFlush(name, storageKey);
       }
       function startSharedKeySync(name, storageKey){
         if(sharedSyncStarted[name] || !currentUid) return;
         sharedSyncStarted[name] = true;
         const ref = doc(db, 'users', currentUid, 'shin2', storageKey);
         onSnapshot(ref, (snap)=>{
-          if(!snap.exists()) return;
           if(lifecycleSyncLocks.has(name)) return;
+          const fromServer = !(snap.metadata && snap.metadata.fromCache);
+          if(!snap.exists()){ if(fromServer) markSyncFresh(storageKey); return; }
           const payload = snap.data();
           if(payload.value == null || !Array.isArray(payload.value)) return;
           if(payload.value.length === 0 && !ALLOW_EMPTY_SYNC_NAMES.has(name)) return; // 다른 키는 기존 그대로 빈 값 무시
-          let localRev = 0;
-          try{ localRev = parseInt(localStorage.getItem(sharedLocalRevKey(storageKey)) || '0', 10) || 0; }catch(e){}
-          const snapRev = (typeof payload.localRev === 'number') ? payload.localRev : 0;
-          if(localRev && localRev > snapRev){
-            // 이 기기의 아직 반영 안 된 최신 로컬 변경(삭제 포함)을 되돌리지 않는다 — v2와
-            // 동일한 가드. 대신 현재 로컬 값을 다시 밀어 클라우드가 따라잡게 한다.
-            let currentLocal = null;
-            try{ const raw = localStorage.getItem(storageKey); currentLocal = raw ? JSON.parse(raw) : null; }catch(e){}
-            if(Array.isArray(currentLocal) && currentLocal.length) pushSharedKeyToCloud(name, storageKey, currentLocal);
-            return;
+          // 클라우드 최신 값을 받되, 아직 안 나간 이 기기 변경(journal)은 그 위에 다시 얹어 보존한다.
+          // (예전엔 "이 기기 rev가 더 크면 이 기기 전체를 다시 올림" — 오래된 화면 데이터가 클라우드를 덮어쓴 원인)
+          writeSharedMirror(name, storageKey, payload.value, payload.localRev, true);
+          if(fromServer){
+            markSyncFresh(storageKey);
+            if(!SJ.isEmpty(loadSyncJournal(storageKey))) scheduleSharedFlush(name, storageKey);
           }
-          try{ localStorage.setItem(storageKey, JSON.stringify(payload.value)); }catch(e){}
-          window.dispatchEvent(new CustomEvent('shin2-crm-cloud-update', { detail: { key: name } }));
         }, (err)=> console.warn(`[CRM/Firebase] ${name} 구독 실패`, err));
       }
-      // §고객관리카드 단일 원본 전환 라운드(신규) — 예전에는 v2의 [클라우드 동기화 시작]
-      // 버튼이 눌려 localStorage['shin2-cloud-sync-enabled']==='1'가 된 "기기"에서만
-      // companies/customerActivities/memos/mailAssets 실시간 동기화를 켰다(§긴급 데이터
-      // 복구 라운드, 위 주석 그대로 남겨둠 — 그 배경 설명은 여전히 유효한 기록이다). 이제
-      // CRM은 v2와 무관하게 그 자체로 "저장된 정보가 접속 즉시 그대로 보여야" 한다(§요청)
-      // — customerDocuments가 이미 같은 이유로 이 게이트 없이 로그인만 되면 바로 켜지도록
-      // 고쳐져 있던 것(§클라우드 파일 저장 문제 해결 라운드, startDocsSync 참고)과 완전히
-      // 같은 안전 논리를 여기도 그대로 적용한다: 새 기기는 항상 비어서 시작하므로 클라우드
-      // 값을 그대로 받아도 안전하고(§CASE B와 동일), 이미 로컬에 최신 편집이 있는 기기는
-      // 기존 localRev/snapRev 가드(startSharedKeySync 안에 그대로 있음)가 계속 지켜준다 —
-      // 데이터 유실 위험 없음. shin2-cloud-sync-enabled 플래그와 그걸 듣는 'storage'
-      // 이벤트 리스너(§아래)는 v2와의 호환을 위해 그대로 남겨두되, 더 이상 이 함수가 켜지는
-      // 필수 조건은 아니다.
+      // §고객관리카드 단일 원본 전환 라운드 — 로그인만 되면 공유 목록 동기화를 켠다(최신 값 수신 전에는 저장하지 않음).
       function maybeStartSharedSync(){
         if(!currentUid) return;
         Object.keys(SHARED_ARRAY_KEYS).forEach((name)=> startSharedKeySync(name, SHARED_ARRAY_KEYS[name]));
       }
-      // §고객 요청 Google Sheets 연동 라운드(신규) — pushSharedKeyToCloud(위)는 500ms
-      // 디바운스 후 실패해도 console.error만 남기는 "낙관적" 저장이라, 호출부가 실제
-      // Firestore 저장 성공 여부를 알 방법이 없었다(지금까지 이 CRM의 모든 편집이 이
-      // 방식이었다 — 문제로 지적된 적 없었음). 이번 기능은 사용자 요청(§요청 11 "Firestore
-      // 저장 성공 후에만 반영 완료로 표시")이 명시적이라, 디바운스를 건너뛰고 setDoc
-      // Promise를 그대로 돌려주는 즉시-저장 변형을 추가한다. 기존 push()의 동작·호출부는
-      // 전혀 바꾸지 않았다 — 새 메서드 하나만 추가.
+      // 저장 성공 확인이 필요한 호출부용(confirmCloudSave 등) — 디바운스 없이 바로 변경분을 저장하고 결과를 돌려준다.
       function pushSharedKeyToCloudAsync(name, storageKey, data){
         if(!currentUid) return Promise.reject(new Error('로그인이 필요합니다.'));
         if(!Array.isArray(data)) return Promise.reject(new Error('저장할 데이터가 없습니다.'));
         if(data.length === 0 && !ALLOW_EMPTY_SYNC_NAMES.has(name)) return Promise.reject(new Error('저장할 데이터가 없습니다.'));
-        const rev = Date.now();
-        try{ localStorage.setItem(sharedLocalRevKey(storageKey), String(rev)); }catch(e){}
+        recordLocalChange(storageKey, data);
         clearTimeout(sharedPushTimers[name]);
         delete sharedPushTimers[name];
-        return saveSharedPayload(name, storageKey, data, rev);
+        return flushSharedKey(name, storageKey).then(()=> undefined);
       }
       // §로컬-클라우드 비교 화면 라운드(신규) — onSnapshot은 항상 "로컬에 이미 병합된
       // 뒤의" 최신 상태만 보여준다. 이 기기의 localStorage와 Firestore 원본을 있는
@@ -13354,7 +13450,8 @@ window.SHIN2_ADMIN_VAULT = {"v":1,"it":310000,"s":"LR69gP2hfdC4DCenIz+Grw==","iv
       async function compareAndSetSharedKey(name, storageKey, expectedRev, data){
         if(!currentUid) throw new Error('로그인이 필요합니다.');
         if(!Array.isArray(data) || !data.length) throw new Error('저장할 데이터가 없습니다.');
-        if(sharedPushTimers[name] || sharedPushInFlight) throw Object.assign(new Error('이 기기에 아직 서버로 안 나간 저장이 있습니다. 잠시 후 다시 시도하세요.'), { code:'PENDING' });
+        if(sharedPushTimers[name] || sharedPushInFlight || !SJ.isEmpty(loadSyncJournal(storageKey))) throw Object.assign(new Error('이 기기에 아직 서버로 안 나간 저장이 있습니다. 잠시 후 다시 시도하세요.'), { code:'PENDING' });
+        await waitSyncFresh(storageKey, 20000);
         const ref = doc(db, 'users', currentUid, 'shin2', storageKey);
         const rev = Math.max(Date.now(), (expectedRev || 0) + 1);
         await runTransaction(db, async tx=>{
@@ -13363,8 +13460,7 @@ window.SHIN2_ADMIN_VAULT = {"v":1,"it":310000,"s":"LR69gP2hfdC4DCenIz+Grw==","iv
           if(cur !== expectedRev) throw Object.assign(new Error('그사이 다른 곳에서 업체 목록이 저장되었습니다. 다시 읽고 시도하세요.'), { code:'CONFLICT' });
           tx.set(ref, { value:data, updatedAt:serverTimestamp(), localRev:rev });
         });
-        try{ localStorage.setItem(sharedLocalRevKey(storageKey), String(rev)); localStorage.setItem(storageKey, JSON.stringify(data)); }catch(e){}
-        window.dispatchEvent(new CustomEvent('shin2-crm-cloud-update', { detail: { key: name } }));
+        writeSharedMirror(name, storageKey, data, rev, true);
         return rev;
       }
       window.SHIN2_CRM_SHARED_SYNC = {
@@ -13374,8 +13470,10 @@ window.SHIN2_ADMIN_VAULT = {"v":1,"it":310000,"s":"LR69gP2hfdC4DCenIz+Grw==","iv
         pushAsync: (name, data)=> SHARED_ARRAY_KEYS[name] ? pushSharedKeyToCloudAsync(name, SHARED_ARRAY_KEYS[name], data) : Promise.reject(new Error('알 수 없는 저장소: ' + name)),
         getOnce: (name)=> SHARED_ARRAY_KEYS[name] ? getSharedKeyDocOnce(SHARED_ARRAY_KEYS[name]) : Promise.reject(new Error('알 수 없는 저장소: ' + name)),
         isReady: (name)=> !!sharedSyncStarted[name],
-        // §데이터 저장 안정성 — 아직 클라우드로 안 나간(대기/전송 중) 저장 건수. 창 닫기 확인에만 쓴다.
-        pendingCount: ()=> Object.keys(sharedPushTimers).length + sharedPushInFlight
+        // §저장 안전장치 — 로그인 후 서버 최신 값을 받았는지(받기 전엔 자동 작업·저장을 하지 않는다)
+        isFresh: (name)=> !!(SHARED_ARRAY_KEYS[name] && syncFresh[SHARED_ARRAY_KEYS[name]]),
+        // §데이터 저장 안정성 — 아직 클라우드로 안 나간(대기/전송 중/기록만 된) 저장 건수. 창 닫기 확인에만 쓴다.
+        pendingCount: ()=> Object.keys(sharedPushTimers).length + sharedPushInFlight + Object.keys(SHARED_ARRAY_KEYS).filter(n=> !SJ.isEmpty(loadSyncJournal(SHARED_ARRAY_KEYS[n]))).length
       };
 
       const cleanupKey = window.WebsiteCleanup.KEY;
@@ -13416,12 +13514,8 @@ window.SHIN2_ADMIN_VAULT = {"v":1,"it":310000,"s":"LR69gP2hfdC4DCenIz+Grw==","iv
           // Drain pre-existing edits before the transaction; none of the new operation is optimistic.
           for(const name of names){
             if(name === 'websiteCleanup') continue;
-            if(sharedPushTimers[name]){
-              clearTimeout(sharedPushTimers[name]);
-              delete sharedPushTimers[name];
-              const value = JSON.parse(localStorage.getItem(keys[name]) || '[]');
-              if(value.length) await pushSharedKeyToCloudAsync(name, keys[name], value);
-            }
+            if(sharedPushTimers[name]){ clearTimeout(sharedPushTimers[name]); delete sharedPushTimers[name]; }
+            if(!SJ.isEmpty(loadSyncJournal(keys[name]))) await flushSharedKey(name, keys[name]);
             lifecycleSyncLocks.add(name);
           }
           const result = await runTransaction(db, async tx=>{
@@ -13446,8 +13540,10 @@ window.SHIN2_ADMIN_VAULT = {"v":1,"it":310000,"s":"LR69gP2hfdC4DCenIz+Grw==","iv
             if(name === 'websiteCleanup') publishCleanup({value:result.state[name],localRev:result.rev});
             else {
               try{
-                localStorage.setItem(keys[name], JSON.stringify(result.state[name]));
+                const mirror = SJ.applyJournal(result.state[name], loadSyncJournal(keys[name]));
+                localStorage.setItem(keys[name], JSON.stringify(mirror));
                 localStorage.setItem(sharedLocalRevKey(keys[name]), String(result.rev));
+                syncLastLocal[keys[name]] = deepCopy(mirror);
               }catch(err){ console.warn('클라우드 저장 완료, 로컬 캐시 갱신 실패', err); }
             }
           });
@@ -13589,7 +13685,15 @@ window.SHIN2_ADMIN_VAULT = {"v":1,"it":310000,"s":"LR69gP2hfdC4DCenIz+Grw==","iv
         if(!currentUid || !settings || typeof settings !== 'object') return;
         clearTimeout(mailSettingsPushTimer);
         mailSettingsPushTimer = setTimeout(async ()=>{
-          try{ await setDoc(doc(db, 'users', currentUid, 'shin2', MAIL_SETTINGS_SYNC_KEY), Object.assign({}, settings, { _syncedAt: serverTimestamp() })); }
+          try{
+            await waitSyncFresh(MAIL_SETTINGS_SYNC_KEY, 20000);   // §저장 안전장치 — 최신 값을 받기 전엔 저장하지 않는다
+            const ref = doc(db, 'users', currentUid, 'shin2', MAIL_SETTINGS_SYNC_KEY);
+            await runTransaction(db, async tx=>{
+              const snap = await tx.get(ref);
+              const merged = window.SHIN2_MERGE_MAIL_SETTINGS_FOR_CLOUD(snap.exists() ? snap.data() : {}, settings);
+              tx.set(ref, Object.assign({}, merged, { _syncedAt: serverTimestamp() }));
+            });
+          }
           catch(e){ console.error('[CRM/Firebase] 메일설정 저장 실패', e); }
         }, 500);
       }
@@ -13598,6 +13702,7 @@ window.SHIN2_ADMIN_VAULT = {"v":1,"it":310000,"s":"LR69gP2hfdC4DCenIz+Grw==","iv
         mailSettingsSyncStarted = true;
         const ref = doc(db, 'users', currentUid, 'shin2', MAIL_SETTINGS_SYNC_KEY);
         onSnapshot(ref, (snap)=>{
+          if(!(snap.metadata && snap.metadata.fromCache)) markSyncFresh(MAIL_SETTINGS_SYNC_KEY);
           if(!snap.exists()) return;
           const cloudData = snap.data();
           if(!cloudData || typeof cloudData !== 'object') return;
@@ -14742,6 +14847,97 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
   //    않도록 accountUpdatedAt 기준으로 다섯 필드를 한 묶음으로 병합한다.
   const MAIL_ACCOUNT_KEYS = ['emailjsPublicKey', 'emailjsServiceId', 'emailjsTemplateId', 'fromName', 'fromEmail'];
   const MAIL_SETTINGS_FLAT_KEYS = ['subjectTemplate', 'bodyTemplate'];
+  /* §저장 안전장치(신규, 2026-10-20 사고 대응) — 공유 목록(업체·활동·메모·서류 등)은 클라우드 문서
+     1개에 배열 전체가 들어 있다. 예전엔 저장할 때마다 이 기기의 배열 "전체"를 덮어써서, 오래된
+     화면 데이터를 가진 기기가 저장하면 다른 PC가 바꾼 내용이 사라졌다(10/20 14:12 실제 발생).
+     이제 각 기기는 "자기가 바꾼 항목·필드"만 기록(journal)해 두고, 저장할 때 클라우드 최신 값을
+     트랜잭션으로 읽어 그 위에 자기 변경만 얹는다. 아래는 그 계산만 하는 순수 함수(저장 없음). */
+  (function(){
+    const canon = v=> Array.isArray(v) ? '[' + v.map(canon).join(',') + ']'
+      : (v && typeof v === 'object') ? '{' + Object.keys(v).filter(k=> v[k] !== undefined).sort().map(k=> JSON.stringify(k) + ':' + canon(v[k])).join(',') + '}'
+      : JSON.stringify(v === undefined ? null : v);
+    const keyOf = it=> (it && typeof it === 'object' && !Array.isArray(it) && typeof it.id === 'string' && it.id) ? 'id:' + it.id : 'v:' + canon(it);
+    const clone = v=> v === undefined ? undefined : JSON.parse(JSON.stringify(v));
+    const same = (a, b)=> a === b || JSON.stringify(a) === JSON.stringify(b) || canon(a) === canon(b);
+    const emptyJournal = ()=> ({ set:{}, del:{} });
+    const isEmpty = j=> !j || (!Object.keys(j.set || {}).length && !Object.keys(j.del || {}).length);
+    // prev → next 사이에 이 기기가 바꾼 것만 j에 누적한다(새 항목·삭제·바뀐 필드).
+    function diffInto(j, prev, next){
+      j = j && j.set ? j : emptyJournal(); j.del = j.del || {};
+      const pm = new Map(); (prev || []).forEach(it=> pm.set(keyOf(it), it));
+      const seen = new Set();
+      (next || []).forEach(it=>{
+        const k = keyOf(it); seen.add(k);
+        const p = pm.get(k);
+        if(p === undefined){ delete j.del[k]; j.set[k] = { whole:true, item: clone(it) }; return; }
+        if(k.indexOf('v:') === 0 || same(p, it)) return;
+        const e = j.set[k] || { fields:{} };
+        if(!e.whole){
+          e.fields = e.fields || {};
+          new Set(Object.keys(p).concat(Object.keys(it))).forEach(f=>{
+            if(!same(p[f], it[f])) e.fields[f] = it[f] === undefined ? { deleted:true } : { v: clone(it[f]) };
+          });
+        }
+        e.item = clone(it);
+        j.set[k] = e;
+      });
+      pm.forEach((p, k)=>{ if(!seen.has(k)){ delete j.set[k]; j.del[k] = true; } });
+      return j;
+    }
+    // 클라우드 최신 배열(base)에 이 기기의 변경(j)만 얹는다 — 다른 항목·다른 필드는 클라우드 값 그대로.
+    function applyJournal(base, j){
+      const out = (base || []).map(clone);
+      if(isEmpty(j)) return out;
+      const idx = new Map(); out.forEach((it, i)=> idx.set(keyOf(it), i));
+      const drop = new Set();
+      Object.keys(j.del || {}).forEach(k=>{ if(idx.has(k)) drop.add(idx.get(k)); });
+      Object.keys(j.set || {}).forEach(k=>{
+        const e = j.set[k];
+        if(idx.has(k)){
+          const i = idx.get(k);
+          if(e.whole) out[i] = clone(e.item);
+          else {
+            const rec = Object.assign({}, out[i]);
+            Object.keys(e.fields || {}).forEach(f=>{ const fv = e.fields[f]; if(fv && fv.deleted) delete rec[f]; else rec[f] = clone(fv.v); });
+            out[i] = rec;
+          }
+          drop.delete(i);
+        } else if(e.item !== undefined){
+          out.push(clone(e.item));   // 클라우드에 없는 항목(새로 만든 것 등)은 이 기기의 최신 전체 값으로 보존
+        }
+      });
+      return out.filter((_, i)=> !drop.has(i));
+    }
+    // 저장이 끝난 뒤, 그사이 다시 바뀌지 않은 기록만 지운다(저장 도중 생긴 새 변경은 남긴다).
+    function removeApplied(cur, applied){
+      Object.keys(applied.set || {}).forEach(k=>{ if(cur.set[k] && same(cur.set[k], applied.set[k])) delete cur.set[k]; });
+      Object.keys(applied.del || {}).forEach(k=>{ if(cur.del && cur.del[k]) delete cur.del[k]; });
+      return cur;
+    }
+    window.SHIN2_SYNC_JOURNAL = { canon, keyOf, emptyJournal, isEmpty, diffInto, applyJournal, removeApplied };
+  })();
+  // §저장 안전장치 — 메일설정은 문서 1개(객체)라, 저장할 때 클라우드 최신 값과 합친다. 템플릿은
+  // 템플릿별 updatedAt이 더 최신인 쪽, 발송 계정은 accountUpdatedAt이 더 최신인 쪽을 남긴다.
+  window.SHIN2_MERGE_MAIL_SETTINGS_FOR_CLOUD = function(cloud, local){
+    cloud = (cloud && typeof cloud === 'object') ? cloud : {};
+    const out = Object.assign({}, cloud, local);
+    delete out._syncedAt;
+    const ct = (cloud.mailTemplates && typeof cloud.mailTemplates === 'object') ? cloud.mailTemplates : {};
+    const lt = (local.mailTemplates && typeof local.mailTemplates === 'object') ? local.mailTemplates : {};
+    const tpl = Object.assign({}, ct);
+    Object.keys(lt).forEach(k=>{
+      const a = ct[k], b = lt[k];
+      const ta = a && a.updatedAt ? Date.parse(a.updatedAt) : NaN, tb = b && b.updatedAt ? Date.parse(b.updatedAt) : NaN;
+      if(!a || !Number.isFinite(ta) || (Number.isFinite(tb) && tb >= ta)) tpl[k] = b;
+    });
+    out.mailTemplates = tpl;
+    const ca = cloud.accountUpdatedAt ? Date.parse(cloud.accountUpdatedAt) : NaN, la = local.accountUpdatedAt ? Date.parse(local.accountUpdatedAt) : NaN;
+    if(Number.isFinite(ca) && (!Number.isFinite(la) || ca > la)){
+      MAIL_ACCOUNT_KEYS.forEach(k=>{ if(k in cloud) out[k] = cloud[k]; else delete out[k]; });
+      out.accountUpdatedAt = cloud.accountUpdatedAt;
+    }
+    return out;
+  };
   window.SHIN2_CRM_MERGE_MAIL_SETTINGS_FROM_CLOUD = function(cloudData){
     if(!cloudData || typeof cloudData !== 'object') return;
     const localFull = loadMailSettings();
@@ -47426,6 +47622,10 @@ if(!window.__mapxRowDelegated){
   // 재사용하고, 팝업을 열 때마다 전부 다시 변환하지 않는다. 실패한 업체는
   // geocodeStatus:'failed'로 남겨 다음에 주소가 바뀌거나 팝업을 다시 열면 재시도된다.
   function syncGeocodeForEntries(entries, kakao){
+    // §저장 안전장치(2026-10-20 사고) — 로그인 직후 오래된 업체 목록으로 주소 조회 결과를 저장하면
+    // 그 저장이 다른 PC의 최신 내용을 덮어썼다. 클라우드 최신 업체 목록을 받은 뒤에만 실행한다.
+    const SS = window.SHIN2_CRM_SHARED_SYNC;
+    if(!SS || typeof SS.isFresh !== 'function' || !SS.isFresh('companies')) return Promise.resolve(false);
     const geocoder = new kakao.maps.services.Geocoder();
     const missing = entries.filter(e=> !e.co.address && e.co.geocodeStatus !== 'missing');
     missing.forEach(e=> D.updateCompany(e.co.id, { geocodeStatus:'missing', latitude:null, longitude:null, geocodedAddress:null }));

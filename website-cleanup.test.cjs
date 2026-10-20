@@ -41,7 +41,7 @@ function adapter(){
   const keyName=k=>k==='companies'?'companies':k==='activities'?'customerActivities':'websiteCleanup';
   const window={WebsiteCleanup:api,dispatchEvent:e=>events.push(e)};
   const context={window,db:{},currentUid:'test-auth',localStorage:{getItem:k=>cache.get(k)||null,setItem:(k,v)=>cache.set(k,v)},
-    SHARED_ARRAY_KEYS:keys,lifecycleSyncLocks:new Set(),sharedPushTimers:{},sharedLocalRevKey:k=>'rev-'+k,
+    SHARED_ARRAY_KEYS:keys,lifecycleSyncLocks:new Set(),sharedPushTimers:{},sharedLocalRevKey:k=>'rev-'+k,SJ:{isEmpty:()=>true,applyJournal:v=>v,emptyJournal:()=>({set:{},del:{}})},loadSyncJournal:()=>({set:{},del:{}}),flushSharedKey:async()=>null,syncLastLocal:{},deepCopy:v=>JSON.parse(JSON.stringify(v)),
     CustomEvent:class{constructor(type,init){this.type=type;this.detail=init?.detail;}},console,clearTimeout,
     doc:(...args)=>args.at(-1),onSnapshot:()=>()=>{},serverTimestamp:()=>now,
     runTransaction:async(db,fn)=>{const writes={};const out=await fn({get:async key=>({exists:()=>true,data:()=>({value:structuredClone(state[keyName(key)]),localRev:1})}),set:(key,payload)=>writes[keyName(key)]=payload.value});if(fail)throw Error('TEST_WRITE_FAILED');Object.assign(state,writes);return out;}};
