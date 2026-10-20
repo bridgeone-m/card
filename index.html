@@ -11465,6 +11465,25 @@ body.crm-mapdock.crm-map-list-idle[data-crm-view="listView"] #mapDistributionMod
 
 /* §속도 개선(페이지 나누기) — PC 고정 화면에서도 페이지 번호를 보여준다 */
 body.crm-fixed-view .crm-list-col .list-pagination{ display:flex !important; }
+
+/* §페이지 번호 줄 정리 — 왼쪽 총 개수·현재 쪽, 가운데 번호, 같은 크기의 둥근 버튼 */
+.crm-list-col .list-pagination{ display:grid !important; grid-template-columns:1fr auto 1fr; align-items:center; gap:8px; padding:8px 4px 2px !important; margin-top:6px !important; border-top:1px solid #EEF2F7; }
+body.crm-fixed-view .crm-list-col .list-pagination{ display:grid !important; }
+.crm-list-col .list-pagination .page-total{ grid-column:1; justify-self:start; font-size:11.5px !important; color:#7C8BA1; white-space:nowrap; font-variant-numeric:tabular-nums; }
+.crm-list-col .list-pagination .page-btns{ grid-column:2; display:flex; align-items:center; gap:3px; }
+.crm-list-col .list-pagination .page-spacer{ grid-column:3; }
+.crm-list-col .list-pagination .page-btn{ min-width:28px !important; height:28px !important; padding:0 6px !important; border-radius:8px !important; border:1px solid transparent !important; background:transparent !important; color:#55657C !important; font-size:12.5px !important; font-weight:600 !important; font-variant-numeric:tabular-nums; line-height:1 !important; display:inline-flex; align-items:center; justify-content:center; box-shadow:none !important; }
+.crm-list-col .list-pagination .page-btn:hover:not(:disabled){ background:#EEF3FA !important; color:#17345F !important; }
+.crm-list-col .list-pagination .page-btn.active{ background:#17345F !important; border-color:#17345F !important; color:#fff !important; font-weight:800 !important; }
+.crm-list-col .list-pagination .page-btn.is-arrow{ font-size:17px !important; color:#17345F !important; }
+.crm-list-col .list-pagination .page-btn:disabled{ color:#C9D2DE !important; }
+.crm-list-col .list-pagination .page-ellipsis{ color:#A9B4C4; padding:0 2px; font-size:12px; }
+@media (max-width:640px){
+  .crm-list-col .list-pagination{ grid-template-columns:minmax(0,1fr); justify-items:center; }
+  .crm-list-col .list-pagination .page-total{ grid-column:1; justify-self:center; grid-row:2; }
+  .crm-list-col .list-pagination .page-btns{ grid-column:1; grid-row:1; }
+  .crm-list-col .list-pagination .page-spacer{ display:none; }
+}
 </style>
 </head>
 <body>
@@ -22492,7 +22511,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     const wrap = document.getElementById('crmPagination');
     if(!wrap) return;
     const totalText = (typeof totalRows === 'number')
-      ? `<span class="page-total">총 ${totalRows.toLocaleString('ko-KR')}개 업체</span>` : '';
+      ? `<span class="page-total">총 ${totalRows.toLocaleString('ko-KR')}개 업체${totalPages > 1 ? ` · ${currentPage} / ${totalPages}쪽` : ''}</span>` : '';
     if(totalPages <= 1){ wrap.innerHTML = totalText; return; }
     const windowSize = 5;
     let start = Math.max(1, currentPage - 2);
@@ -22500,12 +22519,12 @@ window.SHIN2_CRM_APP_INIT = function(){
     start = Math.max(1, end - windowSize + 1);
     const pages = [];
     for(let p = start; p <= end; p++) pages.push(p);
-    let html = `<button type="button" class="page-btn" data-page="${currentPage-1}" ${currentPage<=1?'disabled':''}>&lt;</button>`;
+    let html = `<button type="button" class="page-btn is-arrow" data-page="${currentPage-1}" ${currentPage<=1?'disabled':''} aria-label="이전 페이지">‹</button>`;
     if(start > 1){ html += `<button type="button" class="page-btn" data-page="1">1</button>`; if(start > 2) html += `<span class="page-ellipsis">…</span>`; }
     html += pages.map(p=> `<button type="button" class="page-btn${p===currentPage?' active':''}" data-page="${p}">${p}</button>`).join('');
     if(end < totalPages){ if(end < totalPages - 1) html += `<span class="page-ellipsis">…</span>`; html += `<button type="button" class="page-btn" data-page="${totalPages}">${totalPages}</button>`; }
-    html += `<button type="button" class="page-btn" data-page="${currentPage+1}" ${currentPage>=totalPages?'disabled':''}>&gt;</button>`;
-    wrap.innerHTML = `<div class="page-btns">${html}</div>${totalText}`;
+    html += `<button type="button" class="page-btn is-arrow" data-page="${currentPage+1}" ${currentPage>=totalPages?'disabled':''} aria-label="다음 페이지">›</button>`;
+    wrap.innerHTML = `${totalText}<div class="page-btns">${html}</div><span class="page-spacer" aria-hidden="true"></span>`;
     wrap.querySelectorAll('[data-page]').forEach(btn=> btn.addEventListener('click', ()=>{
       const p = parseInt(btn.getAttribute('data-page'), 10);
       if(!p || p < 1 || p > totalPages || p === currentPage) return;
