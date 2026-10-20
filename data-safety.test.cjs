@@ -197,7 +197,7 @@ test('5-b. 엑셀 등록+MOU: 업체만 저장되고 MOU 저장 실패 → "부�
     confirm:msg=>{prompts.push(msg);return answers.shift();},alert:msg=>prompts.push('ALERT '+msg),
     findActiveCompanyByExactName:(n,list)=>list.find(c=>c.name===n)||null,
     confirmCloudSave:async name=>{cloudCalls++;await new Promise(r=>setTimeout(r,2));if(name==='companies'){ if(cloudCalls===1) return {ok:true}; return {ok:false,err:new Error('unavailable')}; } return {ok:true};},
-    genCompanyCode:()=>'B2B100',findCompanyByCodeExcept:()=>null,fmtDate:()=>'2026.10.13',
+    genCompanyCode:()=>'B2B100',reserveB2BCode:async()=>'B2B100',findCompanyByCodeExcept:()=>null,fmtDate:()=>'2026.10.13',
     saveStageCorrection:(id,k,p)=>corr.push({id,k}),renderUnregisteredBadge(){},renderList(){},cloudSaveErrorMessage:e=>String(e&&e.message)};
   const start=html.indexOf('  const excelRegisterInFlight = new Set();');const end=html.indexOf('\n  }',html.indexOf('async function registerAndConfirmMouFromExcelNameInner('));
   vm.runInNewContext(html.slice(start,end+4).replace('const excelRegisterInFlight','var excelRegisterInFlight'),ctx);

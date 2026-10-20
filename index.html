@@ -13341,7 +13341,35 @@ window.SHIN2_ADMIN_VAULT = {"v":1,"it":310000,"s":"LR69gP2hfdC4DCenIz+Grw==","iv
           return Array.isArray(payload.value) ? payload.value : null;
         });
       }
+      // §B2B 전용번호 일괄 적용 안전장치(신규) — 업체 목록은 클라우드 문서 1개(전체 배열)라 업체별
+      // 부분 저장이 없다. 그래서 일괄 적용은 "읽은 시점의 localRev 그대로일 때만" 트랜잭션으로
+      // 저장한다 — 그사이 다른 기기가 저장했으면 아무것도 쓰지 않고 CONFLICT로 멈춘다.
+      async function getSharedKeyDocWithRev(storageKey){
+        if(!currentUid) throw new Error('로그인이 필요합니다.');
+        const snap = await getDoc(doc(db, 'users', currentUid, 'shin2', storageKey));
+        if(!snap.exists()) return { value:null, localRev:0 };
+        const p = snap.data();
+        return { value: Array.isArray(p.value) ? p.value : null, localRev: typeof p.localRev === 'number' ? p.localRev : 0 };
+      }
+      async function compareAndSetSharedKey(name, storageKey, expectedRev, data){
+        if(!currentUid) throw new Error('로그인이 필요합니다.');
+        if(!Array.isArray(data) || !data.length) throw new Error('저장할 데이터가 없습니다.');
+        if(sharedPushTimers[name] || sharedPushInFlight) throw Object.assign(new Error('이 기기에 아직 서버로 안 나간 저장이 있습니다. 잠시 후 다시 시도하세요.'), { code:'PENDING' });
+        const ref = doc(db, 'users', currentUid, 'shin2', storageKey);
+        const rev = Math.max(Date.now(), (expectedRev || 0) + 1);
+        await runTransaction(db, async tx=>{
+          const snap = await tx.get(ref);
+          const cur = snap.exists() && typeof snap.data().localRev === 'number' ? snap.data().localRev : 0;
+          if(cur !== expectedRev) throw Object.assign(new Error('그사이 다른 곳에서 업체 목록이 저장되었습니다. 다시 읽고 시도하세요.'), { code:'CONFLICT' });
+          tx.set(ref, { value:data, updatedAt:serverTimestamp(), localRev:rev });
+        });
+        try{ localStorage.setItem(sharedLocalRevKey(storageKey), String(rev)); localStorage.setItem(storageKey, JSON.stringify(data)); }catch(e){}
+        window.dispatchEvent(new CustomEvent('shin2-crm-cloud-update', { detail: { key: name } }));
+        return rev;
+      }
       window.SHIN2_CRM_SHARED_SYNC = {
+        getOnceWithRev: (name)=> SHARED_ARRAY_KEYS[name] ? getSharedKeyDocWithRev(SHARED_ARRAY_KEYS[name]) : Promise.reject(new Error('알 수 없는 저장소: ' + name)),
+        compareAndSet: (name, expectedRev, data)=> SHARED_ARRAY_KEYS[name] ? compareAndSetSharedKey(name, SHARED_ARRAY_KEYS[name], expectedRev, data) : Promise.reject(new Error('알 수 없는 저장소: ' + name)),
         push: (name, data)=>{ if(SHARED_ARRAY_KEYS[name]) pushSharedKeyToCloud(name, SHARED_ARRAY_KEYS[name], data); },
         pushAsync: (name, data)=> SHARED_ARRAY_KEYS[name] ? pushSharedKeyToCloudAsync(name, SHARED_ARRAY_KEYS[name], data) : Promise.reject(new Error('알 수 없는 저장소: ' + name)),
         getOnce: (name)=> SHARED_ARRAY_KEYS[name] ? getSharedKeyDocOnce(SHARED_ARRAY_KEYS[name]) : Promise.reject(new Error('알 수 없는 저장소: ' + name)),
@@ -13494,7 +13522,16 @@ window.SHIN2_ADMIN_VAULT = {"v":1,"it":310000,"s":"LR69gP2hfdC4DCenIz+Grw==","iv
         if(!Number.isFinite(n)) return;
         clearTimeout(companyCodeB2BCounterPushTimer);
         companyCodeB2BCounterPushTimer = setTimeout(async ()=>{
-          try{ await setDoc(doc(db, 'users', currentUid, 'shin2', COMPANY_CODE_B2B_COUNTER_STORAGE_KEY), { value: n, updatedAt: serverTimestamp() }); }
+          // §B2B 전용번호 동시 발급 방지 — 예전엔 setDoc으로 그대로 덮어써서, 늦게 도착한 작은 값이
+          // 다른 기기가 올린 큰 값을 낮출 수 있었다. 트랜잭션으로 "더 클 때만" 올린다.
+          try{
+            const ref = doc(db, 'users', currentUid, 'shin2', COMPANY_CODE_B2B_COUNTER_STORAGE_KEY);
+            await runTransaction(db, async tx=>{
+              const snap = await tx.get(ref);
+              const cur = snap.exists() ? (parseInt((snap.data() || {}).value, 10) || 0) : 0;
+              if(n > cur) tx.set(ref, { value: n, updatedAt: serverTimestamp() });
+            });
+          }
           catch(e){ console.error('[CRM/Firebase] B2B 업체코드 카운터 저장 실패', e); }
         }, 500);
       }
@@ -13513,7 +13550,24 @@ window.SHIN2_ADMIN_VAULT = {"v":1,"it":310000,"s":"LR69gP2hfdC4DCenIz+Grw==","iv
           }catch(e){}
         }, (err)=> console.warn('[CRM/Firebase] B2B 업체코드 카운터 구독 실패', err));
       }
+      // §B2B 전용번호 동시 발급 방지(신규) — 다음 번호를 각 기기의 데이터만 보고 정하면, 두 사람이
+      // 동시에 등록할 때 같은 번호가 나올 수 있었다. 클라우드 카운터 문서를 트랜잭션으로 읽고
+      // 올려서 번호를 "예약"한다 — 같은 번호는 절대 두 번 나가지 않는다(예약 후 저장이 실패하면
+      // 그 번호는 비어 있을 뿐, 다시 쓰지 않는다). minNext는 이 기기 데이터 기준 다음 번호.
+      async function reserveCompanyCodeB2BSeq(minNext, count){
+        if(!currentUid) throw new Error('로그인이 필요합니다.');
+        const k = Math.max(1, parseInt(count, 10) || 1);
+        const ref = doc(db, 'users', currentUid, 'shin2', COMPANY_CODE_B2B_COUNTER_STORAGE_KEY);
+        return runTransaction(db, async tx=>{
+          const snap = await tx.get(ref);
+          const cur = snap.exists() ? (parseInt((snap.data() || {}).value, 10) || 0) : 0;
+          const first = Math.max(cur + 1, parseInt(minNext, 10) || 0);
+          tx.set(ref, { value: first + k - 1, updatedAt: serverTimestamp() });
+          return first;
+        });
+      }
       window.SHIN2_CRM_B2B_COUNTER_SYNC = {
+        reserve: (minNext, count)=> reserveCompanyCodeB2BSeq(minNext, count),
         push: (value)=> pushCompanyCodeB2BCounterToCloud(value),
         isReady: ()=> companyCodeB2BCounterSyncStarted
       };
@@ -19146,7 +19200,7 @@ window.SHIN2_CRM_APP_INIT = function(){
   // 얹는다(열 정렬이 틀어지지 않는다). 평소에는 흐리게 두고 행에 올리면 또렷해진다.
   function revenueNoMouActionRowHtml(co){
     return `<button type="button" class="co-row-quick-action" data-revenue-no-mou-confirm="${esc(co.id)}"
-      title="MOU 체결로 확정하고 업체코드를 발급합니다">MOU 체결</button>`;
+      title="MOU 체결로 확정하고 B2B 전용번호를 발급합니다">MOU 체결</button>`;
   }
   // §미등록 업체 리스트 통합 라운드(신규) — 사용자 요청: "관리도구 미등록업체 목록을
   // 통째로 옮기지 말고, 실적있음·MOU미체결 탭의 리스트 안에 같은 모양으로 넣어달라."
@@ -24950,7 +25004,7 @@ window.SHIN2_CRM_APP_INIT = function(){
         삭제업체 탭에서 [영구삭제 대상]을 눌러 지정할 수 있습니다.</div>` : `
       <div class="deleted-co-table permdel-table">
         <div class="deleted-co-head">
-          <span>삭제일</span><span>업체명</span><span>업체코드</span><span>삭제사유</span><span>지정일</span><span>지정자</span><span></span>
+          <span>삭제일</span><span>업체명</span><span>B2B 전용번호</span><span>삭제사유</span><span>지정일</span><span>지정자</span><span></span>
         </div>
         ${pending.map(co=> {
           const req = co.permanentDeletePending || {};
@@ -25026,7 +25080,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     listEl.innerHTML = trashSubTabsHtml(deletedItems.length, pendingCount) + `
       <div class="deleted-co-table has-exclude-cols is-trash">
         <div class="deleted-co-head">
-          <span>삭제일</span><span>업체명</span><span>업체코드</span><span>사유</span><span>출처</span><span>비고</span><span></span>
+          <span>삭제일</span><span>업체명</span><span>B2B 전용번호</span><span>사유</span><span>출처</span><span>비고</span><span></span>
         </div>
         ${items.map(({co,status,dateVal,reason})=> `
           <div class="deleted-co-row" data-deleted-co="${esc(co.id)}">
@@ -25195,22 +25249,21 @@ window.SHIN2_CRM_APP_INIT = function(){
   // 두 변경 모두 성공하면 업체가 isConfirmedPartner==true가 되어 다음 렌더부터 자동으로
   // "MOU체결" 탭으로 옮겨가고 이 탭에서는 사라진다(기존 판정 로직 그대로 반영, 별도 이동
   // 처리를 직접 하지 않는다).
-  function handleConfirmMouFromNonPartnerTab(companyId){
-    if(!window.crmAdminOk('MOU 체결 처리(업체코드 발급)')) return;
+  async function handleConfirmMouFromNonPartnerTab(companyId){
+    if(!window.crmAdminOk('MOU 체결 처리(B2B 전용번호 발급)')) return;
     const co = D.findCompany(companyId);
     if(!co) return;
-    if(!confirm(`"${co.name}"을(를) MOU 체결 처리하시겠습니까?\n오늘 날짜로 기록되며, 업체코드가 없으면 자동으로 발급됩니다.\n(나중에 실수로 처리한 경우, 협약 진행단계 수정에서 되돌릴 수 있습니다)`)) return;
+    if(!confirm(`"${co.name}"을(를) MOU 체결 처리하시겠습니까?\n오늘 날짜로 기록되며, B2B 전용번호가 없으면 자동으로 발급됩니다.\n(나중에 실수로 처리한 경우, 협약 진행단계 수정에서 되돌릴 수 있습니다)`)) return;
     let latest = D.findCompany(companyId);
     if(!latest) return;
-    if(!latest.code){
-      const companies = D.loadCompanies();
-      let code = genCompanyCode(companies);
-      // §업체코드 중복발급 방지 라운드와 동일한 저장 직전 재검증(§27399 근처) — 동시에
-      // 다른 기기에서도 발급했을 드문 경우까지 대비해 한 번 더 확인 후 필요하면 다음 번호로.
-      if(findCompanyByCodeExcept(code, D.loadCompanies(), companyId)){
-        code = genCompanyCode(D.loadCompanies());
-      }
-      D.updateCompany(companyId, { code });
+    const curCode = String(latest.code || '').trim();
+    if(!/^B2B\d{3}$/.test(curCode)){
+      // §B2B 전용번호 — 클라우드 예약으로 발급(동시 발급 충돌 방지). 저장 직전 재검증은 그대로.
+      let code = await reserveB2BCode(D.loadCompanies());
+      if(findCompanyByCodeExcept(code, D.loadCompanies(), companyId)) code = await reserveB2BCode(D.loadCompanies());
+      const codePatch = { code };
+      if(curCode && !String(latest.legacyCode || '').trim()) codePatch.legacyCode = curCode;   // 옛 코드 보존
+      D.updateCompany(companyId, codePatch);
       latest = D.findCompany(companyId);
     }
     // isConfirmedPartner는 co.partnerStatus==='partner'를 progress.hasAny와 무관하게 즉시
@@ -25244,7 +25297,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     finally{ excelRegisterInFlight.delete(excelName); }
   }
   async function registerAndConfirmMouFromExcelNameInner(excelName){
-    if(!confirm(`"${excelName}"을(를) 신규 등록하고 MOU 체결 처리하시겠습니까?\n오늘 날짜로 기록되며, 업체코드가 자동으로 발급됩니다.`)) return;
+    if(!confirm(`"${excelName}"을(를) 신규 등록하고 MOU 체결 처리하시겠습니까?\n오늘 날짜로 기록되며, B2B 전용번호가 자동으로 발급됩니다.`)) return;
     const dup = findActiveCompanyByExactName(excelName, D.loadCompanies());
     if(dup){ alert(`이미 같은 이름의 CRM 업체가 있습니다: "${dup.name}" — 그 업체 카드에서 처리해주세요.`); renderList(); return; }
     const newCo = D.addCompany({ name: excelName });
@@ -25254,8 +25307,8 @@ window.SHIN2_CRM_APP_INIT = function(){
       alert('저장에 실패했습니다(네트워크 확인 필요): ' + (companiesResult.err && companiesResult.err.message));
       return;
     }
-    let code = genCompanyCode(D.loadCompanies());
-    if(findCompanyByCodeExcept(code, D.loadCompanies(), newCo.id)) code = genCompanyCode(D.loadCompanies());
+    let code = await reserveB2BCode(D.loadCompanies());
+    if(findCompanyByCodeExcept(code, D.loadCompanies(), newCo.id)) code = await reserveB2BCode(D.loadCompanies());
     D.updateCompany(newCo.id, { code, partnerStatus:'partner' });
     saveStageCorrection(newCo.id, 'mouDone', { status:'done', dateText: fmtDate(new Date().toISOString()), owner: null },
       { reason:'기타', reasonOther:'실적있음·MOU미체결 탭에서 신규 등록 + MOU 체결 처리' });
@@ -25269,7 +25322,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       const ra = rc.ok ? await confirmCloudSave('customerActivities') : { ok:false, err: rc.err };
       if(rc.ok && ra.ok) return;
       const why = cloudSaveErrorMessage(rc.ok ? ra.err : rc.err);
-      const what = rc.ok ? '활동 기록' : '업체코드·MOU 체결 상태' + ' 및 활동 기록';
+      const what = rc.ok ? '활동 기록' : 'B2B 전용번호·MOU 체결 상태' + ' 및 활동 기록';
       if(!confirm(`부분 완료 — "${excelName}" 업체 등록은 서버에 저장됐지만 ${what}의 서버 저장을 확인하지 못했습니다.\n(${why})\n\n[확인]: 저장 다시 시도 / [취소]: 나중에(이 기기 화면에는 반영된 상태, 다음 저장 때 다시 올라갑니다)`)) return;
     }
   }
@@ -26159,7 +26212,7 @@ window.SHIN2_CRM_APP_INIT = function(){
         <div class="cdash2-header-left">
           ${showMapBackBtn ? `<button type="button" class="cdash2-map-back-btn" id="chartMapBackBtn">← 지도 분포로 돌아가기</button>` : ''}
           <div>
-            ${(()=>{ /* §B2B 코드 표기 — 업체명 위에는 B2B 전용 발급코드(B2B+3자리)만 보여준다. 옛 형식 코드는 표시하지 않는다(데이터는 그대로). */ const b2b = [co.code, co.masterCode].map(v=> String(v || '').trim()).find(v=> /^B2B\d{3}$/.test(v)); return b2b ? `<div class="cdet-head-code" title="B2B 발급코드">${esc(b2b)}</div>` : `<div class="cdet-head-code is-none" title="B2B 전용 코드가 아직 발급되지 않았습니다">B2B 미발급</div>`; })()}
+            ${(()=>{ /* §B2B 코드 표기 — 업체명 위에는 B2B 전용 발급코드(B2B+3자리)만 보여준다. 옛 형식 코드는 표시하지 않는다(데이터는 그대로). */ const b2b = [co.code, co.masterCode].map(v=> String(v || '').trim()).find(v=> /^B2B\d{3}$/.test(v)); return b2b ? `<div class="cdet-head-code" title="B2B 전용번호">${esc(b2b)}</div>` : `<div class="cdet-head-code is-none" title="B2B 전용번호가 아직 발급되지 않았습니다">B2B 전용번호 미발급</div>`; })()}
             <div class="cdet-head-name-row">
               <div class="cdash2-title" id="chartCoNameTitle" title="${esc(co.name)}">${esc(co.name)}</div>
               <span class="cdash2-tag${isDone ? ' is-done' : ''} is-by-name">${esc(stageText)}</span>
@@ -26774,7 +26827,7 @@ window.SHIN2_CRM_APP_INIT = function(){
        값은 전부 기존 필드이거나 이미 있는 조회 함수 결과다(새 계산 없음):
          주요 공종 buildTopCategoriesText(co,2) · 지역 parseMapRegion(co.address). */
     const rows = [];
-    const KV_ICON = { '대표':'user', '주소':'pin', '주요 공종':'tag', '지역':'globe', '업체코드':'idcard', '이전 상호':'doc' };
+    const KV_ICON = { '대표':'user', '주소':'pin', '주요 공종':'tag', '지역':'globe', 'B2B 전용번호':'idcard', '이전 상호':'doc' };
     // §기본정보 정리 라운드 — 아이콘 + (작은 라벨 / 값) 정보 칸. wide=true면 한 줄 전체.
     const push = (k, v, wide)=>{ rows.push(
       `<div class="cosum-item${wide ? ' is-wide' : ''}">${cinfoIcon(KV_ICON[k] || 'doc')}<div class="cosum-text"><div class="cosum-label">${esc(k)}</div><div class="cosum-value${v ? '' : ' is-muted'}">${esc(v || '—')}</div></div></div>`); };
@@ -38968,7 +39021,7 @@ window.SHIN2_CRM_APP_INIT = function(){
   const PARTNER_EXCEL_COL_CANDIDATES = {
     name: ['업체명','회사명','협력사명','시공사명','통합 대표 업체명','표준 업체명'],
     mouDate: ['체결일','협약일','MOU 체결일','체결일(협약일)'],
-    code: ['신규 업체코드(B2B)','B2B','B2B코드','업체코드(B2B)','신규 업체코드','시공사 코드'],
+    code: ['B2B 전용번호','B2B전용번호','신규 업체코드(B2B)','B2B','B2B코드','업체코드(B2B)','신규 업체코드','시공사 코드'],
     bizno: ['사업자번호','사업자등록번호']
   };
   function detectPartnerExcelColumn(headerRow, candidates){
@@ -39044,10 +39097,10 @@ window.SHIN2_CRM_APP_INIT = function(){
     if(nameConfirmed.length === 0){
       // 이름으로는 전혀 못 찾았는데 코드/사업자번호만 겹치는 경우 — 절대 자동확정 금지.
       if(codeHits.length === 1){
-        return { outcome:'needsReview', companyId: codeHits[0].id, companyName: codeHits[0].name, label:'[확인 필요] 코드-업체명 충돌', reason: `B2B 코드(${code})는 CRM 업체("${codeHits[0].name}")와 일치하지만 업체명이 완전히 다름 — 오매칭 방지를 위해 자동 반영하지 않음` };
+        return { outcome:'needsReview', companyId: codeHits[0].id, companyName: codeHits[0].name, label:'[확인 필요] 코드-업체명 충돌', reason: `B2B 전용번호(${code})는 CRM 업체("${codeHits[0].name}")와 일치하지만 업체명이 완전히 다름 — 오매칭 방지를 위해 자동 반영하지 않음` };
       }
       if(codeHits.length > 1){
-        return { outcome:'needsReview', label:'[확인 필요] 코드-업체명 충돌', reason: `B2B 코드(${code})를 쓰는 CRM 업체가 여러 건이며 업체명도 일치하지 않음`, candidates: codeHits.map(c=>({id:c.id,name:c.name})) };
+        return { outcome:'needsReview', label:'[확인 필요] 코드-업체명 충돌', reason: `B2B 전용번호(${code})를 쓰는 CRM 업체가 여러 건이며 업체명도 일치하지 않음`, candidates: codeHits.map(c=>({id:c.id,name:c.name})) };
       }
       if(biznoHits.length === 1){
         return { outcome:'needsReview', companyId: biznoHits[0].id, companyName: biznoHits[0].name, label:'[확인 필요] 사업자번호-업체명 불일치', reason: `사업자번호는 CRM 업체("${biznoHits[0].name}")와 일치하지만 업체명이 완전히 다름 — 오매칭 방지를 위해 자동 반영하지 않음` };
@@ -39070,7 +39123,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     // (=코드가 겹치는데 그 코드 주인이 이 업체가 아니면) 이것도 자동확정하지 않는다.
     const conflictingCodeOwner = codeHits.find(c=> c.id !== co.id);
     if(conflictingCodeOwner){
-      return { outcome:'needsReview', companyId: co.id, companyName: co.name, label:'[확인 필요] 코드-업체명 충돌', reason: `업체명은 CRM 업체("${co.name}")와 일치하지만, 엑셀 B2B 코드(${code})는 이미 다른 CRM 업체("${conflictingCodeOwner.name}")가 사용 중` };
+      return { outcome:'needsReview', companyId: co.id, companyName: co.name, label:'[확인 필요] 코드-업체명 충돌', reason: `업체명은 CRM 업체("${co.name}")와 일치하지만, 엑셀 B2B 전용번호(${code})는 이미 다른 CRM 업체("${conflictingCodeOwner.name}")가 사용 중` };
     }
     const conflictingBiznoOwner = biznoHits.find(c=> c.id !== co.id);
     if(conflictingBiznoOwner){
@@ -39081,7 +39134,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     const codeConfirms = codeHits.some(c=> c.id === co.id);
     const isFormerOnly = !nameHits.some(c=> c.id === co.id) && formerHits.some(c=> c.id === co.id);
     if(biznoConfirms){ matchedBy = '사업자번호 + 이름 일치'; label = '[확정] 사업자번호 + 이름 일치'; }
-    else if(codeConfirms){ matchedBy = 'B2B 코드 + 이름 일치'; label = '[확정] B2B 코드 + 이름 일치'; }
+    else if(codeConfirms){ matchedBy = 'B2B 전용번호 + 이름 일치'; label = '[확정] B2B 전용번호 + 이름 일치'; }
     else if(isFormerOnly){ matchedBy = 'formerNames 명시적 일치'; label = '[확정] formerNames 명시적 일치'; }
     else { matchedBy = '정규화 업체명 완전일치'; label = '[확정] 정규화 업체명 완전일치'; }
     return { outcome:'matched', companyId: co.id, companyName: co.name, matchedBy, label };
@@ -39105,15 +39158,20 @@ window.SHIN2_CRM_APP_INIT = function(){
     return { finalMatched, demoted };
   }
   function resolvePartnerExcelCode(co, excelCode, otherCompanyCodeIndex){
-    const existingCode = (co.code || '').trim();
-    const masterCode = (co.masterCode || '').trim();
+    // §B2B 전용번호 — 공식 번호는 B2B+3자리뿐이다. 옛 5자리·NEW-/EXT- 코드는 과거 기록이라 비교·복사
+    // 대상에서 뺀다(예전엔 옛 코드가 B2B 번호와 다르다고 전부 "확인 필요"가 되거나, 옛 코드가
+    // co.code로 복사될 수 있었다).
+    const isB2BNo = v=> /^B2B\d{3}$/.test(v);
+    const existingCode = isB2BNo((co.code || '').trim()) ? (co.code || '').trim() : '';
+    const masterCode = isB2BNo((co.masterCode || '').trim()) ? (co.masterCode || '').trim() : '';
+    if(excelCode && !isB2BNo(String(excelCode).trim())) excelCode = '';
     // §요청 최종 확정본 — co.code/masterCode/엑셀 코드 중 "존재하는" 값을 전부 모아서
     // 비교한다(엑셀 코드가 있다고 masterCode 비교를 건너뛰지 않는다 — 셋 중 어느 둘이라도
     // 다르면 확인 필요).
     const values = [];
     if(existingCode) values.push({ src:'co.code', v: existingCode });
     if(masterCode) values.push({ src:'masterCode', v: masterCode });
-    if(excelCode) values.push({ src:'엑셀 B2B 코드', v: excelCode });
+    if(excelCode) values.push({ src:'엑셀 B2B 전용번호', v: excelCode });
     const distinct = Array.from(new Set(values.map(v=> v.v)));
     if(distinct.length > 1){
       return { status:'conflict', reason: values.map(v=> `${v.src}=${v.v}`).join(' vs '), values };
@@ -39137,7 +39195,7 @@ window.SHIN2_CRM_APP_INIT = function(){
   // excelDuplicateCodes, total }.
   function previewPartnerExcelImport(rows){
     const companies = D.loadActiveCompanies();
-    // §요청 6 — 엑셀 내부 자체 중복(같은 업체명/같은 B2B 코드가 여러 행)부터 검사한다.
+    // §요청 6 — 엑셀 내부 자체 중복(같은 업체명/같은 B2B 전용번호가 여러 행)부터 검사한다.
     const nameNormCounts = new Map();
     const codeCounts = new Map();
     rows.forEach(r=>{
@@ -39156,7 +39214,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       const excelDupName = nameNorm && nameNormCounts.get(nameNorm) > 1;
       const excelDupCode = row.code && codeCounts.get(row.code) > 1;
       if(excelDupName || excelDupCode){
-        needsReview.push({ row, reason: excelDupName && excelDupCode ? '엑셀 내 업체명·B2B 코드 중복' : (excelDupName ? '엑셀 내 업체명 중복' : '엑셀 내 B2B 코드 중복') });
+        needsReview.push({ row, reason: excelDupName && excelDupCode ? '엑셀 내 업체명·B2B 전용번호 중복' : (excelDupName ? '엑셀 내 업체명 중복' : '엑셀 내 B2B 전용번호 중복') });
         return;
       }
       // §최상위 공통 규칙(2026-09) — 업체명 자동매칭 보수적 운영. 협력사 엑셀/매출 엑셀 등
@@ -39175,7 +39233,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       const matchedBy = matchResult.matchedBy, label = matchResult.label;
       const codeDecision = resolvePartnerExcelCode(co, row.code, codeOwnerIndex);
       if(codeDecision.status === 'conflict'){
-        needsReview.push({ row, companyId: co.id, companyName: co.name, label:'[확인 필요] 코드-업체명 충돌', reason: 'B2B 코드 충돌 — ' + codeDecision.reason });
+        needsReview.push({ row, companyId: co.id, companyName: co.name, label:'[확인 필요] 코드-업체명 충돌', reason: 'B2B 전용번호 충돌 — ' + codeDecision.reason });
         return;
       }
       // 체결일: 엑셀 값이 있으면 그 값, 없으면 현재 화면에 실제로 표시되는 기존 체결일을
@@ -39204,9 +39262,9 @@ window.SHIN2_CRM_APP_INIT = function(){
   }
   function buildPartnerExcelActivityLog(m){
     const bits = ['[협력사 엑셀 일괄 반영] MOU 체결 상태 보정'];
-    if(m.codeDecision.status === 'issueNew') bits.push('업체코드 신규발급');
-    else if(m.codeDecision.status === 'copyExcel') bits.push('업체코드 엑셀 값 반영(' + m.finalCode + ')');
-    else if(m.codeDecision.status === 'copyMaster') bits.push('업체코드 masterCode 값 반영(' + m.finalCode + ')');
+    if(m.codeDecision.status === 'issueNew') bits.push('B2B 전용번호 신규발급');
+    else if(m.codeDecision.status === 'copyExcel') bits.push('B2B 전용번호 엑셀 값 반영(' + m.finalCode + ')');
+    else if(m.codeDecision.status === 'copyMaster') bits.push('B2B 전용번호 마스터 값 반영(' + m.finalCode + ')');
     if(m.excelMouDate) bits.push('체결일 ' + m.excelMouDate + ' 반영');
     return bits.join(' · ');
   }
@@ -39224,8 +39282,9 @@ window.SHIN2_CRM_APP_INIT = function(){
     const da = new Date(pa.ts), db = new Date(pb.ts);
     return da.getFullYear() === db.getFullYear() && da.getMonth() === db.getMonth() && da.getDate() === db.getDate();
   }
-  function applyPartnerExcelImport(preview){
+  function applyPartnerExcelImport(preview, reservedStart){
     const workingCompanies = D.loadCompanies();
+    let reservedNext = Number.isFinite(reservedStart) ? reservedStart : null;
     let mouChangedCount = 0, alreadyMouCount = 0, newCodeCount = 0, mouDateAppliedCount = 0, mouNoDateCount = 0, errorCount = 0;
     let unchangedCount = 0;
     const errorNames = [];
@@ -39247,7 +39306,7 @@ window.SHIN2_CRM_APP_INIT = function(){
         const wasConfirmedPartner = isConfirmedPartner(co, buildProgressStages(co));
         let finalCode = m.finalCode;
         if(m.codeDecision.status === 'issueNew'){
-          finalCode = genCompanyCode(workingCompanies);
+          finalCode = reservedNext != null ? formatB2BNo(reservedNext++) : genCompanyCode(workingCompanies);
           if(findCompanyByCodeExcept(finalCode, workingCompanies, co.id)) finalCode = genCompanyCode(workingCompanies);
           const rec = workingCompanies.find(c=> c.id === co.id);
           if(rec) rec.code = finalCode;
@@ -39256,7 +39315,11 @@ window.SHIN2_CRM_APP_INIT = function(){
           newCodeCount++;
         }
         const patch = {};
-        if(finalCode && finalCode !== co.code) patch.code = finalCode;
+        if(finalCode && finalCode !== co.code){
+          patch.code = finalCode;
+          const prevCode = String(co.code || '').trim();
+          if(prevCode && !/^B2B\d{3}$/.test(prevCode) && !String(co.legacyCode || '').trim()) patch.legacyCode = prevCode;   // 옛 코드 보존
+        }
         if(co.partnerStatus !== 'partner') patch.partnerStatus = 'partner';
         if(Object.keys(patch).length) D.updateCompany(m.companyId, patch);
         saveStageCorrection(m.companyId, 'mouDone',
@@ -39338,7 +39401,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       <div class="local-cloud-diag-title">${esc(m.label || ('[확정] ' + m.matchedBy))} · ${esc(m.row.name)} → ${esc(m.companyName)} <span style="font-weight:normal;opacity:.65;">(매칭: ${esc(m.matchedBy)})</span></div>
       <div class="local-cloud-diag-row">현재 상태: ${esc(m.currentStatusLabel)} → <b>MOU 체결</b></div>
       <div class="local-cloud-diag-row">체결일: 기존 ${esc(m.existingMouDateDisplay || '(없음)')} · 엑셀 ${esc(m.excelMouDate || '(없음)')} → 최종 <b>${esc(m.finalMouDate || '(빈칸 유지)')}</b></div>
-      <div class="local-cloud-diag-row">B2B 코드: 기존 ${esc(m.existingCode || '(없음)')}${m.existingMasterCode ? ' · masterCode ' + esc(m.existingMasterCode) : ''} · 엑셀 ${esc(m.row.code || '(없음)')} → <b>${esc(m.finalCode || '(미정)')}</b> (${esc(codeLabel)})</div>
+      <div class="local-cloud-diag-row">B2B 전용번호: 기존 ${esc(m.existingCode || '(없음)')}${m.existingMasterCode ? ' · 옛 코드 ' + esc(m.existingMasterCode) : ''} · 엑셀 ${esc(m.row.code || '(없음)')} → <b>${esc(m.finalCode || '(미정)')}</b> (${esc(codeLabel)})</div>
     </div>`;
   }
   function renderPartnerExcelImportModal(){
@@ -39349,7 +39412,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     const hasFile = st.headerRow.length > 0;
     const body = `
       <div class="pi-note">별도로 관리하는 협력사 엑셀을 업로드하면, 그 안의 업체는 전부 "이미
-        협력사로 확정된 업체"로 간주해 MOU 상태와 B2B 코드만 보정합니다(다른 정보는 전혀
+        협력사로 확정된 업체"로 간주해 MOU 상태와 B2B 전용번호만 보정합니다(다른 정보는 전혀
         바꾸지 않음). 업로드 직후 저장되지 않으며, 아래 "확정 반영"을 눌러야만 실제
         반영됩니다.</div>
       <div style="margin:10px 0;">
@@ -39361,14 +39424,14 @@ window.SHIN2_CRM_APP_INIT = function(){
         <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">컬럼이 자동으로 안 맞으면 직접 선택하세요(업체명은 필수):</div>
         ${partnerExcelColSelectHtml('name','업체명',true)}
         ${partnerExcelColSelectHtml('mouDate','체결일')}
-        ${partnerExcelColSelectHtml('code','B2B 코드')}
+        ${partnerExcelColSelectHtml('code','B2B 전용번호')}
         ${partnerExcelColSelectHtml('bizno','사업자번호')}
       </div>` : ''}
       ${st.error ? `<div class="delete-co-modal-err">${esc(st.error)}</div>` : ''}
       ${st.result ? partnerExcelCloudStatusHtml(st) : ''}
       ${st.result ? `<div style="color:${(st.result.errorCount || st.cloud === 'fail') ? '#B3261E' : '#1E7B34'};margin-bottom:10px;">${st.result.errorCount ? '부분 완료' : (st.cloud === 'ok' ? '확정 반영 완료' : '이 기기 반영')} — 엑셀 전체 ${st.result.excelTotal}건 · 매칭 ${st.result.matchedCount}건 · 변경 없음(이미 반영) ${st.result.unchangedCount || 0}건 ·
         MOU 체결로 변경 ${st.result.mouChangedCount}건 · 기존에 이미 MOU 체결 ${st.result.alreadyMouCount}건 ·
-        신규 B2B 코드 발급 ${st.result.newCodeCount}건 · 체결일 반영 ${st.result.mouDateAppliedCount}건 ·
+        신규 B2B 전용번호 발급 ${st.result.newCodeCount}건 · 체결일 반영 ${st.result.mouDateAppliedCount}건 ·
         체결일 없는 MOU 체결 ${st.result.mouNoDateCount}건 · CRM 미등록 ${st.result.notInCrmCount}건 ·
         확인 필요 ${st.result.needsReviewCount}건 · 오류 ${st.result.errorCount}건${st.result.errorCount ? ` — 반영 실패: ${esc((st.result.errorNames || []).join(', '))} (같은 엑셀을 다시 반영하면 실패 건만 처리됩니다)` : ''}</div>` : ''}
       ${p ? `
@@ -39436,14 +39499,16 @@ window.SHIN2_CRM_APP_INIT = function(){
     const cloudRetryBtn = document.getElementById('partnerExcelCloudRetryBtn');
     if(cloudRetryBtn) cloudRetryBtn.addEventListener('click', ()=> confirmPartnerExcelCloud(st));
     const applyBtn = document.getElementById('partnerExcelImportApplyBtn');
-    if(applyBtn) applyBtn.addEventListener('click', ()=>{
+    if(applyBtn) applyBtn.addEventListener('click', async ()=>{
       if(!p || !p.matched.length) return;
       if(st.applying) return;   // §데이터 저장 안정성 — 중복 클릭 방지
       if(!confirm(`매칭된 ${p.matched.length}건을 MOU 체결 상태로 반영합니다.\n확인 필요 ${p.needsReview.length}건, CRM 미등록 ${p.notInCrm.length}건은 반영하지 않습니다.\n계속할까요?`)) return;
       st.applying = true;
       renderPartnerExcelImportModal();
       try{
-        st.result = applyPartnerExcelImport(p);
+        const needNew = p.matched.filter(m=> m.codeDecision && m.codeDecision.status === 'issueNew').length;
+        const reservedStart = needNew ? await reserveB2BSeqBlock(D.loadCompanies(), needNew) : null;
+        st.result = applyPartnerExcelImport(p, reservedStart);
       }catch(e){
         st.error = '반영 중 오류가 발생했습니다: ' + (e && e.message || e);
       }
@@ -40034,7 +40099,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       <div class="sales-import-table-wrap">
         <table class="sales-import-table">
           <thead><tr>
-            <th>상태</th><th>업체명</th><th>B2B 코드</th><th>사업자번호</th><th>현장명</th>
+            <th>상태</th><th>업체명</th><th>B2B 전용번호</th><th>사업자번호</th><th>현장명</th>
             <th>매출유형</th><th>매출일</th><th>매출금액</th><th>원본 시트</th><th>원본 행</th>
           </tr></thead>
           <tbody>${p.items.length ? p.items
@@ -44900,6 +44965,116 @@ window.SHIN2_CRM_APP_INIT = function(){
   // excludeId(재시도로 이미 만들어진 이번 레코드 자신)를 뺀 다른 업체 중 code가 같은
   // 업체가 있으면 그 업체를 돌려준다(§요청 4/5 "저장 직전 동일 코드 존재 여부"). 삭제
   // 여부와 무관하게 전부 검사한다(§요청 6 "활성/삭제 모두").
+  // §B2B 전용번호 동시 발급 방지(신규) — 이 기기 기준 다음 번호를 최소값으로 넘기고, 실제 번호는
+  // 클라우드 카운터 트랜잭션이 정한다. 로그인 전·네트워크 오류면 예전과 같이 이 기기 기준으로
+  // 발급한다(그 경우 업체 저장도 실패하므로 번호가 실제로 쓰이지 않는다).
+  async function reserveB2BSeqBlock(companies, count){
+    const k = Math.max(1, parseInt(count, 10) || 1);
+    let first = nextB2BSeq(companies);
+    const S = window.SHIN2_CRM_B2B_COUNTER_SYNC;
+    if(S && typeof S.reserve === 'function'){
+      try{ first = await S.reserve(first, k); }
+      catch(e){ console.warn('[CRM] B2B 전용번호 클라우드 예약 실패 — 이 기기 기준으로 발급', e); }
+    }
+    try{ D.bumpCompanyCodeB2BCounter(first + k - 1); }catch(e){}
+    return first;
+  }
+  function formatB2BNo(n){ return 'B2B' + String(n).padStart(3, '0'); }
+  async function reserveB2BCode(companies){ return formatB2BNo(await reserveB2BSeqBlock(companies, 1)); }
+  window.SHIN2_B2B_ASSIGN_PLAN = buildB2BAssignPlan;
+  // §B2B 전용번호 일괄 적용 계획(신규, 순수 함수 — 저장하지 않는다). assignments=[{id, code}].
+  // 활성 업체 전부가 정확히 한 번씩 있어야 하고, 번호는 삭제 업체 포함 전체에서 겹치면 안 된다.
+  // 바꾸는 필드는 code 하나뿐이며, code에 옛 형식 값이 있으면 legacyCode로 옮겨 보존한다.
+  function buildB2BAssignPlan(companies, assignments){
+    const B2B_RE = /^B2B\d{3}$/;
+    const t = v=> String(v == null ? '' : v).trim();
+    const errors = [];
+    const byId = new Map(companies.map(c=> [c.id, c]));
+    const seenId = new Set(), seenCode = new Map();
+    (assignments || []).forEach(a=>{
+      const c = byId.get(a.id);
+      if(!c){ errors.push('없는 업체 ID: ' + a.id); return; }
+      if(c.deletedAt) errors.push('삭제된 업체는 대상이 아님: ' + c.name);
+      if(seenId.has(a.id)) errors.push('같은 업체가 두 번 들어있음: ' + c.name);
+      seenId.add(a.id);
+      if(!B2B_RE.test(t(a.code))) errors.push('형식 오류(' + a.code + '): ' + c.name);
+      if(seenCode.has(a.code)) errors.push(a.code + '가 두 업체에 배정됨: ' + seenCode.get(a.code) + ', ' + c.name);
+      seenCode.set(a.code, c.name);
+      const own = [c.code, c.masterCode].map(t).find(v=> B2B_RE.test(v));
+      if(own && own !== a.code) errors.push('이미 ' + own + '를 가진 업체에 다른 번호(' + a.code + '): ' + c.name);
+    });
+    companies.filter(c=> !c.deletedAt && !seenId.has(c.id)).forEach(c=> errors.push('배정표에 빠진 업체: ' + c.name));
+    companies.forEach(c=>{
+      [c.code, c.masterCode].map(t).filter(v=> B2B_RE.test(v)).forEach(v=>{
+        const owner = seenCode.get(v);
+        const mine = (assignments || []).find(a=> a.id === c.id);
+        if(owner && !(mine && mine.code === v)) errors.push(v + '는 이미 ' + (c.deletedAt ? '[삭제] ' : '') + c.name + '가 사용 중');
+      });
+    });
+    const after = companies.map(c=> Object.assign({}, c));
+    const changes = [];
+    if(!errors.length){
+      const want = new Map(assignments.map(a=> [a.id, a.code]));
+      after.forEach(c=>{
+        if(!want.has(c.id)) return;
+        const code = want.get(c.id), prev = t(c.code);
+        if(prev === code) return;
+        const ch = { id:c.id, name:c.name, prevCode: c.code === undefined ? null : c.code, hadLegacy: Object.prototype.hasOwnProperty.call(c, 'legacyCode'), prevLegacy: c.legacyCode, code };
+        if(prev && !B2B_RE.test(prev) && !t(c.legacyCode)) c.legacyCode = prev;
+        c.code = code;
+        changes.push(ch);
+      });
+    }
+    const maxSeq = Math.max(0, ...(assignments || []).map(a=> parseInt(String(a.code).slice(3), 10) || 0));
+    return { ok: !errors.length, errors, after, changes, maxSeq };
+  }
+  // §B2B 전용번호 일괄 적용(관리자 전용, 신규) — 화면 버튼 없음. 승인 후에만 직접 호출한다.
+  //  preview(assignments): 최신 클라우드 원본으로 계획만 계산(저장 없음)
+  //  apply(assignments, {confirmText:'APPLY'}): 카운터 상향 → 클라우드 원본이 그대로일 때만 저장 → 다시 읽어 확인
+  //  revert(changes): 적용한 번호가 그대로인 업체만 code/legacyCode를 적용 전 값으로 되돌림
+  window.crmB2BBulkAssign = {
+    async preview(assignments){
+      const S = window.SHIN2_CRM_SHARED_SYNC;
+      const cur = await S.getOnceWithRev('companies');
+      const plan = buildB2BAssignPlan(cur.value || [], assignments);
+      return { ok: plan.ok, errors: plan.errors, changeCount: plan.changes.length, legacyMoved: plan.changes.filter(c=> c.prevCode && !/^B2B\d{3}$/.test(String(c.prevCode).trim())).map(c=> c.name + ': ' + c.prevCode), maxSeq: plan.maxSeq, cloudRev: cur.localRev, total: (cur.value || []).length };
+    },
+    async apply(assignments, opts){
+      if(!window.crmAdminOk('B2B 전용번호 일괄 적용')) throw new Error('관리자 모드에서만 할 수 있습니다.');
+      if(!opts || opts.confirmText !== 'APPLY') throw new Error('confirmText:"APPLY"가 필요합니다.');
+      const S = window.SHIN2_CRM_SHARED_SYNC;
+      const cur = await S.getOnceWithRev('companies');
+      const plan = buildB2BAssignPlan(cur.value || [], assignments);
+      if(!plan.ok) throw Object.assign(new Error('계획 검증 실패'), { errors: plan.errors });
+      if(!plan.changes.length) return { changed:0 };
+      const C = window.SHIN2_CRM_B2B_COUNTER_SYNC;
+      if(C && C.reserve) await C.reserve(plan.maxSeq, 1).catch(()=>{});   // 카운터를 최소 maxSeq 이상으로
+      try{ D.bumpCompanyCodeB2BCounter(plan.maxSeq); }catch(e){}
+      try{ localStorage.setItem('shin2-b2b-bulk-assign-undo-v1', JSON.stringify({ at:new Date().toISOString(), changes: plan.changes })); }catch(e){}
+      await S.compareAndSet('companies', cur.localRev, plan.after);
+      const back = await S.getOnceWithRev('companies');
+      const m = new Map((back.value || []).map(c=> [c.id, c]));
+      const mismatch = assignments.filter(a=> !m.get(a.id) || String(m.get(a.id).code).trim() !== a.code).map(a=> a.id);
+      return { changed: plan.changes.length, mismatch, changes: plan.changes };
+    },
+    async revert(changes){
+      if(!window.crmAdminOk('B2B 전용번호 되돌리기')) throw new Error('관리자 모드에서만 할 수 있습니다.');
+      const S = window.SHIN2_CRM_SHARED_SYNC;
+      const cur = await S.getOnceWithRev('companies');
+      const list = (cur.value || []).map(c=> Object.assign({}, c));
+      const m = new Map(list.map(c=> [c.id, c]));
+      let n = 0;
+      (changes || []).forEach(ch=>{
+        const c = m.get(ch.id);
+        if(!c || String(c.code).trim() !== ch.code) return;
+        if(ch.prevCode === null) delete c.code; else c.code = ch.prevCode;
+        if(ch.hadLegacy) c.legacyCode = ch.prevLegacy; else delete c.legacyCode;
+        n++;
+      });
+      if(n) await S.compareAndSet('companies', cur.localRev, list);
+      return { reverted:n };
+    }
+  };
   function findCompanyByCodeExcept(code, companies, excludeId){
     if(!code) return null;
     return companies.find(c=> c.code === code && c.id !== excludeId) || null;
@@ -45294,7 +45469,7 @@ window.SHIN2_CRM_APP_INIT = function(){
      진행에서 쓰는 agrIcon(같은 SVG 묶음) 그대로이고 색은 blue-gray 하나다. 지역 칩·select·
      날짜칸 안에는 넣지 않는다. 모양만 바뀌고 입력·저장·OCR 동작은 그대로다. */
   const ADDCO_LABEL_ICONS = [
-    ['상호','building'], ['업체코드','tag'], ['대표자','user'], ['담당자','userCheck'], ['직급','badge'],
+    ['상호','building'], ['B2B 전용번호','tag'], ['대표자','user'], ['담당자','userCheck'], ['직급','badge'],
     ['휴대전화','mobile'], ['연락처','phone'], ['Email','mail'], ['주소','pin'], ['사업자번호','idcard'], ['이전 상호','doc']
   ];
   function decorateAddCompanyForm(wrap){
@@ -45401,7 +45576,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       </div>
       <div class="co-form-grid2">
         <div class="co-form-field"><label>상호 *</label><input type="text" id="crmNewF_name" /></div>
-        <div class="co-form-field"><label>업체코드(자동 생성)</label><input type="text" id="crmNewF_code" readonly title="업체코드는 자동으로 발급됩니다." /></div>
+        <div class="co-form-field"><label>B2B 전용번호(자동 발급)</label><input type="text" id="crmNewF_code" readonly title="B2B 전용번호는 저장할 때 자동으로 발급됩니다." /></div>
         <div class="co-form-row3">
           <div class="co-form-field"><label>대표자</label><input type="text" id="crmNewF_repName" /></div>
           <div class="co-form-field"><label>담당자</label><input type="text" id="crmNewF_contactName" /></div>
@@ -45763,7 +45938,7 @@ window.SHIN2_CRM_APP_INIT = function(){
         patch.code = corrected;
         if(saveErrEl){
           saveErrEl.style.color = '#946200';
-          saveErrEl.textContent = `입력하신 업체코드(${dupCodeOwner.code})는 이미 사용 중이라 ${corrected}(으)로 자동 변경되었습니다.`;
+          saveErrEl.textContent = `입력하신 B2B 전용번호(${dupCodeOwner.code})는 이미 사용 중이라 ${corrected}(으)로 자동 변경되었습니다.`;
           saveErrEl.style.display = 'block';
         }
       }
@@ -45794,6 +45969,16 @@ window.SHIN2_CRM_APP_INIT = function(){
       // §요청 5 "저장 실패 시 완료 표시 안 함 / 입력 내용 유지" — 로컬 레코드는 최초
       // 1회만 만든다(재시도 때 D.addCompany를 또 부르면 같은 업체가 두 번 생긴다). 이미
       // 로컬에 있으면 그 레코드를 그대로 다시 클라우드로 밀어보낼 값만 다시 구한다.
+      // §B2B 전용번호 동시 발급 방지 — 폼을 연 뒤 다른 사람이 먼저 등록했을 수 있어, 저장 직전에
+      // 클라우드에서 번호를 예약한다(재시도 때는 처음 예약한 번호를 그대로 쓴다).
+      if(!pendingNewCompanyId && /^B2B\d{3}$/.test(patch.code)){
+        const reserved = await reserveB2BCode(D.loadCompanies());
+        if(reserved !== patch.code){
+          patch.code = reserved;
+          const codeInput = document.getElementById('crmNewF_code');
+          if(codeInput) codeInput.value = reserved;
+        }
+      }
       let rec = pendingNewCompanyId ? D.findCompany(pendingNewCompanyId) : null;
       if(rec){
         // §상태 동기화 점검 — 재시도 전에 사용자가 고친 값도 반영한다(업체코드는 처음 발급값 유지).
@@ -48709,7 +48894,7 @@ if(!window.__mapxRowDelegated){
       columns:['no','region','name','repName','address','phone'] }
   ];
   const PDF_EXPORT_COLUMN_LABELS = {
-    no:'번호', region:'지역', name:'업체명', code:'업체코드', repName:'대표자', bizRegNo:'사업자번호',
+    no:'번호', region:'지역', name:'업체명', code:'B2B 전용번호', repName:'대표자', bizRegNo:'사업자번호',
     address:'주소', phone:'연락처', fax:'FAX', email:'이메일', mouDate:'협약일', capital:'자본금', note:'비고'
   };
   // 지역: 새 등록폼이 저장하는 co.region(배열, 복수 선택)을 최우선으로 쓰고, 없으면
@@ -50394,7 +50579,7 @@ if(!window.__mapxRowDelegated){
             <div class="gift-grade-table-wrap">
               <table class="gift-grade-table">
                 <thead><tr>
-                  <th>종합순위</th><th>시공사명</th><th>B2B 코드</th>
+                  <th>종합순위</th><th>시공사명</th><th>B2B 전용번호</th>
                   <th>실적순위</th><th>시공실적 건수${giftGradeState.year==='all'?'':`<span class="gift-grade-th-year">${giftGradeState.year}</span>`}</th>
                   <th>매출순위 ${revenueInfoIconHtml('gift')}</th><th>매출액${giftGradeState.year==='all'?'':`<span class="gift-grade-th-year">${giftGradeState.year}</span>`}</th>
                   <th>종합점수</th><th>비고</th>
@@ -50440,7 +50625,7 @@ if(!window.__mapxRowDelegated){
       '집계기준': giftGradeYearLabel(),
       '종합순위': row.compositeRank ?? '',
       '시공사명': row.names.join(', '),
-      'B2B 코드': row.code || '',
+      'B2B 전용번호': row.code || '',
       '실적순위': row.pourRank ?? '',
       '시공실적 건수': row.pourCount,
       '매출순위': row.revenueRank ?? '',
@@ -50551,7 +50736,7 @@ if(!window.__mapxRowDelegated){
   }
   const MOU_PDF_INTERNAL_COLUMNS = ['no','code','name','bizRegNo','repName','contactName','phone','email','region','address','gongjong','mouDate','status','note'];
   const MOU_PDF_INTERNAL_LABELS = {
-    no:'No.', code:'B2B 고유코드', name:'시공사명', bizRegNo:'사업자번호', repName:'대표자', contactName:'담당자',
+    no:'No.', code:'B2B 전용번호', name:'시공사명', bizRegNo:'사업자번호', repName:'대표자', contactName:'담당자',
     phone:'전화번호', email:'이메일', region:'지역', address:'주소', gongjong:'주요 공종/업종',
     mouDate:'MOU 체결일', status:'현재 협력 상태', note:'비고'
   };
