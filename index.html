@@ -29068,6 +29068,16 @@ window.SHIN2_CRM_APP_INIT = function(){
     if(agreementDateLabel) return parsePartnerDateLabel(agreementDateLabel);
     return null;
   }
+  // §내보내기 협약일 — PDF·엑셀에 찍을 협약일 원문. 고객카드(MOU 단계)와 같은 우선순위
+  // (정정 기록 → MOU 체결 기록 → 예전 명단 체결일). 카드에서 완료를 취소했으면 null.
+  function resolveMouDateText(co){
+    if(D.isAgreementInvalidated(co)) return null;
+    const corr = findStageCorrection(co, ['mouDone']);
+    if(corr) return corr.status === 'done' ? (corr.dateText || null) : null;
+    const nm = resolveNewMouForCompany(co) || {};
+    if(nm.mouDone && nm.mouLabel) return nm.mouLabel;
+    return resolvePartnerAgreementDate(co);
+  }
   // 한국 시간(Asia/Seoul) 기준 "오늘"의 연/월/일만 뽑아서, parsePartnerDateLabel과 완전히
   // 같은 방식(new Date(y, mo-1, d) — 시각 없는 달력날짜)으로 만든다. 두 값 다 "그 날짜의
   // 로컬 자정"으로 만들어지므로, 실행 서버의 시간대가 무엇이든 두 값의 차이(ms)를 86400000로
@@ -49403,7 +49413,7 @@ if(!window.__mapxRowDelegated){
       case 'phone': return co.phone || co.mobile || pd.phone || '-';
       case 'fax': return co.fax || pd.fax || '-';
       case 'email': return co.email || pd.email || '-';
-      case 'mouDate': return resolvePartnerAgreementDate(co) || '-';
+      case 'mouDate': return resolveMouDateText(co) || '-';
       case 'capital': return co.capital || pd.capital || '-';
       case 'note': return co.note || pd.note || '-';
       default: return '-';
@@ -51068,7 +51078,7 @@ if(!window.__mapxRowDelegated){
       region: resolveCompanyRegionList(co).join(', ') || '-',
       address: co.address || '-',
       gongjong: co.gongjong || '-',
-      mouDate: resolvePartnerAgreementDate(co) || '-',
+      mouDate: resolveMouDateText(co) || '-',
       status: 'MOU 체결',
       note: co.memo || (co.partnerDashboard && co.partnerDashboard.note) || '-'
     };
