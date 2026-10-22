@@ -52338,6 +52338,97 @@ else { window.addEventListener('shin2-crm-gate-passed', window.SHIN2_CRM_APP_INI
    유지하고 새로 창을 만들지 않았다(§요청 "기존 디자인과 기능은 유지") — 아래는 핸들이
    있는 경우 방어적으로 focus()만 추가한 것뿐이다(§요청 "focus()를 호출"). */
 </script>
+<script>
+/* §달력 수기 입력 — 모든 <input type="date"> 앞에 글자 입력칸을 붙인다.
+   2026-03-02 · 2026.3.2 · 26.03.02 · 20260302 · 2026년 3월 2일 처럼 적으면 원래 날짜칸 값(YYYY-MM-DD)으로
+   바꿔 넣고 input/change 이벤트를 그대로 보낸다. 원래 날짜칸(id·값·이벤트)은 그대로 남아 있어서
+   그 값을 읽는 기존 코드는 바뀌지 않는다. 옆의 달력 버튼은 원래 달력을 연다. */
+(function(){
+  const desc = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+  function parseManualDate(s){
+    const t = String(s == null ? '' : s).trim();
+    if(!t) return '';
+    let y, mo, d, m;
+    if((m = t.match(/^(\d{4})(\d{2})(\d{2})$/))) { y = +m[1]; mo = +m[2]; d = +m[3]; }
+    else if((m = t.match(/^(\d{2})(\d{2})(\d{2})$/))) { y = 2000 + +m[1]; mo = +m[2]; d = +m[3]; }
+    else if((m = t.match(/^(\d{2,4})\s*[.\-\/년]\s*(\d{1,2})\s*[.\-\/월]\s*(\d{1,2})\s*일?\.?$/))) { y = +m[1]; if(y < 100) y += 2000; mo = +m[2]; d = +m[3]; }
+    else return null;
+    const dt = new Date(y, mo - 1, d);
+    if(y < 1900 || y > 2100 || dt.getFullYear() !== y || dt.getMonth() !== mo - 1 || dt.getDate() !== d) return null;
+    return y + '-' + String(mo).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+  }
+  window.SHIN2_PARSE_MANUAL_DATE = parseManualDate;
+  function enhance(el){
+    if(el.dataset.manualDate || !el.parentNode) return;
+    el.dataset.manualDate = '1';
+    const wrap = document.createElement('span');
+    wrap.className = 'manual-date-wrap';
+    const text = document.createElement('input');
+    text.type = 'text';
+    text.className = (el.className ? el.className + ' ' : '') + 'manual-date-text';
+    text.placeholder = 'YYYY-MM-DD';
+    text.autocomplete = 'off';
+    text.inputMode = 'numeric';
+    text.title = '직접 입력: 2026-03-02, 2026.3.2, 26.03.02, 20260302';
+    text.disabled = el.disabled;
+    text.value = desc.get.call(el);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'manual-date-btn';
+    btn.setAttribute('aria-label', '달력 열기');
+    btn.tabIndex = -1;
+    btn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3.5 9.5h17M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+    btn.disabled = el.disabled;
+    el.parentNode.insertBefore(wrap, el);
+    wrap.appendChild(text); wrap.appendChild(btn); wrap.appendChild(el);
+    el.classList.add('manual-date-native');
+    el.tabIndex = -1;
+    // 코드가 날짜칸 값을 바꾸면(초기화·자동 채움) 글자칸도 따라간다.
+    Object.defineProperty(el, 'value', { configurable:true,
+      get(){ return desc.get.call(el); },
+      set(v){ desc.set.call(el, v); text.value = desc.get.call(el); text.classList.remove('is-invalid'); } });
+    function commit(final){
+      const iso = parseManualDate(text.value);
+      if(iso === null){ if(final) text.classList.add('is-invalid'); return; }
+      text.classList.remove('is-invalid');
+      if(final) text.value = iso;
+      if(desc.get.call(el) === iso) return;
+      desc.set.call(el, iso);
+      el.dispatchEvent(new Event('input', { bubbles:true }));
+      el.dispatchEvent(new Event('change', { bubbles:true }));
+    }
+    text.addEventListener('input', ()=> commit(false));
+    text.addEventListener('blur', ()=> commit(true));
+    text.addEventListener('keydown', e=>{ if(e.key === 'Enter') commit(true); });
+    el.addEventListener('change', ()=>{ text.value = desc.get.call(el); text.classList.remove('is-invalid'); });
+    btn.addEventListener('click', ()=>{
+      try{ if(el.showPicker){ el.showPicker(); return; } }catch(e){}
+      el.focus(); el.click();
+    });
+    // label for=날짜칸 을 눌렀을 때 글자칸으로 커서가 가게.
+    if(el.id) document.querySelectorAll('label[for="' + CSS.escape(el.id) + '"]').forEach(l=> l.addEventListener('click', e=>{ e.preventDefault(); text.focus(); }));
+  }
+  function scan(root){
+    if(root.nodeType !== 1) return;
+    if(root.matches && root.matches('input[type="date"]')) enhance(root);
+    root.querySelectorAll && root.querySelectorAll('input[type="date"]').forEach(enhance);
+  }
+  function start(){
+    scan(document.body);
+    new MutationObserver(list=> list.forEach(m=> m.addedNodes.forEach(scan))).observe(document.body, { childList:true, subtree:true });
+  }
+  if(document.body) start(); else document.addEventListener('DOMContentLoaded', start);
+})();
+</script>
+<style>
+.manual-date-wrap{ display:inline-flex; align-items:center; gap:4px; position:relative; max-width:100%; vertical-align:middle; }
+.manual-date-wrap > .manual-date-text{ flex:1 1 auto; min-width:0; }
+.manual-date-wrap > .manual-date-text.is-invalid{ border-color:#D9534F !important; background:#FFF6F5; }
+.manual-date-wrap > .manual-date-native{ position:absolute !important; left:0; bottom:0; width:1px !important; height:1px !important; min-width:0 !important; padding:0 !important; border:0 !important; opacity:0; pointer-events:none; }
+.manual-date-btn{ flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; padding:0; border:1px solid #DCE1EA; border-radius:6px; background:#fff; color:#4A5568; cursor:pointer; }
+.manual-date-btn:hover{ background:#F4F6FA; }
+.manual-date-btn:disabled{ opacity:.5; cursor:default; }
+</style>
 <script src="website-cleanup-ui.js"></script>
 </body>
 </html>
