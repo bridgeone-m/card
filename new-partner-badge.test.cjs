@@ -25,3 +25,8 @@ test('체결일 없음·미래 날짜·MOU 아닌 업체는 안 붙임',()=>{
   assert.ok(!run('mou',[2026,11,1],[2026,9,22]).includes('신규'));
   assert.ok(!run('m1',[2026,5,1],[2026,9,22]).includes('신규'));
 });
+test('신규 탭: 드롭다운에 MOU 체결 바로 다음, 판정은 뱃지와 같은 기준',()=>{
+  assert.match(html,/\['mouDone','MOU 체결'\],\r?\n    \['newMou','신규'\],/);
+  assert.match(html,/\['newMou','신규'\]/);
+  assert.match(html,/if\(key === 'newMou'\) return matchesFilter\(co, progress, 'mouDone', relationIndex\) && isNewPartnerWithinYear\(co\);/);
+});

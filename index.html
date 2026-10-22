@@ -21285,7 +21285,7 @@ window.SHIN2_CRM_APP_INIT = function(){
   // 판정 조건은 완전히 동일해야 하므로 새 로직을 만들지 않고 matchesFilter 안에서
   // key==='nonPartnerRevenue' 분기를 그대로 재호출(아래)한다.
   const FILTER_DEFS = [
-    ['all','전체'], ['agreementInProgress','협약 진행'], ['mouDone','MOU체결'], ['newPartner','신규 협약사'], ['agreementTerminated','협약 종료'], ['subsidiary','이전 상호'], ['trendUp','최근흐름 상승세'], ['nonPartnerRevenue','실적있음·MOU미체결'], ['revenueNoMou','실적 있음 · MOU 미체결']
+    ['all','전체'], ['agreementInProgress','협약 진행'], ['mouDone','MOU체결'], ['newMou','신규'], ['newPartner','신규 협약사'], ['agreementTerminated','협약 종료'], ['subsidiary','이전 상호'], ['trendUp','최근흐름 상승세'], ['nonPartnerRevenue','실적있음·MOU미체결'], ['revenueNoMou','실적 있음 · MOU 미체결']
   ];
   // §업체 삭제(휴지통) 라운드(신규) — "삭제된 업체" 탭은 위 FILTER_DEFS와 별도로 둔다.
   // 이유: filterCounts[key]는 companies(=D.loadActiveCompanies(), 삭제된 업체가 이미
@@ -21405,6 +21405,8 @@ window.SHIN2_CRM_APP_INIT = function(){
     // §신규 협약사 탭 라운드(신규) — isNewPartnerCompany가 판정의 유일한 소스(§요청 "신규
     // 여부를 고객 데이터에 고정 저장하지 말고 현재 날짜 기준으로 계산").
     if(key === 'newPartner') return isNewPartnerCompany(co);
+    // §신규 뱃지 탭 — 목록의 노란 "신규" 뱃지와 같은 기준(MOU 체결 · 협약 종료 아님 · 체결 1년 미만).
+    if(key === 'newMou') return matchesFilter(co, progress, 'mouDone', relationIndex) && isNewPartnerWithinYear(co);
     // §자회사·구상호 탭 통합 라운드 → §자회사 UI 제거 라운드(신규) — 원래는 자회사
     // (D.isSubsidiary)와 "구 상호" 둘 다 이 한 탭에서 봤는데(§요청 "자회사랑 (구) 회사랑
     // 하나의 탭으로"), 이번 요청으로 자회사 판정만 빼고 "구 상호"(이전 상호) 기준만
@@ -21802,6 +21804,7 @@ window.SHIN2_CRM_APP_INIT = function(){
   const MAIN_PILL_DEFS = [
     ['all','전체'],
     ['mouDone','MOU 체결'],
+    ['newMou','신규'],
     // §쓰레기통 중복 정리 라운드(신규) — "쓰레기통"은 아래 "+ 고객 등록" 줄 오른쪽 끝의
     // 아이콘 버튼(#crmTrashSummaryBtn) 하나로만 연다(§요청). 같은 목록을 여는 입구가 탭과
     // 아이콘 두 군데라 중복이었다. filterKey==='trash' 분기와 renderTrashTab()은 그대로라
