@@ -7700,6 +7700,10 @@ body{
 .co-stage-badge.is-mou{
   background:var(--primary-navy); color:#fff; border-color:var(--primary-navy);
 }
+/* 신규(MOU 체결 1년 미만) — MOU 뱃지 앞에 노란색으로. 두 글자라 폭을 줄인다. */
+.co-stage-badge.is-new-partner{
+  min-width:0; background:#FFD43B; color:#3D2E00; border-color:#F2C200;
+}
 /* 진행 3단계(2차·1차·질문서)는 같은 연한 네이비 하나로 — 단계마다 색을 늘리지 않는다. */
 .co-stage-badge.is-m2,
 .co-stage-badge.is-m1,
@@ -19462,7 +19466,22 @@ window.SHIN2_CRM_APP_INIT = function(){
     const key = deriveMouBadgeState(co, progress, caseByCaseIds);
     const def = key && MOU_BADGE_DEFS[key];
     if(!def) return '';
-    return `<span class="co-stage-badge ${def.cls}" title="${esc(def.title)}">${esc(def.label)}</span>`;
+    const html = `<span class="co-stage-badge ${def.cls}" title="${esc(def.title)}">${esc(def.label)}</span>`;
+    return (key === 'mou' && isNewPartnerWithinYear(co)) ? newPartnerBadgeHtml() + html : html;
+  }
+  // §신규 뱃지 — MOU 체결일(resolveEffectiveMouDate, 한국 날짜) 기준 1년이 안 된 업체만.
+  // 저장값이 아니라 화면을 그릴 때마다 계산하므로 체결 1년이 되는 날 자동으로 사라진다.
+  // 체결일이 없거나 미래 날짜면 붙이지 않는다.
+  function isNewPartnerWithinYear(co){
+    const p = resolveEffectiveMouDate(co);
+    if(!p) return false;
+    const today = getSeoulTodayDateOnly();
+    if(p.ts > today) return false;
+    const d = new Date(p.ts); d.setFullYear(d.getFullYear() + 1);
+    return today < d.getTime();
+  }
+  function newPartnerBadgeHtml(){
+    return `<span class="co-stage-badge is-new-partner" title="MOU 체결 1년 미만 신규 업체">신규</span>`;
   }
   // 협약 종료 배지 — 삭제처럼 보이지 않게 회색 계열로만(§요청), 붉은색은 쓰지 않는다.
   function agreementTerminatedBadgeHtml(co){
