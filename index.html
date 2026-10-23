@@ -3424,6 +3424,19 @@ html,body{background:radial-gradient(circle at 75% -10%,rgba(27,68,128,.05),tran
 .map-modal-filters{ flex:none; padding:10px 22px; border-bottom:1px solid var(--line); display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
 .map-modal-search{ flex:1 1 200px; min-width:160px; height:32px; padding:0 10px; font-size:12.5px; border:1px solid var(--line); border-radius:6px; font-family:inherit; color:var(--text); }
 .map-modal-select{ height:32px; padding:0 8px; font-size:12px; border:1px solid var(--line); border-radius:6px; font-family:inherit; color:var(--text); background:#fff; }
+/* §시·군 나누기 — 지역 드롭다운 옆 여러 곳 선택 메뉴 */
+.map-city-pick{ position:relative; flex:1 1 calc(50% - 4px); min-width:0; }
+.map-city-pick > summary{ list-style:none; display:flex; align-items:center; width:100%; box-sizing:border-box; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1; }
+.map-city-pick > summary::-webkit-details-marker{ display:none; }
+.map-city-pick > summary::after{ content:'▾'; margin-left:auto; padding-left:6px; color:#7A8699; font-size:11px; }
+.map-city-menu{ position:absolute; z-index:50; top:calc(100% + 4px); left:0; min-width:220px; max-width:320px; background:#fff; border:1px solid #E6ECF3; border-radius:12px; box-shadow:0 8px 24px rgba(20,32,51,.12); padding:8px; }
+.map-city-menu-head{ display:flex; align-items:center; justify-content:space-between; padding:2px 4px 6px; font-size:12px; font-weight:700; color:#142033; border-bottom:1px solid #EFF3F8; }
+.map-city-clear{ border:0; background:none; color:#4A6FA5; font-size:12px; cursor:pointer; padding:2px 4px; }
+.map-city-list{ max-height:260px; overflow:auto; display:grid; grid-template-columns:1fr 1fr; gap:2px 6px; padding-top:6px; }
+.map-city-item{ display:flex; align-items:center; gap:6px; padding:5px 4px; border-radius:6px; font-size:12.5px; cursor:pointer; }
+.map-city-item:hover{ background:#F4F7FB; }
+.map-city-item em{ margin-left:auto; font-style:normal; color:#8A94A6; font-size:11px; }
+.map-city-empty{ padding:8px; font-size:12px; color:#8A94A6; }
 .map-modal-toggle-group{ display:flex; border:1px solid var(--line); border-radius:6px; overflow:hidden; }
 .map-modal-toggle-btn{ height:30px; padding:0 10px; font-size:12px; font-weight:600; color:var(--text-muted); background:#fff; border:none; cursor:pointer; font-family:inherit; }
 .map-modal-toggle-btn.is-active{ background:var(--navy); color:#fff; }
@@ -46556,7 +46569,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     // 항상 "전체" 상태로 새로 시작하고, 닫혀있던 동안 바뀐 최신 companies로 다시
     // 그려진다(§동기화 규칙 "닫혀 있어도 다음에 열 때 최신 데이터 사용").
     mapFilterState = { search:'', filterKey:'all', category:'all', region:'all', pourRange:'all', viewMode:'cluster', listView:'inBounds' };
-    aptFilterState = { search:'', year:'all', category:'all', region:'all', households:'all', nearCenter:null, nearRadiusKm:5, nearQuery:'' };
+    aptFilterState = { search:'', year:'all', category:'all', region:'all', households:'all', nearCenter:null, nearRadiusKm:5, nearQuery:'', cities:[] };
     mapEmbedFocusedRegion = null; // §지도 카드 고정 3단 스택: 다음에 열 때는 항상 "전체" 상태로 새로 시작
     mapActiveTab = 'company'; // §요청 "기본 선택은 시공사" — 매번 열 때 항상 기본 탭으로 시작
     mapAptViewMode = 'list';
@@ -47219,7 +47232,7 @@ window.SHIN2_CRM_APP_INIT = function(){
   const MAP_SEARCH_ICO = '<svg class="map-search-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>';
   const MAP_PIN_ICO = '<svg class="map-btn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>';
   const MAP_DOC_ICO = '<svg class="map-btn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>';
-  let aptFilterState = { search:'', year:'all', category:'all', region:'all', households:'all', nearCenter:null, nearRadiusKm:5, nearQuery:'' };
+  let aptFilterState = { search:'', year:'all', category:'all', region:'all', households:'all', nearCenter:null, nearRadiusKm:5, nearQuery:'', cities:[] };
   // §시공 아파트 PDF 내보내기 라운드(신규) — renderAptInfoPanel이 마지막으로 화면에 그린
   // "현재 지도 내 아파트"/"근처 시공 아파트" 목록(listSource)을 그대로 보관해 둔다.
   // PDF의 "현재 검색 결과만 내보내기" 옵션은 이 배열을 그대로 재사용할 뿐 별도로
@@ -47313,10 +47326,24 @@ window.SHIN2_CRM_APP_INIT = function(){
     const companyNames = normalizeMapSearchText(e.companies.map(c=> c.name).join(' '));
     return name.includes(norm) || region.includes(norm) || companyNames.includes(norm);
   }
+  // §시·군 나누기 — 시공실적의 city("수원"/"수원시"/"수원시 영통구")를 "경기 수원"처럼 한 이름으로 묶는다.
+  // 첫 단어만 쓰고 끝의 "시"만 뗀다(중구·서구 같은 구 이름은 그대로).
+  function aptCityKey(e){
+    if(!e || !e.city) return '';
+    let c = String(e.city).trim().split(/\s+/)[0];
+    if(c.length > 2 && /시$/.test(c)) c = c.slice(0, -1);
+    return ((e.region || '') + ' ' + c).trim();
+  }
+  function buildAptCityOptions(entries, region){
+    const counts = new Map();
+    entries.forEach(e=>{ if(region !== 'all' && e.region !== region) return; const k = aptCityKey(e); if(k) counts.set(k, (counts.get(k) || 0) + 1); });
+    return Array.from(counts.entries()).sort((a,b)=> a[0].localeCompare(b[0], 'ko'));
+  }
   function aptEntryMatchesFilter(e, state){
     if(state.year !== 'all' && !e.years.includes(parseInt(state.year, 10))) return false;
     if(state.category !== 'all' && !aptCategoryMatches(e.categories, state.category)) return false;
     if(state.region !== 'all' && e.region !== state.region) return false;
+    if(state.cities && state.cities.length && state.cities.indexOf(aptCityKey(e)) < 0) return false;
     if(state.households !== 'all'){
       const h = e.households;
       if(state.households === 'none') return h == null;
@@ -48847,6 +48874,11 @@ if(!window.__mapxRowDelegated){
           <option value="all">지역 전체</option>
           ${opts.regions.map(r=> `<option value="${esc(r)}"${aptFilterState.region===r?' selected':''}>${esc(r)}</option>`).join('')}
         </select>
+        <!-- §시·군 나누기 — 시/도(경기) 안에서 수원·화성·안산처럼 여러 곳을 함께 고른다. -->
+        <details class="map-city-pick" id="aptCityPick">
+          <summary class="map-modal-select map-city-pick-btn" id="aptCityPickLabel" aria-label="시·군 선택"></summary>
+          <div class="map-city-menu" id="aptCityMenu"></div>
+        </details>
         <select class="map-modal-select" id="aptFilterHouseholds" aria-label="세대수 구간">
           <option value="all"${aptFilterState.households==='all'?' selected':''}>세대수 전체</option>
           <option value="lt500"${aptFilterState.households==='lt500'?' selected':''}>500세대 미만</option>
@@ -48911,15 +48943,40 @@ if(!window.__mapxRowDelegated){
     });
     document.getElementById('aptFilterYear').addEventListener('change', (e)=>{ aptFilterState.year = e.target.value; refreshAptInfoAndMarkers(); });
     document.getElementById('aptFilterCategory').addEventListener('change', (e)=>{ aptFilterState.category = e.target.value; refreshAptInfoAndMarkers(); });
-    document.getElementById('aptFilterRegion').addEventListener('change', (e)=>{ aptFilterState.region = e.target.value; refreshAptInfoAndMarkers(); });
+    function renderAptCityMenu(){
+      const menu = document.getElementById('aptCityMenu'), label = document.getElementById('aptCityPickLabel');
+      if(!menu || !label) return;
+      const list = buildAptCityOptions(allEntries, aptFilterState.region);
+      aptFilterState.cities = (aptFilterState.cities || []).filter(k=> list.some(([n])=> n === k));
+      const sel = aptFilterState.cities;
+      label.textContent = !sel.length ? '시·군 전체' : sel.length <= 2 ? sel.map(k=> k.split(' ').slice(1).join(' ')).join('·') : `시·군 ${sel.length}곳`;
+      menu.innerHTML = !list.length ? '<div class="map-city-empty">시·군 정보 없음</div>' : `
+        <div class="map-city-menu-head"><span>${aptFilterState.region === 'all' ? '전체 지역' : esc(aptFilterState.region)}</span><button type="button" class="map-city-clear" id="aptCityClear">선택 해제</button></div>
+        <div class="map-city-list">${list.map(([k,n])=> `<label class="map-city-item"><input type="checkbox" value="${esc(k)}"${sel.indexOf(k) >= 0 ? ' checked' : ''} /><span>${esc(aptFilterState.region === 'all' ? k : k.split(' ').slice(1).join(' '))}</span><em>${n}</em></label>`).join('')}</div>`;
+      menu.querySelectorAll('input[type=checkbox]').forEach(cb=> cb.addEventListener('change', ()=>{
+        aptFilterState.cities = Array.from(menu.querySelectorAll('input[type=checkbox]:checked')).map(x=> x.value);
+        renderAptCityMenu(); refreshAptInfoAndMarkers();
+      }));
+      const clr = document.getElementById('aptCityClear');
+      if(clr) clr.addEventListener('click', ()=>{ aptFilterState.cities = []; renderAptCityMenu(); refreshAptInfoAndMarkers(); });
+    }
+    renderAptCityMenu();
+    // 메뉴 밖을 누르면 닫는다.
+    document.addEventListener('click', function closeCityPick(ev){
+      const pick = document.getElementById('aptCityPick');
+      if(!pick){ document.removeEventListener('click', closeCityPick); return; }
+      if(pick.open && ev.target.isConnected && !pick.contains(ev.target)) pick.open = false;
+    });
+    document.getElementById('aptFilterRegion').addEventListener('change', (e)=>{ aptFilterState.region = e.target.value; renderAptCityMenu(); refreshAptInfoAndMarkers(); });
     document.getElementById('aptFilterHouseholds').addEventListener('change', (e)=>{ aptFilterState.households = e.target.value; refreshAptInfoAndMarkers(); });
     document.getElementById('aptFilterResetBtn').addEventListener('click', ()=>{
-      aptFilterState = { search:'', year:'all', category:'all', region:'all', households:'all', nearCenter:null, nearRadiusKm:5, nearQuery:'' };
+      aptFilterState = { search:'', year:'all', category:'all', region:'all', households:'all', nearCenter:null, nearRadiusKm:5, nearQuery:'', cities:[] };
       document.getElementById('aptFilterSearch').value = '';
       document.getElementById('aptNearSearchInput').value = '';
       document.getElementById('aptFilterYear').value = 'all';
       document.getElementById('aptFilterCategory').value = 'all';
       document.getElementById('aptFilterRegion').value = 'all';
+      renderAptCityMenu();
       document.getElementById('aptFilterHouseholds').value = 'all';
       // 반경 드롭다운도 기본값 5km로 되돌린다.
       const nearRadiusSel = document.getElementById('aptNearRadius');
