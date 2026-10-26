@@ -50648,9 +50648,10 @@ if(!window.__mapxRowDelegated){
   // Firebase 업로드 없음, 이메일 발송 없음). 시공사/외부용도 명칭일 뿐 실제 발송 기능이
   // 아니다(§4 "버튼 문구는 PDF 저장/다운로드로, 발송 버튼을 만들지 마라").
   // §내보내기 화면 개편 라운드(신규) — 파일명: NETFORM_<문서 제목>_<외부용|내부용>_<지역>_<YYYYMMDD>
-  function pdfExportFileBase(ctx){
+  function pdfExportFileBase(ctx, includePurpose = true){
     const title = String(ctx.title || '업체목록').replace(/\s+/g, '');
-    return `NETFORM_${title}_${ctx.type.fileLabel || ctx.type.label}_${pdfExportRegionFileLabel()}_${ctx.dateStamp}`;
+    const purpose = includePurpose ? `_${ctx.type.fileLabel || ctx.type.label}` : '';
+    return `NETFORM_${title}${purpose}_${pdfExportRegionFileLabel()}_${ctx.dateStamp}`;
   }
   // 엑셀 저장 — PDF 미리보기와 같은 ctx(같은 업체 목록·같은 표 항목·같은 필드값 함수)를 그대로 쓴다.
   // 외부용은 ctx.columns가 외부 허용 항목만 담고 있으므로 다른 정보는 숨김 열·다른 시트로도 들어가지 않는다.
@@ -50742,9 +50743,8 @@ if(!window.__mapxRowDelegated){
   function doPdfExportSave(){
     // 미리보기와 완전히 같은 함수/같은 CSS를 쓴다 — 디자인을 바꾸면 둘이 동시에 바뀐다.
     const { ctx, html } = pdfExportBuildDocHtml();
-    // §요청 15 — 파일명에만 내부/외부를 붙이고(내부용일 때만), 문서 본문에는 절대
-    // "내부용/외부발송용" 문구를 넣지 않는다(§요청 1/2/5).
-    const filename = pdfExportFileBase(ctx);
+    // PDF 제안 파일명에는 내부용·외부용 구분을 붙이지 않는다.
+    const filename = pdfExportFileBase(ctx, false);
     // §window.open에 noopener를 주면 명세상 반환값이 항상 null이 되어(연결 관계 자체를
     // 끊는 옵션이라) printWin.print()를 절대 호출할 수 없게 되는 실수를 했었다 — 이 창은
     // 같은 출처(same-origin)의 순수 표/문구만 담아 열기 때문에 opener 참조를 남겨도
@@ -51275,7 +51275,7 @@ if(!window.__mapxRowDelegated){
   function doMouPdfSave(kind){
     const { html } = mouPdfBuildDocHtml(kind);
     const isInternal = kind === 'internal';
-    const filename = `MOU체결협력사_${isInternal ? '내부용' : '외부용'}_${mouPdfDateStamp()}`;
+    const filename = `MOU체결협력사_${mouPdfDateStamp()}`;
     const printWin = window.open('', '_blank');
     if(!printWin){ alert('팝업이 차단되어 PDF 저장 창을 열 수 없습니다 — 브라우저의 팝업 차단을 해제한 뒤 다시 시도해주세요.'); return; }
     try{ printWin.focus(); }catch(e){}
