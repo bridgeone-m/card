@@ -724,6 +724,12 @@
     color:#475569; background:#F1F5F9; border:1px solid #E2E8F0; border-radius:4px; white-space:nowrap;
   }
   .sales2025-badge.sales2025-ambiguous{ color:#92400E; background:#FFFBEB; border-color:#FDE68A; }
+  .new-mou-perf-row{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
+  .new-mou-perf-badge{display:inline-flex;align-items:center;padding:2px 6px;border:1px solid #DDE5EF;border-radius:5px;background:#F8FAFC;color:#566579;font-size:10.5px;font-weight:650;line-height:1.35;white-space:nowrap}
+  .new-mou-perf-badge.is-yes{border-color:#B8E5CC;background:#F0FBF4;color:#167347}
+  .new-mou-perf-badge.is-zero{border-color:#DEE4EC;background:#F7F8FA;color:#657184}
+  .new-mou-perf-badge.is-check{border-color:#F2D59C;background:#FFFAEB;color:#8B5A00}
+
   .revenue-detail-total{ font-size:15px; font-weight:700; color:var(--text); margin-bottom:8px; }
   .revenue-detail-bytype{ display:flex; flex-direction:column; gap:2px; }
   .revenue-detail-type-row{ display:flex; justify-content:space-between; font-size:12.5px; color:var(--text-muted); padding:2px 0; }
@@ -21298,8 +21304,65 @@ window.SHIN2_CRM_APP_INIT = function(){
   // 판정 조건은 완전히 동일해야 하므로 새 로직을 만들지 않고 matchesFilter 안에서
   // key==='nonPartnerRevenue' 분기를 그대로 재호출(아래)한다.
   const FILTER_DEFS = [
-    ['all','전체'], ['agreementInProgress','협약 진행'], ['mouDone','MOU체결'], ['newMou','신규'], ['newPartner','신규 협약사'], ['agreementTerminated','협약 종료'], ['subsidiary','이전 상호'], ['trendUp','최근흐름 상승세'], ['nonPartnerRevenue','실적있음·MOU미체결'], ['revenueNoMou','실적 있음 · MOU 미체결']
+    ['all','전체'], ['agreementInProgress','협약 진행'], ['mouDone','MOU체결'], ['newMou','신규업체 성과'], ['newPartner','신규 협약사'], ['agreementTerminated','협약 종료'], ['subsidiary','이전 상호'], ['trendUp','최근흐름 상승세'], ['nonPartnerRevenue','실적있음·MOU미체결'], ['revenueNoMou','실적 있음 · MOU 미체결']
   ];
+  // §신규업체 성과 탭 — 기존 1년 이내 신규업체 판정과 고객관리카드의 2026 매출,
+  // 연동된 2026 낙찰자료를 읽기 전용으로 함께 보여준다. 자료가 미연동/중복이면
+  // '없음'으로 단정하지 않고 확인 상태를 표시한다.
+  function buildNewMouPerformanceIndex(companies){
+    const norm = name => D.normCompanyName(name || '');
+    const owners = new Map();
+    (companies || []).forEach(co=>{
+      const names = [co.name].concat(Array.isArray(co.formerNames) ? co.formerNames : []);
+      new Set(names.map(norm).filter(Boolean)).forEach(n=>{
+        const ids = owners.get(n) || new Set(); ids.add(String(co.id)); owners.set(n, ids);
+      });
+    });
+    const liveRows = window.SHIN2_POUR_WON_LIVE_RECORDS;
+    const wonByNorm = new Map();
+    if(Array.isArray(liveRows)) liveRows.forEach(row=>{
+      const n = norm(row && row.company);
+      if(!n) return;
+      const arr = wonByNorm.get(n) || [];
+      arr.push(row); wonByNorm.set(n, arr);
+    });
+    const out = new Map();
+    (companies || []).forEach(co=>{
+      const names = [co.name].concat(Array.isArray(co.formerNames) ? co.formerNames : []);
+      const norms = Array.from(new Set(names.map(norm).filter(Boolean)));
+      const rev = D.getCompany2026Revenue(co);
+      const hasRevenue = !!(rev && typeof rev.total === 'number' && rev.total > 0);
+      let revenueText = '2026 매출자료 없음';
+      if(rev && typeof rev.total === 'number'){
+        revenueText = rev.total > 0 ? '2026 매출 있음 · ' + fmtKrwCompact(rev.total) : '2026 매출 0원';
+      }
+      const duplicateName = norms.some(n=> (owners.get(n) || new Set()).size > 1);
+      let wonCount = null, wonText = '2026 낙찰 확인 중';
+      if(pourWonImportState.running || !pourWonImportState.ran){
+        wonText = '2026 낙찰 확인 중';
+      } else if(pourWonImportState.lastError || !Array.isArray(liveRows)){
+        wonText = '2026 낙찰자료 확인 필요';
+      } else if(duplicateName){
+        wonText = '낙찰 업체명 확인 필요';
+      } else {
+        const seen = new Set(), hits = [];
+        norms.forEach(n=> (wonByNorm.get(n) || []).forEach(row=>{
+          const id = row.sourceRecordId || [row.company,row.client,row.year,row.sourceRow].join('|');
+          if(!seen.has(id)){ seen.add(id); hits.push(row); }
+        }));
+        wonCount = hits.length;
+        wonText = wonCount ? '2026 낙찰 있음 · ' + wonCount + '건' : '2026 낙찰자료 없음';
+      }
+      const revenueClass = hasRevenue ? 'is-yes' : (rev ? 'is-zero' : 'is-none');
+      const wonClass = wonCount === null ? 'is-check' : (wonCount ? 'is-yes' : 'is-none');
+      const html = '<div class="new-mou-perf-row">' +
+        '<span class="new-mou-perf-badge ' + revenueClass + '">' + esc(revenueText) + '</span>' +
+        '<span class="new-mou-perf-badge ' + wonClass + '">' + esc(wonText) + '</span></div>';
+      out.set(String(co.id), {html, hasRevenue, wonCount});
+    });
+    return out;
+  }
+
   // §업체 삭제(휴지통) 라운드(신규) — "삭제된 업체" 탭은 위 FILTER_DEFS와 별도로 둔다.
   // 이유: filterCounts[key]는 companies(=D.loadActiveCompanies(), 삭제된 업체가 이미
   // 빠진 목록)를 훑어 세므로, FILTER_DEFS 안에 넣으면 항상 0건으로만 보인다(§요청 6에
@@ -21817,7 +21880,7 @@ window.SHIN2_CRM_APP_INIT = function(){
   const MAIN_PILL_DEFS = [
     ['all','전체'],
     ['mouDone','MOU 체결'],
-    ['newMou','신규'],
+    ['newMou','신규업체 성과'],
     // §쓰레기통 중복 정리 라운드(신규) — "쓰레기통"은 아래 "+ 고객 등록" 줄 오른쪽 끝의
     // 아이콘 버튼(#crmTrashSummaryBtn) 하나로만 연다(§요청). 같은 목록을 여는 입구가 탭과
     // 아이콘 두 군데라 중복이었다. filterKey==='trash' 분기와 renderTrashTab()은 그대로라
@@ -23699,6 +23762,13 @@ window.SHIN2_CRM_APP_INIT = function(){
     // 한 번 만든 행은 다시 만들지 않고 재사용한다 — 검색어를 지우면 603행이 한꺼번에
     // 다시 나오는 경우가 가장 무거웠다.
     const rowHtmlCache = ctx.rowHtmlCache || (ctx.rowHtmlCache = new Map());
+    const newMouPerfById = filterKey === 'newMou' ? buildNewMouPerformanceIndex(companies) : new Map();
+    if(filterKey === 'newMou'){
+      const newItems = (ctx.sortedBase || []).map(r=> newMouPerfById.get(String(r.co.id))).filter(Boolean);
+      const salesCount = newItems.filter(x=>x.hasRevenue).length;
+      const wonCount = newItems.filter(x=>typeof x.wonCount === 'number' && x.wonCount > 0).length;
+      listTitle.innerHTML = '신규업체 성과<span class="list-title-sub">협약일 1년 이내 · 2026 매출자료 ' + salesCount + '곳 · 낙찰 확인 ' + wonCount + '곳</span>';
+    }
     const buildListRowHtml = (r)=>{
       const co = r.co;
       // §등급 제거/2025년 매출 반영 라운드: 등급 배지를 없애고 그 자리에 2025년 매출을
@@ -23929,6 +23999,7 @@ window.SHIN2_CRM_APP_INIT = function(){
                에서만 뺐다. co.code 값·genCompanyCode()·B2B 카운터·엑셀 반영 로직은 전혀
                건드리지 않았고, 고객 상세/협약종료 정보/삭제 목록/PDF에서는 그대로 보인다. -->
           ${formerNameSubtextHtml(co)}
+          ${filterKey === 'newMou' ? ((newMouPerfById.get(String(co.id)) || {}).html || '') : ''}
         </div>
         ${riskView ? (()=>{ const rk = b2bRiskFor(co.id); return rk
           ? `<div class="col-pour"><span class="risk-signal is-${rk.key}">${esc(rk.signal)}</span></div><div class="col-revenue-combo risk-why">${esc(rk.factors)}</div><div class="col-request risk-act-cell"><span class="risk-act is-${rk.key}">${esc(rk.action)}</span></div>`
