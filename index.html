@@ -15628,6 +15628,7 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
       relationshipLevel:{ level:'', memo:'' },
       interestPoints:{ values:[], memo:'' },
       secondMeetingPreparation:{ memo:'' },
+      otherNotes:{ memo:'' },
       requestedMaterialsAfterMeeting:{ memo:'', pending:false, notifiedAt:'', completedAt:'' },
       // verdict는 종합 인사이트 한 줄만 따로 들고 있는 값이다(MOU 진행관리 compact 표시용).
       // summary 안에도 같은 문장이 들어 있어 없어도 복구되지만, 한 줄만 쓰는 화면이
@@ -15658,6 +15659,7 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
       .map(v=> String(v)).filter((v,i,a)=> allowed.indexOf(v) >= 0 && a.indexOf(v) === i);
     out.interestPoints.memo = String(ip.memo || '');
     out.secondMeetingPreparation.memo = String((src.secondMeetingPreparation || {}).memo || '');
+    out.otherNotes.memo = String((src.otherNotes || {}).memo || '');
     const rm = src.requestedMaterialsAfterMeeting || {};
     out.requestedMaterialsAfterMeeting.memo = String(rm.memo || '');
     // pending은 저장값을 믿지 않고 "메모가 있고 아직 완료 처리 안 됨"으로 항상 다시
@@ -15679,6 +15681,7 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
       CONSULT_REVIEW_CHOICE.map(([k,f])=> [r[k][f], r[k].memo]),
       r.interestPoints.values.slice().sort(), r.interestPoints.memo,
       r.secondMeetingPreparation.memo,
+      r.otherNotes.memo,
       r.requestedMaterialsAfterMeeting.memo,
       r.autoInsight.summary
     ]);
@@ -15717,6 +15720,9 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
     }
     if(p.secondMeetingPreparation && p.secondMeetingPreparation.memo !== undefined){
       next.secondMeetingPreparation.memo = String(p.secondMeetingPreparation.memo || '');
+    }
+    if(p.otherNotes && p.otherNotes.memo !== undefined){
+      next.otherNotes.memo = String(p.otherNotes.memo || '');
     }
     if(p.requestedMaterialsAfterMeeting && p.requestedMaterialsAfterMeeting.memo !== undefined){
       next.requestedMaterialsAfterMeeting.memo = String(p.requestedMaterialsAfterMeeting.memo || '');
@@ -29249,6 +29255,14 @@ window.SHIN2_CRM_APP_INIT = function(){
       at: new Date().toISOString(), by: crmCurrentUserLabel()
     });
     const companyPatch = {partnerDashboard:Object.assign({},pd,{stageCorrections:corrections,stageCorrectionLog:log})};
+    // 체결일 등록은 날짜와 체결 완료를 같은 저장에 반영한다.
+    if(stageKey === 'mouDone' && after && after.dateText){
+      after.status = 'done';
+      companyPatch.partnerDashboard.mouDate = after.dateText;
+      companyPatch.partnerDashboard.newMou = Object.assign({},pd.newMou,{
+        mouDone:true, mouLabel:after.dateText, mouInProgress:false
+      });
+    }
     if(after && after.status==='done' && stageKey==='qReply' && after.dateText)
       Object.assign(companyPatch, window.WebsiteCleanup.eventPatch(co,'qReply',after.dateText));
     if(after && after.status==='done' && (stageKey==='mouDone' || (stageKey==='m2Done' && meta && meta.reason==='완료 처리'))){
@@ -35409,6 +35423,10 @@ window.SHIN2_CRM_APP_INIT = function(){
       </section>`;
     const reqMemo = r.requestedMaterialsAfterMeeting.memo;
     return `
+      <section class="crv-card" data-crv-section="otherNotes">
+        <div class="crv-card-head"><div class="crv-card-title">기타 메모</div></div>
+        <textarea class="crv-memo" data-crv-memo="otherNotes" aria-label="기타 메모" placeholder="질문지를 보며 자유롭게 메모하세요.">${esc(r.otherNotes.memo)}</textarea>
+      </section>
       ${ratedHtml}
       ${choiceHtml}
       ${interestHtml}
@@ -36035,6 +36053,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       D.CONSULT_REVIEW_CHOICE.forEach(([key, field])=>{ out[key] = { memo:'' }; out[key][field] = ''; });
       out.interestPoints = { values:[], memo:'' };
       out.secondMeetingPreparation = { memo:'' };
+      out.otherNotes = { memo:'' };
       out.requestedMaterialsAfterMeeting = { memo:'' };
       noteScroll.querySelectorAll('[data-crv-memo]').forEach(ta=>{
         const key = ta.getAttribute('data-crv-memo');
@@ -36061,6 +36080,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       D.CONSULT_REVIEW_CHOICE.map(([k,f])=> [draft[k][f], draft[k].memo]),
       draft.interestPoints.values.slice().sort(), draft.interestPoints.memo,
       draft.secondMeetingPreparation.memo,
+      draft.otherNotes.memo,
       draft.requestedMaterialsAfterMeeting.memo,
       (draft.autoInsight || {}).summary || ''
     ]);
@@ -36071,6 +36091,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       D.CONSULT_REVIEW_CHOICE.forEach(([k,f])=>{ out[k] = { memo:r[k].memo.trim() }; out[k][f] = r[k][f]; });
       out.interestPoints = { values:r.interestPoints.values.slice(), memo:r.interestPoints.memo.trim() };
       out.secondMeetingPreparation = { memo:r.secondMeetingPreparation.memo.trim() };
+      out.otherNotes = { memo:r.otherNotes.memo.trim() };
       out.requestedMaterialsAfterMeeting = { memo:r.requestedMaterialsAfterMeeting.memo.trim() };
       out.autoInsight = { summary:r.autoInsight.summary, verdict:r.autoInsight.verdict, tags:r.autoInsight.tags.slice() };
       return out;
@@ -45722,7 +45743,8 @@ window.SHIN2_CRM_APP_INIT = function(){
     const get = (key, field)=> document.getElementById(idPrefix + '_' + key + '_' + field);
     const m1s = get('m1','status').value, m1d = get('m1','date').value;
     const m2s = get('m2','status').value, m2d = get('m2','date').value;
-    const mous = get('mou','status').value, moud = get('mou','date').value;
+    const moud = get('mou','date').value;
+    const mous = moud ? 'done' : get('mou','status').value;
     const blocking = [], warnings = [];
     if((m1s === 'scheduled' || m1s === 'done') && !m1d) blocking.push('1차 미팅 날짜를 입력해주세요.');
     if((m2s === 'scheduled' || m2s === 'done') && !m2d) blocking.push('2차 미팅 날짜를 입력해주세요.');
@@ -45747,6 +45769,7 @@ window.SHIN2_CRM_APP_INIT = function(){
   // 단계는 아무것도 쓰지 않는다 — 기존 실제 날짜 기록을 "미정으로 되돌리는" 시도로
   // 지우는 일이 없게 한다(§14 "기존 체결일 삭제 금지"와 같은 원칙을 1·2차미팅에도 적용).
   function applyDealStageValues(companyId, values){
+    if(values.moud) values = Object.assign({},values,{mous:'done'});
     const co = D.findCompany(companyId);
     if(!co) return;
     const currentPd = co.partnerDashboard || {};
@@ -45782,7 +45805,18 @@ window.SHIN2_CRM_APP_INIT = function(){
     // resolvePartnerAgreementDate가 최우선으로 읽는 실제 필드에도 함께 쓴다(§4 "기존
     // 체결일 데이터를 그대로 사용하거나 안전하게 연결" — 기존 값이 있으면 절대 지우지
     // 않고, 새로 체결 완료를 입력했을 때만 채운다).
-    if(mouDateLabel) pdPatch.mouDate = mouDateLabel;
+    if(mouDateLabel){
+      pdPatch.mouDate = mouDateLabel;
+      // 이전 완료 취소 정정이 새 체결일 저장을 가리지 않도록 함께 갱신한다.
+      const before = (currentPd.stageCorrections || {}).mouDone || null;
+      const at = new Date().toISOString(), by = crmCurrentUserLabel();
+      const after = { status:'done', dateText:mouDateLabel, owner:before && before.owner || null, correctedAt:at, correctedBy:by };
+      pdPatch.stageCorrections = Object.assign({},currentPd.stageCorrections,{mouDone:after});
+      pdPatch.stageCorrectionLog = getStageCorrectionLog(co).concat([{
+        id:'stagecorr_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,8),
+        stageKey:'mouDone',before,after,reason:'협약일 등록',at,by
+      }]);
+    }
     const companyPatch = {partnerDashboard:pdPatch};
     if(mouDateLabel) Object.assign(companyPatch,window.WebsiteCleanup.eventPatch(co,'mou',mouDateLabel,true));
     D.updateCompany(companyId, companyPatch);
