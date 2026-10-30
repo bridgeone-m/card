@@ -10561,6 +10561,24 @@ body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-filters > .map
 .cosum-value.is-muted{ color:#B5C0CE !important; font-weight:500; }
 
 /* ==========================================================================
+   §기본정보 연락처 라운드(신규) — 기업 요약에 담당자·휴대폰·회사 연락처·이메일·
+   사업자등록번호를 함께 둔다. 항목이 늘어 행 간격을 조금 줄이고, 긴 항목명
+   (사업자등록번호)이 한 줄에 들어가게 항목명 칸만 넓힌다. 색·글자 크기는 그대로.
+   ========================================================================== */
+.cosum-item{ grid-template-columns:18px 92px minmax(0,1fr) !important; padding:7px 2px; }
+.cosum-value{ display:flex; align-items:center; flex-wrap:wrap; gap:2px 8px; min-width:0; }
+.cosum-value-text{ min-width:0; overflow-wrap:anywhere; }
+.cosum-item .cosum-copy-btn{
+  height:24px !important; min-height:24px !important; padding:0 8px !important; margin:0 !important;
+  font-size:11.5px !important; flex:none;
+}
+.cosum-value .co-copied{ padding-left:0; font-weight:600; }
+@media (max-width:560px){
+  .cosum-item{ grid-template-columns:18px 88px minmax(0,1fr) !important; padding:8px 0; }
+  .cosum-item .cosum-copy-btn{ height:30px !important; min-height:30px !important; padding:0 12px !important; font-size:12px !important; }
+}
+
+/* ==========================================================================
    §MOU 진행상황 글자 크기 통일 라운드(신규) — 고객관리 탭과 같은 크기로 맞춘다.
    고객관리 기준: 표 머리 14px · 업체명 13.5px · 칩 13px · 보조 글자 12px ·
    배지 11.5px · KPI 숫자 20px / 라벨 11.5px. 이 화면(#workQueueView) 안에서만 바꾼다.
@@ -27216,15 +27234,30 @@ window.SHIN2_CRM_APP_INIT = function(){
        값은 전부 기존 필드이거나 이미 있는 조회 함수 결과다(새 계산 없음):
          주요 공종 buildTopCategoriesText(co,2) · 지역 parseMapRegion(co.address). */
     const rows = [];
-    const KV_ICON = { '대표':'user', '주소':'pin', '주요 공종':'tag', '지역':'globe', 'B2B 전용번호':'idcard', '이전 상호':'doc' };
+    const KV_ICON = { '대표':'user', '담당자':'user', '휴대폰':'mobile', '회사 연락처':'phone', '이메일':'mail', '사업자등록번호':'idcard',
+      '주소':'pin', '주요 공종':'tag', '지역':'globe', 'B2B 전용번호':'idcard', '이전 상호':'doc' };
     // §기본정보 정리 라운드 — 아이콘 + (작은 라벨 / 값) 정보 칸. wide=true면 한 줄 전체.
-    const push = (k, v, wide)=>{ rows.push(
-      `<div class="cosum-item${wide ? ' is-wide' : ''}">${cinfoIcon(KV_ICON[k] || 'doc')}<div class="cosum-text"><div class="cosum-label">${esc(k)}</div><div class="cosum-value${v ? '' : ' is-muted'}">${esc(v || '—')}</div></div></div>`); };
+    // §기본정보 연락처 라운드 — 값이 없으면 '미등록', copy=true면 값 옆에 [복사](기존 copyText 재사용).
+    const push = (k, v, wide, copy)=>{
+      const s = String(v == null ? '' : v).trim();
+      const copyBtn = (copy && s) ? `<button type="button" class="workq-copy-btn cosum-copy-btn" data-cosum-copy="${esc(s)}" aria-label="${esc(k)} 복사">복사</button>` : '';
+      rows.push(
+      `<div class="cosum-item${wide ? ' is-wide' : ''}">${cinfoIcon(KV_ICON[k] || 'doc')}<div class="cosum-text"><div class="cosum-label">${esc(k)}</div><div class="cosum-value${s ? '' : ' is-muted'}"><span class="cosum-value-text">${esc(s || '미등록')}</span>${copyBtn}</div></div></div>`); };
     let topCats = null, region = null;
     try{ topCats = buildTopCategoriesText(co, 2); }catch(e){}
     try{ region = parseMapRegion(co.address); }catch(e){}
+    // §기본정보 연락처 라운드 — 연락처·사업자번호를 이 카드 하나에서 본다. 새 필드 없이
+    // 공식 필드(CO_FIELD_LABELS: repName/contactName/mobile/phone/email/bizRegNo)를 먼저 읽고,
+    // 비어 있을 때만 PDF 내보내기(pdfExportResolveField)와 같은 partnerDashboard 보조값을 쓴다.
+    // 휴대폰(mobile)과 회사 연락처(phone)는 섞지 않는다. 표시만 — 저장값은 건드리지 않는다.
+    const pd = co.partnerDashboard || {};
     // §디자인 완성도 라운드 — 업체명은 팝업 헤더 제목에 이미 있어 반복하지 않는다.
-    push('대표', co.repName);
+    push('대표', co.repName || pd.ceo);
+    push('담당자', co.contactName);
+    push('휴대폰', co.mobile, false, true);
+    push('회사 연락처', co.phone || pd.phone, false, true);
+    push('이메일', co.email || pd.email);
+    push('사업자등록번호', co.bizRegNo || pd.bizno, false, true);
     push('지역', region && region !== '기타' ? region : null);
     push('주요 공종', topCats);
     // §상세 팝업 2차 라운드 — 업체코드는 헤더(업체명 위)에 작게 표시하므로 여기서는 뺀다.
@@ -27245,6 +27278,7 @@ window.SHIN2_CRM_APP_INIT = function(){
         <div class="cosum-grid">${rows.join('')}</div>
       </div>
     `;
+    wrap.querySelectorAll('[data-cosum-copy]').forEach(btn=> btn.addEventListener('click', ()=> copyText(btn.getAttribute('data-cosum-copy'), btn)));
     const editBtn = document.getElementById('cdashCompanySummaryEditBtn');
     if(editBtn) editBtn.addEventListener('click', ()=>{
       cardState.accordionOpen.info = true;
