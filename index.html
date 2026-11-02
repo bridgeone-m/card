@@ -27249,8 +27249,8 @@ window.SHIN2_CRM_APP_INIT = function(){
             <div class="cdet-head-name-row">
               <div class="cdash2-title" id="chartCoNameTitle" title="${esc(co.name)}">${esc(co.name)}</div>
               <span class="cdash2-tag${isDone ? ' is-done' : ''} is-by-name">${esc(stageText)}</span>
+              <div class="cdash2-deal-summary">${esc(dealSummary)}${relationsInline ? ' · ' + esc(relationsInline) : ''}</div>
             </div>
-            <div class="cdash2-deal-summary">${esc(dealSummary)}${relationsInline ? ' · ' + esc(relationsInline) : ''}</div>
             <!-- §통합 고객 상세 팝업 라운드 §1 "업체명 + 담당자/연락처/이메일 등 핵심정보" —
                  예전 협약 진행관리 팝업 상단(.agr-top-info)이 보여주던 바로 그 세 가지를
                  통합 팝업 헤더로 옮겼다(같은 필드, 같은 '—' 표기). -->

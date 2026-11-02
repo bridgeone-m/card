@@ -1548,3 +1548,11 @@ html body #chartBody .cosum-grid > .cosum-item{ padding:11px 2px !important; bor
 html body #chartBody .cosum-grid > .cosum-item:last-child{ border-bottom:0 !important; }
 html body #chartBody .cosum-text{ grid-template-columns:120px minmax(0,1fr) !important; }
 @media (max-width:760px){ html body #chartBody .cosum-text{ grid-template-columns:88px minmax(0,1fr) !important; } }
+
+/* §상세 팝업 — 협약 완료일 줄을 업체명 옆 초록 [협약 완료] 표시 바로 옆으로 (2026-11 사용자 요청) */
+html body #chartHeader .cdet-head-name-row .cdash2-deal-summary{
+  margin:0 !important; font-size:13.5px !important; color:var(--text-muted) !important; white-space:nowrap; min-width:0;
+}
+@media (max-width:760px){
+  html body #chartHeader .cdet-head-name-row .cdash2-deal-summary{ flex:1 0 100%; white-space:normal; }
+}
