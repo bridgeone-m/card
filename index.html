@@ -26177,7 +26177,7 @@ window.SHIN2_CRM_APP_INIT = function(){
   // ================= 고객 차트(신규 팝업) =================
   const CO_FIELD_LABELS = [
     ['name','업체명'], ['repName','대표자'], ['contactName','담당자'], ['position','직책'],
-    ['phone','전화번호'], ['mobile','휴대전화'], ['fax','팩스'], ['email','이메일'],
+    ['phone','회사전화'], ['mobile','휴대전화'], ['fax','팩스'], ['email','이메일'],
     ['bizRegNo','사업자번호'], ['address','주소'], ['website','홈페이지']
   ];
   // 업체정보(펼치기) 패널에는 헤더에 이미 노출되는 업체명/담당자/직책은 다시 넣지 않는다.
@@ -26629,8 +26629,8 @@ window.SHIN2_CRM_APP_INIT = function(){
                  예전 협약 진행관리 팝업 상단(.agr-top-info)이 보여주던 바로 그 세 가지를
                  통합 팝업 헤더로 옮겼다(같은 필드, 같은 '—' 표기). -->
             <div class="cdet-head-contacts">
-              <span class="cdet-head-contact">${cinfoIcon('user')}담당자<b>${esc(co.contactName || '—')}</b></span>
-              <span class="cdet-head-contact">${cinfoIcon('phone')}연락처<b>${esc(co.phone || co.mobile || '—')}</b></span>
+              <span class="cdet-head-contact">${cinfoIcon('user')}대표자<b>${esc(co.repName || (co.partnerDashboard || {}).ceo || '—')}</b></span>
+              <span class="cdet-head-contact">${cinfoIcon('phone')}회사전화<b>${esc(co.phone || (co.partnerDashboard || {}).phone || '—')}</b></span>
               <span class="cdet-head-contact">${cinfoIcon('mail')}이메일<b>${esc(co.email || '—')}</b></span>
               ${(()=>{ // §디자인 완성도 라운드 — 최근 접촉(읽기만, 새 계산 없음)
                 try{
@@ -27253,9 +27253,8 @@ window.SHIN2_CRM_APP_INIT = function(){
     const pd = co.partnerDashboard || {};
     // §디자인 완성도 라운드 — 업체명은 팝업 헤더 제목에 이미 있어 반복하지 않는다.
     push('대표', co.repName || pd.ceo);
-    push('담당자', co.contactName);
     push('휴대폰', co.mobile, false, true);
-    push('회사 연락처', co.phone || pd.phone, false, true);
+    push('회사전화', co.phone || pd.phone, false, true);
     push('이메일', co.email || pd.email);
     push('사업자등록번호', co.bizRegNo || pd.bizno, false, true);
     push('지역', region && region !== '기타' ? region : null);
@@ -44334,7 +44333,7 @@ window.SHIN2_CRM_APP_INIT = function(){
   function renderBasicInfoForm(co){
     if(!window.crmAdminOk('고객 정보 수정')){ cardState.chartEditing = false; if(typeof renderBasicInfoView === 'function') renderBasicInfoView(co); return; }
     const wrap = document.getElementById('crmBasicInfo');
-    wrap.innerHTML = CO_FIELD_LABELS.concat([['memo','기본메모']]).map(([k,l])=> `
+    wrap.innerHTML = CO_FIELD_LABELS.filter(([k])=>k!=='contactName').concat([['memo','기본메모']]).map(([k,l])=> `
       <div class="co-form-field"><label>${l}</label>
         ${k==='memo' ? `<textarea id="crmF_${k}">${esc(co[k]||'')}</textarea>` : `<input type="text" id="crmF_${k}" value="${esc(co[k]||'')}" />`}
       </div>
@@ -44342,7 +44341,6 @@ window.SHIN2_CRM_APP_INIT = function(){
       // §고객 진행단계 3단계 라운드: 등록폼과 완전히 같은 블록을 "수정" 화면에도 그대로
       // 넣는다(idPrefix만 'editco'로 달라 id 충돌 없음) — 값은 이 업체의 실제 저장값으로
       // 미리 채운다(resolveDealStageFormValues, 새 판정 없음).
-      + renderDealStageBlockHtml('editco', resolveDealStageFormValues(co))
       + `<div style="display:flex;gap:10px;margin-top:6px;align-items:center;">
         <button type="button" class="co-text-action" id="crmFormCancel">취소</button>
         <button type="button" class="co-text-action primary" id="crmFormSave">저장</button>
@@ -44374,7 +44372,7 @@ window.SHIN2_CRM_APP_INIT = function(){
         return;
       }
       if(dealCheck.warnings.length && !confirm(dealCheck.warnings.join('\n') + '\n\n그래도 저장하시겠습니까?')) return;
-      warnEl.style.display = 'none'; warnEl.classList.remove('is-blocking');
+      if(warnEl){ warnEl.style.display = 'none'; warnEl.classList.remove('is-blocking'); }
       const btn = e.currentTarget;
       const statusEl = document.getElementById('crmFormSaveStatus');
       if(btn.disabled) return;
@@ -45775,6 +45773,7 @@ window.SHIN2_CRM_APP_INIT = function(){
   // 있을 수 있으므로 열람 자체는 막지 않는다"는 새 입력·수정에만 적용되는 검증이다.
   function validateDealStageBlock(idPrefix){
     const get = (key, field)=> document.getElementById(idPrefix + '_' + key + '_' + field);
+    if(!get('m1','status')) return {blocking:[],warnings:[],values:null};
     const m1s = get('m1','status').value, m1d = get('m1','date').value;
     const m2s = get('m2','status').value, m2d = get('m2','date').value;
     const moud = get('mou','date').value;
@@ -45803,6 +45802,7 @@ window.SHIN2_CRM_APP_INIT = function(){
   // 단계는 아무것도 쓰지 않는다 — 기존 실제 날짜 기록을 "미정으로 되돌리는" 시도로
   // 지우는 일이 없게 한다(§14 "기존 체결일 삭제 금지"와 같은 원칙을 1·2차미팅에도 적용).
   function applyDealStageValues(companyId, values){
+    if(!values) return;
     if(values.moud) values = Object.assign({},values,{mous:'done'});
     const co = D.findCompany(companyId);
     if(!co) return;
@@ -45981,7 +45981,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     if(grid){
       grid.parentNode.insertBefore(makeSection('building', '업체 정보'), grid);
       const firstRow3 = grid.querySelector(':scope > .co-form-row3');
-      if(firstRow3){ const h = makeSection('userCheck', '담당자 · 연락처'); h.classList.add('is-in-grid'); grid.insertBefore(h, firstRow3); }
+      if(firstRow3){ const h = makeSection('user', '대표자 · 연락 정보'); h.classList.add('is-in-grid'); grid.insertBefore(h, firstRow3); }
     }
     // 주요 라벨 앞 아이콘(라벨 글자는 그대로)
     wrap.querySelectorAll('.co-form-grid2 .co-form-field > label').forEach(lb=>{
@@ -46069,12 +46069,12 @@ window.SHIN2_CRM_APP_INIT = function(){
         <div class="co-form-field"><label>B2B 전용번호(자동 발급)</label><input type="text" id="crmNewF_code" readonly title="B2B 전용번호는 저장할 때 자동으로 발급됩니다." /></div>
         <div class="co-form-row3">
           <div class="co-form-field"><label>대표자</label><input type="text" id="crmNewF_repName" /></div>
-          <div class="co-form-field"><label>담당자</label><input type="text" id="crmNewF_contactName" /></div>
+          <input type="hidden" id="crmNewF_contactName" />
           <div class="co-form-field"><label>직급</label><input type="text" id="crmNewF_position" /></div>
         </div>
         <div class="co-form-row3">
           <div class="co-form-field"><label>휴대전화</label><input type="text" id="crmNewF_mobile" /></div>
-          <div class="co-form-field"><label>연락처</label><input type="text" id="crmNewF_phone" /></div>
+          <div class="co-form-field"><label>회사전화</label><input type="text" id="crmNewF_phone" /></div>
           <div class="co-form-field"><label>Email</label><input type="text" id="crmNewF_email" /></div>
         </div>
         <div class="co-form-field co-form-span2"><label>주소</label><input type="text" id="crmNewF_address" /></div>
@@ -46090,7 +46090,6 @@ window.SHIN2_CRM_APP_INIT = function(){
           <div class="co-form-field co-form-span2"><label>비고</label><textarea id="crmNewF_note"></textarea></div>
         </div>
       </details>
-      ${renderDealStageBlockHtml('addco', resolveDealStageFormValues(null))}
       <div class="co-form-field">
         <label>사업자등록증 · 명함 이미지 첨부(선택)</label>
         <div class="ca-ocr-box" id="crmNewFImageBox" tabindex="0" role="button" aria-label="이미지를 이 영역에 끌어다 놓거나 클릭해서 첨부">
@@ -46453,7 +46452,7 @@ window.SHIN2_CRM_APP_INIT = function(){
         return;
       }
       if(dealCheck.warnings.length && !confirm(dealCheck.warnings.join('\n') + '\n\n그래도 저장하시겠습니까?')) return;
-      warnEl.style.display = 'none'; warnEl.classList.remove('is-blocking');
+      if(warnEl){ warnEl.style.display = 'none'; warnEl.classList.remove('is-blocking'); }
       saveBtn.disabled = true;
       saveBtn.textContent = '저장 중…';
       // §요청 5 "저장 실패 시 완료 표시 안 함 / 입력 내용 유지" — 로컬 레코드는 최초
@@ -52571,6 +52570,29 @@ else { window.addEventListener('shin2-crm-gate-passed', window.SHIN2_CRM_APP_INI
 .manual-date-btn{ flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; padding:0; border:1px solid #DCE1EA; border-radius:6px; background:#fff; color:#4A5568; cursor:pointer; }
 .manual-date-btn:hover{ background:#F4F6FA; }
 .manual-date-btn:disabled{ opacity:.5; cursor:default; }
+/* 협약진행 작업은 같은 높이의 정돈된 사각 버튼으로 표시한다. */
+#agreementPopupBody .agr-stage-row-actions button,
+#agreementPopupBody .agr-stage-row-actions label.agr-q-attach-btn,
+#agreementPopupBody .agr-stage-btn-row button,
+#agreementPopupBody .agr-stage-btn-row summary,
+#agreementPopupBody .agr-meeting-btn,
+#agreementPopupBody .agr-meeting-complete-btn,
+#agreementPopupBody .agr-q-attach-btn,
+#agreementPopupBody .agr-custom-mail-btn{
+  border-radius:6px !important;
+  min-height:32px;
+  padding:5px 10px !important;
+  box-sizing:border-box;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:5px;
+  font-size:12px;
+  line-height:1.35;
+  box-shadow:none !important;
+}
+#agreementPopupBody .agr-stage-row-actions{ gap:6px !important; }
+.co-form-row3:has(> #crmNewF_contactName){ grid-template-columns:repeat(2,minmax(0,1fr)); }
 </style>
 <script src="website-cleanup-ui.js"></script>
 </body>
