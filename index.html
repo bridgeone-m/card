@@ -11505,6 +11505,23 @@ body.crm-page-shell #kpiView{ padding:14px 20px 16px !important; }
 
 /* §시공사 목록 팝업 — 검색 결과가 있을 때만 */
 body.crm-mapdock[data-crm-view="listView"] #mapDistributionModalRoot .map-modal-infocol.is-idle-hidden{ display:none !important; }
+/* §지도 목록 팝업 닫기 라운드 — 결과 목록 머리 오른쪽 닫기(×). 접기(머리 누르기)와 따로, 항상 보이고 누르기 쉬운 크기. */
+#mapDistributionModalRoot .map-list-close-btn{
+  appearance:none; flex:none; display:inline-flex; align-items:center; justify-content:center;
+  width:32px; height:32px; margin:-6px -4px -6px 4px; padding:0; border:0; border-radius:8px;
+  background:transparent; color:#5B7393; font-size:20px; line-height:1; cursor:pointer;
+}
+#mapDistributionModalRoot .map-list-close-btn:hover{ background:#EEF2F8; color:#13243E; }
+#mapDistributionModalRoot .map-apt-list-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+#mapDistributionModalRoot .map-sidelist-head-right{ display:inline-flex; align-items:center; gap:6px; flex:none; }
+#mapDistributionModalRoot .map-sidelist-head > span:first-child,
+#mapDistributionModalRoot .map-apt-list-head > span:first-child{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+#mapDistributionModalRoot .map-sidelist-count{ white-space:nowrap; }
+/* [필터 초기화]·[PDF] 버튼이 없는 탭(시공사)에서는 그 버튼 자리로 비워 둔 머리 오른쪽 여백을 쓰지 않는다 */
+body.crm-mapdock[data-crm-view="listView"] #mapDistributionModalRoot:has(.map-modal-tabs-actions:empty) .map-sidelist-head{ padding-right:4px !important; }
+@media (max-width:640px){ #mapDistributionModalRoot .map-list-close-btn{ width:40px; height:40px; } }
+/* 좁은 화면에서는 지도 위 범례(z-index 5)가 아래 목록 머리까지 내려와 닫기 버튼을 가렸다 — 목록을 그 위로 */
+@media (max-width:1100px){ #mapDistributionModalRoot .map-modal-infocol{ position:relative; z-index:6; } }
 body.crm-mapdock.crm-map-list-idle[data-crm-view="listView"] #mapDistributionModalRoot .map-docked .map-modal-tabs-actions{ display:none !important; }
 
 /* §속도 개선(페이지 나누기) — PC 고정 화면에서도 페이지 번호를 보여준다 */
@@ -13388,14 +13405,24 @@ window.SHIN2_ADMIN_VAULT = {"v":1,"it":310000,"s":"LR69gP2hfdC4DCenIz+Grw==","iv
       syncLastLocal[DOC_SYNC_STORAGE_KEY] = deepCopy(Array.isArray(window.SHIN2_CRM_DOCS_MEMORY) ? window.SHIN2_CRM_DOCS_MEMORY : (readLocalArr(DOC_SYNC_STORAGE_KEY) || []));
       function sharedLocalRevKey(storageKey){ return 'shin2-sync-rev-' + storageKey; }
       // 클라우드에서 받은(또는 방금 저장한) 값 + 아직 안 나간 이 기기 변경 = 이 기기 화면 값
+      // §저장·로딩 성능 라운드 — 이 기기 화면에 마지막으로 반영한 클라우드 버전(localRev). 내가 방금 저장한
+      // 값이 구독으로 그대로 되돌아오면(같은 localRev) 2MB 배열을 다시 풀어 화면 전체를 또 그리지 않는다.
+      const syncMirrorRev = {};
       function writeSharedMirror(name, sk, cloudValue, rev, forceEvent){
         const local = SJ.applyJournal(cloudValue, loadSyncJournal(sk));
         const before = localStorage.getItem(sk);
         const text = JSON.stringify(local);
-        try{ localStorage.setItem(sk, text); if(rev) localStorage.setItem(sharedLocalRevKey(sk), String(rev)); }catch(e){}
+        let stored = false;
+        try{ localStorage.setItem(sk, text); stored = true; if(rev) localStorage.setItem(sharedLocalRevKey(sk), String(rev)); }catch(e){}
+        syncMirrorRev[sk] = (stored && rev) ? rev : null;
         syncLastLocal[sk] = JSON.parse(text);
         if(forceEvent || before !== text) window.dispatchEvent(new CustomEvent('shin2-crm-cloud-update', { detail: { key: name } }));
       }
+      // §저장·로딩 성능 라운드 — 같은 변경을 두 번 기록하지 않기 위한 표시. writeArr가 로컬에 쓸 때마다
+      // window.__SHIN2_KEY_GEN[저장소]를 올리고, 그 값까지 이미 변경 기록(journal)에 반영했으면
+      // 저장 확인(pushAsync) 때 배열 전체를 다시 읽어 다시 비교하지 않는다.
+      const syncRecordedGen = {};
+      function localKeyGen(sk){ const g = window.__SHIN2_KEY_GEN; return g ? (g[sk] || 0) : 0; }
       let sharedPushInFlight = 0;
       function flushSharedKey(name, sk){
         const run = async ()=>{
@@ -13406,7 +13433,17 @@ window.SHIN2_ADMIN_VAULT = {"v":1,"it":310000,"s":"LR69gP2hfdC4DCenIz+Grw==","iv
           const ref = doc(db, 'users', currentUid, 'shin2', sk);
           const noticeRef = (name === 'companies' && window.WebsiteCleanup) ? doc(db, 'users', currentUid, 'shin2', window.WebsiteCleanup.KEY) : null;
           const actor = {uid:currentUid,label:'사용자 ' + (localStorage.getItem('shin2-active-user-id') || '1')};
-          const out = await runTransaction(db, async tx=>{
+          // 지난번 저장 결과가 불명확했으면, 다시 쓰기 전에 서버에 이미 들어갔는지 먼저 본다.
+          if(isSyncUnclear(sk)){
+            const already = await journalAppliedOnServer(sk, J).catch(()=> null);
+            if(already){
+              setSyncUnclear(sk, false);
+              saveSyncJournal(sk, SJ.removeApplied(loadSyncJournal(sk), J));
+              writeSharedMirror(name, sk, already.merged, already.rev, false);
+              return already;
+            }
+          }
+          const out = await withTimeout(runTransaction(db, async tx=>{
             const snap = await tx.get(ref);
             const noticeSnap = noticeRef ? await tx.get(noticeRef) : null;
             const cur = snap.exists() ? snap.data() : null;
@@ -13426,7 +13463,15 @@ window.SHIN2_ADMIN_VAULT = {"v":1,"it":310000,"s":"LR69gP2hfdC4DCenIz+Grw==","iv
               }
             }
             return { merged, rev, cleanupPayload };
+          }), syncTxTimeoutMs(), 'SAVE_TIMEOUT').catch(async err=>{
+            if(err && (err.code === 'EMPTY_GUARD' || err.code === 'NOT_READY')) throw err;
+            // 실패인지 "보냈는데 답을 못 받은 것"인지 모른다 — 서버 값을 직접 읽어 확인한다(읽기만).
+            const already = await journalAppliedOnServer(sk, J).catch(()=> null);
+            if(already) return already;
+            setSyncUnclear(sk, true);
+            throw err;
           });
+          setSyncUnclear(sk, false);
           if(out.cleanupPayload) publishCleanup(out.cleanupPayload);
           saveSyncJournal(sk, SJ.removeApplied(loadSyncJournal(sk), J));
           writeSharedMirror(name, sk, out.merged, out.rev, false);
@@ -13435,6 +13480,25 @@ window.SHIN2_ADMIN_VAULT = {"v":1,"it":310000,"s":"LR69gP2hfdC4DCenIz+Grw==","iv
         const p = (syncFlushChain[sk] || Promise.resolve()).catch(()=>{}).then(run);
         syncFlushChain[sk] = p;
         return p;
+      }
+      // §저장·로딩 성능 라운드 — 결과가 불명확한 저장(시간 초과·응답 전 연결 끊김)은 다시 보내기 전에
+      // 서버에 이미 반영됐는지부터 확인한다. 반영됐으면 저장 성공으로 처리하고 다시 쓰지 않는다.
+      // (시험용으로만 window.__SHIN2_TEST_SYNC_TIMEOUT_MS 로 줄일 수 있다 — 운영에서는 설정하지 않음)
+      function syncTxTimeoutMs(){ return window.__SHIN2_TEST_SYNC_TIMEOUT_MS || 30000; }
+      // 새로고침·재접속 뒤에도 "먼저 확인"을 지키도록 이 기기에 표시를 남긴다.
+      function isSyncUnclear(sk){ try{ return localStorage.getItem('shin2-sync-unclear-' + sk) === '1'; }catch(e){ return false; } }
+      function setSyncUnclear(sk, on){ try{ if(on) localStorage.setItem('shin2-sync-unclear-' + sk, '1'); else localStorage.removeItem('shin2-sync-unclear-' + sk); }catch(e){} }
+      function withTimeout(p, ms, code){
+        let t;
+        return Promise.race([p, new Promise((_, reject)=>{ t = setTimeout(()=> reject(Object.assign(new Error('서버 응답이 늦어 저장 결과를 확인하지 못했습니다.'), { code })), ms); })])
+          .finally(()=> clearTimeout(t));
+      }
+      async function journalAppliedOnServer(sk, J){
+        const snap = await withTimeout(getDocFromServer(doc(db, 'users', currentUid, 'shin2', sk)), 10000, 'VERIFY_TIMEOUT');
+        const cur = snap.exists() ? snap.data() : null;
+        const arr = cur && Array.isArray(cur.value) ? cur.value : null;
+        if(!arr || !SJ.isApplied(arr, J)) return null;
+        return { merged: arr, rev: (cur && cur.localRev) || 0, cleanupPayload: null, verified: true };
       }
       function scheduleSharedFlush(name, sk){
         clearTimeout(sharedPushTimers[name]);
@@ -13451,6 +13515,7 @@ window.SHIN2_ADMIN_VAULT = {"v":1,"it":310000,"s":"LR69gP2hfdC4DCenIz+Grw==","iv
         if(!Array.isArray(data)) return;
         if(data.length === 0 && !ALLOW_EMPTY_SYNC_NAMES.has(name)) return; // §15와 동일한 빈 값 가드 — 다른 키는 그대로
         recordLocalChange(storageKey, data);
+        syncRecordedGen[storageKey] = localKeyGen(storageKey);
         scheduleSharedFlush(name, storageKey);
       }
       function startSharedKeySync(name, storageKey){
@@ -13464,6 +13529,12 @@ window.SHIN2_ADMIN_VAULT = {"v":1,"it":310000,"s":"LR69gP2hfdC4DCenIz+Grw==","iv
           const payload = snap.data();
           if(payload.value == null || !Array.isArray(payload.value)) return;
           if(payload.value.length === 0 && !ALLOW_EMPTY_SYNC_NAMES.has(name)) return; // 다른 키는 기존 그대로 빈 값 무시
+          // §저장·로딩 성능 라운드 — 이 기기가 방금 저장해 이미 화면에 반영한 바로 그 버전(같은 localRev)이고
+          // 아직 안 나간 변경도 없으면, 같은 값을 다시 풀어 목록·카드·지도를 또 그리지 않는다.
+          if(payload.localRev && syncMirrorRev[storageKey] === payload.localRev && SJ.isEmpty(loadSyncJournal(storageKey))){
+            if(fromServer) markSyncFresh(storageKey);
+            return;
+          }
           // 클라우드 최신 값을 받되, 아직 안 나간 이 기기 변경(journal)은 그 위에 다시 얹어 보존한다.
           // (예전엔 "이 기기 rev가 더 크면 이 기기 전체를 다시 올림" — 오래된 화면 데이터가 클라우드를 덮어쓴 원인)
           writeSharedMirror(name, storageKey, payload.value, payload.localRev, true);
@@ -13479,11 +13550,22 @@ window.SHIN2_ADMIN_VAULT = {"v":1,"it":310000,"s":"LR69gP2hfdC4DCenIz+Grw==","iv
         Object.keys(SHARED_ARRAY_KEYS).forEach((name)=> startSharedKeySync(name, SHARED_ARRAY_KEYS[name]));
       }
       // 저장 성공 확인이 필요한 호출부용(confirmCloudSave 등) — 디바운스 없이 바로 변경분을 저장하고 결과를 돌려준다.
+      // 이 기기에 마지막으로 쓴 내용까지 이미 변경 기록(journal)에 들어갔는지(writeArr → push 직후).
+      function sharedKeyRecorded(storageKey){
+        const g = localKeyGen(storageKey);
+        return g > 0 && syncRecordedGen[storageKey] === g;
+      }
+      // data가 배열이면 항상 그 배열과 비교해 변경을 기록한다(기존 그대로). data를 생략(null)하면
+      // "방금 로컬 저장한 것의 서버 확인"이라는 뜻 — 이미 기록돼 있으면 2MB 배열을 다시 읽거나 비교하지 않는다.
       function pushSharedKeyToCloudAsync(name, storageKey, data){
         if(!currentUid) return Promise.reject(new Error('로그인이 필요합니다.'));
-        if(!Array.isArray(data)) return Promise.reject(new Error('저장할 데이터가 없습니다.'));
-        if(data.length === 0 && !ALLOW_EMPTY_SYNC_NAMES.has(name)) return Promise.reject(new Error('저장할 데이터가 없습니다.'));
-        recordLocalChange(storageKey, data);
+        if(data == null && !sharedKeyRecorded(storageKey)) data = readLocalArr(storageKey);
+        if(data != null){
+          if(!Array.isArray(data)) return Promise.reject(new Error('저장할 데이터가 없습니다.'));
+          if(data.length === 0 && !ALLOW_EMPTY_SYNC_NAMES.has(name)) return Promise.reject(new Error('저장할 데이터가 없습니다.'));
+          recordLocalChange(storageKey, data);
+          syncRecordedGen[storageKey] = localKeyGen(storageKey);
+        }
         clearTimeout(sharedPushTimers[name]);
         delete sharedPushTimers[name];
         // §저장 후 검증(신규) — 실제로 서버에 보냈는지 돌려준다. 보낼 변경이 없으면 요청 자체를 하지 않는다(중복 저장 없음).
@@ -13558,6 +13640,8 @@ window.SHIN2_ADMIN_VAULT = {"v":1,"it":310000,"s":"LR69gP2hfdC4DCenIz+Grw==","iv
         pushAsync: (name, data)=> SHARED_ARRAY_KEYS[name] ? pushSharedKeyToCloudAsync(name, SHARED_ARRAY_KEYS[name], data) : Promise.reject(new Error('알 수 없는 저장소: ' + name)),
         getOnce: (name)=> SHARED_ARRAY_KEYS[name] ? getSharedKeyDocOnce(SHARED_ARRAY_KEYS[name]) : Promise.reject(new Error('알 수 없는 저장소: ' + name)),
         isReady: (name)=> !!sharedSyncStarted[name],
+        // §저장·로딩 성능 라운드 — 이 기기 최신 로컬 저장이 이미 변경 기록에 들어갔는지(저장 확인 때 배열 재전달 생략용)
+        isRecorded: (name)=> !!(SHARED_ARRAY_KEYS[name] && sharedKeyRecorded(SHARED_ARRAY_KEYS[name])),
         // §저장 안전장치 — 로그인 후 서버 최신 값을 받았는지(받기 전엔 자동 작업·저장을 하지 않는다)
         isFresh: (name)=> !!(SHARED_ARRAY_KEYS[name] && syncFresh[SHARED_ARRAY_KEYS[name]]),
         // §데이터 저장 안정성 — 아직 클라우드로 안 나간(대기/전송 중/기록만 된) 저장 건수. 창 닫기 확인에만 쓴다.
@@ -14550,6 +14634,21 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
     try{ var a = JSON.parse(raw); return Array.isArray(a) ? a.length : -1; }catch(e){ return -1; }
   }
   function readArr(key){ try{ const raw = localStorage.getItem(key); const a = raw?JSON.parse(raw):[]; return Array.isArray(a)?a:[]; }catch(e){ return []; } }
+  // §저장·로딩 성능 라운드 — 업체 1곳·활동·메모 조회는 화면 한 번 그릴 때 수십 번 불린다(업체 목록 2MB를 매번
+  // 다시 풀던 것이 저장 후 지연의 큰 원인). 저장된 글자열이 그대로면 한 번 푼 배열을 다시 쓴다.
+  // 이 배열은 읽기 전용 — 밖으로 내줄 때는 항상 항목을 복사해서 준다(받은 쪽이 고쳐도 원본·캐시는 그대로).
+  const sharedReadCache = {};
+  function readArrShared(key){
+    let raw;
+    try{ raw = localStorage.getItem(key); }catch(e){ return []; }
+    const c = sharedReadCache[key];
+    if(c && c.raw === raw) return c.arr;
+    let arr;
+    try{ const a = raw ? JSON.parse(raw) : []; arr = Array.isArray(a) ? a : []; }catch(e){ arr = []; }
+    sharedReadCache[key] = { raw, arr };
+    return arr;
+  }
+  function cloneRecord(r){ return r == null ? r : JSON.parse(JSON.stringify(r)); }
   // §데이터 저장 안정성 라운드(신규) — 로컬 쓰기 결과를 저장소 키와 클라우드 동기화 이름(confirmCloudSave가 쓰는 이름) 둘 다로 기록.
   function markLocalWriteResult(key, ok){
     try{
@@ -14595,6 +14694,9 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
     // 단, 빈 목록일 때는 rev를 남기지 않는다. 빈 로컬이 "내가 더 최신"이라고 주장하면
     // 클라우드에 남아 있는 진짜 데이터의 복구를 막는다.
     if(arr.length > 0){ try{ localStorage.setItem('shin2-sync-rev-' + key, String(Date.now())); }catch(e){} }
+    // §저장·로딩 성능 라운드 — 이 저장소에 로컬로 쓴 횟수. 클라우드 저장 확인이 같은 변경을 다시 비교하지 않게 한다.
+    const keyGen = window.__SHIN2_KEY_GEN = window.__SHIN2_KEY_GEN || {};
+    keyGen[key] = (keyGen[key] || 0) + 1;
     // §shin/v2 전체 공용 동기화 라운드: companies/customerActivities/memos 세 키는 v2 탭 없이
     // CRM 단독으로 수정해도 클라우드로 나가도록, 저장 시점에 바로 push를 시도한다(§SHIN2_CRM_SHARED_SYNC,
     // 위 Firebase 모듈 정의). 아직 로그인 전이거나 이 기기에서 최초 병합이 안 끝났으면 함수 내부
@@ -14738,7 +14840,7 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
   // 데이터 유실 버그를 막던 안전장치)는 그대로 살아있고, 이 함수의 일반 호출부는 opts를
   // 넘기지 않으므로 기존 보호 동작에 전혀 영향이 없다.
   function saveCompanies(list, opts){ writeArr(CO_KEY, list, opts); _crmNormNameCountsCache = null; } // §37: 화면 개편과 무관하게 항상 이 키 그대로 유지
-  function findCompany(id){ return loadCompanies().find(c=> c.id === id) || null; }
+  function findCompany(id){ const f = readArrShared(CO_KEY).find(c=> c.id === id); return f ? cloneRecord(f) : null; }
   // §주식회사 표기 정규화 라운드(신규) — 사용자 요청: 업체명/이전상호(formerNames)에 들어가는
   // "㈜"(반각 기호)와 "（주）"(전각 괄호+주)를 전부 반각 "(주)" 표기로 통일해서 저장한다.
   // - "세움산업개발㈜" → "세움산업개발(주)" (접미 ㈜)
@@ -15003,7 +15105,20 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
       Object.keys(applied.del || {}).forEach(k=>{ if(cur.del && cur.del[k]) delete cur.del[k]; });
       return cur;
     }
-    window.SHIN2_SYNC_JOURNAL = { canon, keyOf, emptyJournal, isEmpty, diffInto, applyJournal, removeApplied };
+    // §저장·로딩 성능 라운드 — 서버 배열(base)에 이 변경(j)이 이미 다 들어 있는지(읽기만). 결과가
+    // 불명확한 저장을 다시 보내기 전에 쓴다 — 들어 있으면 저장 성공으로 보고 다시 쓰지 않는다.
+    function isApplied(base, j){
+      if(isEmpty(j)) return true;
+      const m = new Map(); (base || []).forEach(it=> m.set(keyOf(it), it));
+      if(Object.keys(j.del || {}).some(k=> m.has(k))) return false;
+      return Object.keys(j.set || {}).every(k=>{
+        const e = j.set[k], cur = m.get(k);
+        if(cur === undefined) return false;
+        if(e.whole) return same(cur, e.item);
+        return Object.keys(e.fields || {}).every(f=>{ const fv = e.fields[f]; return fv && fv.deleted ? cur[f] === undefined : same(cur[f], fv.v); });
+      });
+    }
+    window.SHIN2_SYNC_JOURNAL = { canon, keyOf, emptyJournal, isEmpty, diffInto, applyJournal, removeApplied, isApplied };
   })();
   // §저장 안전장치 — 메일설정은 문서 1개(객체)라, 저장할 때 클라우드 최신 값과 합친다. 템플릿은
   // 템플릿별 updatedAt이 더 최신인 쪽, 발송 계정은 accountUpdatedAt이 더 최신인 쪽을 남긴다.
@@ -15105,7 +15220,8 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
     const rec = list.find(c=> c.id === id);
     if(!rec) return null;
     applyPatchToRecord(rec, normalizeCompanyPatch(patch), !!(opts && opts.onlyFillEmpty));
-    saveCompanies(list);
+    // §저장·로딩 성능 라운드 — 방금 같은 저장소에서 정상으로 읽은 배열이라 길이를 그대로 넘긴다(저장 직전 2MB 재파싱 생략, 줄어듦 방지 가드는 그대로).
+    saveCompanies(list, { knownExistingLength: list.length });
     return rec;
   }
   // §협약 진행관리 저장 성능 개선 라운드(신규) — updateCompany와 완전히 같은 저장 로직이지만,
@@ -15119,7 +15235,7 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
     const rec = list.find(c=> c.id === id);
     if(!rec) return { rec:null, list:null };
     applyPatchToRecord(rec, normalizeCompanyPatch(patch), !!(opts && opts.onlyFillEmpty));
-    saveCompanies(list);
+    saveCompanies(list, { knownExistingLength: list.length });
     return { rec, list };
   }
   // §주식회사 표기 정규화 라운드(신규) — 기존 데이터 일괄 백필(backfill). applyPartnerImport와
@@ -15210,7 +15326,7 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
   // 사용자가 명시적으로 지우는 경우다 — 축소가 정상이므로 allowShrink를 명시한다.
   function deleteActivity(id){ saveActivities(loadActivities().filter(a=> a.id !== id), { allowShrink:true }); }
   function activitiesForCompany(companyId){
-    return loadActivities().filter(a=> a.companyId === companyId).sort((a,b)=> new Date(b.createdAt) - new Date(a.createdAt));
+    return readArrShared(ACT_KEY).filter(a=> a.companyId === companyId).map(cloneRecord).sort((a,b)=> new Date(b.createdAt) - new Date(a.createdAt));
   }
   // §고객 요청 Google Sheets 연동 라운드(신규) — "새로운 중복 활동 저장소를 만들지 마"
   // (§요청 6)에 따라 기존 customerActivities(ACT_KEY) 배열에 필드만 추가한 레코드를
@@ -16042,7 +16158,7 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
   function loadMemos(){ return readArr(MEMO_KEY); }
   function saveMemos(list, opts){ return writeArr(MEMO_KEY, list, opts); }
   function memosFor(companyId){
-    return loadMemos().filter(m=> m.targetType==='company' && String(m.targetId)===String(companyId))
+    return readArrShared(MEMO_KEY).filter(m=> m.targetType==='company' && String(m.targetId)===String(companyId)).map(cloneRecord)
       .sort((a,b)=> (b.updatedAt||b.createdAt) - (a.updatedAt||a.createdAt));
   }
   // §속도 개선 라운드: 목록 화면이 매번(검색 타이핑마다 포함) 보이는 업체 수만큼
@@ -19749,8 +19865,11 @@ window.SHIN2_CRM_APP_INIT = function(){
       if(!window.SHIN2_CRM_SHARED_SYNC || !window.SHIN2_CRM_SHARED_SYNC.pushAsync) throw new Error('SYNC_UNAVAILABLE');
       const loader = CLOUD_CONFIRM_LOADERS[syncName];
       if(!loader) throw new Error('알 수 없는 저장소: ' + syncName);
-      const data = preloadedData !== undefined ? preloadedData : loader();
-      await window.SHIN2_CRM_SHARED_SYNC.pushAsync(syncName, data);
+      // §저장·로딩 성능 라운드 — 방금 로컬 저장으로 변경 기록이 이미 끝났으면 2MB 배열을 다시 읽어 넘기지 않는다(null = 확인만).
+      const S = window.SHIN2_CRM_SHARED_SYNC;
+      const recorded = typeof S.isRecorded === 'function' && S.isRecorded(syncName);
+      const data = recorded ? null : (preloadedData !== undefined ? preloadedData : loader());
+      await S.pushAsync(syncName, data);
       return { ok:true };
     }catch(err){ return { ok:false, err }; }
   }
@@ -19817,6 +19936,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     const code = err && (err.code || (err.cause && err.cause.code));
     if(code === 'unauthenticated') return '로그인이 만료되었습니다. 다시 로그인한 뒤 시도해주세요.';
     if(code === 'permission-denied') return '권한이 없습니다. 관리자에게 문의해주세요. (오류 코드: permission-denied)';
+    if(code === 'SAVE_TIMEOUT') return '서버 응답이 늦어 저장 여부를 확인하지 못했습니다. 입력한 내용은 그대로 있으니 다시 시도해주세요(이미 저장됐으면 중복 저장되지 않습니다).';
     if(code === 'unavailable' || code === 'deadline-exceeded' || (typeof navigator !== 'undefined' && navigator.onLine === false)){
       return '인터넷 연결을 확인해주세요.';
     }
@@ -19825,6 +19945,31 @@ window.SHIN2_CRM_APP_INIT = function(){
   }
   // 기존 호출부와의 하위 호환을 위해 이름은 그대로 유지 — 실제 구현은 위 함수로 통일.
   function cloudSaveErrorMessage(err){ return firestoreSaveErrorMessage(err); }
+  // §저장·로딩 성능 라운드 — 클릭 즉시 그 버튼에 "저장 중…"을 보이고 연속 클릭을 막는다. 로컬 저장 같은 무거운
+  // 동기 작업 전에 nextPaint()로 한 번 화면을 그려, 버튼이 멈춘 것처럼 보이지 않게 한다.
+  function setSaveBtnBusy(btn, busy, label){
+    if(!btn) return;
+    if(busy){
+      if(btn.__idleLabel === undefined) btn.__idleLabel = btn.textContent;
+      btn.disabled = true; btn.setAttribute('aria-busy', 'true');
+      btn.textContent = label || '저장 중…';
+    } else {
+      btn.disabled = false; btn.removeAttribute('aria-busy');
+      // label(예: "다시 시도")을 주면 그 글자를 보이되 원래 글자는 기억해 둔다(성공하면 원래대로).
+      if(label){ btn.textContent = label; return; }
+      if(btn.__idleLabel !== undefined) btn.textContent = btn.__idleLabel;
+      btn.__idleLabel = undefined;
+    }
+  }
+  // 숨겨진 탭에서는 requestAnimationFrame이 멈추므로 50ms 뒤에는 그냥 진행한다(저장이 멈추지 않게).
+  function nextPaint(){
+    return new Promise(r=>{
+      let done = false;
+      const go = ()=>{ if(done) return; done = true; setTimeout(r, 0); };
+      requestAnimationFrame(go);
+      setTimeout(go, 50);
+    });
+  }
   // 저장 버튼 옆에 짧게 상태만 표시하는 공통 헬퍼 — 각 화면이 이미 가진 레이아웃을
   // 새로 바꾸지 않고, 지정한 엘리먼트 하나의 텍스트/색만 갱신한다.
   function showCloudSaveStatus(el, ok, err){
@@ -23103,6 +23248,9 @@ window.SHIN2_CRM_APP_INIT = function(){
       // 지금 보이는 탭의 view id. MOU·메일 화면은 JS가 인라인 style.display를 직접
       // 넣기 때문에, CSS에서 display:flex를 켜려면 !important가 필요하고, 그러면
       // 숨어 있는 화면까지 켜진다. 그래서 "지금 보이는 하나"만 겨냥한다.
+      // §지도 목록 팝업 닫기 라운드 — 고객관리 화면을 떠나면(B2B KPI·MOU·메일 탭 등) 지도 결과 목록을 정리한다.
+      const prevView = document.body.getAttribute('data-crm-view');
+      if(prevView === 'listView' && shownId !== 'listView' && window.SHIN2_MAP_LIST_DISMISS){ try{ window.SHIN2_MAP_LIST_DISMISS(); }catch(e){} }
       if(shownId) document.body.setAttribute('data-crm-view', shownId);
       else document.body.removeAttribute('data-crm-view');
     }catch(err){ /* 레이아웃 보조 클래스라 실패해도 화면 동작에는 영향 없음 */ }
@@ -26270,6 +26418,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     document.body.classList.remove('chart-lock');
     document.removeEventListener('keydown', chartEscHandler);
     history.replaceState(null, '', location.pathname);
+    listDirtyBehindCard = false;
     renderList();
     if(chartPrevFocusedEl && typeof chartPrevFocusedEl.focus === 'function'){
       try{ chartPrevFocusedEl.focus(); }catch(err){ /* 무시 — 포커스 복구 실패는 치명적이지 않음 */ }
@@ -26293,6 +26442,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     }
     chartPrevFocusedEl = null;
     chartOpenSource = 'list';
+    if(listDirtyBehindCard){ listDirtyBehindCard = false; scheduleListRender(); }
     // 카드가 화면 레이아웃을 점유했다가 사라지면 지도 컨테이너 크기가 실제로는
     // 안 바뀌었어도 Kakao Map이 리사이즈를 못 감지하는 경우가 있어, 카드를 닫은
     // 직후에만 relayout()을 한 번 호출해 지도가 틀어져 보이지 않게 한다.
@@ -26306,6 +26456,14 @@ window.SHIN2_CRM_APP_INIT = function(){
   function closeChart(){
     if(chartOpenSource === 'map'){ closeChartOnlyReturnToMap(); return; }
     openList();
+  }
+  // §저장·로딩 성능 라운드 — 고객 카드(전체 화면 팝업)가 열려 있으면 그 뒤 고객목록·지도는 가려져 보이지 않는다.
+  // 저장할 때마다 목록 전체(+지도·알림 재계산)를 다시 그리지 않고 "다시 그려야 함"만 표시해 두었다가,
+  // 카드를 닫을 때 한 번만 그린다(목록으로 닫기 = openList가 원래 다시 그림, 지도로 닫기 = 아래에서 그림).
+  let listDirtyBehindCard = false;
+  function renderListUnlessCovered(){
+    if(cardView.style.display === 'block'){ listDirtyBehindCard = true; return; }
+    renderList();
   }
   function refreshChart(){
     const co = D.findCompany(currentCompanyId);
@@ -28139,21 +28297,44 @@ window.SHIN2_CRM_APP_INIT = function(){
     let timer = null;
     let lastSaved = customerInsightNote(co);
     const pendingKey = 'insightNote:' + co.id;
+    // §저장·로딩 성능 라운드 — 저장이 진행 중일 때 또 저장이 들어오면 겹쳐 보내지 않고, 끝난 뒤 최신 값으로 한 번 더 저장한다.
+    let saving = false, rerun = false;
+    const showServerFail = (err)=>{
+      status.className = 'insight-note-status is-err';
+      status.textContent = '이 기기에 저장됨 · 서버 확인 실패 ';
+      status.title = cloudSaveErrorMessage(err);
+      const retry = document.createElement('button');
+      retry.type = 'button'; retry.className = 'co-text-action'; retry.textContent = '다시 시도';
+      retry.addEventListener('click', async ()=>{
+        retry.disabled = true; status.className = 'insight-note-status'; status.textContent = '저장 중…'; status.title = '';
+        const r2 = await confirmCloudSave('companies');
+        if(r2.ok){ status.textContent = '저장됨'; setTimeout(()=>{ if(status.textContent === '저장됨') status.textContent = ''; }, 1800); }
+        else showServerFail(r2.err);
+      });
+      status.appendChild(retry);
+    };
     const save = async ()=>{
       clearTimeout(timer);
       if(window.SHIN2_PENDING_SAVES) window.SHIN2_PENDING_SAVES.clear(pendingKey);
+      if(saving){ rerun = true; return; }
       const val = input.value.trim();
       if(val === lastSaved){ return; }
-      status.textContent = '저장 중…'; status.className = 'insight-note-status';
-      const prevSaved = lastSaved;
-      const rec = D.setCustomerInsight(co.id, { note: val });
-      if(!rec){ status.textContent = '저장 실패'; status.className = 'insight-note-status is-err'; return; }
-      lastSaved = val;
-      renderInsightNoteSummary(D.findCompany(co.id) || co);   // 기본정보 탭 요약도 바로 맞춘다
-      const r = await confirmCloudSave('companies');
-      if(r.ok){ status.textContent = '저장됨'; setTimeout(()=>{ if(status.textContent === '저장됨') status.textContent = ''; }, 1800); }
-      else if(r.err && r.err.code === 'LOCAL_WRITE_FAILED'){ lastSaved = prevSaved; status.textContent = '저장 실패 · 이 기기 저장 공간 확인'; status.className = 'insight-note-status is-err'; }
-      else { status.textContent = '이 기기에 저장됨 · 서버 확인 실패'; status.className = 'insight-note-status is-err'; }
+      saving = true;
+      try{
+        status.textContent = '저장 중…'; status.className = 'insight-note-status'; status.title = '';
+        const prevSaved = lastSaved;
+        const rec = D.setCustomerInsight(co.id, { note: val });
+        if(!rec){ status.textContent = '저장 실패'; status.className = 'insight-note-status is-err'; return; }
+        lastSaved = val;
+        renderInsightNoteSummary(D.findCompany(co.id) || co);   // 기본정보 탭 요약도 바로 맞춘다
+        const r = await confirmCloudSave('companies');
+        if(r.ok){ status.textContent = '저장됨'; setTimeout(()=>{ if(status.textContent === '저장됨') status.textContent = ''; }, 1800); }
+        else if(r.err && r.err.code === 'LOCAL_WRITE_FAILED'){ lastSaved = prevSaved; status.textContent = '저장 실패 · 이 기기 저장 공간 확인'; status.className = 'insight-note-status is-err'; }
+        else showServerFail(r.err);
+      } finally {
+        saving = false;
+        if(rerun){ rerun = false; save(); }
+      }
     };
     input.addEventListener('input', ()=>{
       clearTimeout(timer); timer = setTimeout(save, 600);
@@ -29445,7 +29626,7 @@ window.SHIN2_CRM_APP_INIT = function(){
         isConfirmedPartner(Object.assign({},co,companyPatch), buildProgressStages(Object.assign({},co,companyPatch)))));
     }
     const { rec, list } = D.updateCompanyReturningAll(companyId, companyPatch);
-    return { ok: !!rec, list };
+    return { ok: !!rec, list, patchKeys: Object.keys(companyPatch) };
   }
   function buildProgressStages(co){
     const sourceNm = resolveNewMouForCompany(co);
@@ -31524,11 +31705,31 @@ window.SHIN2_CRM_APP_INIT = function(){
     // §저장 속도 라운드(신규) — 예전에는 클라우드 저장 3곳(업체·활동·메모)이 모두 끝날 때까지
     // 팝업을 붙잡아 "오래 걸리는데 X로 닫으면 이미 반영돼 있는" 상태가 됐다. 화면 반영(로컬
     // 저장)은 이미 끝났으므로 바로 닫고, 클라우드 확인은 뒤에서 기다렸다가 실패하면 알린다.
+    // §저장·로딩 성능 라운드 — 요청: 저장 성공 전에는 팝업을 닫지 않는다. 누른 버튼에 "저장 중…"을 보이고
+    // 다른 저장 버튼도 잠근 채, 서로 독립인 3곳(업체·활동·메모)을 동시에 확인한다. 실패하면 팝업과 입력값을
+    // 그대로 두고 버튼이 "다시 시도"가 된다(재시도는 workqWriteApplied 덕분에 중복 기록 없이 확인만 다시 한다).
+    let workqClickedBtn = null, workqConfirming = false;
     async function confirmWorkqSaveAndFinish(){
-      finishAndClose();
-      const results = await Promise.all([confirmCloudSave('companies'), confirmCloudSave('customerActivities'), confirmCloudSave('memos')]);
-      const failed = results.find(r=> !r.ok);
-      if(failed) alert('클라우드 저장을 확인하지 못했습니다 — ' + cloudSaveErrorMessage(failed.err) + '\n화면에는 반영돼 있습니다. 잠시 후 다시 확인해 주세요.');
+      if(workqConfirming) return;
+      workqConfirming = true;
+      const btn = workqClickedBtn;
+      const others = Array.from(root.querySelectorAll('[data-workq-do]')).filter(b=> b !== btn && !b.disabled);
+      setSaveBtnBusy(btn, true);
+      others.forEach(b=> b.disabled = true);
+      try{
+        const results = await Promise.all([confirmCloudSave('companies'), confirmCloudSave('customerActivities'), confirmCloudSave('memos')]);
+        const failed = results.find(r=> !r.ok);
+        others.forEach(b=> b.disabled = false);
+        if(failed){
+          setSaveBtnBusy(btn, false, '다시 시도');
+          alert('저장하지 못했습니다 — ' + cloudSaveErrorMessage(failed.err) + '\n입력한 내용은 그대로 있습니다. [다시 시도]를 눌러 주세요.');
+          return;
+        }
+        setSaveBtnBusy(btn, false);
+        finishAndClose();
+      } finally {
+        workqConfirming = false;
+      }
     }
     let workqWriteApplied = false; // §요청 3 재시도 시 중복 저장 방지 — 아래 workqSave*/workqLog*
     // 함수들은 호출될 때마다 customerActivities/memos에 새 항목을 append하거나 이력을 쌓는다
@@ -31536,6 +31737,8 @@ window.SHIN2_CRM_APP_INIT = function(){
     // 문제 실제 재현). 이 팝업 인스턴스에서 로컬 반영은 한 번만 하고, 재시도는 확인만 다시 한다.
     function workqApplyOnce(writeFn){ if(!workqWriteApplied){ writeFn(); workqWriteApplied = true; } confirmWorkqSaveAndFinish(); }
     root.querySelectorAll('[data-workq-do]').forEach(btn=> btn.addEventListener('click', ()=>{
+      if(btn.disabled || workqConfirming) return;
+      workqClickedBtn = btn;
       const action = btn.getAttribute('data-workq-do');
       const memo = root.querySelector('.workq-memo-input');
       const memoVal = memo ? memo.value : '';
@@ -34741,29 +34944,65 @@ window.SHIN2_CRM_APP_INIT = function(){
   // 고객 카드 상단 요약·MOU 진행상황)을 같은 값으로 다시 그린다. 예전에는 저장한 탭만
   // 다시 그려 카드를 닫았다 열어야 바뀌었다. 판정 로직은 그대로(다시 그리기만).
   function refreshCompanyViews(companyId){
-    try{ renderList(); }catch(e){ console.warn('[refreshCompanyViews] list', e); }
+    try{ renderListUnlessCovered(); }catch(e){ console.warn('[refreshCompanyViews] list', e); }
     try{ if(cardView.style.display === 'block' && (companyId == null || String(currentCompanyId) === String(companyId))) refreshChart(); }catch(e){ console.warn('[refreshCompanyViews] card', e); }
     try{ const wq = document.getElementById('workQueueView'); if(wq && wq.style.display === 'block') renderWorkQueueView(); }catch(e){ console.warn('[refreshCompanyViews] workq', e); }
   }
-  function commitStageDateSave(companyId, stageKey, patch, meta){
-    const result = saveStageCorrection(companyId, stageKey, patch, meta);
-    closeStageDateModal();
-    if(result.ok) refreshCompanyViews(companyId);
-    if(document.getElementById('agreementPopupBody')) renderAgreementPopupBody(companyId);
-    if(!result.ok) { setAgrSaveStatus('저장 실패 · 로컬 저장에 실패했습니다', 'error'); return; }
-    if(stageKey === 'qReply' && patch && patch.status === 'done' && typeof window.SHIN2_OPEN_REPLY_CHECKLIST === 'function'){
-      const savedCo = D.findCompany(companyId);
-      window.SHIN2_OPEN_REPLY_CHECKLIST(companyId, savedCo ? savedCo.name : '');
-    }
+  // §저장·로딩 성능 라운드 — 서버 저장이 확인될 때까지 날짜 팝업을 닫지 않고 누른 버튼에 "저장 중…"을 보인다.
+  // 실패하면 이 기기에 먼저 써 둔 값을 저장 전으로 되돌리고(화면 = 서버), 팝업·입력값은 그대로 두어 다시 시도할 수 있다.
+  // 여러 번 눌러도 한 번만 처리한다. ui: { btn, msgEl } (없으면 상단 저장 상태 표시만 쓴다)
+  const stageSaveInFlight = new Set();
+  async function commitStageDateSave(companyId, stageKey, patch, meta, ui){
+    ui = ui || {};
+    const lockKey = companyId + '|' + stageKey;
+    if(stageSaveInFlight.has(lockKey)) return { ok:false, busy:true };
+    stageSaveInFlight.add(lockKey);
+    const msgEl = ui.msgEl;
+    if(msgEl){ msgEl.style.display = 'none'; msgEl.textContent = ''; }
+    setSaveBtnBusy(ui.btn, true);
     setAgrSaveStatus('저장 중...', 'progress');
-    confirmCloudSave('companies', result.list).then(r=>{
-      if(r.ok){
-        setAgrSaveStatus('저장됨', 'ok');
-        setTimeout(()=>{ const el = document.getElementById('agrSaveStatusPill'); if(el && el.classList.contains('is-ok')) setAgrSaveStatus(''); }, 2200);
-      } else {
-        setAgrSaveStatus('저장 실패 · ' + cloudSaveErrorMessage(r.err), 'error');
+    try{
+      await nextPaint();
+      const before = D.findCompany(companyId);
+      const result = saveStageCorrection(companyId, stageKey, patch, meta);
+      if(!result.ok){
+        setSaveBtnBusy(ui.btn, false, '다시 시도');
+        setAgrSaveStatus('저장 실패 · 로컬 저장에 실패했습니다', 'error');
+        if(msgEl){ msgEl.textContent = '이 기기에 저장하지 못했습니다. 다시 시도해주세요.'; msgEl.style.display = 'block'; }
+        return { ok:false };
       }
-    });
+      const r = await confirmCloudSave('companies', result.list);
+      if(!r.ok){
+        // 저장 전 값으로 되돌린다(이번에 바꾼 필드만). 되돌린 값도 다음 저장 때 서버와 맞춰진다.
+        if(before && Array.isArray(result.patchKeys)){
+          const restore = {};
+          result.patchKeys.forEach(k=>{ restore[k] = before[k]; });
+          D.updateCompany(companyId, restore);
+        }
+        setSaveBtnBusy(ui.btn, false, '다시 시도');
+        const why = cloudSaveErrorMessage(r.err);
+        setAgrSaveStatus('저장 실패 · ' + why, 'error');
+        if(msgEl){ msgEl.textContent = '저장하지 못했습니다 — ' + why; msgEl.style.display = 'block'; }
+        else alert('저장하지 못했습니다(변경 전 상태로 되돌렸습니다) — ' + why);
+        refreshCompanyViews(companyId);
+        if(cardView.style.display !== 'block' && document.getElementById('agreementPopupBody')) renderAgreementPopupBody(companyId);
+        return { ok:false, err:r.err };
+      }
+      setSaveBtnBusy(ui.btn, false);
+      closeStageDateModal();
+      refreshCompanyViews(companyId);
+      // 카드가 열려 있으면 refreshCompanyViews 안에서 이미 다시 그렸다(MOU 진행상황 화면의 팝업만 따로 그린다).
+      if(cardView.style.display !== 'block' && document.getElementById('agreementPopupBody')) renderAgreementPopupBody(companyId);
+      setAgrSaveStatus('저장됨', 'ok');
+      setTimeout(()=>{ const el = document.getElementById('agrSaveStatusPill'); if(el && el.classList.contains('is-ok')) setAgrSaveStatus(''); }, 2200);
+      if(stageKey === 'qReply' && patch && patch.status === 'done' && typeof window.SHIN2_OPEN_REPLY_CHECKLIST === 'function'){
+        const savedCo = D.findCompany(companyId);
+        window.SHIN2_OPEN_REPLY_CHECKLIST(companyId, savedCo ? savedCo.name : '');
+      }
+      return { ok:true };
+    } finally {
+      stageSaveInFlight.delete(lockKey);
+    }
   }
   // §요청 — 상태 선택 UI는 없앴지만 "완료" 판정은 여전히 자동으로 계산해야 한다. 기존
   // dateState()(§16689)와 정확히 같은 규칙: 날짜가 오늘 이하면 완료, 미래면 예정.
@@ -34864,7 +35103,10 @@ window.SHIN2_CRM_APP_INIT = function(){
     document.getElementById('stageDateCancelBtn').addEventListener('click', closeStageDateModal);
     bindSafeBackdropClose(document.getElementById('stageDateModalOverlay'), closeStageDateModal);
     setTimeout(()=>{ const el = document.getElementById('stageDateInput'); if(el) el.focus(); }, 0);
-    document.getElementById('stageDateSaveBtn').addEventListener('click', ()=>{
+    let qFileStarted = false;   // §저장·로딩 성능 라운드 — 날짜 저장을 다시 시도해도 같은 질문서 파일은 한 번만 올린다
+    document.getElementById('stageDateSaveBtn').addEventListener('click', (ev)=>{
+      const saveBtn = ev.currentTarget;
+      if(saveBtn.disabled) return;
       const dateVal = document.getElementById('stageDateInput').value;
       const msgEl = document.getElementById('stageDateMsg');
       if(!dateVal){ msgEl.textContent = '날짜를 선택해주세요.'; msgEl.style.display = 'block'; return; }
@@ -34881,11 +35123,13 @@ window.SHIN2_CRM_APP_INIT = function(){
       // §상세 팝업 compact 라운드 — 회신 날짜와 함께 고른 질문서 파일을 기존 질문서 저장 경로로 올린다.
       const qFileEl = document.getElementById('stageQAttachInput');
       const qFile = qFileEl && qFileEl.files && qFileEl.files[0];
-      commitStageDateSave(companyId, stageKey, { status, dateText, timeText: wantsTime ? timeVal : '', owner: row.owner || null }, { reason: wantsTime ? '날짜·시각 수정' : '날짜 수정' });
-      if(qFile) uploadQuestionnaireWithStatus(companyId, qFile);
+      commitStageDateSave(companyId, stageKey, { status, dateText, timeText: wantsTime ? timeVal : '', owner: row.owner || null }, { reason: wantsTime ? '날짜·시각 수정' : '날짜 수정' }, { btn: saveBtn, msgEl });
+      // 파일 업로드는 날짜 저장과 서로 독립이라 함께 진행한다(기다리지 않음).
+      if(qFile && !qFileStarted){ qFileStarted = true; uploadQuestionnaireWithStatus(companyId, qFile); }
     });
     const deleteBtn = document.getElementById('stageDateDeleteBtn');
     if(deleteBtn) deleteBtn.addEventListener('click', ()=>{
+      if(deleteBtn.disabled) return;
       // §상태 동기화 점검 — 완료 계열 날짜를 지웠는데 정정을 빼고 계산해도 여전히 완료(원본
       // newMou가 완료)라면, 지워도 화면이 그대로였다. 그때는 "대기"(1·2차는 예정일이 있으면
       // "예정") 정정으로 남겨 실제로 되돌린다. 원본 데이터는 건드리지 않는다.
@@ -34907,7 +35151,7 @@ window.SHIN2_CRM_APP_INIT = function(){
             : { status:'waiting', dateText:'', owner: row.owner || null };
         }
       }
-      commitStageDateSave(companyId, stageKey, patch, { reason: '날짜 삭제' });
+      commitStageDateSave(companyId, stageKey, patch, { reason: '날짜 삭제' }, { btn: deleteBtn, msgEl: document.getElementById('stageDateMsg') });
     });
   }
   // §질문서 회신 확인 — 기존 workq* 함수들(workqSaveMeetingSchedule 등)과 같은 패턴으로
@@ -35148,9 +35392,27 @@ window.SHIN2_CRM_APP_INIT = function(){
       const type = box.getAttribute('data-doc-check');
       const cur = D.findCompany(companyId);
       if(!cur) return;
+      const want = !!box.checked;
+      box.disabled = true; box.setAttribute('aria-busy', 'true');   // 클릭 즉시 잠금(저장 끝날 때까지)
       const next = Object.assign({}, cur.docChecks || {});
-      next[type] = !!box.checked;
+      next[type] = want;
       D.updateCompany(companyId, { docChecks: next });
+      updateDocCheckCounts();
+      // §저장·로딩 성능 라운드 — 서버 확인 중에는 그 칸만 잠그고(연속 클릭 방지), 다른 칸은 그대로 쓸 수 있다.
+      // 실패하면 이 칸만 저장 전 상태로 되돌린다(다른 칸의 체크는 건드리지 않음) — 다시 체크하면 재시도된다.
+      const r = await confirmCloudSave('companies');
+      box.disabled = false; box.removeAttribute('aria-busy');
+      if(!r.ok){
+        const now = D.findCompany(companyId);
+        if(now && !!(now.docChecks || {})[type] === want){
+          D.updateCompany(companyId, { docChecks: Object.assign({}, now.docChecks || {}, { [type]: !want }) });
+          box.checked = !want;
+          updateDocCheckCounts();
+        }
+        alert('서류 체크를 저장하지 못해 되돌렸습니다 — ' + cloudSaveErrorMessage(r.err) + '\n다시 체크하면 재시도합니다.');
+      }
+    }));
+    function updateDocCheckCounts(){
       // 요약 줄만 그 자리에서 갱신한다 — 전체 재렌더를 하면 체크 직후 포커스가 날아가
       // 연속으로 체크하기 불편하다.
       const summaryEl = wrap.querySelector('.agr-doc-summary');
@@ -35166,12 +35428,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       const tabBadgeEl = document.querySelector('#chartTabBar [data-cdet-tab="documents"] .chip-count, #chartTabBar [data-cdet-tab="questionnaire"] .chip-count');
       if(tabBadgeEl) tabBadgeEl.textContent = `${wrap.querySelectorAll('[data-doc-check]:checked').length}/${wrap.querySelectorAll('[data-doc-check]').length}`;
       renderAgreementDocFilterCount();
-      // 클라우드 저장 실패 시에도 로컬 값과 화면은 되돌리지 않는다 — 이 파일의 다른 서류
-      // 액션(업로드/확인/메모: confirmDocsCloudSave 실패 시 alert만 띄우고 로컬은 유지)과
-      // 같은 방식이다. 되돌려 버리면 네트워크가 잠깐 끊긴 동안 체크 자체를 못 하게 된다.
-      const r = await confirmCloudSave('companies');
-      if(!r.ok) alert('서류 체크는 이 기기에 저장됐지만 서버 반영 확인에 실패했습니다 — ' + cloudSaveErrorMessage(r.err));
-    }));
+    }
     function refresh(){
       wrap.innerHTML = renderHtml(companyId);
       bindAgreementDocChecklistHandlers(companyId, opts);
@@ -36874,7 +37131,7 @@ window.SHIN2_CRM_APP_INIT = function(){
         const stageKey = btn.getAttribute('data-agr-meeting-complete');
         const dateText = btn.getAttribute('data-agr-meeting-complete-date');
         const owner = btn.getAttribute('data-agr-meeting-owner') || null;
-        commitStageDateSave(co.id, stageKey, { status:'done', dateText, owner }, { reason:'완료 처리' });
+        commitStageDateSave(co.id, stageKey, { status:'done', dateText, owner }, { reason:'완료 처리' }, { btn });
       });
     });
     bindAgreementDocChecklistHandlers(co.id);
@@ -44526,12 +44783,14 @@ window.SHIN2_CRM_APP_INIT = function(){
       const btn = e.currentTarget;
       const statusEl = document.getElementById('crmFormSaveStatus');
       if(btn.disabled) return;
-      btn.disabled = true;
+      setSaveBtnBusy(btn, true);
+      if(statusEl){ statusEl.textContent = ''; statusEl.title = ''; }
+      await nextPaint();   // §저장·로딩 성능 라운드 — "저장 중…"을 먼저 보이고 로컬 저장을 한다
       D.updateCompany(co.id, patch);
       const dealNow = JSON.stringify(dealCheck.values);
       if(dealNow !== editDealInitial && !editDealApplied){ applyDealStageValues(co.id, dealCheck.values); editDealApplied = true; editDealInitial = dealNow; }
       const r = await confirmCloudSave('companies');
-      btn.disabled = false;
+      setSaveBtnBusy(btn, false, r.ok ? '' : '다시 시도');
       showCloudSaveStatus(statusEl, r.ok, r.err);
       if(!r.ok) return; // §요청 3 — 폼은 열린 채로 입력값도 그대로 남는다, 저장 버튼을 다시 누르면 재시도된다
       cardState.chartEditing = false;
@@ -45405,7 +45664,9 @@ window.SHIN2_CRM_APP_INIT = function(){
         const text = draftInput.value.trim();
         if(!text) return;
         const btn = e.currentTarget;
-        btn.disabled = true;
+        if(btn.disabled) return;
+        setSaveBtnBusy(btn, true);
+        await nextPaint();   // §저장·로딩 성능 라운드 — "저장 중…"을 먼저 보인다
         if(!memoDraftApplied){
           const before = new Set(D.memosFor(co.id).map(m=> m.id));
           D.addMemo(co.id, text); memoDraftApplied = true;
@@ -45417,7 +45678,7 @@ window.SHIN2_CRM_APP_INIT = function(){
           D.updateMemo(btn.__memoId, text); btn.__memoText = text;
         }
         const r = await confirmCloudSave('memos');
-        btn.disabled = false;
+        setSaveBtnBusy(btn, false, r.ok ? '' : '다시 시도');
         if(!r.ok){ alert(cloudSaveErrorMessage(r.err)); return; } // §요청 3 — draftInput 값은 그대로 남아 다시 누르면 재시도된다
         // §ModalManager 라운드(BUG-13) — 저장은 됐는데 뒤의 고객 상세 "최근 접촉기록"이
         // 옛 데이터를 그대로 들고 있었다. 패널 상태를 정리하고, 상세의 접촉기록 카드도
@@ -45429,7 +45690,7 @@ window.SHIN2_CRM_APP_INIT = function(){
           const fresh = D.findCompany(co.id) || co;
           if(typeof renderContactTimelineCard === 'function') renderContactTimelineCard(fresh);
           if(typeof renderMemoPreviewCard === 'function' && currentCompanyId === co.id) renderMemoPreviewCard(fresh);   // §상태 동기화 점검 — 메모 미리보기 건수도 바로
-          try{ renderList(); }catch(e2){}
+          try{ renderListUnlessCovered(); }catch(e2){}
           if(typeof renderQuestionnaireSummaryCard === 'function' && currentCompanyId === co.id){
             // 최근 요청(메모 기반) 요약도 같은 데이터를 읽는다.
             renderQuestionnaireSummaryCard(fresh);
@@ -46671,7 +46932,7 @@ window.SHIN2_CRM_APP_INIT = function(){
         D.addDocument(rec.id, docType, ocrState.file, null, ocrState.extracted).catch(()=>{ /* 업체 등록 자체는 이미 끝났으므로 첨부 실패는 조용히 무시 — 사용자는 서류함에서 다시 올릴 수 있음 */ });
       }
       openCard(rec.id);
-      renderList();
+      renderListUnlessCovered();   // §저장·로딩 성능 라운드 — 방금 연 카드에 가려진 목록은 카드를 닫을 때 그린다
       if(typeof showPhoneReqToast === 'function') showPhoneReqToast('저장되었습니다.');
       // §요청 [1] "고객이 저장됐다고 자동 발송하지 않음 — 사용자가 직접 [질문서 메일
       // 발송]을 눌렀을 때만 발송": 카드가 열린 직후 작은 확인 팝업으로 물어보고,
@@ -46910,6 +47171,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       mapFilterState.search = '';
       aptFilterState.search = '';
       mapEmbedFocusedRegion = null;
+      reopenMapResultList();   // §지도 목록 팝업 닫기 라운드 — 탭을 바꾸면 그 탭의 목록을 새로 보여 준다
       root.querySelectorAll('[data-map-tab]').forEach(b=> b.classList.toggle('is-active', b === btn));
       const titleEl = document.getElementById('mapModalTitle');
       const subEl = document.getElementById('mapModalSubtitle');
@@ -47005,6 +47267,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       mapFilterState.search = '';
       aptFilterState.search = '';
       mapEmbedFocusedRegion = null;
+      reopenMapResultList();   // §지도 목록 팝업 닫기 라운드 — 탭을 바꾸면 그 탭의 목록을 새로 보여 준다
       root.querySelectorAll('[data-map-tab]').forEach(b=> b.classList.toggle('is-active', b === btn));
       const titleEl = document.getElementById('mapModalTitle');
       const subEl = document.getElementById('mapModalSubtitle');
@@ -47954,6 +48217,55 @@ if(!window.__mapxRowDelegated){
     const nextOpen = typeof force === 'boolean' ? force : !root.classList.contains('map-embed-panel-open');
     root.classList.toggle('map-embed-panel-open', nextOpen);
   }
+  /* §지도 목록 팝업 닫기 라운드(신규) — 지도 왼쪽 결과 목록 팝업에 실제로 닫히는 길을 만든다.
+     예전엔 ×가 CSS로 숨겨져 있고(그 핸들러도 도킹 지도에서는 아무 일도 안 함), 어두운 곳·머리를 눌러도
+     40px 막대로 접히기만 해서 한 번 뜨면 사라지지 않았다. 닫기 = 팝업을 띄운 "결과 상태"를 푼다:
+       · 시공사 탭: 검색어·지역/묶음 선택·위치 미확인 보기를 풀어 평소(목록 숨김) 상태로 — 마커도 전체로.
+       · 시공 아파트/근처 탭: 이 탭은 늘 목록을 보여 주므로, 닫은 시점의 조건을 기억해 두고 조건(검색·필터·
+         근처 주소·탭)이 바뀌거나 묶음을 누를 때만 다시 띄운다. 저장·동기화로 다시 그려도 다시 뜨지 않는다.
+     데이터·마커 계산·필터 기능은 그대로다(화면 상태만 정리). */
+  let aptListDismissedSig = null;
+  let mapOverlayClickAt = 0;   // 묶음(동그라미) 클릭 시각 — 같은 클릭이 "지도 빈 곳 클릭"으로도 잡혀 목록이 닫히지 않게
+  // 지도 빈 곳 클릭 → 목록 닫기. 카카오 지도는 묶음 오버레이를 눌러도 지도 클릭을 함께 보낼 수 있어,
+  // 잠깐 기다렸다가 그 사이 묶음 클릭이 없었을 때만 닫는다.
+  function onMapBlankClick(){
+    const at = Date.now();
+    setTimeout(()=>{ if(mapOverlayClickAt >= at - 50) return; dismissMapResultList(); }, 250);
+  }
+  function aptListStateSig(){
+    return JSON.stringify([mapAptViewMode, aptFilterState.search, aptFilterState.year, aptFilterState.category, aptFilterState.region,
+      aptFilterState.cities, aptFilterState.households, aptFilterState.nearQuery, aptFilterState.nearCenter, aptFilterState.nearRadiusKm]);
+  }
+  function reopenMapResultList(){ aptListDismissedSig = null; }
+  function dismissMapResultList(){
+    if(!mapModalOpen) return false;
+    const infoCol = document.getElementById('mapModalInfoCol');
+    if(!infoCol || infoCol.classList.contains('is-idle-hidden')) return false;
+    if(mapActiveTab === 'apartment'){
+      aptListDismissedSig = aptListStateSig();
+      infoCol.dataset.listMode = 'idle';
+      infoCol.classList.add('is-idle-hidden');
+      if(window.SHIN2_MAP_LIST_APPLY) window.SHIN2_MAP_LIST_APPLY();
+      return true;
+    }
+    const searchEl = document.getElementById('mapFilterSearch');
+    if(searchEl) searchEl.value = '';
+    mapFilterState.search = '';
+    mapFilterState.listView = 'inBounds';
+    mapFocusedCompanyList = null;
+    mapEmbedFocusedRegion = null;
+    refreshMapInfoAndMarkers();
+    if(window.SHIN2_MAP_LIST_APPLY) window.SHIN2_MAP_LIST_APPLY();
+    return true;
+  }
+  window.SHIN2_MAP_LIST_DISMISS = dismissMapResultList;
+  function mapListCloseBtnHtml(){
+    return '<button type="button" class="map-list-close-btn" data-map-list-close aria-label="목록 닫기" title="목록 닫기">&times;</button>';
+  }
+  function bindMapListCloseBtn(infoCol){
+    const btn = infoCol.querySelector('[data-map-list-close]');
+    if(btn) btn.addEventListener('click', (e)=>{ e.stopPropagation(); dismissMapResultList(); });
+  }
   function renderMapInfoPanel(allEntries){
     const infoCol = document.getElementById('mapModalInfoCol');
     if(!infoCol) return;
@@ -47999,6 +48311,7 @@ if(!window.__mapxRowDelegated){
           <span class="map-sidelist-head-right">
             <span class="map-sidelist-count">${esc(listCountText)}</span>
             ${mapFilterState.listView === 'unlocated' || mapFocusedCompanyList ? '<a href="#" id="mapBackToInBounds">전체 보기</a>' : ''}
+            ${mapListCloseBtnHtml()}
           </span>
         </div>
         <div class="map-sidelist-body">
@@ -48019,6 +48332,7 @@ if(!window.__mapxRowDelegated){
       e.stopPropagation(); // 지도 클릭 토글(§지역 요약 패널 라운드)로 다시 열리지 않도록
       toggleMapEmbedInfoPanel(false);
     });
+    bindMapListCloseBtn(infoCol);
     infoCol.querySelectorAll('[data-map-region]').forEach(row=> row.addEventListener('click', ()=>{
       const region = row.getAttribute('data-map-region');
       if(typeof focusMapRegion === 'function') focusMapRegion(region);
@@ -48302,6 +48616,7 @@ if(!window.__mapxRowDelegated){
       });
     }
     function focusClusterGroup(key, tier){
+      mapOverlayClickAt = Date.now(); reopenMapResultList();   // §지도 목록 팝업 닫기 라운드 — 묶음을 누르면 목록을 다시 띄운다
       selectedClusterKey = key;
       const targets = currentEntries.filter(e=> e.hasCoords && groupKeyFor(e, tier) === key);
       if(!targets.length) return;
@@ -48402,6 +48717,7 @@ if(!window.__mapxRowDelegated){
       renderMapInfoPanel(fresh);
     }
     kakao.maps.event.addListener(map, 'idle', refreshVisibleList);
+    kakao.maps.event.addListener(map, 'click', onMapBlankClick);   // §지도 목록 팝업 닫기 라운드 — 빈 곳 클릭 = 목록 닫기
 
     /* §지도 팝업 전환 라운드(신규) §10 — 지도가 팝업 안에서 만들어지므로, 컨테이너 크기가
        확정되기 전에 Map이 생성되면 카카오맵이 0×0으로 크기를 잡아 타일이 안 그려지거나
@@ -48452,6 +48768,7 @@ if(!window.__mapxRowDelegated){
         // (mapActiveTab 가드는 방어선 하나 더, 이건 애초에 안 불리게 막는 조치).
         try{ if(mapResizeObserver){ mapResizeObserver.disconnect(); mapResizeObserver = null; } } catch(err){ /* 무시 */ }
         try{ kakao.maps.event.removeListener(map, 'idle', refreshVisibleList); } catch(err){ /* 무시 */ }
+        try{ kakao.maps.event.removeListener(map, 'click', onMapBlankClick); } catch(err){ /* 무시 */ }
         try{ clusterer.clear(); clearClusterOverlays(); clearHeatmap(); infoWindow.close(); } catch(err){ /* 무시 — 팝업 자체가 사라지므로 잔여 정리는 최선 노력만 */ }
       }
     };
@@ -48837,6 +49154,7 @@ if(!window.__mapxRowDelegated){
       });
     }
     function focusClusterGroup(key, tier){
+      mapOverlayClickAt = Date.now(); reopenMapResultList();   // §지도 목록 팝업 닫기 라운드 — 묶음을 누르면 목록을 다시 띄운다
       selectedClusterKey = key;
       const targets = currentEntries.filter(e=> e.hasCoords && groupKeyFor(e, tier) === key);
       if(!targets.length) return;
@@ -48872,6 +49190,7 @@ if(!window.__mapxRowDelegated){
       renderAptInfoPanel(allEntries);
     }
     kakao.maps.event.addListener(map, 'idle', refreshVisible);
+    kakao.maps.event.addListener(map, 'click', onMapBlankClick);   // §지도 목록 팝업 닫기 라운드 — 빈 곳 클릭 = 목록 닫기
 
     // §지도 팝업 전환 라운드(신규) §10 — 시공사 지도와 완전히 같은 조치를 아파트 지도에도
     // 대칭으로 적용한다(팝업 안에서 컨테이너 크기가 늦게 확정되는 문제). 원래 보고 있던
@@ -48934,6 +49253,7 @@ if(!window.__mapxRowDelegated){
       // 이중화, 새 문제 발견은 아님.
       destroy(){
         try{ kakao.maps.event.removeListener(map, 'idle', refreshVisible); } catch(err){ /* 무시 */ }
+        try{ kakao.maps.event.removeListener(map, 'click', onMapBlankClick); } catch(err){ /* 무시 */ }
         try{ clusterer.clear(); clearClusterOverlays(); clearNearCenterOverlay(); infoWindow.close(); }catch(err){ /* 무시 — 팝업 자체가 사라지므로 잔여 정리는 최선 노력만 */ }
       }
     };
@@ -49032,9 +49352,12 @@ if(!window.__mapxRowDelegated){
     const rowsEmptyMsg = aptFilterState.nearCenter
       ? nearEmptyMsg
       : (filtered.length > 0 ? '현재 지도 화면에 보이는 아파트가 없습니다(지도를 축소하거나 이동해 보세요).' : emptyMsg);
+    // §지도 목록 팝업 닫기 라운드 — 닫은 뒤 조건이 그대로면(저장·동기화로 다시 그린 경우) 닫힌 채로 둔다.
+    if(aptListDismissedSig !== null && aptListDismissedSig !== aptListStateSig()) aptListDismissedSig = null;
+    infoCol.dataset.listMode = aptListDismissedSig !== null ? 'idle' : 'result';
     infoCol.innerHTML = `
       <div>
-        <div class="map-info-block-title">${esc(listTitle)}</div>
+        <div class="map-info-block-title map-apt-list-head"><span>${esc(listTitle)}</span>${mapListCloseBtnHtml()}</div>
         ${listSource.length ? listSource.slice(0, 300).map(e=> `
           <div class="map-apt-row" data-apt-key="${esc(e.key)}">
             <div class="map-apt-row-name"><span>${esc(e.name)}</span><span class="map-apt-row-hh">${typeof e.distanceKm === 'number' ? esc(e.distanceKm.toFixed(1)) + 'km' : esc(fmtAptHouseholds(e.households))}</span></div>
@@ -49048,6 +49371,7 @@ if(!window.__mapxRowDelegated){
       const key = row.getAttribute('data-apt-key');
       if(typeof focusAptItem === 'function') focusAptItem(key);
     }));
+    bindMapListCloseBtn(infoCol);
   }
 
   // 필터/검색이 바뀌었을 때 아파트 마커와 정보 패널만 다시 그린다(지도 인스턴스는 그대로
@@ -51892,11 +52216,11 @@ if(!window.__mapxRowDelegated){
     const collapsed = ()=>{ try{ return localStorage.getItem(KEY) === '1'; }catch(e){ return false; } };
     const apply = ()=>{
       const cols = Array.from(document.querySelectorAll('#mapDistributionModalRoot .map-modal-infocol'));
-      const companyTab = (typeof mapActiveTab === 'undefined') || mapActiveTab === 'company';
       let shown = 0, idleAny = false;
       cols.forEach(el=>{
-        const idle = companyTab && el.dataset.listMode === 'idle';
-        const result = companyTab && el.dataset.listMode === 'result';
+        // §지도 목록 팝업 닫기 라운드 — 아파트/근처 탭도 이제 listMode(result/idle)를 가진다(닫으면 idle).
+        const idle = el.dataset.listMode === 'idle';
+        const result = el.dataset.listMode === 'result';
         el.classList.toggle('is-idle-hidden', idle);
         // 검색 결과가 새로 나오는 순간에는 접혀 있어도 펼쳐서 보여준다(그 뒤 사용자가 접으면 그대로 둔다)
         if(result && el.dataset.prevMode !== 'result'){ try{ localStorage.setItem(KEY, '0'); }catch(err){} }
@@ -51908,13 +52232,24 @@ if(!window.__mapxRowDelegated){
       const open = shown > 0 && !cols.some(el=> !el.classList.contains('is-idle-hidden') && el.classList.contains('is-collapsed')) && window.innerWidth > 1100;
       if(document.body.classList.contains('crm-map-list-open') !== open) document.body.classList.toggle('crm-map-list-open', open);
     };
-    // 어두운 배경(body::after)을 누르면 팝업을 접는다 — 클릭 대상이 body 자신일 때만
+    // 어두운 배경(body::after)을 누르면 팝업을 닫는다 — 클릭 대상이 body 자신일 때만.
+    // (§지도 목록 팝업 닫기 라운드 — 예전엔 40px 막대로 접기만 해서 팝업이 계속 남았다)
     document.addEventListener('click', e=>{
       if(e.target !== document.body || !document.body.classList.contains('crm-map-list-open')) return;
-      try{ localStorage.setItem(KEY, '1'); }catch(err){}
+      if(!(window.SHIN2_MAP_LIST_DISMISS && window.SHIN2_MAP_LIST_DISMISS())){ try{ localStorage.setItem(KEY, '1'); }catch(err){} }
       apply();
     });
+    // Esc — 고객 카드·다른 팝업이 떠 있지 않을 때만 지도 목록 팝업을 닫는다(그 팝업들의 Esc는 그대로).
+    document.addEventListener('keydown', e=>{
+      if(e.key !== 'Escape' || e.defaultPrevented) return;
+      if(document.body.getAttribute('data-crm-view') !== 'listView') return;
+      const cv = document.getElementById('cardView');
+      if(cv && cv.style.display === 'block') return;
+      if(document.querySelector('.pi-overlay, .chart-memo-overlay, .map-modal-overlay:not(.map-docked)')) return;
+      if(window.SHIN2_MAP_LIST_DISMISS && window.SHIN2_MAP_LIST_DISMISS()) apply();
+    });
     window.addEventListener('resize', apply);
+    window.SHIN2_MAP_LIST_APPLY = apply;
     document.addEventListener('click', e=>{
       const head = e.target.closest && e.target.closest('#mapDistributionModalRoot .map-sidelist-head, #mapDistributionModalRoot .map-modal-infocol .map-info-block-title');
       if(!head || window.innerWidth <= 1100) return;
