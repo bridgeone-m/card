@@ -1358,7 +1358,8 @@ html body #gateScreen #gateEnterBtn.gate-enter-btn:focus-visible{ box-shadow:0 0
 @media (min-width:761px){
   /* --- 평소(미리보기) --- */
   body.crm-mapdock[data-crm-view="listView"]:not(.crm-map-expanded) #mapDistributionModalRoot .map-docked .map-modal-tabs,
-  body.crm-mapdock[data-crm-view="listView"]:not(.crm-map-expanded) #mapDistributionModalRoot #mapModalBody > :not(.map-modal-mapcol):not(.map-modal-error){ display:none !important; }   /* 지도 불러오기 실패 안내는 그대로 보인다 */
+  body.crm-mapdock[data-crm-view="listView"]:not(.crm-map-expanded) #mapDistributionModalRoot #mapModalBody > :not(.map-modal-mapcol):not(.map-modal-body-main):not(.map-modal-error),
+  body.crm-mapdock[data-crm-view="listView"]:not(.crm-map-expanded) #mapDistributionModalRoot #mapModalBody > .map-modal-body-main > :not(.map-modal-mapcol){ display:none !important; }   /* 지도 칸(.map-modal-body-main 안)과 불러오기 실패 안내는 남긴다 */
   body.crm-mapdock[data-crm-view="listView"]:not(.crm-map-expanded) #mapDistributionModalRoot #mapModalBody{
     grid-template-rows:minmax(0,1fr) !important; grid-template-columns:minmax(0,1fr) !important; padding:0 !important; height:100% !important;
   }
@@ -1398,7 +1399,7 @@ html body #gateScreen #gateEnterBtn.gate-enter-btn:focus-visible{ box-shadow:0 0
     position:relative; box-shadow:0 30px 80px rgba(13,29,58,.30) !important; border-radius:18px !important;
   }
   body.crm-map-expanded[data-crm-view="listView"] #mapDistributionModalRoot .map-modal-infocol{
-    position:absolute !important; left:16px !important; right:auto !important;
+    position:absolute !important; left:68px !important; right:auto !important;   /* 지도 왼쪽 확대·축소 버튼을 가리지 않게 */
     top:150px !important; max-height:calc(100% - 170px) !important; width:320px !important;
   }
   body.crm-map-expanded[data-crm-view="listView"] .crm-map-expand-close{
@@ -1424,4 +1425,16 @@ body[data-crm-view="mailSettingsView"] #mailSettingsView .mail-settings-panel > 
 body[data-crm-view="mailSettingsView"] #mailSettingsView #mailTabsBar{ margin-top:0 !important; }
 @media (min-width:1101px) and (max-width:1365px){
   .gnav-right > .mailx-header-btns .mailx-account-btn{ height:40px !important; min-height:40px !important; padding:0 11px !important; font-size:13.5px !important; }
+}
+
+/* §B2B KPI 메뉴 이동 (2026-11, 사용자 요청) — 상단 탭·휴대폰 메뉴에서 감추고 설정(톱니) 메뉴에서 연다 */
+#crmTabKpi, #gnavDrawerTabKpi{ display:none !important; }
+
+/* §지도 미리보기 2차 — 실제 지도를 "그림"처럼: 지도 위 조작 버튼(확대·축소·지도/위성·범례)은 감추고,
+   [지도 크게 보기] 버튼을 키운다 */
+@media (min-width:761px){
+  body.crm-mapdock[data-crm-view="listView"]:not(.crm-map-expanded) #mapDistributionModalRoot .mapx-overlayui{ display:none !important; }
+  body.crm-mapdock[data-crm-view="listView"]:not(.crm-map-expanded) .crm-map-expand-hit{ padding-bottom:22px; }
+  .crm-map-expand-pill{ height:52px !important; padding:0 26px !important; font-size:16px !important; font-weight:800 !important; gap:10px !important; }
+  .crm-map-expand-pill::before{ width:19px !important; height:19px !important; }
 }
