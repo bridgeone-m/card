@@ -1,0 +1,936 @@
+/* ==========================================================================
+   §디자인 리프레시 (2026-11) — 오프화이트 + 딥네이비, 오렌지는 주요 버튼에만.
+
+   이 파일은 화면의 모양과 배치만 바꾼다.
+     · 문구·항목·id·class·onclick·data-* 는 하나도 바꾸지 않는다.
+     · 기존 요소를 숨기지 않는다. 배치를 위해 감싸는 상자(div)만 display:contents 로
+       풀어 안의 버튼·입력칸을 다른 칸에 놓는 경우가 있다(요소 자체는 그대로 보인다).
+     · 기존 index.html <style> 과 contract-esign.css 뒤에 불러와서 같은 우선순위면
+       항상 이 파일이 이긴다. 기존 레이어가 !important 로 덮어 둔 값은 여기서도
+       !important 로 맞춘다.
+   되돌리려면 index.html 의 <link rel="stylesheet" href="design-refresh.css"> 한 줄만
+   지우면 된다.
+   ========================================================================== */
+
+/* 글꼴 — 본문 Pretendard, 큰 숫자만 세리프(숫자·TOP 글자만 받아 가볍게). 못 받으면
+   기존 글꼴(맑은 고딕 등)로 그대로 보인다. */
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css");
+@import url("https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700&text=0123456789TOP%2C.%25%20&display=swap");
+
+/* ---------- 1. 토큰 — 기존 변수 이름 그대로 값만 바꾼다 ---------- */
+:root{
+  /* 딥네이비 계열 */
+  --primary-navy:#14284B;
+  --navy-700:#0D1D3A;
+  --navy-500:#22406E;
+  --navy-300:#8C9BB4;
+  --navy-200:#CDD5E1;
+  --navy-100:#EEF1F6;
+  --navy-text:#14284B;
+  --navy:#14284B;
+  --navy-hover:#0D1D3A;
+
+  /* 오프화이트 바탕 + 중립 회색 */
+  --bg:#F5F4F0;
+  --bg-soft:#F4F4F1;
+  --bg-soft-2:#F8F8F6;
+  --border-soft:#E6E6E1;
+  --surface:#FFFFFF;
+  --text:#151C2A;
+  --text-muted:#5D6676;
+  --text-faint:#636C7B;
+  --line:#E5E5E0;
+  --soft-blue:#F2F4F8;
+  --soft-blue-2:#ECEFF4;
+
+  /* 주요 버튼 전용 오렌지(흰 글자 대비 4.6:1) — 상태색 --orange 와는 별개 */
+  --dr-accent:#C2540A;
+  --dr-accent-hover:#A8480A;
+  --dr-accent-ring:0 0 0 3px rgba(194,84,10,.18);
+
+  /* 공통 모양 */
+  --dr-radius-card:14px;
+  --dr-radius-ctrl:9px;
+  --dr-shadow-card:0 1px 2px rgba(20,28,42,.04);
+  --dr-shadow-pop:0 18px 48px rgba(13,29,58,.14), 0 2px 6px rgba(13,29,58,.06);
+  --dr-focus:0 0 0 3px rgba(20,40,75,.14);
+
+  /* 하위 디자인 시스템 토큰도 같은 값으로 연결 */
+  --nf-text:#151C2A; --nf-text-muted:#5D6676; --nf-text-faint:#636C7B;
+  --nf-border:#E5E5E0; --nf-border-soft:#EEEEEA;
+  --nf-surface:#FFFFFF; --nf-soft-gray:#F8F8F6;
+  --nf-radius-canvas:20px; --nf-radius-card:14px; --nf-radius-ctrl:9px;
+  --nf-shadow-canvas:0 1px 2px rgba(20,28,42,.04);
+  --nf-shadow-card:0 1px 2px rgba(20,28,42,.04);
+  --nf-shadow-card-hover:0 4px 14px rgba(20,28,42,.07);
+  --nf-shadow-btn:none;
+  --ui-card-radius:14px;
+  --ui-card-shadow:0 1px 2px rgba(20,28,42,.04);
+  --ui-ctrl-radius:9px;
+  --map-bg:#F8F8F6; --map-border:#E5E5E0; --map-text:#151C2A; --map-muted:#5D6676;
+  --map-radius-modal:20px; --map-radius-card:14px;
+  --map-shadow-modal:var(--dr-shadow-pop); --map-shadow-card:0 1px 2px rgba(20,28,42,.04);
+
+  /* 공통 버튼 토큰 */
+  --crm-btn-r:9px; --crm-btn-r-lg:10px; --crm-btn-r-sm:8px;
+  --crm-btn-blue:var(--primary-navy);
+  --crm-btn-blue-hover:var(--navy-700);
+  --crm-btn-blue-soft:#EEF1F6;
+  --crm-btn-blue-line:#CDD5E1;
+  --crm-btn-line:#DCDCD6;
+  --crm-btn-text:#263043;
+  --crm-btn-text-sub:#3E4859;
+  --crm-btn-text-muted:#5D6676;
+  --crm-btn-hover-bg:#F6F6F3;
+  --crm-btn-active-bg:#EFEFEB;
+  --crm-btn-shadow:none;
+  --crm-btn-ring:var(--dr-focus);
+}
+
+/* ---------- 2. 바탕·캔버스 ---------- */
+html, body{ background:var(--bg) !important; color:var(--text); }
+body{ -webkit-font-smoothing:antialiased; }
+
+/* 바깥 흰 틀을 없애고 오프화이트 바탕 위에 흰 카드(요약·목록·지도·팝업)만 띄운다 */
+#appRoot.app{
+  background:transparent !important;
+  border-color:transparent !important;
+  box-shadow:none !important;
+}
+
+/* ---------- 3. 상단 메뉴 ---------- */
+.gnav{ background:transparent !important; }
+.gnav-inner{ border-bottom:1px solid var(--line) !important; box-shadow:none !important; }
+.top-tab{
+  color:var(--text-muted) !important;
+  font-weight:600 !important;
+  letter-spacing:-.005em;
+  border-radius:8px !important;
+}
+.top-tab:hover{ color:var(--navy) !important; background:var(--bg-soft-2) !important; }
+.top-tab.is-active{
+  color:var(--navy) !important;
+  font-weight:700 !important;
+}
+.gnav-tool-btn{ box-shadow:none !important; }
+.gnav-drawer{ background:#fff !important; box-shadow:var(--dr-shadow-pop) !important; }
+.gnav-drawer-item.is-active{ color:var(--navy) !important; background:var(--navy-100) !important; }
+
+/* ---------- 4. 카드·패널 공통 ---------- */
+.crm-panel,
+.kpi-item,
+.cdash2-card,
+.cdash-card,
+.chart-card,
+.insight-card{
+  border-color:var(--line) !important;
+  box-shadow:var(--dr-shadow-card) !important;
+}
+.kpi-item{ background:#fff !important; border-radius:var(--dr-radius-card) !important; }
+.kpi-item::before{ opacity:.03 !important; }              /* 큰 장식 아이콘은 은은하게만 */
+
+/* ---------- 5. 주요 버튼 — 오렌지는 "+ 고객 등록" 한 곳만 ---------- */
+#crmAddBtn, .list-add-btn{
+  background:var(--dr-accent) !important;
+  border-color:transparent !important;
+  color:#fff !important;
+}
+#crmAddBtn:hover, .list-add-btn:hover{ background:var(--dr-accent-hover) !important; }
+#crmAddBtn:focus-visible, .list-add-btn:focus-visible{ box-shadow:var(--dr-accent-ring) !important; outline:none !important; }
+
+/* 네이비 기본 버튼은 평평하게(그라데이션·그림자 제거) */
+.crm-btn--primary, .btn-primary-action, .co-text-action.primary, .primary-btn,
+.gate-enter-btn, .gnav-tool-btn#crmMouPdfBtn, .workq-btn.primary,
+.agr-meeting-complete-btn, .reqmat-send-btn, .mail-tab-rename-save{
+  background-image:none !important;
+  box-shadow:none !important;
+}
+
+/* 보조 버튼 */
+.crm-btn--secondary, .co-text-action, .btn-secondary-action, .secondary-btn,
+.workq-btn, .agr-meeting-btn, .mailx-tool-btn, .mailx-account-btn,
+.map-modal-retry-btn, .cloud-boot-retry-btn, .gate-diag-btn,
+.delete-co-modal-cancel-btn, .mail-tab-rename-cancel, .l2l3v2-criteria-btn, .crv-insight-btn{
+  background:#fff !important;
+  border-color:var(--crm-btn-line) !important;
+  color:var(--crm-btn-text) !important;
+}
+
+/* 키보드 초점은 어디서나 같은 링 */
+button:focus-visible, a:focus-visible, select:focus-visible{
+  outline:none !important;
+  box-shadow:var(--dr-focus) !important;
+}
+
+/* ---------- 6. 입력창·검색·선택 ---------- */
+input[type="text"], input[type="search"], input[type="email"], input[type="tel"],
+input[type="number"], input[type="date"], input[type="password"], input:not([type]),
+select, textarea{
+  border-color:#DCDCD6;
+}
+.search-box, .list-sort-select, .gate-input{
+  border-color:#DCDCD6 !important;
+  background-color:#fff !important;
+  box-shadow:none !important;
+}
+input:focus, select:focus, textarea:focus,
+.search-box:focus-within{
+  border-color:var(--navy-300) !important;
+  box-shadow:var(--dr-focus) !important;
+  outline:none !important;
+}
+::placeholder{ color:#8A919D; opacity:1; }
+
+/* ---------- 7. 목록 표 ---------- */
+.co-table-head{
+  background:var(--bg-soft-2) !important;
+  border-color:var(--line) !important;
+  color:var(--text-muted) !important;
+}
+.co-row{ border-color:#EEEEEA !important; }
+.co-row:hover{ background:#FAFAF8 !important; }
+
+/* ---------- 8. 탭(상세 팝업 등) ---------- */
+.cdash2-tab{ color:var(--text-muted) !important; box-shadow:none !important; }
+.cdash2-tab.is-active{
+  background:var(--navy-100) !important;
+  color:var(--navy) !important;
+  border-color:var(--navy-200) !important;
+}
+
+/* ---------- 9. 페이지 이동 ---------- */
+.page-btn{ border-color:transparent !important; box-shadow:none !important; color:var(--text-muted) !important; }
+.page-btn:hover{ background:var(--bg-soft-2) !important; color:var(--navy) !important; }
+.page-btn.is-active, .page-btn.active, .page-btn[aria-current="page"]{
+  background:var(--navy) !important; color:#fff !important;
+}
+
+/* ---------- 10. 팝업 ---------- */
+.cdash2-overlay, .pi-overlay{ background:rgba(13,22,40,.38) !important; }
+
+/* ---------- 10-0. 입력 팝업(고객 등록 등 .pi-panel) ---------- */
+.pi-panel{ border-color:var(--line) !important; box-shadow:var(--dr-shadow-pop) !important; }
+.pi-panel input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.pi-panel select, .pi-panel textarea{
+  background-color:#fff !important;
+  border-color:#DCDCD6 !important;
+}
+.pi-panel input:focus, .pi-panel select:focus, .pi-panel textarea:focus{
+  border-color:var(--navy-300) !important; box-shadow:var(--dr-focus) !important;
+}
+.popup-action-bar{ border-color:#EEEEEA !important; }
+/* 고객 등록 창의 "등록"은 "+ 고객 등록"과 같은 흐름이라 같은 오렌지 */
+#crmNewFSave.btn-primary-action{ background:var(--dr-accent) !important; }
+#crmNewFSave.btn-primary-action:hover{ background:var(--dr-accent-hover) !important; }
+html body .list-filter-chip{ border-color:var(--crm-btn-line) !important; }
+html body .list-filter-chip.is-active{ background:var(--navy) !important; border-color:var(--navy) !important; color:#fff !important; }
+
+/* 내보내기 창(창 테두리·버튼만 — 안쪽 PDF 문서 .pdf-doc-root 는 손대지 않는다) */
+.pdfx2-btn, .pdfx2-seg, .pdf-dd-btn{ border-color:var(--crm-btn-line) !important; }
+#pdfExportSaveBtn.pdfx2-btn.is-primary, .pdfx2-seg-btn.is-active{
+  background:var(--navy) !important; border-color:var(--navy) !important; color:#fff !important;
+}
+.pdfx2-main, #pdfExportPreviewWrap.pdfx2-preview{ background:#EFEFEB !important; }
+.pdfx2-fixed-val{ background:var(--bg-soft-2) !important; border-color:var(--line) !important; }
+#pdfExportPager.pdfx2-pager{ border-color:var(--line) !important; }
+
+/* 작은 팝오버·드롭다운 메뉴 — 얇은 테두리 + 같은 그림자 */
+.rev-popover, .col-help-pop, .crm-status-dd-menu, .update-menu, .cdash-header-popover{
+  border-color:var(--line) !important;
+  box-shadow:0 10px 28px rgba(13,29,58,.12), 0 1px 3px rgba(13,29,58,.06) !important;
+}
+
+/* ---------- 10-1. 업체 상세 팝업 ---------- */
+.chart-overlay{ background:rgba(13,22,40,.34) !important; }
+.chart-panel{
+  border:1px solid var(--line) !important;
+  box-shadow:var(--dr-shadow-pop) !important;
+}
+#chartBody.cdash-body{ background:var(--bg-soft-2) !important; }
+.chart-panel .cdash2-card,
+.chart-panel .qtab-card,
+.cdash-footer-docs-row{ border-color:var(--line) !important; box-shadow:none !important; }
+#cdashFooterBar, .insight-note-desc,
+.cdash2-revenue-head.cdash2-revenue-stats, .agr-stage-list{ border-color:#EEEEEA !important; }
+.cdash2-timeline-type{ background:#F2F2EF !important; color:var(--text-muted) !important; }
+.cdash-docs-fold-count{ background:#F0F0EC !important; }
+/* 계약서 준비 버튼 — 기존 연한 파랑 대신 네이비 외곽선(기능 버튼, 오렌지 아님) */
+#cesignOpenBtn.cesign-open-btn{
+  background:var(--navy-100) !important;
+  border-color:var(--navy-200) !important;
+  color:var(--navy) !important;
+}
+/* 협약 진행 날짜 칩·버튼 */
+.agr-date-chip.is-empty, .agr-date-chip.is-mail{
+  background:var(--navy-100) !important; border-color:var(--navy-200) !important; color:var(--navy) !important;
+}
+.agr-date-chip.is-filled, .agr-meeting-btn.agr-slot-main, .agr-q-attach-btn{ border-color:var(--crm-btn-line) !important; }
+.agr-more-menu{ border-color:var(--line) !important; box-shadow:var(--dr-shadow-pop) !important; }
+
+/* ---------- 10-2. 목록 세부 ---------- */
+.lastpour-total-box{
+  background:var(--bg-soft-2) !important;
+  border-color:var(--line) !important;
+  color:var(--navy) !important;
+}
+.col-help-btn{ border-color:#D6D6D0 !important; color:var(--text-muted) !important; }
+#crmKpiStrip .kpi-item{ border-color:var(--line) !important; box-shadow:var(--dr-shadow-card) !important; }
+.crm-toolrow-bottom, #crmPagination.list-pagination{ border-color:#EEEEEA !important; }
+#crmStatusDdBtn.crm-status-dd-btn{ border-color:var(--crm-btn-line) !important; }
+.crm-status-dd-count{ background:var(--navy-100) !important; color:var(--navy) !important; }
+.page-btn.active{ background:var(--navy) !important; border-color:var(--navy) !important; color:#fff !important; }
+
+/* 상단 요약 카드 — 숫자는 딥네이비, 라벨은 회색 보조 글씨로 위계 정리 */
+#crmKpiStrip .kpi-item-value{ color:var(--navy) !important; letter-spacing:-.01em; }
+#crmKpiStrip .kpi-item-label{ color:var(--text-muted) !important; font-weight:600 !important; }
+
+/* MOU 단계 배지 — 행마다 반복되므로 진한 채움 대신 은은한 네이비 */
+.co-stage-badge.is-mou{
+  background:var(--navy-100) !important;
+  border-color:var(--navy-200) !important;
+  color:var(--navy) !important;
+}
+.kpi-trash-summary-badge{ background:var(--navy) !important; }
+
+/* 표 머리글 — 작고 또렷한 회색 */
+.co-table-head > *{ color:var(--text-muted) !important; }
+.co-table-head > .col-name{ color:var(--navy) !important; }
+
+/* ---------- 10-3. 지도 영역(모양만 — 열기·팝업 동작은 그대로) ---------- */
+.map-modal-panel{ border-color:var(--line) !important; }
+#mapModalBody{ background:var(--bg-soft-2) !important; }
+.map-modal-tab-btn.is-active{ background:var(--navy-100) !important; border-color:var(--navy-200) !important; color:var(--navy) !important; }
+
+/* ---------- 10-4. B2B KPI ---------- */
+#crmKpiGoalPanel.kgoal, .b2b-card.b2b-card-tab{ border-color:var(--line) !important; box-shadow:var(--dr-shadow-card) !important; }
+.kgoal-row{ border-color:#EEEEEA !important; }
+.kgoal-track{ background:#F0F0EC !important; }
+.kgoal-total-box{ background:var(--navy) !important; background-image:none !important; }
+.b2b-risk-head{ background:var(--bg-soft-2) !important; }
+.b2b-pill.is-na{ background:#F0F0EC !important; color:var(--text-muted) !important; }
+.b2b-pill.is-vip{ background:var(--navy) !important; }
+
+/* ---------- 10-5. MOU 진행상황 ---------- */
+.stage-bar, .stage-bar-seg.is-current, .stage-bar-seg.is-pending{ background:#E9E9E4 !important; }
+.stage-bar-seg.is-done{ background:var(--navy) !important; }
+.workq-task-card.is-inline{ border-color:var(--line) !important; }
+.workq-miss-badge:not(.is-miss){ background:#F2F2EF !important; border-color:#DEDED8 !important; }
+.workq-delay-badge.badge-longterm{ background:#F0F0EC !important; }
+.workq-delay-badge.badge-fresh{ background:var(--navy-100) !important; color:var(--navy) !important; }
+.list-filter-chip{ border-color:var(--crm-btn-line) !important; }
+.list-filter-chip.is-active{ background:var(--navy) !important; border-color:var(--navy) !important; color:#fff !important; }
+.list-filter-chip.is-active .chip-count{ color:rgba(255,255,255,.85) !important; }
+
+/* ---------- 10-6. 메일 설정 ---------- */
+.mail-tab-btn{ border-color:var(--line) !important; }
+#mailTabAddBtn.mail-tab-add-btn{ border-color:#CFCFC8 !important; }
+/* 좁은 화면에서 메일 종류 탭이 서로 겹치며 글자가 잘리던 것 — 줄어들지 않게 두고
+   기존 가로 스크롤(.mail-tabs-bar overflow-x:auto)로 넘겨 본다 */
+.mail-tabs-bar > .mail-tab-btn-wrap{ flex:0 0 auto !important; }
+.mailx-hint{ border-color:var(--navy-200) !important; }
+
+/* ---------- 11. 로그인 화면 ---------- */
+.gate-screen{ background:var(--bg) !important; }
+.gate-card{
+  background:#fff !important;
+  border:1px solid var(--line) !important;
+  box-shadow:0 1px 2px rgba(20,28,42,.04), 0 12px 32px rgba(20,28,42,.06) !important;
+  -webkit-backdrop-filter:none !important; backdrop-filter:none !important;
+}
+html body #gateEnterBtn.gate-enter-btn{
+  background:var(--navy) !important; background-image:none !important;
+  box-shadow:none !important;
+}
+html body #gateEnterBtn.gate-enter-btn:hover{ background:var(--navy-700) !important; }
+.gate-bg-glow{ opacity:.35 !important; }
+.gate-bg-mark{ opacity:.04 !important; }
+
+/* ==========================================================================
+   §시안 배치 레이어 (2026-11 2차) — 첨부 시안의 화면 구성을 실제 화면에 옮긴다.
+     상단: 글자 탭 + 밑줄, 오른쪽 설정·내보내기
+     본문: 페이지 제목 → 요약 띠(한 장 카드, 3칸) → 도구 줄(검색·필터·정렬·휴지통·등록)
+           → 목록 표(높은 행, 2줄 정보) → 페이지 이동
+     오른쪽: 지도 카드(제목 머리 + 밑줄 탭 + 지도)
+   아래 규칙도 위치·크기·모양만 바꾼다. 버튼·입력칸·탭은 같은 요소 그대로다.
+   ========================================================================== */
+:root{
+  --bg:#F7F7F4;
+  --line:#E7E6E1;
+  --dr-serif:'Noto Serif KR', 'Pretendard Variable', 'Pretendard', Georgia, serif;
+  --dr-head-h:68px;
+  --dr-ico-upload:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 15V4'/%3E%3Cpath d='M7.5 8.5 12 4l4.5 4.5'/%3E%3Cpath d='M4 14v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4'/%3E%3C/svg%3E");
+}
+html, body, button, input, select, textarea{
+  font-family:'Pretendard Variable','Pretendard','Apple SD Gothic Neo','Malgun Gothic',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif !important;
+}
+
+/* ---------- A. 상단 메뉴 — 흰 막대, 글자 탭, 활성은 네이비 밑줄 ---------- */
+.gnav-inner{
+  min-height:var(--dr-head-h) !important; height:var(--dr-head-h) !important;
+  padding-top:0 !important; padding-bottom:0 !important;
+  background:#fff !important;
+  border-bottom:1px solid var(--line) !important;
+  align-items:stretch !important;
+}
+/* PC 한 화면 모드에서는 상단 막대를 화면 끝까지 — 바깥 틀(.app)이 잘라내는 구조라
+   막대 자체를 늘이지 않고, 같은 높이의 흰 띠를 맨 뒤(z-index:-1)에 깔아 이어 보이게 한다.
+   요소의 겹침 순서·클릭 영역은 바뀌지 않는다. */
+@media (min-width:1101px){
+  body.crm-page-shell::before{
+    content:''; position:fixed; left:0; right:0; top:0;
+    height:calc(var(--crm-frame-y, 20px) + 1px + var(--dr-head-h));
+    background:#fff; border-bottom:1px solid var(--line);
+    z-index:-1; pointer-events:none;
+  }
+  body.crm-page-shell .gnav-inner{ background:transparent !important; border-bottom-color:transparent !important; padding-left:4px !important; padding-right:4px !important; }
+  body.crm-page-shell #appRoot.app{ border-radius:0 !important; border-width:0 !important; }
+}
+.gnav-inner > .brand-wrap{ align-self:center; }
+.gnav-menu{ align-self:stretch !important; gap:6px !important; align-items:stretch !important; }
+.gnav-menu .top-tab{
+  position:relative;
+  height:auto !important; min-height:0 !important; align-self:stretch;
+  padding:0 16px !important;
+  background:transparent !important; border:0 !important; border-radius:0 !important; box-shadow:none !important;
+  font-size:15.5px !important; font-weight:600 !important; color:#5D6676 !important;
+}
+.gnav-menu .top-tab .top-tab-ico{ width:0 !important; height:0 !important; margin:0 !important; opacity:0 !important; }
+.gnav-menu .top-tab:hover{ color:var(--navy) !important; background:transparent !important; }
+.gnav-menu .top-tab.is-active{ color:var(--navy) !important; font-weight:800 !important; }
+.gnav-menu .top-tab::after{
+  content:''; position:absolute; left:12px; right:12px; bottom:-1px; height:3px; border-radius:3px 3px 0 0;
+  background:transparent; transition:background-color .15s ease;
+}
+.gnav-menu .top-tab.is-active::after{ background:var(--navy); }
+.gnav-right{ align-self:center; gap:10px !important; }
+/* 설정(톱니)·관리자 잠금 — 테두리 네모 아이콘 버튼 */
+.gnav-tool-btn.crm-tools-gear, .gnav-tool-btn.crm-admin-lock{
+  width:44px !important; min-width:44px !important; height:44px !important; min-height:44px !important;
+  padding:0 !important; border-radius:10px !important;
+  background:#fff !important; border:1px solid #DCDCD6 !important;
+}
+/* 내보내기 — 시안처럼 흰 바탕 테두리 버튼 + 올리기 아이콘 */
+.gnav-tool-btn#crmMouPdfBtn{
+  height:44px !important; min-height:44px !important; padding:0 18px 0 16px !important;
+  border-radius:10px !important;
+  background:#fff !important; color:var(--navy) !important;
+  border:1px solid #CFCFC8 !important; font-weight:700 !important; font-size:14.5px !important;
+  gap:8px !important;
+}
+.gnav-tool-btn#crmMouPdfBtn::before{
+  content:''; width:17px; height:17px; flex:none; background:currentColor;
+  -webkit-mask:var(--dr-ico-upload) center/contain no-repeat; mask:var(--dr-ico-upload) center/contain no-repeat;
+}
+.gnav-tool-btn#crmMouPdfBtn:hover{ background:var(--bg-soft-2) !important; border-color:var(--navy-300) !important; color:var(--navy) !important; }
+
+/* ---------- B. 고객관리 — 요약 띠(한 장 카드 안 3칸, 큰 세리프 숫자) ---------- */
+#listView #crmKpiStrip{
+  background:#fff !important;
+  border:1px solid var(--line) !important; border-radius:16px !important;
+  box-shadow:0 1px 2px rgba(20,28,42,.03) !important;
+  padding:22px 8px !important; gap:0 !important;
+  grid-template-columns:repeat(3, minmax(0,1fr)) !important;
+}
+#listView #crmKpiStrip .kpi-item{
+  display:flex !important; flex-direction:column !important; align-items:flex-start !important; justify-content:flex-start !important;
+  gap:6px !important;
+  height:auto !important; min-height:0 !important;
+  padding:2px 28px !important;
+  background:transparent !important; border:0 !important; border-radius:0 !important; box-shadow:none !important;
+  text-align:left !important;
+}
+#listView #crmKpiStrip .kpi-item + .kpi-item{ border-left:1px solid var(--line) !important; }
+#listView #crmKpiStrip .kpi-item::before{ opacity:0 !important; }   /* 큰 장식 그림은 시안처럼 뺀다(장식 전용) */
+#listView #crmKpiStrip .kpi-item-label{
+  order:1; font-size:15.5px !important; font-weight:700 !important; color:var(--text) !important;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;
+}
+#listView #crmKpiStrip .kpi-item-value{
+  order:2; font-family:var(--dr-serif) !important;
+  font-size:46px !important; line-height:1.05 !important; font-weight:700 !important;
+  color:var(--navy) !important; letter-spacing:-.01em !important;
+}
+#listView #crmKpiStrip .kpi-item.is-rising .kpi-item-value{ font-size:34px !important; padding-top:6px; }
+#listView #crmKpiStrip .kpi-item-sub{ order:3; font-size:13px !important; color:var(--text-muted) !important; font-weight:500 !important; }
+#listView #crmKpiStrip .kpi-item.is-rising::after{ top:22px !important; right:22px !important; font-size:13px !important; }
+#listView #crmKpiStrip .kpi-item:hover .kpi-item-value{ color:var(--navy-500) !important; }
+#listView #crmKpiStrip .kpi-item.is-rising.is-open{ box-shadow:none !important; }
+#listView #crmKpiStrip .kpi-item.is-rising.is-open .kpi-item-label{ color:var(--dr-accent) !important; }
+
+/* ---------- C. 도구 줄 — 검색(넓게)·필터·정렬·휴지통·고객 등록 한 줄 ---------- */
+#listView .crm-toolrow.crm-toolrow-v3{
+  display:grid !important;
+  grid-template-columns:minmax(0,1fr) auto auto auto auto !important;
+  grid-template-areas:"kpi kpi kpi kpi kpi" "search filter sort trash add" !important;
+  gap:16px 12px !important; align-items:center !important;
+  width:100% !important; min-width:0 !important; max-width:none !important;
+}
+#listView .crm-toolrow-v3 > .crm-toolrow-r1,
+#listView .crm-toolrow-v3 > .crm-toolrow-bottom{ display:contents !important; }
+#listView #crmKpiStrip{ grid-area:kpi !important; width:auto !important; min-width:0 !important; margin:0 !important; }
+#listView .crm-toolrow-search{ grid-area:search !important; }
+#listView #crmToolrowTop{ grid-area:filter !important; width:auto !important; }
+#listView #crmSortSelect{ grid-area:sort !important; }
+#listView #crmTrashSummaryBtn{ grid-area:trash !important; }
+#listView .crm-toolrow-v3 #crmAddBtn{ grid-area:add !important; }
+
+#listView .crm-toolrow-search{
+  height:50px !important; min-height:50px !important; border-radius:12px !important;
+  padding:0 16px !important; gap:10px !important; margin:0 !important; width:auto !important; max-width:none !important;
+}
+#listView .crm-toolrow-search svg{ width:20px !important; height:20px !important; color:var(--navy) !important; }
+#listView #crmSearchInput{ font-size:15px !important; }
+#listView #crmToolrowTop .crm-status-dd-btn,
+#listView #crmSortSelect{
+  height:50px !important; min-height:50px !important; border-radius:12px !important;
+  font-size:14.5px !important; font-weight:600 !important; color:var(--text) !important;
+  border:1px solid #DCDCD6 !important; background-color:#fff !important; box-shadow:none !important;
+}
+#listView #crmSortSelect{ padding:0 38px 0 16px !important; min-width:150px; width:auto !important; max-width:none !important; }
+#listView #crmToolrowTop .crm-status-dd-btn{ padding:0 14px 0 16px !important; gap:10px !important; min-width:150px; }
+#listView #crmTrashSummaryBtn{
+  width:50px !important; min-width:50px !important; height:50px !important; border-radius:12px !important;
+  background:#fff !important; border:1px solid #DCDCD6 !important;
+}
+#listView .crm-toolrow-v3 #crmAddBtn{
+  height:50px !important; min-height:50px !important; border-radius:12px !important;
+  padding:0 22px !important; font-size:15px !important; font-weight:700 !important; gap:8px !important;
+}
+
+/* ---------- D. 목록 표 — 흰 카드, 높은 행, 2줄 정보 ---------- */
+#listView .crm-panel.crm-list-col{
+  border:1px solid var(--line) !important; border-radius:16px !important;
+  box-shadow:0 1px 2px rgba(20,28,42,.03) !important;
+  padding:6px 22px 10px !important;
+}
+#listView #crmCoTableHead.co-table-head{
+  background:#fff !important; border:0 !important; border-bottom:1px solid var(--line) !important; border-radius:0 !important;
+  min-height:56px !important; padding-top:0 !important; padding-bottom:0 !important; align-items:center !important;
+}
+#listView #crmCoTableHead > *{ font-size:13.5px !important; font-weight:600 !important; color:var(--text-muted) !important; }
+#listView .co-list{ border:0 !important; border-radius:0 !important; background:#fff !important; }
+/* 열 비율 — 시안처럼 업체명 칸을 넓게(머리줄과 행이 같은 비율을 쓴다) */
+@media (min-width:1101px){
+  #listView .crm-list-col #crmCoTableHead.co-table-head,
+  #listView .crm-list-col .co-list .co-row{
+    grid-template-columns:minmax(0,2.2fr) minmax(0,1.35fr) minmax(0,1.35fr) minmax(0,1.3fr) minmax(0,.95fr) minmax(0,.9fr) !important;
+    column-gap:18px !important;
+  }
+}
+#listView #crmCoTableHead > *{ justify-content:flex-start !important; text-align:left !important; }
+/* 최근 실적 — 숫자 위, 공종·현장 아래(2줄) */
+#listView .co-row .lastpour-cell{
+  flex-direction:column !important; align-items:flex-start !important; justify-content:center !important;
+  gap:3px !important; text-align:left !important; width:100%; min-width:0;
+}
+#listView .co-row .lastpour-total-box{ min-width:0 !important; width:auto !important; justify-content:flex-start !important; text-align:left !important; }
+#listView .co-row .lastpour-detail{
+  display:block !important; min-width:0; max-width:100%;
+  white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important;
+  font-size:12.5px !important; line-height:1.4 !important;
+}
+#listView .co-row .lastpour-detail > *{ display:inline !important; white-space:nowrap !important; }
+#listView .co-row .lastpour-main{ font-weight:600 !important; }
+#listView .co-row .lastpour-site{ margin-left:6px; opacity:.85; }
+/* 흐름·단계 칸도 머리글과 같은 왼쪽 기준선 */
+#listView .co-row .col-trend, #listView .co-row .col-contrib{ justify-content:flex-start !important; text-align:left !important; }
+#listView .co-row .col-trend > *, #listView .co-row .col-contrib > *{ margin-left:0 !important; margin-right:auto !important; }
+/* 총매출 — 왼쪽 정렬 2줄 */
+#listView .co-row .col-revenue-combo{ text-align:left !important; align-items:flex-start !important; }
+#listView .co-row .revenue-combo-line{ justify-content:flex-start !important; text-align:left !important; }
+#listView .co-row .request-cell{ text-align:left !important; justify-content:flex-start !important; }
+#listView .co-list .co-row{
+  min-height:74px !important; padding-top:12px !important; padding-bottom:12px !important;
+  border-bottom:1px solid #EFEEEA !important; align-items:center !important;
+  background:#fff;
+}
+#listView .co-list .co-row:hover{ background:#FAFAF7 !important; }
+#listView .co-list .co-row:has(.co-stage-badge.is-new-partner){ background:#FFF9F4 !important; }
+/* 업체명 — 굵게, 밑줄 대신 마우스 올렸을 때만 */
+#listView .co-row .co-name-text{
+  font-size:15.5px !important; font-weight:700 !important; color:var(--text) !important;
+  text-decoration:none !important; border-bottom:0 !important; box-shadow:none !important;
+}
+#listView .co-row:hover .co-name-text{ text-decoration:underline !important; text-underline-offset:3px; }
+#listView .co-row .co-name-badges{ gap:10px !important; align-items:center !important; }
+/* 단계 배지 — 시안처럼 테두리형. MOU=회색, 신규=오렌지 */
+#listView .co-stage-badge{
+  height:24px !important; padding:0 9px !important; border-radius:6px !important;
+  font-size:11.5px !important; font-weight:700 !important; letter-spacing:.02em;
+  align-items:center;
+}
+#listView .co-stage-badge.is-mou{ background:#F4F4F1 !important; border:1px solid #DCDCD6 !important; color:#3E4859 !important; }
+#listView .co-stage-badge.is-new-partner{ background:#FFF4EA !important; border:1px solid #F1BE96 !important; color:#B84D0A !important; }
+/* 최근 실적 — 상자 없이 굵은 숫자 + 아래 회색 설명 */
+#listView .lastpour-total-box{
+  background:transparent !important; border:0 !important; padding:0 !important; box-shadow:none !important;
+  font-size:16px !important; font-weight:800 !important; color:var(--text) !important;
+}
+#listView .lastpour-detail, #listView .lastpour-detail *{ color:var(--text-muted) !important; }
+#listView .co-row .revenue-combo-total .revenue-cell-btn{ font-size:15.5px !important; font-weight:800 !important; color:var(--text) !important; }
+#listView .co-row .revenue-combo-yr, #listView .co-row .revenue-combo-yr *{ font-size:12px !important; color:var(--text-muted) !important; }
+#listView .co-row .request-gsheet-text{ font-size:14.5px !important; font-weight:600 !important; color:var(--text) !important; }
+#listView .co-row .trend-cell{ font-size:14.5px !important; font-weight:700 !important; }
+/* 실적-매출 단계 — 테두리형 알약. 높음=오렌지, 보통=회색, 낮음=붉은 회색 */
+#listView .co-row .contrib-cell{
+  border:1px solid #DCDCD6 !important; background:#fff !important; border-radius:8px !important;
+  padding:5px 12px !important; min-width:58px; text-align:center;
+}
+#listView .co-row .contrib-cell .contrib-level{ font-size:13px !important; font-weight:700 !important; color:#3E4859 !important; }
+#listView .co-row .contrib-cell.lv-high{ background:#FFF4EA !important; border-color:#F1BE96 !important; }
+#listView .co-row .contrib-cell.lv-high .contrib-level{ color:#B84D0A !important; }
+#listView .co-row .contrib-cell.lv-low{ background:#FDF3F2 !important; border-color:#EBC3BF !important; }
+#listView .co-row .contrib-cell.lv-low .contrib-level{ color:#A3322A !important; }
+
+/* ---------- E. 페이지 이동 — 왼쪽 합계, 가운데 네모 번호 ---------- */
+#listView #crmPagination.list-pagination{
+  border-top:1px solid var(--line) !important; padding-top:12px !important; margin-top:2px !important;
+  align-items:center !important;
+}
+#listView #crmPagination .page-total{ font-size:13.5px !important; color:var(--text-muted) !important; font-weight:500 !important; }
+#listView #crmPagination .page-btn{
+  min-width:38px !important; width:auto !important; height:38px !important; border-radius:9px !important;
+  font-size:14px !important; font-weight:600 !important; color:#3E4859 !important;
+  border:1px solid transparent !important; background:transparent !important;
+}
+#listView #crmPagination .page-btn.is-arrow{ border-color:#DCDCD6 !important; background:#fff !important; }
+#listView #crmPagination .page-btn.active{ background:var(--navy) !important; border-color:var(--navy) !important; color:#fff !important; }
+
+/* ---------- B0. 페이지 제목 — 시안처럼 본문 맨 위에 큰 제목(지금 탭 이름 그대로) ---------- */
+@media (min-width:1101px){
+  #listView .crm-kpi-cell{ flex-direction:column !important; flex-wrap:nowrap !important; align-items:stretch !important; }
+  #listView .crm-kpi-cell::before{
+    content:'고객관리'; display:block;
+    font-size:34px; line-height:1.15; font-weight:800; letter-spacing:-.03em; color:var(--navy);
+    margin:6px 0 18px;
+  }
+  body.crm-mapdock[data-crm-view="listView"] .crm-main-grid{ margin-top:14px !important; gap:16px !important; }
+}
+
+/* ---------- F0. 지도 카드 자리 — 상단 막대 아래, 시안의 오른쪽 열 폭(약 27%) ---------- */
+@media (min-width:1366px){
+  :root{ --mapdock-w:clamp(380px, 27vw, 520px); }
+}
+@media (min-width:1101px){
+  body.crm-mapdock[data-crm-view="listView"] #mapDistributionModalRoot.crm-mapdock-root{
+    top:calc(var(--crm-frame-y, 20px) + var(--dr-head-h) + 20px) !important;
+  }
+}
+
+/* ---------- F. 오른쪽 지도 카드 — 밑줄 탭 + 지도 ---------- */
+body.crm-mapdock #mapDistributionModalRoot .map-modal-overlay.map-docked > .map-modal-panel{
+  border:1px solid var(--line) !important; border-radius:16px !important;
+  box-shadow:0 1px 2px rgba(20,28,42,.03) !important; background:#fff !important;
+}
+body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-tabs{
+  padding:6px 18px 0 !important; border-bottom:1px solid var(--line) !important; background:#fff !important;
+}
+body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-tabs-list{ gap:4px !important; background:transparent !important; padding:0 !important; border:0 !important; box-shadow:none !important; }
+body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-tab-btn{
+  position:relative; height:46px !important; border-radius:0 !important;
+  background:transparent !important; border:0 !important; box-shadow:none !important;
+  font-size:14.5px !important; font-weight:600 !important; color:var(--text-muted) !important;
+}
+body.crm-mapdock #mapDistributionModalRoot .map-docked .map-modal-tab-btn.is-active{
+  color:var(--navy) !important; font-weight:800 !important; background:transparent !important;
+  box-shadow:inset 0 -3px 0 var(--navy) !important;
+}
+body.crm-mapdock[data-crm-view="listView"] #mapDistributionModalRoot .map-modal-infocol{
+  border:1px solid var(--line) !important; border-radius:14px !important;
+  box-shadow:var(--dr-shadow-pop) !important;
+}
+
+/* ---------- 10-8. 아이패드 가로·작은 노트북(1101~1365px) — 압축 배치 ----------
+   지도가 오른쪽에 붙는 이 폭에서는 본문 폭이 700px 안팎이라, 지도 칸을 조금 줄이고
+   글자·여백을 한 단계 낮춰 상단 메뉴가 한 줄에 들어가고 표가 충분히 보이게 한다.
+   (탭·버튼·칸은 그대로, 크기만) */
+@media (min-width:1101px) and (max-width:1365px){
+  :root:root{ --mapdock-w:clamp(340px, 29vw, 400px); --dr-head-h:60px; }  /* 아래 기본값보다 앞서도 이기게 */
+  .gnav-inner{ gap:12px !important; }
+  .gnav-menu{ margin-left:8px !important; gap:0 !important; }
+  .gnav-menu .top-tab{ padding:0 10px !important; font-size:14px !important; }
+  .gnav-tool-btn.crm-tools-gear, .gnav-tool-btn.crm-admin-lock{ width:40px !important; min-width:40px !important; height:40px !important; min-height:40px !important; }
+  .gnav-tool-btn#crmMouPdfBtn{ height:40px !important; min-height:40px !important; padding:0 14px 0 12px !important; font-size:14px !important; }
+  #listView .crm-kpi-cell::before{ font-size:26px !important; margin:2px 0 12px !important; }
+  #listView #crmKpiStrip{ padding:16px 4px !important; }
+  #listView #crmKpiStrip .kpi-item{ padding:0 18px !important; gap:4px !important; }
+  #listView #crmKpiStrip .kpi-item-label{ font-size:14px !important; }
+  #listView #crmKpiStrip .kpi-item-value{ font-size:34px !important; }
+  #listView #crmKpiStrip .kpi-item.is-rising .kpi-item-value{ font-size:26px !important; padding-top:4px; }
+  #listView #crmKpiStrip .kpi-item-sub{ font-size:12px !important; }
+  #listView .crm-toolrow.crm-toolrow-v3{ gap:12px 8px !important; }
+  #listView .crm-toolrow-search, #listView #crmToolrowTop .crm-status-dd-btn, #listView #crmSortSelect,
+  #listView #crmTrashSummaryBtn, #listView .crm-toolrow-v3 #crmAddBtn{ height:44px !important; min-height:44px !important; }
+  #listView #crmTrashSummaryBtn{ width:44px !important; min-width:44px !important; }
+  #listView #crmSortSelect{ min-width:0 !important; width:136px !important; max-width:136px !important; padding:0 28px 0 12px !important; font-size:13.5px !important; }
+  .gnav-inner > .brand-wrap img, .gnav-inner > .brand-wrap .brand-logo{ max-height:22px !important; width:auto !important; }
+  .gnav-right{ gap:8px !important; }
+  #listView #crmToolrowTop .crm-status-dd-btn{ min-width:0 !important; padding:0 10px 0 12px !important; font-size:13.5px !important; }
+  #listView .crm-toolrow-v3 #crmAddBtn{ padding:0 14px !important; font-size:14px !important; }
+  #listView .crm-panel.crm-list-col{ padding:2px 14px 8px !important; }
+  #listView .crm-list-col #crmCoTableHead.co-table-head,
+  #listView .crm-list-col .co-list .co-row{
+    grid-template-columns:minmax(0,1.9fr) minmax(0,1.25fr) minmax(0,1.45fr) minmax(0,1.2fr) minmax(0,.85fr) minmax(0,.85fr) !important;
+    column-gap:12px !important;
+  }
+  #listView #crmCoTableHead.co-table-head{ min-height:46px !important; }
+  #listView #crmCoTableHead > *{ font-size:12.5px !important; }
+  #listView .co-list .co-row{ min-height:64px !important; padding-top:9px !important; padding-bottom:9px !important; }
+  #listView .co-row .co-name-text{ font-size:14.5px !important; }
+  #listView .co-row .revenue-combo-total .revenue-cell-btn{ font-size:14px !important; white-space:nowrap !important; }
+  #listView .co-row .revenue-combo-yr{ white-space:nowrap !important; overflow:hidden; text-overflow:ellipsis; }
+  #listView .co-row .request-gsheet-text, #listView .co-row .trend-cell{ font-size:13.5px !important; }
+  #listView .co-row .contrib-cell{ padding:4px 9px !important; min-width:0; }
+  /* 업체명이 "(주)석민…"처럼 말줄임으로 잘리던 것 — 이 폭에서는 두 줄까지 그대로 보이게 */
+  #listView .co-row .col-name-top{ white-space:normal !important; }
+  #listView .co-row .co-name-text{
+    white-space:normal !important; overflow:visible !important; text-overflow:clip !important;
+    word-break:keep-all; overflow-wrap:anywhere;
+  }
+  /* 좁아진 총매출 칸에서 "2026 / 년"처럼 연도가 쪼개지지 않게 */
+  #listView .co-row .revenue-combo-yr-label{ white-space:nowrap !important; }
+}
+/* 지도 결과 목록 팝업 — 상단 막대가 바뀐 만큼 지도 카드 윗줄에 맞춘다(열기·접기 동작 그대로) */
+@media (min-width:1101px){
+  body.crm-mapdock[data-crm-view="listView"] #mapDistributionModalRoot .map-modal-infocol{
+    top:calc(var(--crm-frame-y, 20px) + var(--dr-head-h) + 74px) !important;
+    max-height:min(520px, calc(100dvh - var(--dr-head-h) - 130px)) !important;
+  }
+}
+
+/* ---------- 10-7. 모바일 폭 잘림 보정(배치만 — 항목은 그대로) ----------
+   기존 화면은 360~430px 폭에서 요약 카드 줄이 화면 밖으로 밀려(MOU 체결 카드·정렬
+   선택칸·휴지통 버튼이 잘림), 최근 실적 숫자 칸 왼쪽 글자가 잘렸다. */
+@media (max-width: 600px){
+  .crm-toolrow.crm-toolrow-v3, .crm-toolrow-r1, .crm-toolrow-bottom, #crmKpiStrip{
+    min-width:0 !important; max-width:100% !important; width:100% !important;
+  }
+  #crmKpiStrip{ grid-template-columns:repeat(2, minmax(0, 1fr)) !important; }
+  #crmKpiStrip .kpi-item{ min-width:0 !important; }
+  /* 세 번째 카드(실적 상승 TOP 5)는 설명 글이 길어 한 줄 전체 폭을 쓴다 */
+  #crmKpiStrip > .kpi-item:nth-child(3):last-child{ grid-column:1 / -1 !important; }
+  .crm-toolrow-bottom > .search-box{ flex:1 1 auto !important; min-width:0 !important; }
+  .crm-toolrow-bottom > .list-sort-select{ flex:0 1 auto !important; min-width:0 !important; max-width:42% !important; }
+  .crm-toolrow-bottom > .kpi-trash-summary-btn{ flex:none !important; }
+  .lastpour-total-box{ flex:none !important; width:auto !important; min-width:max-content !important; }
+}
+
+/* ---------- 10-9. 아이패드 세로·작은 태블릿(≤1100px) — 지도 위, 목록 아래 쌓는 배치 ---------- */
+@media (min-width:761px) and (max-width:1100px){
+  .gnav-inner{ gap:10px !important; }
+  .gnav-menu{ margin-left:6px !important; gap:0 !important; }
+  .gnav-menu .top-tab{ padding:0 9px !important; font-size:14px !important; }
+  .gnav-right{ gap:8px !important; }
+  .gnav-tool-btn.crm-tools-gear, .gnav-tool-btn.crm-admin-lock{ width:40px !important; min-width:40px !important; height:40px !important; min-height:40px !important; }
+  .gnav-tool-btn#crmMouPdfBtn{ height:40px !important; min-height:40px !important; padding:0 12px !important; font-size:13.5px !important; }
+  .gnav-inner > .brand-wrap img, .gnav-inner > .brand-wrap .brand-logo{ max-height:22px !important; width:auto !important; }
+  #listView #crmKpiStrip .kpi-item-value{ font-size:38px !important; }
+  #listView #crmSortSelect{ min-width:0 !important; width:140px !important; max-width:140px !important; }
+  #listView .crm-panel.crm-list-col{ padding:2px 14px 8px !important; }
+  #listView .crm-list-col #crmCoTableHead.co-table-head,
+  #listView .crm-list-col .co-list .co-row{
+    grid-template-columns:minmax(0,1.9fr) minmax(0,1.25fr) minmax(0,1.45fr) minmax(0,1.2fr) minmax(0,.85fr) minmax(0,.85fr) !important;
+    column-gap:12px !important;
+  }
+  #listView #crmCoTableHead > *{ font-size:12.5px !important; }
+  #listView .co-list .co-row{ min-height:64px !important; padding-top:9px !important; padding-bottom:9px !important; }
+  #listView .co-row .co-name-text{
+    font-size:14.5px !important; white-space:normal !important; overflow:visible !important; text-overflow:clip !important;
+    word-break:keep-all; overflow-wrap:anywhere;
+  }
+  #listView .co-row .col-name-top{ white-space:normal !important; }
+  #listView .co-row .revenue-combo-total .revenue-cell-btn{ font-size:14px !important; white-space:nowrap !important; }
+  #listView .co-row .revenue-combo-yr{ white-space:nowrap !important; overflow:hidden; text-overflow:ellipsis; }
+  #listView .co-row .revenue-combo-yr-label{ white-space:nowrap !important; }
+  #listView .co-row .request-gsheet-text, #listView .co-row .trend-cell{ font-size:13.5px !important; }
+  #listView .co-row .contrib-cell{ padding:4px 9px !important; min-width:0; }
+}
+@media (max-width:1100px){
+  /* 지도 칸 높이 — 화면의 82% → 최대 560px, 좌우 여백은 아래 카드와 맞춘다. 지도 기능·탭은 그대로 */
+  body.crm-mapdock[data-crm-view="listView"] #mapDistributionModalRoot.crm-mapdock-root{
+    height:min(60vh, 560px) !important; margin:16px 16px 4px !important; left:auto !important; right:auto !important;
+  }
+}
+
+/* ---------- 10-10. 휴대폰(≤760px) — 도구 줄을 세로로 ---------- */
+@media (max-width:760px){
+  #listView .crm-toolrow.crm-toolrow-v3{
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto !important;
+    grid-template-areas:"kpi kpi kpi" "search search search" "filter sort trash" "add add add" !important;
+    gap:10px 8px !important;
+  }
+  #listView .crm-toolrow-search, #listView #crmToolrowTop .crm-status-dd-btn, #listView #crmSortSelect,
+  #listView #crmTrashSummaryBtn, #listView .crm-toolrow-v3 #crmAddBtn{ height:46px !important; min-height:46px !important; }
+  #listView #crmToolrowTop, #listView #crmToolrowTop .crm-status-dd-btn{ width:100% !important; min-width:0 !important; }
+  #listView #crmSortSelect{ width:100% !important; min-width:0 !important; max-width:none !important; }
+  #listView #crmTrashSummaryBtn{ width:46px !important; min-width:46px !important; }
+  #listView .crm-toolrow-v3 #crmAddBtn{ width:100% !important; }
+  #listView #crmKpiStrip{ padding:16px 4px !important; grid-template-columns:repeat(2, minmax(0,1fr)) !important; }
+  #listView #crmKpiStrip .kpi-item{ padding:0 16px !important; }
+  #listView #crmKpiStrip .kpi-item-value{ font-size:36px !important; }
+  #listView #crmKpiStrip .kpi-item.is-rising .kpi-item-value{ font-size:28px !important; }
+  #listView #crmKpiStrip > .kpi-item:nth-child(3):last-child{
+    grid-column:1 / -1 !important; border-left:0 !important;
+    border-top:1px solid var(--line) !important; margin-top:14px !important; padding-top:14px !important;
+  }
+  #listView #crmKpiStrip .kpi-item.is-rising::after{ top:16px !important; right:16px !important; }
+  #listView .crm-panel.crm-list-col{ padding:2px 14px 8px !important; }
+}
+
+/* ==========================================================================
+   §업체 상세 팝업 — 시안과 같은 기준(큰 이름, 밑줄 탭, 흰 카드, 2열 정보)
+   ========================================================================== */
+@media (min-width:861px){
+  #chartOverlay .chart-panel{
+    width:min(780px, calc(100vw - 48px)) !important; max-width:min(780px, calc(100vw - 48px)) !important;
+    max-height:min(90vh, 940px) !important; height:min(86vh, 860px) !important;
+  }
+}
+#chartOverlay .chart-panel{ border-radius:18px !important; overflow:hidden; }
+/* 머리 — 코드 / 이름+배지 / 협약 요약 / 연락 정보 한 줄 */
+#chartHeader .cdash2-header{ padding:22px 26px 14px !important; }
+#chartHeader .cdet-head-code{ font-size:12px !important; letter-spacing:.08em; color:var(--text-muted) !important; font-weight:700 !important; }
+#chartHeader .cdet-head-name-row{ gap:10px !important; margin-top:4px !important; align-items:center !important; }
+#chartHeader .cdash2-title{ font-size:24px !important; font-weight:800 !important; letter-spacing:-.02em !important; color:var(--navy) !important; line-height:1.25 !important; }
+#chartHeader .cdash2-tag{ height:24px; padding:0 9px !important; border-radius:6px !important; font-size:12px !important; display:inline-flex; align-items:center; }
+#chartHeader .cdash2-deal-summary{ font-size:13px !important; color:var(--text-muted) !important; margin-top:4px !important; }
+#chartHeader .cdet-head-contacts{ margin-top:12px !important; gap:6px 18px !important; flex-wrap:wrap; }
+#chartHeader .cdet-head-contact{ font-size:13px !important; gap:6px !important; }
+#chartHeader .cdet-head-contact b{ font-size:13.5px !important; font-weight:700 !important; }
+#chartHeader .cdet-head-contact + .cdet-head-contact{ padding-left:18px; border-left:1px solid var(--line); }
+#chartCloseBtn.cdash2-header-close{
+  width:40px !important; height:40px !important; border-radius:10px !important;
+  border:1px solid #DCDCD6 !important; background:#fff !important; color:var(--text) !important;
+}
+/* 탭 — 상단 메뉴와 같은 밑줄형 */
+#chartTabBar{ border-bottom:1px solid var(--line) !important; background:#fff !important; }
+#chartTabBar .cdash2-tabbar{ padding:0 18px !important; gap:4px !important; background:transparent !important; border:0 !important; box-shadow:none !important; }
+#chartTabBar .cdash2-tab{
+  height:46px !important; border-radius:0 !important; border:0 !important; background:transparent !important; box-shadow:none !important;
+  font-size:14.5px !important; font-weight:600 !important; color:var(--text-muted) !important; flex:0 1 auto !important; padding:0 14px !important;
+}
+#chartTabBar .cdash2-tab.is-active{
+  color:var(--navy) !important; font-weight:800 !important; background:transparent !important;
+  box-shadow:inset 0 -3px 0 var(--navy) !important;
+}
+#chartTabBar .cdash2-tab .chip-count{ margin-left:4px; font-size:11.5px !important; color:var(--text-muted) !important; }
+/* 본문 — 오프화이트 바탕 위 흰 카드 */
+#chartBody.cdash-body{ padding:18px 22px !important; }
+#chartBody .cdash2-card, #chartBody .qtab-card{
+  border-radius:14px !important; padding:18px 20px !important; background:#fff !important;
+}
+#chartBody .cdash2-card-title, #chartBody .cdet-card-head .cdash2-card-title{
+  font-size:15.5px !important; font-weight:800 !important; color:var(--navy) !important; letter-spacing:-.01em;
+}
+#chartBody .cdet-card-head{ margin-bottom:10px !important; }
+/* 기업 요약 — 넓은 화면에서는 2열(주소처럼 긴 마지막 칸은 한 줄 전체) */
+@media (min-width:861px){
+  #chartBody .cosum-grid{ display:grid !important; grid-template-columns:repeat(2, minmax(0,1fr)) !important; column-gap:28px !important; }
+  #chartBody .cosum-grid > .cosum-item:last-child:nth-child(odd){ grid-column:1 / -1; }
+}
+#chartBody .cosum-item{ padding:11px 0 !important; border-bottom:1px solid #EFEEEA !important; align-items:center !important; }
+#chartBody .cosum-label{ font-size:12.5px !important; color:var(--text-muted) !important; font-weight:600 !important; }
+#chartBody .cosum-value, #chartBody .cosum-value-text{ font-size:14.5px !important; color:var(--text) !important; }
+#chartBody .cosum-value.is-muted, #chartBody .cosum-value.is-muted .cosum-value-text{ color:#9AA1AC !important; }
+#chartBody .cosum-copy-btn{ height:26px !important; min-height:26px !important; padding:0 9px !important; border-radius:7px !important; font-size:12px !important; }
+/* 바닥 — 서류 접기 + 계약서·협약 버튼 */
+#cdashFooterBar{ background:#fff !important; border-top:1px solid var(--line) !important; padding:10px 22px !important; }
+#cdashFooterBar .cdash-footer-docs-row{ border:0 !important; padding:0 !important; gap:10px !important; align-items:center !important; }
+#cdashFooterBar #cesignOpenBtn, #cdashFooterBar .agr-mini-danger-btn{
+  height:36px !important; min-height:36px !important; border-radius:9px !important; padding:0 14px !important; font-size:13px !important; font-weight:700 !important;
+}
+#cdashFooterBar .cdash-docs-fold-head{ font-size:13.5px !important; font-weight:700 !important; color:var(--navy) !important; }
+
+/* ==========================================================================
+   §다른 탭(MOU 진행상황·B2B KPI·메일 설정) — 고객관리와 같은 구성
+     큰 제목 → 요약 띠 → 검색·필터 → 흰 카드 표
+   ========================================================================== */
+/* 페이지 제목 — 지금 탭 이름 그대로(메일 설정은 원래 제목을 키운다) */
+#workQueueView::before, #kpiView .kpiv-wrap::before{
+  display:block; font-size:34px; line-height:1.15; font-weight:800; letter-spacing:-.03em; color:var(--navy);
+  margin:6px 0 18px;
+}
+#workQueueView::before{ content:'MOU 진행상황'; }
+#kpiView .kpiv-wrap::before{ content:'B2B KPI'; }
+#mailSettingsView .workq-title{ font-size:34px !important; line-height:1.15 !important; font-weight:800 !important; letter-spacing:-.03em !important; color:var(--navy) !important; }
+#mailSettingsView .workq-subtitle{ font-size:14px !important; color:var(--text-muted) !important; margin-top:6px !important; }
+#workQueueView{ padding-top:14px !important; }
+@media (max-width:760px){
+  #workQueueView::before, #kpiView .kpiv-wrap::before{ font-size:26px; margin:2px 0 12px; }
+  #mailSettingsView .workq-title{ font-size:26px !important; }
+}
+
+/* MOU 진행상황 — 요약 3칸을 한 장 카드로, 큰 세리프 숫자 */
+html body #workQueueView .workq-task-row.is-compact{
+  display:grid !important; grid-template-columns:repeat(3, minmax(0,1fr)) !important; gap:0 !important;
+  background:#fff !important; border:1px solid var(--line) !important; border-radius:16px !important;
+  padding:20px 8px !important; box-shadow:0 1px 2px rgba(20,28,42,.03) !important; max-width:none !important;
+}
+html body #workQueueView .workq-task-row.is-compact .workq-task-card.is-inline{
+  width:auto !important; min-width:0 !important; height:auto !important; min-height:0 !important;
+  display:flex !important; flex-direction:column !important; align-items:flex-start !important; justify-content:flex-start !important; gap:6px !important;
+  padding:2px 28px !important; background:transparent !important; border:0 !important; border-radius:0 !important; box-shadow:none !important;
+}
+html body #workQueueView .workq-task-row.is-compact .workq-task-card.is-inline + .workq-task-card.is-inline{ border-left:1px solid var(--line) !important; }
+html body #workQueueView .workq-task-card.is-inline .workq-task-card-label{ font-size:15.5px !important; font-weight:700 !important; color:var(--text) !important; }
+html body #workQueueView .workq-task-card.is-inline .workq-task-card-num{ font-family:var(--dr-serif) !important; font-size:44px !important; line-height:1.05 !important; font-weight:700 !important; color:var(--navy) !important; }
+html body #workQueueView .workq-task-card.is-inline .workq-task-card-unit{ font-family:'Pretendard Variable','Pretendard',sans-serif !important; font-size:16px !important; font-weight:600 !important; color:var(--text-muted) !important; margin-left:4px; }
+html body #workQueueView .workq-task-card.is-inline:hover .workq-task-card-num{ color:var(--navy-500) !important; }
+html body #workQueueView .workq-task-card.is-inline.is-active .workq-task-card-label,
+html body #workQueueView .workq-task-card.is-inline[aria-pressed="true"] .workq-task-card-label{ color:var(--dr-accent) !important; }
+/* 검색·필터 */
+html body #workQueueView .workq-search-row .workq-search-autocomplete .search-box{ height:50px !important; min-height:50px !important; border-radius:12px !important; padding:0 16px !important; }
+#workQueueView .workq-search-row .search-box input{ font-size:15px !important; }
+#workQueueView .workq-filter-row{ gap:8px !important; }
+html body #workQueueView .workq-filter-row .list-filter-chip{ height:38px !important; min-height:38px !important; padding:0 14px !important; border-radius:999px !important; font-size:13.5px !important; font-weight:600 !important; background:#fff; }
+/* 표 — 흰 카드, 높은 행 */
+#workQueueView .workq-results-scroll{ background:#fff !important; border:1px solid var(--line) !important; border-radius:16px !important; box-shadow:0 1px 2px rgba(20,28,42,.03) !important; }
+#workQueueView .workq-table thead th{
+  background:#fff !important; height:52px; font-size:13.5px !important; font-weight:600 !important; color:var(--text-muted) !important;
+  border-bottom:1px solid var(--line) !important; padding:0 14px !important;
+}
+#workQueueView .workq-table tbody td{ padding:14px 14px !important; border-bottom:1px solid #EFEEEA !important; }
+#workQueueView .workq-table tbody tr:hover td{ background:#FAFAF7 !important; }
+#workQueueView .workq-action-btn{ height:36px !important; min-height:36px !important; border-radius:9px !important; padding:0 14px !important; font-size:13px !important; }
+@media (max-width:760px){
+  html body #workQueueView .workq-task-row.is-compact{ padding:14px 2px !important; }
+  html body #workQueueView .workq-task-row.is-compact .workq-task-card.is-inline{ padding:0 12px !important; }
+  html body #workQueueView .workq-task-card.is-inline .workq-task-card-label{ font-size:13px !important; }
+  html body #workQueueView .workq-task-card.is-inline .workq-task-card-num{ font-size:30px !important; }
+  html body #workQueueView .workq-task-card.is-inline .workq-task-card-unit{ font-size:13px !important; }
+}
+
+/* B2B KPI — 구역마다 흰 카드, 제목 위계 */
+#kpiView .kpiv-sec{ background:#fff; border:1px solid var(--line); border-radius:16px; padding:20px 22px !important; margin-bottom:16px !important; box-shadow:0 1px 2px rgba(20,28,42,.03); }
+#kpiView .kpiv-sec #crmKpiGoalPanel.kgoal{ border:0 !important; box-shadow:none !important; padding:0 !important; }
+#kpiView .kpiv-title{ font-size:18px !important; font-weight:800 !important; color:var(--navy) !important; letter-spacing:-.02em; }
+#kpiView .kpiv-sub{ font-size:13px !important; color:var(--text-muted) !important; }
+#kpiView .kpiv-head{ margin-bottom:14px !important; gap:10px !important; align-items:baseline !important; }
+#kpiView .kgoal-total-box .kgoal-total-num, #kpiView .kgoal-total-box [class*="num"]{ font-family:var(--dr-serif) !important; }
+
+/* 메일 설정 — 메일 종류 탭을 밑줄형으로 */
+#mailSettingsView .mail-tabs-bar{ border-bottom:1px solid var(--line) !important; gap:2px !important; padding:0 4px !important; background:transparent !important; }
+#mailSettingsView .mail-tab-btn{
+  height:44px !important; min-height:44px !important; border:0 !important; border-radius:0 !important; background:transparent !important; box-shadow:none !important;
+  padding:0 14px !important; font-size:14px !important; font-weight:600 !important; color:var(--text-muted) !important;
+}
+html body #mailSettingsView .mail-tabs-bar .mail-tab-btn.is-active{ color:var(--navy) !important; font-weight:800 !important; box-shadow:inset 0 -3px 0 var(--navy) !important; background:transparent !important; }
+#mailSettingsView .mail-tab-panel{ border:1px solid var(--line) !important; border-radius:16px !important; background:#fff !important; margin-top:16px; box-shadow:0 1px 2px rgba(20,28,42,.03) !important; }
+#mailSettingsView .mailx-header-btns .mailx-account-btn{ height:42px !important; min-height:42px !important; border-radius:10px !important; }
+@media (max-width:760px){
+  #chartHeader .cdash2-header{ padding:16px 16px 10px !important; }
+  #chartHeader .cdash2-title{ font-size:20px !important; }
+  #chartHeader .cdet-head-contacts{ gap:4px 14px !important; margin-top:8px !important; }
+  #chartHeader .cdet-head-contact + .cdet-head-contact{ padding-left:0; border-left:0; }
+  #chartTabBar .cdash2-tabbar{ padding:0 6px !important; }
+  #chartTabBar .cdash2-tab{ padding:0 9px !important; font-size:14px !important; }
+  #chartBody.cdash-body{ padding:12px !important; }
+  #chartBody .cdash2-card, #chartBody .qtab-card{ padding:14px !important; }
+  #cdashFooterBar{ padding:8px 12px !important; }
+  #cdashFooterBar .cdash-footer-docs-row{ gap:6px !important; }
+  #cdashFooterBar .cdash-docs-fold-head{ white-space:nowrap !important; }
+  #cdashFooterBar #cesignOpenBtn, #cdashFooterBar .agr-mini-danger-btn{ padding:0 10px !important; font-size:12.5px !important; }
+}
+/* 메일 종류 탭 — 선택된 탭 안의 제목 글자도 네이비(예전 채움형의 흰 글자가 남지 않게) */
+html body #mailSettingsView .mail-tabs-bar .mail-tab-btn.is-active .mail-type-card-title{ color:var(--navy) !important; }
+html body #mailSettingsView .mail-tabs-bar .mail-tab-btn:not(.is-active) .mail-type-card-title{ color:inherit !important; }
