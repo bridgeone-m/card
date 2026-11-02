@@ -38,7 +38,9 @@ test('공개 저장소에 양식·도장·비밀 파일을 넣지 않는다', ()
   const ignore = fs.readFileSync(path.join(root, '.gitignore'), 'utf8');
   for (const rule of ['functions/.env*', '*.template.pdf', '*.map.json', 'contract-assets/']) assert.ok(ignore.includes(rule), rule);
   const config = fs.readFileSync(path.join(root, 'contractEsignConfig.js'), 'utf8');
-  assert.ok(config.includes("apiBase: ''"), '배포 전 기본값은 서버 미연결');
+  // 서버 주소는 비어 있거나(미연결) 운영 계약서 함수 주소만 허용한다. 다른 곳으로 보내지 않는다.
+  const apiBase = (config.match(/apiBase:\s*'([^']*)'/) || [])[1];
+  assert.ok(apiBase === '' || apiBase === 'https://asia-northeast3-pour-dashboard.cloudfunctions.net/contractApi', `apiBase: ${apiBase}`);
   for (const file of ['contract-esign.js', 'contractEsignConfig.js']) {
     const src = fs.readFileSync(path.join(root, file), 'utf8');
     assert.equal(/modusign\.co\.kr|MODUSIGN_API_KEY|Basic\s/.test(src), false, file);

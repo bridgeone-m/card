@@ -4,16 +4,19 @@
 //   node grant-contract-role.cjs grant  담당자@회사.kr sender   (발송·재시도·문서 열람)
 //   node grant-contract-role.cjs grant  담당자@회사.kr viewer   (문서 열람만)
 //   node grant-contract-role.cjs revoke 담당자@회사.kr
+//   --mark-verified: 콘솔에서 직접 만든 계정은 이메일 미확인 상태다. 담당자가 실제 쓰는 메일함임을
+//                    사람이 확인한 경우에만 이 옵션으로 확인 완료 표시 후 권한을 준다.
 // 회수하면 토큰도 무효화된다. 공용 계정에는 줄 수 없다. 인증: GOOGLE_APPLICATION_CREDENTIALS.
 const admin = require('firebase-admin');
 
 const SHARED_EMAIL = 'hansol2-owner@pour-dashboard.firebaseapp.com';
 
 async function main() {
-  const [action, email, role] = process.argv.slice(2);
+  const markVerified = process.argv.includes('--mark-verified');
+  const [action, email, role] = process.argv.slice(2).filter((a) => a !== '--mark-verified');
   if (!['grant', 'revoke'].includes(action) || !email) throw new Error('사용법: grant-contract-role.cjs grant|revoke <email> [sender|viewer]');
   if (email.toLowerCase() === SHARED_EMAIL) throw new Error('공용 계정에는 권한을 줄 수 없습니다.');
-  admin.initializeApp();
+  admin.initializeApp({ projectId: 'pour-dashboard' });
   const user = await admin.auth().getUserByEmail(email);
   const claims = Object.assign({}, user.customClaims);
   delete claims.contractSender;
@@ -22,7 +25,8 @@ async function main() {
     if (role === 'sender') claims.contractSender = true;
     else if (role === 'viewer') claims.contractViewer = true;
     else throw new Error('역할은 sender 또는 viewer 입니다.');
-    if (!user.emailVerified) throw new Error('이메일이 확인된 계정에만 권한을 줄 수 있습니다.');
+    if (!user.emailVerified && !markVerified) throw new Error('이메일이 확인된 계정에만 권한을 줄 수 있습니다(사람이 확인했으면 --mark-verified).');
+    if (!user.emailVerified) await admin.auth().updateUser(user.uid, { emailVerified: true });
   }
   await admin.auth().setCustomUserClaims(user.uid, claims);
   await admin.auth().revokeRefreshTokens(user.uid);
