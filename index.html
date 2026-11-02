@@ -11573,12 +11573,33 @@ body.crm-fixed-view .crm-list-col .list-pagination{ display:grid !important; }
     <span class="gate-bg-glow gate-bg-glow-b"></span>
     <img class="gate-bg-mark" src="assets/netform-mark.png" alt="" />
   </div>
+  <!-- §로그인 화면 2차 리디자인(2026-11) — PC 왼쪽 소개 영역(장식·소개 문구만, 기능 없음).
+       휴대폰에서는 CSS로 접고 오른쪽 로그인 영역만 가운데에 둔다. 인증 관련 id는 아래 카드 그대로. -->
+  <aside class="gate-hero" aria-label="고객관리카드 소개">
+    <div class="gate-hero-top">
+      <img class="gate-hero-logo" src="assets/netform-mark.png" alt="" width="780" height="752" />
+      <span class="gate-hero-word">NETFORM</span>
+    </div>
+    <div class="gate-hero-body">
+      <div class="gate-hero-eyebrow">B2B CUSTOMER PLATFORM</div>
+      <div class="gate-hero-title">고객관리카드</div>
+    </div>
+    <svg class="gate-hero-art" viewBox="0 0 600 600" fill="none" aria-hidden="true">
+      <g stroke="currentColor" stroke-width="1">
+        <circle cx="420" cy="420" r="120" /><circle cx="420" cy="420" r="200" /><circle cx="420" cy="420" r="280" /><circle cx="420" cy="420" r="360" />
+        <path d="M200 560V300l220 260V300" stroke-width="1.4" />
+      </g>
+      <g fill="currentColor"><circle cx="420" cy="300" r="3" /><circle cx="200" cy="300" r="3" /></g>
+    </svg>
+    <div class="gate-hero-foot">© NETFORM · 내부 업무용</div>
+  </aside>
   <div class="gate-card" role="group" aria-labelledby="gateBrandTitle">
     <div class="gate-logo-wrap">
       <img class="gate-logo" src="assets/netform-mark.png" alt="NETFORM" width="780" height="752" />
     </div>
     <div class="gate-brand" id="gateBrandTitle">고객관리카드</div>
     <div class="gate-desc" id="gateDesc">비밀번호를 입력해 주세요</div>
+    <label class="gate-label" for="gatePasswordInput">비밀번호</label>
     <div class="gate-field">
       <svg class="gate-field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15.5" r="1.2" fill="currentColor" stroke="none"/></svg>
       <input type="password" id="gatePasswordInput" class="gate-input" placeholder="비밀번호" autocomplete="current-password" aria-label="비밀번호" />
@@ -11586,6 +11607,10 @@ body.crm-fixed-view .crm-list-col .list-pagination{ display:grid !important; }
     <div class="gate-error" id="gateError" style="display:none;"></div>
     <button type="button" id="gateEnterBtn" class="gate-enter-btn">로그인</button>
     <div class="gate-admin-note">※ 고객 등록·수정·삭제는 관리자 모드에서만 변경 가능합니다.</div>
+    <div class="gate-secure-note">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg>
+      <span>넷폼 내부 업무용 시스템입니다. 비밀번호를 외부에 공유하지 마세요.</span>
+    </div>
     <!-- §계정 진단 라운드(신규) — §요청 1. 로그인에 실패했을 때만 나타난다(평소엔 숨김).
          비밀번호를 몰라도 "계정이 있는지"와 "재설정 메일 보내기"만 안전하게 시도할 수
          있다 — 둘 다 비밀번호를 요구하거나 노출하지 않는다. -->
