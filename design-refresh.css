@@ -1438,3 +1438,22 @@ body[data-crm-view="mailSettingsView"] #mailSettingsView #mailTabsBar{ margin-to
   .crm-map-expand-pill{ height:52px !important; padding:0 26px !important; font-size:16px !important; font-weight:800 !important; gap:10px !important; }
   .crm-map-expand-pill::before{ width:19px !important; height:19px !important; }
 }
+
+
+/* §크게 보기 팝업 — 검색칸을 높게, 지도 탭 글씨를 크게 (2026-11 사용자 요청) */
+@media (min-width:761px){
+  body.crm-map-expanded #mapDistributionModalRoot .map-docked .map-modal-tab-btn{
+    height:58px !important; font-size:17px !important; font-weight:700 !important;
+  }
+  body.crm-map-expanded #mapDistributionModalRoot .map-docked .map-modal-tab-btn.is-active{ font-weight:800 !important; }
+  body.crm-map-expanded #mapDistributionModalRoot .map-search-field,
+  body.crm-map-expanded #mapDistributionModalRoot .map-modal-search{
+    height:54px !important; min-height:54px !important; font-size:16px !important; border-radius:12px !important;
+  }
+  body.crm-map-expanded #mapDistributionModalRoot .map-modal-search{ padding-left:44px !important; }
+  body.crm-map-expanded #mapDistributionModalRoot .map-modal-select{
+    height:46px !important; min-height:46px !important; font-size:15px !important; border-radius:10px !important;
+  }
+  body.crm-map-expanded #mapDistributionModalRoot .map-modal-filters{ gap:10px !important; padding-top:14px !important; padding-bottom:12px !important; }
+  body.crm-map-expanded #mapDistributionModalRoot .map-modal-infocol{ top:190px !important; max-height:calc(100% - 210px) !important; }
+}

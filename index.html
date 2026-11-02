@@ -23207,7 +23207,34 @@ window.SHIN2_CRM_APP_INIT = function(){
     if(on){
       const closeBtn = document.getElementById('crmMapExpandClose');
       if(closeBtn) setTimeout(()=>{ try{ closeBtn.focus({ preventScroll:true }); }catch(e){} }, 30);
+    } else {
+      setTimeout(resetMapPreviewView, 650);   // 미리보기는 늘 전국 보기로
     }
+  }
+  // §미리보기 전국 보기(2026-11, 사용자 요청 "지도 그림만") — 미리보기 칸은 실제 지도를 전국 범위로
+  // 보여 준다(지역 묶음 동그라미에 업체 수가 이미 나온다). 크게 보기에서 시공사 탭이 아닌 탭을 봤거나
+  // 검색했다가 닫으면, 시공사 탭·검색어 비움(사용자가 직접 지우는 것과 같은 입력 이벤트)으로 되돌린 뒤
+  // 기존 fitToEntries로 전국 범위를 다시 맞춘다. 데이터·검색 로직은 그대로 쓴다.
+  function resetMapPreviewView(){
+    if(document.body.classList.contains('crm-map-expanded')) return;
+    try{
+      const companyTab = document.querySelector('#mapDistributionModalRoot .map-modal-tab-btn[data-map-tab="company"]');
+      if(companyTab && !companyTab.classList.contains('is-active')) companyTab.click();
+      const s = document.getElementById('mapFilterSearch');
+      if(s && s.value){ s.value = ''; s.dispatchEvent(new Event('input', { bubbles:true })); }
+    }catch(err){ /* 무시 — 다음 열기에서 그대로 쓸 수 있다 */ }
+    let tries = 0;
+    const fit = ()=>{
+      tries++;
+      try{
+        if(mapCanvasState && typeof mapCanvasState.fitToEntries === 'function' && mapActiveTab === 'company'){
+          mapCanvasState.fitToEntries(applyMapFilters(buildMapCompanies()));
+          return;
+        }
+      }catch(err){ /* 무시 */ }
+      if(tries < 8) setTimeout(fit, 700);   // 지도를 새로 만드는 중이면 잠시 뒤 다시
+    };
+    setTimeout(fit, 400);
   }
   function setupMapExpandToggle(){
     const root = document.getElementById('mapDistributionModalRoot');
@@ -23220,6 +23247,7 @@ window.SHIN2_CRM_APP_INIT = function(){
          <button type="button" class="crm-map-expand-close" id="crmMapExpandClose" aria-label="지도 닫기">&times;</button>`);
       root.querySelector('#crmMapExpandHit').addEventListener('click', ()=> setMapExpanded(true));
       root.querySelector('#crmMapExpandClose').addEventListener('click', ()=> setMapExpanded(false));
+      setTimeout(resetMapPreviewView, 1500);   // 처음 그릴 때도 전국 보기로 맞춘다
     }
     if(!document.getElementById('crmMapExpandBackdrop')){
       const bd = document.createElement('div');
@@ -23316,7 +23344,7 @@ window.SHIN2_CRM_APP_INIT = function(){
                 <span class="crm-upcoming-dday${r.dday <= 3 ? ' is-soon' : ''}">${r.dday === 0 ? 'D-day' : 'D-' + r.dday}</span>
               </span>
               <span class="crm-upcoming-name">${esc(r.co.name || '(이름 없음)')}</span>
-              ${r.time || r.owner ? `<span class="crm-upcoming-meta">${[r.time, r.owner ? '담당 ' + r.owner : ''].filter(Boolean).map(esc).join(' · ')}</span>` : ''}
+              <span class="crm-upcoming-meta crm-upcoming-when">${esc(md + ' ' + UPCOMING_WEEKDAYS[d.getDay()] + (r.time ? ' ' + r.time : ''))}${r.owner ? ' · 담당 ' + esc(r.owner) : ''}</span>${/* 2026-11 사용자 요청 — "11.03 화 10:00" 형식 */''}
               ${addr ? `<span class="crm-upcoming-meta">${esc(addr)}</span>` : ''}
             </span>
           </button>`;
