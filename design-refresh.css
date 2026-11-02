@@ -1347,3 +1347,81 @@ html body #gateScreen #gateEnterBtn.gate-enter-btn:focus-visible{ box-shadow:0 0
   #addCoOverlay .popup-action-bar{ padding:14px 20px 22px !important; }
   #addCoOverlay #crmNewFCancel, #addCoOverlay #crmNewFSave{ flex:1 1 0; min-width:0 !important; }
 }
+
+/* ==========================================================================
+   §지도 미리보기 + 크게 보기 (2026-11, 사용자 요청)
+     평소: 오른쪽 지도 칸은 지도 그림만(탭·검색·필터·결과 목록은 접음) + "지도 크게 보기"
+     누르면: 같은 지도 칸이 화면 가운데 큰 팝업(탭·검색·필터 모두 사용), 닫기·바깥·ESC로 복귀
+   지도 인스턴스와 데이터·검색은 그대로 — 칸의 크기·위치만 바뀐다. (휴대폰은 기존 "지도 보기" 그대로)
+   ========================================================================== */
+.crm-map-expand-hit, .crm-map-expand-close, .crm-map-expand-backdrop{ display:none; }
+@media (min-width:761px){
+  /* --- 평소(미리보기) --- */
+  body.crm-mapdock[data-crm-view="listView"]:not(.crm-map-expanded) #mapDistributionModalRoot .map-docked .map-modal-tabs,
+  body.crm-mapdock[data-crm-view="listView"]:not(.crm-map-expanded) #mapDistributionModalRoot #mapModalBody > :not(.map-modal-mapcol):not(.map-modal-error){ display:none !important; }   /* 지도 불러오기 실패 안내는 그대로 보인다 */
+  body.crm-mapdock[data-crm-view="listView"]:not(.crm-map-expanded) #mapDistributionModalRoot #mapModalBody{
+    grid-template-rows:minmax(0,1fr) !important; grid-template-columns:minmax(0,1fr) !important; padding:0 !important; height:100% !important;
+  }
+  body.crm-mapdock[data-crm-view="listView"]:not(.crm-map-expanded) #mapDistributionModalRoot .map-modal-mapcol{
+    grid-row:1 / -1 !important; grid-column:1 / -1 !important; height:100% !important; min-height:0 !important; padding:0 !important;
+  }
+  body.crm-mapdock[data-crm-view="listView"]:not(.crm-map-expanded) .crm-map-expand-hit{
+    display:flex; position:absolute; inset:0; z-index:40; align-items:flex-end; justify-content:center;
+    padding:0 0 18px; border:0; border-radius:16px; background:transparent; cursor:zoom-in;
+  }
+  body.crm-mapdock[data-crm-view="listView"]:not(.crm-map-expanded) .crm-map-expand-hit:hover{ background:rgba(20,40,75,.04); }
+  .crm-map-expand-pill{
+    display:inline-flex; align-items:center; gap:8px; height:40px; padding:0 18px; border-radius:999px;
+    background:var(--navy); color:#fff; font-size:14px; font-weight:700; box-shadow:0 6px 18px rgba(13,29,58,.25);
+  }
+  .crm-map-expand-pill::before{
+    content:''; width:16px; height:16px; background:currentColor;
+    -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 3h6v6'/%3E%3Cpath d='M9 21H3v-6'/%3E%3Cpath d='M21 3l-7 7'/%3E%3Cpath d='M3 21l7-7'/%3E%3C/svg%3E") center/contain no-repeat;
+            mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 3h6v6'/%3E%3Cpath d='M9 21H3v-6'/%3E%3Cpath d='M21 3l-7 7'/%3E%3Cpath d='M3 21l7-7'/%3E%3C/svg%3E") center/contain no-repeat;
+  }
+}
+@media (min-width:761px) and (max-width:1100px){
+  body.crm-mapdock[data-crm-view="listView"]:not(.crm-map-expanded) #mapDistributionModalRoot.crm-mapdock-root{ height:300px !important; }
+}
+@media (min-width:761px){
+  /* --- 크게 보기(가운데 팝업) --- */
+  body.crm-map-expanded[data-crm-view="listView"] .crm-map-expand-backdrop{
+    display:block; position:fixed; inset:0; z-index:calc(var(--z-modal, 400) - 3); background:rgba(13,22,40,.45);
+  }
+  body.crm-map-expanded[data-crm-view="listView"] #mapDistributionModalRoot.crm-mapdock-root{
+    position:fixed !important; top:4vh !important; bottom:4vh !important;
+    left:max(16px, calc((100vw - 1240px) / 2)) !important; right:max(16px, calc((100vw - 1240px) / 2)) !important;
+    width:auto !important; height:auto !important; margin:0 !important;
+    z-index:calc(var(--z-modal, 400) - 2) !important;
+  }
+  body.crm-map-expanded[data-crm-view="listView"] #mapDistributionModalRoot .map-modal-overlay.map-docked > .map-modal-panel{
+    position:relative; box-shadow:0 30px 80px rgba(13,29,58,.30) !important; border-radius:18px !important;
+  }
+  body.crm-map-expanded[data-crm-view="listView"] #mapDistributionModalRoot .map-modal-infocol{
+    position:absolute !important; left:16px !important; right:auto !important;
+    top:150px !important; max-height:calc(100% - 170px) !important; width:320px !important;
+  }
+  body.crm-map-expanded[data-crm-view="listView"] .crm-map-expand-close{
+    display:flex; align-items:center; justify-content:center; position:absolute; top:10px; right:12px; z-index:50;
+    width:40px; height:40px; border-radius:10px; border:1px solid #DCE5F0; background:#fff; color:var(--navy);
+    font-size:22px; line-height:1; cursor:pointer; box-shadow:0 2px 8px rgba(13,29,58,.12);
+  }
+  body.crm-map-expanded[data-crm-view="listView"] #mapDistributionModalRoot .map-docked .map-modal-tabs{ padding-right:64px !important; }
+}
+
+/* §발송 버튼 상단 막대 이동 (2026-11, 사용자 요청) — 메일 설정 화면에서만 상단 막대에 보이고,
+   원래 있던 빈 줄은 없앤다. 휴대폰 폭에서는 JS가 원래 자리에 둔다. */
+.gnav-right > .mailx-header-btns{ display:none !important; }
+body[data-crm-view="mailSettingsView"] .gnav-right > .mailx-header-btns{ display:flex !important; align-items:center; gap:8px; margin:0 !important; }
+.gnav-right > .mailx-header-btns .mailx-account-btn{
+  height:44px !important; min-height:44px !important; padding:0 14px !important; border-radius:10px !important;
+  font-size:14px !important; font-weight:700 !important; background:#fff !important;
+  border:1px solid var(--crm-btn-line) !important; color:var(--navy) !important; gap:6px !important;
+}
+#mailSettingsView .mail-settings-header-wrap:not(:has(.mailx-header-btns)){ display:none !important; }
+body[data-crm-view="mailSettingsView"] #mailSettingsView{ padding-top:10px !important; }
+body[data-crm-view="mailSettingsView"] #mailSettingsView .mail-settings-panel > .mail-account-section{ margin:0 !important; }
+body[data-crm-view="mailSettingsView"] #mailSettingsView #mailTabsBar{ margin-top:0 !important; }
+@media (min-width:1101px) and (max-width:1365px){
+  .gnav-right > .mailx-header-btns .mailx-account-btn{ height:40px !important; min-height:40px !important; padding:0 11px !important; font-size:13.5px !important; }
+}
