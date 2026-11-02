@@ -1588,3 +1588,6 @@ html body #chartBody .agr-stage-row-actions .agr-date-chip.is-empty{ color:#1B3A
   html body #chartBody .agr-stage-btn-row .agr-custom-mail-btn,
   html body #chartBody .agr-stage-btn-row #cesignOpenBtn{ height:36px !important; min-height:36px !important; }
 }
+html body #chartBody .agr-stage-row-actions .agr-meeting-btn.agr-slot-main,
+html body #chartBody .agr-stage-row-actions .agr-date-chip.is-filled,
+html body #chartBody .agr-stage-row-actions .agr-date-chip.agr-mou-manual-chip{ color:#1B3A66 !important; }
