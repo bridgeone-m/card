@@ -11708,6 +11708,9 @@ body.crm-fixed-view .crm-list-col .list-pagination{ display:grid !important; }
     <!-- §모바일 최적화 — 휴대폰에서는 지도를 접어 두고 이 버튼으로 연다(PC에서는 버튼이 보이지 않고 지도는 그대로). -->
     <button type="button" class="crm-mobile-map-toggle" id="crmMobileMapToggle" aria-expanded="false" aria-controls="mapDistributionModalRoot">지도 보기</button>
     <div id="mapDistributionModalRoot"></div>
+    <!-- §다가오는 미팅 카드(2026-11) — 지도 아래(오른쪽 열)에 오늘 이후 예정된 1·2차 미팅을
+         날짜순으로 보여 준다. 저장된 예정일(buildProgressStages의 m1/m2)을 읽기만 한다. -->
+    <aside class="crm-upcoming-card" id="crmUpcomingMeetings" aria-label="다가오는 미팅"></aside>
     <!-- §상단 헤더 재정리 라운드 2(신규) — 사용자가 빨간 X로 지적한 "고객 N" 큰 타이틀
          영역을 화면에서 완전히 뺐다. #crmListTitle에 여러 렌더 함수(renderList/
          L2→L3 전환 탭/신규 협약사 탭)가 조건 없이 textContent·innerHTML을 그대로
@@ -23158,6 +23161,94 @@ window.SHIN2_CRM_APP_INIT = function(){
     }
     try{ mountMapDistributionInline(); }
     catch(err){ console.warn('왼쪽 지도 패널 마운트 실패:', err); }
+    scheduleUpcomingMeetingsRender();
+  }
+
+  // ==========================================================================
+  // §다가오는 미팅 카드(2026-11) — 오늘 이후로 잡힌 1차·2차 미팅을 날짜순으로 보여 준다.
+  //   · 데이터: buildProgressStages(co)의 m1/m2 단계 — 완료가 아니고 예정일(scheduledLabel)이
+  //     오늘 이후인 것만. 시각(scheduledTime)·담당(owner)도 저장된 값 그대로. 새 판정·저장 없음.
+  //   · 업체를 누르면 기존 고객 상세를 "협약 진행" 탭으로 연다(예전 미팅 관리 카드와 같은 동작).
+  //   · 목록 다시 그릴 때마다(검색 입력 포함) 363곳을 다시 계산하지 않도록 잠깐 모아서 한 번만.
+  // ==========================================================================
+  let upcomingMeetingsTab = 'all';
+  let upcomingMeetingsTimer = null;
+  const UPCOMING_WEEKDAYS = ['일','월','화','수','목','금','토'];
+  function scheduleUpcomingMeetingsRender(){
+    clearTimeout(upcomingMeetingsTimer);
+    upcomingMeetingsTimer = setTimeout(()=>{
+      try{ renderUpcomingMeetings(); }
+      catch(err){ console.warn('다가오는 미팅 카드 그리기 실패:', err); }
+    }, 250);
+  }
+  function collectUpcomingMeetings(){
+    const day0 = t=>{ const x = new Date(t); x.setHours(0,0,0,0); return x.getTime(); };
+    const today = day0(Date.now());
+    let companies = [];
+    try{ companies = D.loadActiveCompanies() || []; }catch(err){ companies = []; }
+    const out = [];
+    companies.forEach(co=>{
+      let stages = [];
+      try{ stages = buildProgressStages(co).stages || []; }catch(err){ stages = []; }
+      stages.forEach(s=>{
+        if(s.key !== 'm1' && s.key !== 'm2') return;
+        if(s.state === 'done' || !s.scheduledLabel) return;
+        const p = parsePartnerDateLabel(s.scheduledLabel);
+        if(!p || typeof p.ts !== 'number') return;
+        const dayTs = day0(p.ts);
+        if(dayTs < today) return;   // 지난 예정은 "미팅 후속 알림"이 챙긴다
+        out.push({ co, kind: s.key, ts: dayTs, time: s.scheduledTime || '', owner: s.owner || '',
+          dday: Math.round((dayTs - today) / 86400000) });
+      });
+    });
+    out.sort((a,b)=> (a.ts - b.ts) || String(a.time).localeCompare(String(b.time)) || String(a.co.name || '').localeCompare(String(b.co.name || ''), 'ko'));
+    return out;
+  }
+  function renderUpcomingMeetings(){
+    const box = document.getElementById('crmUpcomingMeetings');
+    if(!box) return;
+    const all = collectUpcomingMeetings();
+    const counts = { all: all.length, m1: all.filter(x=> x.kind === 'm1').length, m2: all.filter(x=> x.kind === 'm2').length };
+    const rows = upcomingMeetingsTab === 'all' ? all : all.filter(x=> x.kind === upcomingMeetingsTab);
+    const tabs = [['all','전체'], ['m1','1차'], ['m2','2차']];
+    box.innerHTML = `
+      <div class="crm-upcoming-head">
+        <div class="crm-upcoming-title">다가오는 미팅</div>
+        <button type="button" class="crm-upcoming-more" id="crmUpcomingMore">MOU 진행상황 →</button>
+      </div>
+      <div class="crm-upcoming-tabs" role="tablist" aria-label="미팅 차수">
+        ${tabs.map(([k,l])=> `<button type="button" class="crm-upcoming-tab${k === upcomingMeetingsTab ? ' is-active' : ''}" role="tab"
+          aria-selected="${k === upcomingMeetingsTab ? 'true' : 'false'}" data-upcoming-tab="${k}">${l} <span>${counts[k]}</span></button>`).join('')}
+      </div>
+      <div class="crm-upcoming-list">
+        ${rows.length ? rows.map(r=>{
+          const d = new Date(r.ts);
+          const md = String(d.getMonth()+1).padStart(2,'0') + '.' + String(d.getDate()).padStart(2,'0');
+          const addr = r.co.address || '';
+          return `
+          <button type="button" class="crm-upcoming-row" data-upcoming-co="${esc(String(r.co.id))}">
+            <span class="crm-upcoming-date"><b>${md}</b><i>${UPCOMING_WEEKDAYS[d.getDay()]}</i></span>
+            <span class="crm-upcoming-main">
+              <span class="crm-upcoming-badges">
+                <span class="crm-upcoming-kind is-${r.kind}">${r.kind === 'm1' ? '1차 미팅' : '2차 미팅'}</span>
+                <span class="crm-upcoming-dday${r.dday <= 3 ? ' is-soon' : ''}">${r.dday === 0 ? 'D-day' : 'D-' + r.dday}</span>
+              </span>
+              <span class="crm-upcoming-name">${esc(r.co.name || '(이름 없음)')}</span>
+              ${r.time || r.owner ? `<span class="crm-upcoming-meta">${[r.time, r.owner ? '담당 ' + r.owner : ''].filter(Boolean).map(esc).join(' · ')}</span>` : ''}
+              ${addr ? `<span class="crm-upcoming-meta">${esc(addr)}</span>` : ''}
+            </span>
+          </button>`;
+        }).join('') : `<div class="crm-upcoming-empty">예정된 ${upcomingMeetingsTab === 'm1' ? '1차 ' : upcomingMeetingsTab === 'm2' ? '2차 ' : ''}미팅이 없습니다.</div>`}
+      </div>`;
+    box.querySelectorAll('[data-upcoming-tab]').forEach(btn=> btn.addEventListener('click', ()=>{
+      upcomingMeetingsTab = btn.getAttribute('data-upcoming-tab');
+      renderUpcomingMeetings();
+    }));
+    box.querySelectorAll('[data-upcoming-co]').forEach(btn=> btn.addEventListener('click', ()=>{
+      openCustomerDetail(btn.getAttribute('data-upcoming-co'), 'agreement');
+    }));
+    const more = document.getElementById('crmUpcomingMore');
+    if(more) more.addEventListener('click', ()=> showWorkQueueTab());
   }
 
   // 우측 "최근 요청" — buildRequestListItems() 결과를 업체 구분 없이 최신순으로 모은다.
