@@ -27670,12 +27670,12 @@ window.SHIN2_CRM_APP_INIT = function(){
     push('대표', co.repName || pd.ceo);
     push('휴대폰', co.mobile, false, true);
     push('회사전화', co.phone || pd.phone, false, true);
-    push('이메일', co.email || pd.email);
+    push('이메일', co.email || pd.email, false, true);          // 2026-11 사용자 요청 — 이메일도 [복사]
     push('사업자등록번호', co.bizRegNo || pd.bizno, false, true);
     push('지역', region && region !== '기타' ? region : null);
     push('주요 공종', topCats);
     // §상세 팝업 2차 라운드 — 업체코드는 헤더(업체명 위)에 작게 표시하므로 여기서는 뺀다.
-    push('주소', co.address, true);
+    push('주소', co.address, true, true);                        // 2026-11 사용자 요청 — 주소도 [복사]
     const formerNames = Array.isArray(co.formerNames) ? co.formerNames.filter(Boolean) : [];
     if(formerNames.length) push('이전 상호', formerNames.join(', '), true);
     const grade = getCompanyGrade(co);
@@ -28645,7 +28645,8 @@ window.SHIN2_CRM_APP_INIT = function(){
         </details>
         <!-- §상세 팝업 2차 라운드 — [업체 삭제] 버튼은 요청대로 화면에서 뺐다(삭제 확인 모달·처리 함수는 코드에 그대로 둔다).
              그 자리에 협약진행 탭 아래 있던 [협약무효][협약종료]를 둔다(같은 id라 기존 처리·확인 절차 그대로). -->
-        <button type="button" class="cesign-open-btn" id="cesignOpenBtn">계약서 2종 준비</button>
+        <!-- §계약서 버튼 이동(2026-11, 사용자 요청) — [계약서 2종 준비]는 협약진행 탭의 메일 버튼 줄
+             (renderAgreementPopupBody의 .agr-stage-btn-row)로 옮겼다. 같은 id·같은 동작. -->
         <div class="agr-admin-mini-row is-footer">
           <span id="agrInvalidateSlot"></span>
           <div id="cdashRelationsCard" class="agr-terminate-holder"></div>
@@ -28659,8 +28660,6 @@ window.SHIN2_CRM_APP_INIT = function(){
         </div>
       </div>
     `;
-    const cesignBtn = document.getElementById('cesignOpenBtn');
-    if(cesignBtn) cesignBtn.addEventListener('click', ()=>{ if(window.SHIN2_CONTRACT_ESIGN) window.SHIN2_CONTRACT_ESIGN.open(co); });
     // §상세 팝업 2차 라운드 — [업체 삭제] 버튼 제거(openDeleteCompanyModal 함수는 그대로 남김)
     // §서류현황 삭제 라운드(신규) — "서류 현황"(협약서/질문서 완료 상태 칩) 버튼을
     // 요청대로 없앴다. 그 버튼이 하던 "관련 문서 섹션으로 스크롤" 기능은 그 섹션
@@ -37133,8 +37132,11 @@ window.SHIN2_CRM_APP_INIT = function(){
             </div>
           </div>`).join('')}
       </div>
-      ${extraActionsHtml ? `<div class="agr-stage-btn-row">${extraActionsHtml}</div>` : ''}
+      <div class="agr-stage-btn-row">${extraActionsHtml}<button type="button" class="cesign-open-btn" id="cesignOpenBtn">계약서 2종 준비</button></div>
     `;
+    // §계약서 버튼 이동(2026-11) — 하단 고정 영역에 있던 [계약서 2종 준비]를 메일 버튼 줄 끝에 둔다(동작은 그대로).
+    const cesignBtn = body.querySelector('#cesignOpenBtn');
+    if(cesignBtn) cesignBtn.addEventListener('click', ()=>{ if(window.SHIN2_CONTRACT_ESIGN) window.SHIN2_CONTRACT_ESIGN.open(co); });
     // §상세 팝업 compact 라운드 — [협약무효]는 본문 아래 작은 버튼 줄(#agrInvalidateSlot)에 둔다.
     // 고객 상세가 아닌 곳(슬롯 없음)에서는 예전처럼 본문 끝에 붙인다.
     const invalidateSlot = document.getElementById('agrInvalidateSlot');

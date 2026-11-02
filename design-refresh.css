@@ -1216,3 +1216,58 @@ html body #gateScreen #gateEnterBtn.gate-enter-btn:focus-visible{ box-shadow:0 0
 .crm-upcoming-tab:hover{ background:#fff; color:var(--navy); }
 .crm-upcoming-tab.is-active{ background:var(--navy); color:#fff; box-shadow:0 1px 2px rgba(20,40,75,.18); }
 @media (max-width:760px){ .crm-upcoming-tabs{ margin:0 16px 8px; } }
+
+/* ==========================================================================
+   §페이지 제목 삭제 (2026-11, 사용자 요청) — MOU 진행상황·메일 설정(·B2B KPI도 같은 기준)
+   메일 설정의 오른쪽 [발송 이력][발송 계정] 버튼은 그대로 오른쪽에 둔다.
+   ========================================================================== */
+#workQueueView::before, #kpiView .kpiv-wrap::before{ content:none !important; display:none !important; }
+#mailSettingsView .mailx-header-row .workq-header{ display:none !important; }
+#mailSettingsView .mailx-header-row{ justify-content:flex-end !important; }
+
+/* ==========================================================================
+   §상세 팝업 가독성 (2026-11, 사용자 요청 "더 보기 쉽게")
+     머리: 업체명 크게, 연락처는 칩으로 / 기업 요약: 이름 칸 고정폭 + 큰 값 / 글자 한 단계씩 키움
+   ========================================================================== */
+#chartHeader .cdash2-title{ font-size:26px !important; }
+#chartHeader .cdash2-deal-summary{ font-size:13.5px !important; }
+#chartHeader .cdet-head-contacts{ gap:8px !important; margin-top:14px !important; }
+#chartHeader .cdet-head-contact,
+#chartHeader .cdet-head-contact + .cdet-head-contact{
+  padding:6px 12px !important; border:1px solid #DCE7F4 !important; border-radius:999px !important;
+  background:#F5F9FE; font-size:13px !important; line-height:1.2;
+}
+#chartHeader .cdet-head-contact b{ font-size:14px !important; color:var(--navy) !important; }
+#chartTabBar .cdash2-tab{ font-size:15px !important; }
+#chartBody .cdash2-card-title{ font-size:16.5px !important; }
+#chartBody .cosum-item{ padding:13px 2px !important; gap:12px !important; }
+#chartBody .cosum-item{ display:flex !important; align-items:center !important; }
+#chartBody .cosum-text{ display:grid !important; grid-template-columns:96px minmax(0,1fr) !important; align-items:center !important; gap:10px !important; flex:1 1 auto !important; width:auto !important; min-width:0; }
+#chartBody .cosum-label{ font-size:13px !important; color:var(--text-muted) !important; font-weight:600 !important; }
+#chartBody .cosum-value{ display:flex !important; align-items:center !important; flex-wrap:wrap; gap:8px !important; min-width:0; }
+#chartBody .cosum-value-text{ font-size:15.5px !important; font-weight:700 !important; color:var(--text) !important; word-break:keep-all; overflow-wrap:anywhere; }
+#chartBody .cosum-value.is-muted .cosum-value-text{ font-weight:500 !important; color:#9AA6B6 !important; }
+#chartBody .cosum-item .cinfo-ico{ color:var(--navy-300) !important; }
+#chartBody .cosum-copy-btn{
+  height:26px !important; min-height:26px !important; padding:0 10px !important; border-radius:999px !important;
+  font-size:12px !important; font-weight:700 !important; color:var(--navy) !important;
+  background:#fff !important; border:1px solid #C9DAEE !important; flex:none;
+}
+#chartBody .cosum-copy-btn:hover{ background:#EEF5FE !important; }
+@media (min-width:861px){
+  /* 주소·이전 상호처럼 긴 칸은 한 줄 전체 */
+  #chartBody .cosum-grid > .cosum-item.is-wide{ grid-column:1 / -1 !important; }
+}
+#chartBody .cdash2-timeline-type{ font-size:12.5px !important; }
+#chartBody .cdet-panel{ font-size:14px; }
+/* 협약진행 탭 — 옮겨 온 [계약서 2종 준비]를 메일 버튼과 같은 크기로 */
+#chartBody .agr-stage-btn-row{ display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+#chartBody .agr-stage-btn-row #cesignOpenBtn{
+  height:var(--crm-btn-h, 36px) !important; padding:0 14px !important; border-radius:9px !important;
+  font-size:13px !important; font-weight:700 !important;
+  background:var(--navy-100) !important; border:1px solid var(--navy-200) !important; color:var(--navy) !important;
+}
+@media (max-width:760px){
+  #chartHeader .cdash2-title{ font-size:22px !important; }
+  #chartBody .cosum-text{ grid-template-columns:84px minmax(0,1fr) !important; }
+}
