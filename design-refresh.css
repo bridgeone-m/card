@@ -1271,3 +1271,79 @@ html body #gateScreen #gateEnterBtn.gate-enter-btn:focus-visible{ box-shadow:0 0
   #chartHeader .cdash2-title{ font-size:22px !important; }
   #chartBody .cosum-text{ grid-template-columns:84px minmax(0,1fr) !important; }
 }
+
+/* 기업 요약 아이콘 — 14px → 20px, 연한 하늘 바탕 칸(32px) 안에 (2026-11 사용자 요청 "아이콘 조금 더 크게") */
+#chartBody .cosum-item .cinfo-ico{
+  width:32px !important; height:32px !important; flex:none !important;
+  display:inline-flex !important; align-items:center !important; justify-content:center !important;
+  border-radius:9px; background:#EEF5FD; color:var(--navy-500) !important;
+}
+#chartBody .cosum-item .cinfo-ico svg{ width:19px !important; height:19px !important; stroke-width:1.8; }
+
+/* ==========================================================================
+   §신규 고객 등록 창 (2026-11, 사용자 예시 이미지) — 한 칸씩 세로로 쌓는 넓은 양식
+     큰 제목 / 굵은 이름표 위 · 48px 입력칸 / 아래 가운데 큰 [취소][등록]
+   항목·id·저장 동작은 그대로, #addCoOverlay 안에서만 적용.
+   ========================================================================== */
+#addCoOverlay .pi-panel{
+  width:min(600px, calc(100vw - 32px)) !important; max-width:min(600px, calc(100vw - 32px)) !important;
+  border-radius:18px !important; border:1px solid var(--line) !important;
+  box-shadow:0 24px 60px rgba(13,29,58,.16) !important; background:#fff !important;
+}
+#addCoOverlay .pi-head{ padding:34px 44px 6px !important; border-bottom:0 !important; background:#fff !important; }
+#addCoOverlay .pi-title{ font-size:26px !important; font-weight:800 !important; letter-spacing:-.03em !important; color:var(--navy) !important; }
+#addCoOverlay #addCoCloseBtn{ width:40px !important; height:40px !important; border-radius:10px !important; border:1px solid #DCE5F0 !important; background:#fff !important; }
+#addCoOverlay #crmAddFormWrap.pi-body{ padding:14px 44px 8px !important; background:#fff !important; }
+/* 칸 배치 — 2열·3열 묶음을 모두 한 줄 한 칸으로 */
+#addCoOverlay .co-form-grid2,
+#addCoOverlay .co-form-row3{ display:grid !important; grid-template-columns:minmax(0,1fr) !important; gap:18px !important; }
+#addCoOverlay .co-form-grid2 > *, #addCoOverlay .co-form-row3 > *{ grid-column:1 / -1 !important; }
+#addCoOverlay .co-form-row3{ display:contents !important; }   /* 대표자·직급·연락처 묶음도 한 칸씩 */
+#addCoOverlay .co-form-field{ margin:0 0 0 !important; gap:8px !important; display:flex; flex-direction:column; }
+#addCoOverlay #crmAddFormWrap > .co-form-field,
+#addCoOverlay #crmAddFormWrap > .co-form-grid2,
+#addCoOverlay #crmAddFormWrap > details{ margin-bottom:22px !important; }
+/* 구역 머리(지역·업체 정보·대표자·연락 정보·첨부) — 작은 남색 소제목 + 얇은 줄 */
+#addCoOverlay .addco-sec-head{
+  font-size:13px !important; font-weight:800 !important; color:var(--navy-500) !important; letter-spacing:.02em;
+  padding-bottom:8px !important; border-bottom:1px solid #E6EDF6 !important; margin:6px 0 4px !important;
+}
+#addCoOverlay .addco-sec-head.is-label{ border-bottom:0 !important; padding-bottom:0 !important; margin:0 !important; }
+#addCoOverlay .addco-sec-head em{ font-style:normal; font-weight:500; color:var(--text-muted); margin-left:6px; }
+/* 이름표 — 입력칸 위, 굵게 */
+#addCoOverlay .co-form-field > label{ font-size:14px !important; font-weight:700 !important; color:var(--text) !important; }
+#addCoOverlay .co-form-field > label .addco-ico{ display:none !important; }
+/* 입력칸 */
+#addCoOverlay input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+#addCoOverlay textarea, #addCoOverlay select{
+  height:48px !important; min-height:48px !important; padding:0 14px !important; border-radius:8px !important;
+  font-size:15px !important; background:#fff !important; border:1px solid #D3DDE9 !important; box-shadow:none !important;
+}
+#addCoOverlay textarea{ height:96px !important; padding:12px 14px !important; }
+#addCoOverlay input:focus, #addCoOverlay textarea:focus, #addCoOverlay select:focus{
+  border-color:var(--navy) !important; box-shadow:0 0 0 3px rgba(20,40,75,.10) !important;
+}
+#addCoOverlay input::placeholder, #addCoOverlay textarea::placeholder{ color:#9AA6B6 !important; }
+/* 지역 칩 */
+#addCoOverlay #crmNewFRegions{ gap:8px !important; }
+#addCoOverlay #crmNewFRegions .list-filter-chip{ height:38px !important; min-width:56px; border-radius:8px !important; font-size:14px !important; }
+/* 추가 정보 접기 */
+#addCoOverlay .co-form-more > summary{ padding:12px 14px !important; border:1px dashed #C9D7E8 !important; border-radius:10px !important; background:#F7FAFE; font-weight:700; color:var(--navy); }
+#addCoOverlay .co-form-more[open] > summary{ margin-bottom:16px; }
+/* 첨부 상자 */
+#addCoOverlay #crmNewFImageBox.ca-ocr-box{ width:100% !important; min-height:72px; border:1px dashed #B9CCE4 !important; border-radius:10px !important; background:#F7FAFE !important; }
+/* 버튼 — 아래 가운데, 크게 */
+#addCoOverlay .popup-action-bar{ border-top:0 !important; background:#fff !important; padding:18px 44px 34px !important; justify-content:center !important; }
+#addCoOverlay .popup-action-bar-buttons{ width:100%; display:flex !important; justify-content:center !important; gap:12px !important; }
+#addCoOverlay #crmNewFCancel, #addCoOverlay #crmNewFSave{
+  height:50px !important; min-height:50px !important; min-width:150px !important; border-radius:10px !important;
+  font-size:15.5px !important; font-weight:800 !important;
+}
+#addCoOverlay #crmNewFCancel{ background:#fff !important; color:var(--navy) !important; border:1px solid #C9D7E8 !important; order:2; }
+#addCoOverlay #crmNewFSave{ order:1; }
+@media (max-width:600px){
+  #addCoOverlay .pi-head{ padding:22px 20px 4px !important; }
+  #addCoOverlay #crmAddFormWrap.pi-body{ padding:10px 20px 6px !important; }
+  #addCoOverlay .popup-action-bar{ padding:14px 20px 22px !important; }
+  #addCoOverlay #crmNewFCancel, #addCoOverlay #crmNewFSave{ flex:1 1 0; min-width:0 !important; }
+}
