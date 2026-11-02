@@ -1556,3 +1556,35 @@ html body #chartHeader .cdet-head-name-row .cdash2-deal-summary{
 @media (max-width:760px){
   html body #chartHeader .cdet-head-name-row .cdash2-deal-summary{ flex:1 0 100%; white-space:normal; }
 }
+
+/* §기본정보 — "기업 요약" 제목 삭제(사용자 요청), 수정(✎) 버튼만 오른쪽 위에 */
+html body #chartBody .cdash2-cosum-card .cdet-card-head{ justify-content:flex-end !important; margin-bottom:0 !important; }
+
+/* §협약진행 탭 버튼 모양 통일 (2026-11 사용자 요청) — 발송·회신·메일·수정·날짜·질문서메일문구·메일 보내기·
+   계약서 2종 준비를 모두 [질문서 첨부]와 같은 모양(흰 바탕·연한 테두리·모서리 6px·남색 굵은 글씨)으로 */
+html body #chartBody .agr-stage-row-actions .agr-date-chip,
+html body #chartBody .agr-stage-row-actions .agr-meeting-btn,
+html body #chartBody .agr-stage-row-actions .agr-q-attach-btn,
+html body #chartBody .agr-stage-btn-row .workq-btn,
+html body #chartBody .agr-stage-btn-row .agr-custom-mail-btn,
+html body #chartBody .agr-stage-btn-row #cesignOpenBtn{
+  display:inline-flex !important; align-items:center !important; justify-content:center; gap:5px !important;
+  height:32px !important; min-height:32px !important; padding:0 11px !important; border-radius:6px !important;
+  background:#fff !important; border:1px solid #C9DAEE !important; box-shadow:none !important;
+  color:#1B3A66 !important; font-size:12.5px !important; font-weight:700 !important; line-height:1 !important;
+}
+html body #chartBody .agr-stage-row-actions .agr-date-chip:hover,
+html body #chartBody .agr-stage-row-actions .agr-meeting-btn:hover,
+html body #chartBody .agr-stage-row-actions .agr-q-attach-btn:hover,
+html body #chartBody .agr-stage-btn-row .workq-btn:hover,
+html body #chartBody .agr-stage-btn-row .agr-custom-mail-btn:hover,
+html body #chartBody .agr-stage-btn-row #cesignOpenBtn:hover{ background:#F1F6FD !important; border-color:#AFC6E3 !important; }
+html body #chartBody .agr-stage-row-actions .agr-date-chip.is-empty{ color:#1B3A66 !important; }
+@media (max-width:760px){
+  html body #chartBody .agr-stage-row-actions .agr-date-chip,
+  html body #chartBody .agr-stage-row-actions .agr-meeting-btn,
+  html body #chartBody .agr-stage-row-actions .agr-q-attach-btn,
+  html body #chartBody .agr-stage-btn-row .workq-btn,
+  html body #chartBody .agr-stage-btn-row .agr-custom-mail-btn,
+  html body #chartBody .agr-stage-btn-row #cesignOpenBtn{ height:36px !important; min-height:36px !important; }
+}
