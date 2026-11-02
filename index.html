@@ -23207,6 +23207,9 @@ window.SHIN2_CRM_APP_INIT = function(){
     if(on){
       const closeBtn = document.getElementById('crmMapExpandClose');
       if(closeBtn) setTimeout(()=>{ try{ closeBtn.focus({ preventScroll:true }); }catch(e){} }, 30);
+      // 미리보기의 세로로 긴 범위를 넓은 팝업에 그대로 두면 너무 멀리 빠져 지도가 없는 바다(흰 칸)까지
+      // 보인다 → 위 relayout(약 0.7초)이 끝난 뒤 업체 전체 범위로 다시 맞춘다.
+      setTimeout(fitMapToCompanies, 800);
     } else {
       setTimeout(resetMapPreviewView, 650);   // 미리보기는 늘 전국 보기로
     }
@@ -23223,6 +23226,10 @@ window.SHIN2_CRM_APP_INIT = function(){
       const s = document.getElementById('mapFilterSearch');
       if(s && s.value){ s.value = ''; s.dispatchEvent(new Event('input', { bubbles:true })); }
     }catch(err){ /* 무시 — 다음 열기에서 그대로 쓸 수 있다 */ }
+    setTimeout(fitMapToCompanies, 400);
+  }
+  // 시공사 탭이면 기존 fitToEntries로 (필터 적용된) 업체 전체가 보이게 맞춘다.
+  function fitMapToCompanies(){
     let tries = 0;
     const fit = ()=>{
       tries++;
@@ -23234,7 +23241,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       }catch(err){ /* 무시 */ }
       if(tries < 8) setTimeout(fit, 700);   // 지도를 새로 만드는 중이면 잠시 뒤 다시
     };
-    setTimeout(fit, 400);
+    fit();
   }
   function setupMapExpandToggle(){
     const root = document.getElementById('mapDistributionModalRoot');
@@ -23249,6 +23256,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       root.querySelector('#crmMapExpandClose').addEventListener('click', ()=> setMapExpanded(false));
       setTimeout(resetMapPreviewView, 1500);   // 처음 그릴 때도 전국 보기로 맞춘다
     }
+    try{ setupMapQuickSearch(root); }catch(err){ console.warn("지역 검색칸 준비 실패:", err); }
     if(!document.getElementById('crmMapExpandBackdrop')){
       const bd = document.createElement('div');
       bd.id = 'crmMapExpandBackdrop';
@@ -23272,6 +23280,98 @@ window.SHIN2_CRM_APP_INIT = function(){
         }
       });
     }
+  }
+
+  // ==========================================================================
+  // §지도 미리보기 지역 검색(2026-11, 사용자 요청) — 미리보기 지도 위 검색칸. 지역을 넣으면
+  //   · 그 지역 시공사: 지도와 같은 검색 판정(mapEntryMatchesSearch — 주소·시/도·시/군/구·업체명)
+  //   · 업체마다 시공한 아파트명 + 그 지역에서 시공된 아파트: 기존 POUR 시공 아파트 묶음
+  //     (buildPourApartmentEntries)의 지역·아파트명 그대로
+  // 를 칸 아래에 펼쳐 보여 준다. 읽기만 하고 저장·지도 필터 상태는 건드리지 않는다.
+  // 업체명을 누르면 기존 고객 상세를 연다.
+  // ==========================================================================
+  function setupMapQuickSearch(root){
+    if(root.querySelector('#crmMapQuickSearch')) return;
+    root.insertAdjacentHTML('beforeend',
+      `<div class="crm-map-qs" id="crmMapQuickSearch">
+         <div class="crm-map-qs-field">
+           <svg class="crm-map-qs-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+           <input type="search" id="crmMapQsInput" class="crm-map-qs-input" placeholder="지역 검색 (예: 부산, 강서구)" autocomplete="off" enterkeyhint="search" aria-label="지역 검색">
+           <button type="button" class="crm-map-qs-clear" id="crmMapQsClear" aria-label="검색어 지우기" hidden>&times;</button>
+         </div>
+         <div class="crm-map-qs-results" id="crmMapQsResults" hidden></div>
+       </div>`);
+    const input = root.querySelector('#crmMapQsInput');
+    const clearBtn = root.querySelector('#crmMapQsClear');
+    const box = root.querySelector('#crmMapQsResults');
+    let t = null;
+    const run = ()=>{
+      const q = input.value.trim();
+      clearBtn.hidden = !q;
+      if(!q){ box.hidden = true; box.innerHTML = ''; return; }
+      try{ box.innerHTML = mapQuickSearchHtml(q); }
+      catch(err){ console.warn('지역 검색 실패:', err); box.innerHTML = '<p class="crm-map-qs-empty">검색 결과를 불러오지 못했습니다.</p>'; }
+      box.hidden = false;
+      box.scrollTop = 0;
+    };
+    input.addEventListener('input', ()=>{ clearTimeout(t); t = setTimeout(run, 180); });
+    input.addEventListener('focus', ()=>{ if(input.value.trim()) run(); });
+    input.addEventListener('keydown', ev=>{
+      if(ev.key === 'Enter'){ ev.preventDefault(); clearTimeout(t); run(); }
+      if(ev.key === 'Escape'){ box.hidden = true; input.blur(); }
+    });
+    clearBtn.addEventListener('click', ()=>{ input.value = ''; run(); input.focus(); });
+    box.addEventListener('click', ev=>{
+      const btn = ev.target.closest('[data-qs-co]');
+      if(btn){ box.hidden = true; openCustomerDetail(btn.getAttribute('data-qs-co')); }
+    });
+    document.addEventListener('click', ev=>{
+      if(!box.hidden && !ev.target.closest('#crmMapQuickSearch')) box.hidden = true;
+    });
+  }
+  function mapQuickSearchHtml(q){
+    const norm = normalizeMapSearchText(q);
+    const companies = buildMapCompanies().filter(e=> mapEntryMatchesSearch(e, q));
+    const apts = buildPourApartmentEntries();
+    const aptsByCo = new Map();
+    apts.forEach(a=> a.companies.forEach(c=>{
+      if(!aptsByCo.has(c.id)) aptsByCo.set(c.id, []);
+      aptsByCo.get(c.id).push(a.name);
+    }));
+    // 그 지역에서 시공된 아파트 — 아파트 묶음의 시/도·시/군/구·아파트명에서 찾는다
+    const qRegion = mapSearchQueryRegion(norm);
+    const regionApts = apts.filter(a=>
+      [a.region, a.city, a.name].some(v=> normalizeMapSearchText(v).includes(norm)) ||
+      (qRegion && normalizeMapSearchText(a.region) === normalizeMapSearchText(qRegion)));
+    companies.sort((a,b)=> (aptsByCo.get(b.co.id) || []).length - (aptsByCo.get(a.co.id) || []).length
+      || String(a.co.name || '').localeCompare(String(b.co.name || ''), 'ko'));
+    if(!companies.length && !regionApts.length){
+      return `<p class="crm-map-qs-empty">'${esc(q)}' 지역의 시공사·시공 아파트가 없습니다.</p>`;
+    }
+    const aptNames = list=>{
+      if(!list.length) return '<span class="crm-map-qs-none">등록된 시공 아파트 없음</span>';
+      const shown = list.slice(0, 4).map(n=> `<span class="crm-map-qs-apt">${esc(n)}</span>`).join('');
+      return shown + (list.length > 4 ? `<span class="crm-map-qs-more">외 ${list.length - 4}곳</span>` : '');
+    };
+    const coRows = companies.map(e=>{
+      const list = aptsByCo.get(e.co.id) || [];
+      const where = [e.region, e.sigungu].filter(Boolean).filter((v,i,arr)=> arr.indexOf(v) === i).join(' ');
+      return `<li class="crm-map-qs-row">
+          <button type="button" class="crm-map-qs-co" data-qs-co="${esc(e.co.id)}">${esc(e.co.name || '(이름 없음)')}</button>
+          <span class="crm-map-qs-where">${esc(where || '지역 미확인')} · 아파트 ${list.length}곳</span>
+          <div class="crm-map-qs-apts">${aptNames(list)}</div>
+        </li>`;
+    }).join('');
+    const aptRows = regionApts.slice(0, 60).map(a=>
+      `<li class="crm-map-qs-row crm-map-qs-aptrow">
+          <span class="crm-map-qs-aptname">${esc(a.name)}</span>
+          <span class="crm-map-qs-where">${esc([a.region, a.city].filter(Boolean).join(' ') || '지역 미확인')}</span>
+          <div class="crm-map-qs-apts">${a.companies.map(c=> `<button type="button" class="crm-map-qs-cochip" data-qs-co="${esc(c.id)}">${esc(c.name)}</button>`).join('')}</div>
+        </li>`).join('');
+    return `<div class="crm-map-qs-sum">시공사 <b>${companies.length}</b>곳 · 이 지역 시공 아파트 <b>${regionApts.length}</b>곳</div>
+      ${companies.length ? `<h4 class="crm-map-qs-h">시공사</h4><ul class="crm-map-qs-list">${coRows}</ul>` : ''}
+      ${regionApts.length ? `<h4 class="crm-map-qs-h">이 지역 시공 아파트</h4><ul class="crm-map-qs-list">${aptRows}</ul>
+        ${regionApts.length > 60 ? `<p class="crm-map-qs-empty">외 ${regionApts.length - 60}곳 — [지도 크게 보기] 아파트 시공 탭에서 모두 볼 수 있습니다.</p>` : ''}` : ''}`;
   }
 
   // ==========================================================================
