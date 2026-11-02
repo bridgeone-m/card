@@ -12,10 +12,9 @@
    지우면 된다.
    ========================================================================== */
 
-/* 글꼴 — 본문 Pretendard, 큰 숫자만 세리프(숫자·TOP 글자만 받아 가볍게). 못 받으면
+/* 글꼴 — 본문·숫자 모두 Pretendard. 못 받으면
    기존 글꼴(맑은 고딕 등)로 그대로 보인다. */
 @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css");
-@import url("https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700&text=0123456789TOP%2C.%25%20&display=swap");
 
 /* ---------- 1. 토큰 — 기존 변수 이름 그대로 값만 바꾼다 ---------- */
 :root{
@@ -356,7 +355,7 @@ html body #gateEnterBtn.gate-enter-btn:hover{ background:var(--navy-700) !import
 :root{
   --bg:#EFF5FC;
   --line:#DFE8F3;
-  --dr-serif:'Noto Serif KR', 'Pretendard Variable', 'Pretendard', Georgia, serif;
+  --dr-serif:'Pretendard Variable', 'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;   /* 2026-11 큰 숫자도 본문 고딕으로 통일(세리프 숫자 제거) */
   --dr-head-h:68px;
   --dr-ico-upload:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 15V4'/%3E%3Cpath d='M7.5 8.5 12 4l4.5 4.5'/%3E%3Cpath d='M4 14v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4'/%3E%3C/svg%3E");
 }
@@ -1152,4 +1151,68 @@ html body #gateScreen #gateEnterBtn.gate-enter-btn:focus-visible{ box-shadow:0 0
   #gateScreen .gate-logo{ height:52px !important; }
   #gateScreen .gate-brand{ font-size:26px !important; }
   #gateScreen .gate-desc{ margin-bottom:28px !important; }
+}
+
+/* ==========================================================================
+   §요약 띠 2차 (2026-11, 사용자 요청 "디자인 수정") — 칸마다 하늘색 아이콘 + 굵은 고딕 숫자
+     [아이콘] 이름(작은 회색) / 숫자(굵은 남색) / 설명
+   ========================================================================== */
+#listView #crmKpiStrip{ padding:18px 6px !important; }
+#listView #crmKpiStrip .kpi-item{
+  display:grid !important; grid-template-columns:48px minmax(0,1fr) !important;
+  grid-template-rows:auto auto auto !important; height:auto !important; min-height:0 !important; max-height:none !important;
+  column-gap:14px !important; row-gap:2px !important;
+  align-items:center !important; align-content:center !important;
+  padding:6px 22px !important; border-radius:12px !important; position:relative;
+  transition:background-color .15s ease;
+}
+#listView #crmKpiStrip .kpi-item:hover{ background:#F5F9FF !important; }
+#listView #crmKpiStrip .kpi-item::before{
+  content:'' !important; position:static !important; inset:auto !important;
+  grid-column:1 !important; grid-row:1 / span 3 !important; align-self:center !important;
+  width:48px !important; height:48px !important; border-radius:14px;
+  opacity:1 !important; -webkit-mask-image:none !important; mask-image:none !important;
+  background-color:#EAF3FD !important; border:1px solid #D3E4F6;
+  background-repeat:no-repeat !important; background-position:center !important; background-size:22px 22px !important;
+  z-index:auto !important;
+}
+#listView #crmKpiStrip .kpi-item[data-kpi="all"]::before{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2314284B' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 21V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v16'/%3E%3Cpath d='M15 9h4a1 1 0 0 1 1 1v11'/%3E%3Cpath d='M3 21h18'/%3E%3Cpath d='M8 8h3M8 12h3M8 16h3'/%3E%3C/svg%3E") !important;
+}
+#listView #crmKpiStrip .kpi-item[data-kpi="mouDone"]::before{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2314284B' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z'/%3E%3Cpath d='M14 3v5h5'/%3E%3Cpath d='M9 14l2 2 4-4'/%3E%3C/svg%3E") !important;
+}
+#listView #crmKpiStrip .kpi-item[data-kpi="risingTop5"]::before{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2314284B' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 17l6-6 4 4 8-8'/%3E%3Cpath d='M15 7h6v6'/%3E%3C/svg%3E") !important;
+}
+#listView #crmKpiStrip .kpi-item-label{ grid-column:2 !important; grid-row:1 !important; font-size:13.5px !important; font-weight:600 !important; color:var(--text-muted) !important; }
+#listView #crmKpiStrip .kpi-item-value{
+  grid-column:2 !important; grid-row:2 !important;
+  font-size:34px !important; font-weight:800 !important; line-height:1.15 !important; letter-spacing:-.02em !important;
+  font-variant-numeric:tabular-nums; color:var(--navy) !important; padding-top:0 !important;
+}
+#listView #crmKpiStrip .kpi-item.is-rising .kpi-item-value{ font-size:26px !important; padding-top:2px !important; }
+#listView #crmKpiStrip .kpi-item-sub{ grid-column:2 !important; grid-row:3 !important; font-size:12.5px !important; color:var(--text-muted) !important; margin-top:2px;
+  white-space:normal !important; overflow:visible !important; text-overflow:clip !important; line-height:1.4 !important; }   /* 설명이 "…"로 잘리지 않게 */
+/* TOP 5 — 눌러서 펼치는 칸이라는 표시(▾)를 작은 동그란 버튼 모양으로 */
+#listView #crmKpiStrip .kpi-item.is-rising::after{
+  top:50% !important; right:18px !important; transform:translateY(-50%);
+  width:28px; height:28px; border-radius:50%; border:1px solid #CFDCEC; background:#fff;
+  display:flex; align-items:center; justify-content:center; font-size:11px !important; color:var(--navy) !important;
+}
+#listView #crmKpiStrip .kpi-item.is-rising.is-open::after{ transform:translateY(-50%) rotate(180deg); }
+#listView #crmKpiStrip .kpi-item.is-rising{ padding-right:56px !important; }
+@media (min-width:1101px) and (max-width:1365px){
+  #listView #crmKpiStrip .kpi-item{ grid-template-columns:40px minmax(0,1fr) !important; column-gap:12px !important; padding:4px 16px !important; }
+  #listView #crmKpiStrip .kpi-item::before{ width:40px !important; height:40px !important; border-radius:12px; background-size:19px 19px !important; }
+  #listView #crmKpiStrip .kpi-item-value{ font-size:28px !important; }
+  #listView #crmKpiStrip .kpi-item.is-rising .kpi-item-value{ font-size:22px !important; }
+  #listView #crmKpiStrip .kpi-item.is-rising{ padding-right:46px !important; }
+  #listView #crmKpiStrip .kpi-item.is-rising::after{ right:12px !important; width:24px; height:24px; }
+}
+@media (max-width:760px){
+  #listView #crmKpiStrip .kpi-item{ grid-template-columns:40px minmax(0,1fr) !important; column-gap:12px !important; padding:4px 14px !important; }
+  #listView #crmKpiStrip .kpi-item::before{ width:40px !important; height:40px !important; border-radius:12px; background-size:19px 19px !important; }
+  #listView #crmKpiStrip .kpi-item-value{ font-size:28px !important; }
+  #listView #crmKpiStrip .kpi-item.is-rising .kpi-item-value{ font-size:24px !important; }
 }
