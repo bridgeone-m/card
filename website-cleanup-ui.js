@@ -127,6 +127,7 @@
     return '<div class="consult-req-alert-row-main">'+
       '<span class="consult-req-alert-row-name" data-company></span>'+
       (isHistory?'<span class="alert-history" data-history></span>':n.type==='mail'?'<div class="alert-task">2차 미팅 제안 메일 보내기</div>':
+        n.type==='mouSigned'?'<div class="alert-task" data-signed-date></div><button type="button" class="alert-doc-link" data-view-doc>문서 보기</button>':
         def.checks.map(([key])=>'<label class="alert-check"><input type="checkbox" data-check="'+key+'"><span>'+esc(labels[key])+'</span></label>').join(''))+
       '<details class="alert-details"><summary>상세보기</summary><div data-details></div></details></div>'+
       (isHistory?'':'<div class="alert-actions"><button class="consult-req-alert-done" data-complete></button></div><span class="alert-status" role="status" aria-live="polite"></span>');
@@ -136,8 +137,13 @@
     const checked=key=>command && command.kind==='check' && command.field===key ? command.value : !!n[key];
     const setText=(selector,text)=>{const el=row.el.querySelector(selector);if(el && el.textContent!==text)el.textContent=text;};
     setText('[data-company]',n.companyName);
-    const details=(n.type==='mail'?'1차 메일 발송: ':n.type==='mou'?'2차 미팅 완료: ':'발생: ')+new Date(n.firstSentAt || n.occurredAt).toLocaleString('ko-KR');
-    setText('[data-details]',[n.reason?'사유: '+n.reason:'',details,def.guidance || '',n.type==='mou'?'계약서 2건: 협약체결서·물품공급계약서':'',n.secondMailEvidence?'2차 미팅 제안 메일 발송 성공 이력 확인됨':''].filter(Boolean).join('\n'));
+    const details=(n.type==='mail'?'1차 메일 발송: ':n.type==='mou'?'2차 미팅 완료: ':n.type==='mouSigned'?'상대방 서명 완료: ':'발생: ')+new Date(n.firstSentAt || n.occurredAt).toLocaleString('ko-KR');
+    setText('[data-details]',[n.reason?'사유: '+n.reason:'',details,def.guidance || '',n.type==='mou'?'계약서 2건: 협약체결서·물품공급계약서':'',n.type==='mouSigned'?'양측 최종 서명 완료와 다른 상태입니다. MOU 체결 상태는 자동으로 바뀌지 않습니다.':'',n.secondMailEvidence?'2차 미팅 제안 메일 발송 성공 이력 확인됨':''].filter(Boolean).join('\n'));
+    if(n.type==='mouSigned'){
+      setText('[data-signed-date]','상대방 서명 완료일: '+new Date(n.counterpartySignedAt || n.occurredAt).toLocaleDateString('ko-KR',{timeZone:'Asia/Seoul'}));
+      const view=row.el.querySelector('[data-view-doc]');
+      if(view)view.onclick=()=>{if(window.SHIN2_CONTRACT_ESIGN)window.SHIN2_CONTRACT_ESIGN.viewSigned(n);};
+    }
     setText('[data-history]','완료: '+new Date(n.completedAt).toLocaleString('ko-KR')+' · '+n.completedBy+(n.completionSource==='formal-mou'?' · 정식 MOU 체결 연동':''));
     row.el.setAttribute('aria-busy',String(pending));
     row.el.classList.toggle('is-history',isHistory);
@@ -148,7 +154,7 @@
     const complete=row.el.querySelector('[data-complete]');
     if(complete){
       complete.disabled=pending || (!errors.has(n.id) && n.type!=='mail' && !def.checks.every(([key])=>checked(key)));
-      const label=pending && command.kind==='complete'?'처리 중…':errors.has(n.id)?'재시도':n.type==='mail'?'발송 완료':'완료';
+      const label=pending && command.kind==='complete'?'처리 중…':errors.has(n.id)?'재시도':n.type==='mail'?'발송 완료':n.type==='mouSigned'?'확인':'완료';
       if(complete.textContent!==label)complete.textContent=label;
       complete.onclick=async()=>{
         // MOU 체결 완료 전에 기술지원플랫폼 아이디 발급 여부 확인(아직이면 완료하지 않음)
@@ -159,7 +165,7 @@
     setText('.alert-status',errors.get(n.id) || (pending?'저장 중…':''));
   }
   function makeCard(type){
-    const el=document.createElement('div');el.className='consult-req-alert';el.id=type==='website'?'websiteCleanupAlert':type+'FollowupAlert';
+    const el=document.createElement('div');el.className='consult-req-alert'+(type==='mouSigned'?' is-mou-signed':'');el.id=type==='website'?'websiteCleanupAlert':type+'FollowupAlert';
     el.innerHTML='<button type="button" class="consult-req-alert-main" aria-expanded="true"><span class="alert-brand" aria-hidden="true"><img src="assets/netform-symbol-original.png" alt="" /></span><span class="consult-req-alert-texts"><span class="consult-req-alert-title"></span></span></button><div class="consult-req-alert-list"></div>';
     const card={el,button:el.firstElementChild,list:el.lastElementChild,rows:new Map(),expanded:true};
     card.button.id=type==='website'?'websiteCleanupMain':type+'FollowupMain';

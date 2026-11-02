@@ -11526,6 +11526,8 @@ body.crm-fixed-view .crm-list-col .list-pagination{ display:grid !important; }
 <!-- Firebase 설정 로드(v2/index.html과 동일한 패턴) — 없거나 값이 비어있으면 아래 Storage
      초기화 스크립트가 조용히 건너뛰고 로컬 전용 모드로 남는다. -->
 <script src="firebaseConfig.js" onerror="console.warn('firebaseConfig.js 없음 — 서류함이 로컬 전용 모드로 동작합니다')"></script>
+<script src="contractEsignConfig.js"></script>
+<link rel="stylesheet" href="contract-esign.css">
 <!-- §지도 분포 라운드(신규): 카카오맵 JavaScript 키 설정 — firebaseConfig.js와 완전히
      같은 패턴(파일이 없어도 onerror로 조용히 넘어가고, 지도 분포 팝업만 "설정 필요"
      안내로 대체된다 — 나머지 CRM 기능/Firebase 연동에는 전혀 영향 없음). 이 파일은
@@ -13003,7 +13005,7 @@ window.SHIN2_ADMIN_VAULT = {"v":1,"it":310000,"s":"LR69gP2hfdC4DCenIz+Grw==","iv
   (async () => {
     try{
       const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js');
-      const { getAuth, signInWithEmailAndPassword, signOut, setPersistence, browserLocalPersistence, onAuthStateChanged, fetchSignInMethodsForEmail, sendPasswordResetEmail } =
+      const { getAuth, signInWithEmailAndPassword, signOut, setPersistence, browserLocalPersistence, inMemoryPersistence, onAuthStateChanged, fetchSignInMethodsForEmail, sendPasswordResetEmail } =
         await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js');
       const { getStorage, ref: storageRef, uploadBytesResumable, getDownloadURL, deleteObject } =
         await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js');
@@ -13103,6 +13105,24 @@ window.SHIN2_ADMIN_VAULT = {"v":1,"it":310000,"s":"LR69gP2hfdC4DCenIz+Grw==","iv
         deleteFile: deleteFromStorage,
         isSignedIn: () => !!currentUid,
         getUid: () => currentUid
+      };
+
+      // §계약서 2종 준비 — 서버 호출용 토큰. 공용 로그인은 미리보기까지만 허용되고, 발송·서명 문서 열람은
+      // 공용 계정과 별개인 개인 계정(별도 앱 인스턴스, 메모리에만 유지) 토큰을 서버가 따로 검증한다.
+      let contractSenderAuth = null;
+      function getContractSenderAuth(){
+        if(!contractSenderAuth){
+          contractSenderAuth = getAuth(initializeApp(cfg, 'shin2crm-contract-sender'));
+          setPersistence(contractSenderAuth, inMemoryPersistence).catch(()=>{});
+        }
+        return contractSenderAuth;
+      }
+      window.SHIN2_CONTRACT_AUTH = {
+        sharedToken: () => auth.currentUser ? auth.currentUser.getIdToken() : Promise.reject(new Error('로그인이 필요합니다.')),
+        senderToken: () => (contractSenderAuth && contractSenderAuth.currentUser) ? contractSenderAuth.currentUser.getIdToken() : Promise.resolve(''),
+        senderEmail: () => (contractSenderAuth && contractSenderAuth.currentUser) ? contractSenderAuth.currentUser.email : '',
+        signInSender: (email, password) => signInWithEmailAndPassword(getContractSenderAuth(), email, password),
+        signOutSender: () => contractSenderAuth ? signOut(contractSenderAuth) : Promise.resolve()
       };
 
       // customerDocuments 전용 실시간 동기화 — v2 SHIN2_SYNC_KEYS.customerDocuments와
@@ -14045,6 +14065,7 @@ window.SHIN2_ADMIN_VAULT = {"v":1,"it":310000,"s":"LR69gP2hfdC4DCenIz+Grw==","iv
 
       onAuthStateChanged(auth, (user) => {
         currentUid = user ? user.uid : null;
+        if(!user) window.SHIN2_CONTRACT_AUTH.signOutSender().catch(()=>{});
         startWebsiteCleanupSync();
         window.dispatchEvent(new CustomEvent('shin2-crm-firebase-ready'));
         // §클라우드 파일 저장 문제 해결 라운드: customerDocuments는 v2의 tasks/memos/todos
@@ -28207,6 +28228,7 @@ window.SHIN2_CRM_APP_INIT = function(){
         </details>
         <!-- §상세 팝업 2차 라운드 — [업체 삭제] 버튼은 요청대로 화면에서 뺐다(삭제 확인 모달·처리 함수는 코드에 그대로 둔다).
              그 자리에 협약진행 탭 아래 있던 [협약무효][협약종료]를 둔다(같은 id라 기존 처리·확인 절차 그대로). -->
+        <button type="button" class="cesign-open-btn" id="cesignOpenBtn">계약서 2종 준비</button>
         <div class="agr-admin-mini-row is-footer">
           <span id="agrInvalidateSlot"></span>
           <div id="cdashRelationsCard" class="agr-terminate-holder"></div>
@@ -28220,6 +28242,8 @@ window.SHIN2_CRM_APP_INIT = function(){
         </div>
       </div>
     `;
+    const cesignBtn = document.getElementById('cesignOpenBtn');
+    if(cesignBtn) cesignBtn.addEventListener('click', ()=>{ if(window.SHIN2_CONTRACT_ESIGN) window.SHIN2_CONTRACT_ESIGN.open(co); });
     // §상세 팝업 2차 라운드 — [업체 삭제] 버튼 제거(openDeleteCompanyModal 함수는 그대로 남김)
     // §서류현황 삭제 라운드(신규) — "서류 현황"(협약서/질문서 완료 상태 칩) 버튼을
     // 요청대로 없앴다. 그 버튼이 하던 "관련 문서 섹션으로 스크롤" 기능은 그 섹션
@@ -52594,6 +52618,7 @@ else { window.addEventListener('shin2-crm-gate-passed', window.SHIN2_CRM_APP_INI
 #agreementPopupBody .agr-stage-row-actions{ gap:6px !important; }
 .co-form-row3:has(> #crmNewF_contactName){ grid-template-columns:repeat(2,minmax(0,1fr)); }
 </style>
+<script src="contract-esign.js"></script>
 <script src="website-cleanup-ui.js"></script>
 </body>
 </html>
