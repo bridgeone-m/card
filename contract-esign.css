@@ -67,6 +67,40 @@
   .cesign-grid{ grid-template-columns:1fr 1fr; }
   .cesign-grid .is-wide{ grid-column:1 / -1; }
 }
+.cesign-state.is-ok2{ background:#E3EEFF; color:#1B4480; }
+.cesign-state.is-muted{ background:#EEF2F7; color:#5B6B82; }
+.cesign-btn.is-danger,.cesign-chip.is-danger{ border-color:#E3B4AE; color:#9A2A20; }
+
+/* 상단 [계약서 발송] 탭: 모두사인 발송 이력. 헤더 아래를 덮는 화면이고, 모바일은 카드로 쌓는다. */
+.cesign-history{ position:fixed; left:0; right:0; bottom:0; top:0; z-index:900; overflow:auto; background:#F5F7FA; -webkit-overflow-scrolling:touch; }
+.cesign-history-inner{ box-sizing:border-box; max-width:1480px; margin:0 auto; padding:14px 16px 32px; }
+.cesign-history-head{ display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:space-between; gap:10px; }
+.cesign-history-head h2{ margin:0; font-size:18px; color:#0B2037; }
+.cesign-history-head p{ margin:4px 0 0; font-size:13px; color:#6B7A90; }
+.cesign-history-actions{ display:flex; gap:6px; }
+.cesign-history-chips{ display:flex; flex-wrap:wrap; gap:6px; margin:12px 0 8px; }
+.cesign-hchip{ min-height:36px; padding:0 12px; border:1px solid #CBD5E1; border-radius:999px; background:#fff; font:inherit; font-size:13px; color:#23364F; cursor:pointer; }
+.cesign-hchip b{ margin-left:4px; }
+.cesign-hchip.is-on{ border-color:#1B4480; background:#1B4480; color:#fff; }
+.cesign-history-search{ box-sizing:border-box; width:100%; min-height:42px; margin-bottom:10px; padding:0 12px; border:1px solid #CBD5E1; border-radius:8px; font:inherit; font-size:16px; background:#fff; }
+.cesign-history-table{ display:flex; flex-direction:column; gap:8px; }
+.cesign-hrow{ display:grid; grid-template-columns:1fr 1fr; gap:4px 10px; padding:10px 12px; border:1px solid #E1E6EE; border-radius:10px; background:#fff; font-size:13px; color:#23364F; }
+.cesign-hrow.is-head{ display:none; }
+.cesign-hrow > span{ min-width:0; overflow-wrap:anywhere; }
+.cesign-hrow > span::before{ content:attr(data-l); display:block; font-size:11px; color:#8A97AA; }
+.cesign-hrow .is-strong{ font-weight:700; }
+.cesign-hrow .cesign-state{ margin-left:0; }
+.cesign-hacts{ grid-column:1 / -1; display:flex; flex-wrap:wrap; gap:6px; }
+.cesign-hacts::before{ display:none !important; }
+@media (min-width:1024px){
+  .cesign-history-table{ gap:0; border:1px solid #E1E6EE; border-radius:10px; background:#fff; overflow:hidden; }
+  .cesign-hrow{ grid-template-columns:132px minmax(120px,1.2fr) 128px minmax(150px,1.3fr) 128px minmax(150px,1fr) minmax(120px,1fr) 220px; align-items:center; gap:0 12px; padding:8px 14px; border:0; border-top:1px solid #EEF1F5; border-radius:0; }
+  .cesign-hrow.is-head{ display:grid; border-top:0; background:#F7F9FC; font-size:12px; font-weight:700; color:#5B6B82; }
+  .cesign-hrow > span::before{ display:none; }
+  .cesign-hacts{ grid-column:auto; }
+  .cesign-hacts .cesign-chip{ min-height:30px; font-size:12px; }
+}
+
 /* 노란 업무 알림: 기존 알림 칸의 크기·위치를 그대로 쓰고 색만 바꾼다. */
 .crm-alert-dock > .consult-req-alert.is-mou-signed{ background:#FEF6C7; border-color:#EBD36A; }
 .crm-alert-dock .is-mou-signed .consult-req-alert-main,

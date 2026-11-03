@@ -48,6 +48,9 @@ function createModusign({ baseUrl, email, apiKey, fetchImpl, timeoutMs }) {
   return {
     createDocument: (body) => call('POST', '/documents', body),
     getDocument: (id) => call('GET', `/documents/${encodeURIComponent(id)}`),
+    // 서명 요청 취소(POST /documents/{id}/cancel). 사유는 2~200자 필수. 진행 중(ON_GOING) 문서만 취소된다.
+    // 취소 후 참여자는 문서를 볼 수 없게 한다(accessibleByParticipant=false, 공식 기본값).
+    cancelDocument: (id, message) => call('POST', `/documents/${encodeURIComponent(id)}/cancel`, { message, accessibleByParticipant: false }),
     async findBySendKey(sendKey) {
       const q = encodeURIComponent(JSON.stringify({ card_send_key: sendKey }));
       const res = await call('GET', `/documents?limit=10&metadatas=${q}`);

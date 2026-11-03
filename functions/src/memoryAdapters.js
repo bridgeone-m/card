@@ -32,6 +32,11 @@ function createMemoryStore(initial) {
       }
       return out;
     },
+    async recent(collection, field, limit) {
+      const out = [];
+      for (const [path, data] of docs) if (path.startsWith(collection + '/') && data) out.push(copy(data));
+      return out.sort((a, b) => String(b[field] || '').localeCompare(String(a[field] || ''))).slice(0, limit);
+    },
   };
 }
 

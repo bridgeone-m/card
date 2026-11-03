@@ -19,6 +19,11 @@ function createFirestoreStore(db) {
       const snap = await db.collection(collection).where(field, '==', value).get();
       return snap.docs.map((d) => d.data());
     },
+    // 최근 순 목록(발송 이력 탭). 단일 필드 정렬이라 별도 색인이 필요 없다.
+    async recent(collection, field, limit) {
+      const snap = await db.collection(collection).orderBy(field, 'desc').limit(limit).get();
+      return snap.docs.map((d) => d.data());
+    },
   };
 }
 

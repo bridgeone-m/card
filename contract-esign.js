@@ -345,6 +345,11 @@
     document.querySelectorAll('#cesignOverlay [data-retry]').forEach(b=>b.onclick=()=>retry(b.dataset.retry));
     document.querySelectorAll('#cesignOverlay [data-keep]').forEach(b=>b.onclick=()=>keepDuplicate(b.dataset.keepType,b.dataset.keep));
     document.querySelectorAll('#cesignOverlay [data-view]').forEach(b=>b.onclick=()=>viewSigned({sendId:s.sendId,docType:b.dataset.view,companyName:s.companyName}));
+    document.querySelectorAll('#cesignOverlay [data-cancel]').forEach(b=>b.onclick=()=>{
+      const el=document.getElementById('cesignOverlay');
+      const back=()=>{el.classList.remove('is-plain');renderResult();};
+      cancelFlow({sendId:s.sendId,type:b.dataset.cancel,companyName:s.companyName,back,done:(next)=>{st.send=next;st.error=null;back();}});
+    });
     foot([{label:'상태 조회',id:'cesignRefresh',onClick:refresh},{label:'새로 준비',onClick:()=>{st.error=null;st.send=null;reloadInfo();}},{label:'닫기',primary:true,onClick:close}]);
   }
   function docCard(d){
@@ -360,16 +365,48 @@
         <dt>상대방 서명</dt><dd>${d.counterpartySignedAt?esc(fmtDate(d.counterpartySignedAt)):'대기'}</dd>
         <dt>우리 측 전자서명</dt><dd>${d.companySignedAt?esc(fmtDate(d.companySignedAt)):'대기'}</dd>
         <dt>양측 최종 완료</dt><dd>${d.allSignedAt?esc(fmtDate(d.allSignedAt)):'미완료'}</dd>
-        ${d.abortedAt?`<dt>중단</dt><dd>${esc(d.abortType||'')} · ${esc(fmtDate(d.abortedAt))}</dd>`:''}
+        ${d.abortedAt?`<dt>중단</dt><dd>${esc(ABORT_LABEL[d.abortType]||d.abortType||'')} · ${esc(fmtDate(d.abortedAt))}</dd>`:''}
       </dl>
-      ${d.abortedAt?'<div class="cesign-note is-warn">이 문서는 중단됐습니다. 다시 보내려면 진행 중인 다른 문서를 모두사인에서 취소한 뒤 [새로 준비]로 새 버전을 만들어주세요.</div>':''}
+      ${d.abortedAt?'<div class="cesign-note is-warn">이 문서는 중단됐습니다. 다시 보내려면 진행 중인 다른 문서도 [서명 요청 취소]로 정리한 뒤 [새로 준비]로 새 버전을 만들어주세요.</div>':''}
       ${d.delivery==='unknown_not_found'?`<label class="cesign-check"><input type="checkbox" data-manual="${esc(d.type)}"><span>모두사인 화면에서 이 문서가 없는 것을 확인했습니다.</span></label>`:''}
       <div class="cesign-doc-actions">
         ${retryable?`<button type="button" class="cesign-btn" data-retry="${esc(d.type)}">이 문서만 재시도</button>`:''}
         ${d.delivery==='duplicate_suspect'?(d.duplicateCandidates||[]).map(id=>`<button type="button" class="cesign-btn" data-keep-type="${esc(d.type)}" data-keep="${esc(id)}">이 문서로 확정: ${esc(String(id).slice(0,8))}</button>`).join(''):''}
         ${d.modusignDocumentId?`<button type="button" class="cesign-btn" data-view="${esc(d.type)}">문서 보기</button>`:''}
+        ${cancellable(d)?`<button type="button" class="cesign-btn is-danger" data-cancel="${esc(d.type)}">서명 요청 취소</button>`:''}
       </div>
     </section>`;
+  }
+  // 모두사인에 만들어졌고 아직 끝나지 않은(완료·중단 아님) 문서만 취소할 수 있다.
+  const cancellable=d=>d.delivery==='created'&&!!d.modusignDocumentId&&!d.abortedAt&&!d.allSignedAt;
+  const ABORT_LABEL={REQUEST_CANCELLATION:'요청 취소',REJECTION:'상대방 거절',SIGNING_CANCELLATION:'상대방 서명 취소'};
+  const DEFAULT_CANCEL_REASON='계약서 내용 확인·수정을 위해 서명 요청을 취소합니다.';
+
+  // ---- 서명 요청 취소: 발송 결과·발송 이력 공용 확인 창 ------------------------------
+  // item: {sendId,type,companyName,back,done}. 담당자(개인 계정) 인증이 있어야 서버가 취소한다.
+  function cancelFlow(item){
+    const el=root(true);
+    el.querySelector('.cesign-title').textContent=`서명 요청 취소 · ${item.companyName||''}`;
+    q('.cesign-steps').hidden=true;
+    let err=null,reason=DEFAULT_CANCEL_REASON;
+    const draw=()=>{
+      const who=auth()&&auth().senderEmail();
+      q('.cesign-body').innerHTML=`${errorBox(err)}
+        <div class="cesign-note is-warn"><b>${esc(TYPE_LABEL[item.type])}</b>의 모두사인 서명 요청을 취소합니다. 취소한 문서는 상대방이 더 이상 서명할 수 없고 되돌릴 수 없습니다. 함께 보낸 다른 문서는 그대로입니다.</div>
+        <label class="cesign-field">취소 사유 <small style="font-weight:400">(2~200자, 모두사인에 기록됩니다)</small><textarea id="cesignCancelReason" rows="3" maxlength="200">${esc(reason)}</textarea></label>
+        ${who?`<div class="cesign-note">${esc(who)} 인증됨</div>`:`<div class="cesign-field">발송 담당자 인증</div><div id="cesignSender">${senderForm(null)}</div>`}`;
+      q('#cesignCancelReason').oninput=e=>{reason=e.target.value;};
+      if(!who) bindSender(draw);
+      foot([{label:'닫기',onClick:item.back},{label:'서명 요청 취소',primary:true,id:'cesignCancelGo',disabled:!who,onClick:go}]);
+    };
+    const go=async()=>{
+      const text=reason.trim();
+      if(text.length<2){err={message:'취소 사유를 2자 이상 입력해주세요.'};draw();return;}
+      setBusy('모두사인에 취소를 요청하는 중…');
+      try{item.done(await api('POST','/cancel',{sendId:item.sendId,type:item.type,reason:text},{personal:true}));}
+      catch(e){err=e;if(e.code==='SENDER_REAUTH_REQUIRED')await auth().signOutSender();draw();}
+    };
+    draw();
   }
   async function retry(type){
     const manualEl=q(`[data-manual="${type}"]`);
@@ -428,5 +465,162 @@
     await show();
   }
 
-  window.SHIN2_CONTRACT_ESIGN={open,viewSigned};
+  // ---- 상단 [계약서 발송] 탭: 모두사인 발송 이력·상대방 서명 여부 ------------------------
+  // index.html 의 탭 코드는 건드리지 않고, 탭 버튼과 화면을 이 파일에서 붙인다. 다른 탭을 누르면 닫힌다.
+  // 조회는 공용 로그인으로, 취소는 담당자(개인 계정) 인증으로 서버가 판단한다.
+  const HSTATUS={
+    waiting:['상대방 서명 대기','wait'],
+    signed:['상대방 서명 완료 · 우리 서명 대기','ok2'],
+    done:['체결 완료','ok'],
+    aborted:['취소·거절','muted'],
+    sending:['발송 중','wait'],
+    issue:['확인 필요','bad'],
+  };
+  function docState(d){
+    if(d.delivery!=='created') return ['pending','creating'].includes(d.delivery)?'sending':'issue';
+    if(d.abortedAt) return 'aborted';
+    if(d.allSignedAt) return 'done';
+    if(d.counterpartySignedAt) return 'signed';
+    return 'waiting';
+  }
+  function docStateLabel(d){
+    const k=docState(d);
+    if(k==='aborted') return [ABORT_LABEL[d.abortType]||'중단됨','muted'];
+    if(k==='issue') return [(DELIVERY[d.delivery]||[d.delivery])[0],'bad'];
+    return HSTATUS[k];
+  }
+  const hs={rows:[],loaded:false,loading:false,error:null,filter:'all',search:'',prevActive:null};
+  const hq=s=>document.querySelector('#cesignHistory '+s);
+
+  function historyRows(){
+    const out=[];
+    for(const s of hs.rows) for(const t of TYPES){ const d=s.documents[t]; if(d) out.push({s,d,state:docState(d)}); }
+    return out;
+  }
+  function placeHistory(el){
+    const header=document.querySelector('header.gnav');
+    el.style.top=Math.max(0,header?header.getBoundingClientRect().bottom:0)+'px';
+  }
+  async function openHistory(){
+    if(!config().apiBase||!auth()) return;
+    try{await auth().sharedToken();}catch(_){return;} // 카드 로그인 전에는 열지 않는다.
+    let el=document.getElementById('cesignHistory');
+    if(!el){
+      el=document.createElement('section');el.id='cesignHistory';el.className='cesign-history';el.setAttribute('aria-label','계약서 발송 이력');
+      document.body.appendChild(el);
+    }
+    const tabs=Array.from(document.querySelectorAll('#crmTopTabs .top-tab,.gnav-drawer-menu .gnav-drawer-item'));
+    if(!document.body.classList.contains('cesign-history-on')) hs.prevActive=tabs.filter(b=>b.classList.contains('is-active')&&!b.dataset.cesignTab);
+    tabs.forEach(b=>b.classList.toggle('is-active',!!b.dataset.cesignTab));
+    document.body.classList.add('cesign-history-on');
+    placeHistory(el);
+    renderHistory();
+    loadHistory();
+  }
+  function closeHistory(restore){
+    const el=document.getElementById('cesignHistory');if(el)el.remove();
+    if(!document.body.classList.contains('cesign-history-on')) return;
+    document.body.classList.remove('cesign-history-on');
+    document.querySelectorAll('[data-cesign-tab]').forEach(b=>b.classList.remove('is-active'));
+    if(restore&&hs.prevActive) hs.prevActive.forEach(b=>b.classList.add('is-active'));
+  }
+  async function loadHistory(){
+    if(hs.loading) return;
+    hs.loading=true;renderHistory();
+    try{const r=await api('GET','/sends/all');hs.rows=r.sends||[];hs.error=null;hs.loaded=true;}
+    catch(e){hs.error=e;}
+    hs.loading=false;renderHistory();
+  }
+  function renderHistory(){
+    const el=document.getElementById('cesignHistory');if(!el)return;
+    const all=historyRows();
+    const counts={all:all.length};
+    for(const r of all) counts[r.state]=(counts[r.state]||0)+1;
+    const term=hs.search.trim().toLowerCase();
+    const rows=all.filter(r=>(hs.filter==='all'||r.state===hs.filter)&&(!term||[r.s.companyName,r.s.companyCode,r.s.recipientEmail,r.s.representative,r.s.processedBy&&r.s.processedBy.email,TYPE_LABEL[r.d.type]].join(' ').toLowerCase().includes(term)));
+    const chip=(k,l)=>`<button type="button" class="cesign-hchip${hs.filter===k?' is-on':''}" data-hfilter="${k}">${esc(l)} <b>${counts[k]||0}</b></button>`;
+    const focus=document.activeElement&&document.activeElement.id==='cesignHSearch';
+    el.innerHTML=`<div class="cesign-history-inner">
+      <div class="cesign-history-head">
+        <div><h2>계약서 발송 이력</h2><p>모두사인으로 보낸 기본물품공급계약서·MOU 체결서의 상대방 서명 여부입니다. 최근 200건, 시험 발송 제외.</p></div>
+        <div class="cesign-history-actions"><button type="button" class="cesign-btn" id="cesignHReload"${hs.loading?' disabled':''}>${hs.loading?'불러오는 중…':'새로고침'}</button><button type="button" class="cesign-btn" id="cesignHClose" aria-label="발송 이력 닫기">닫기</button></div>
+      </div>
+      <div class="cesign-history-chips">${chip('all','전체')}${chip('waiting','상대방 서명 대기')}${chip('signed','상대방 서명 완료')}${chip('done','체결 완료')}${chip('aborted','취소·거절')}${chip('issue','확인 필요')}</div>
+      <input type="search" class="cesign-history-search" id="cesignHSearch" placeholder="업체명 · 수신자 · 대표자 · 처리자 검색" value="${esc(hs.search)}">
+      ${hs.error?errorBox(hs.error):''}
+      ${!hs.loaded&&hs.loading?'<div class="cesign-busy" role="status">발송 이력을 불러오는 중…</div>':''}
+      ${hs.loaded&&!rows.length?`<div class="cesign-note">${all.length?'조건에 맞는 발송이 없습니다.':'아직 모두사인으로 보낸 계약서가 없습니다.'}</div>`:''}
+      ${rows.length?`<div class="cesign-history-table" role="table" aria-label="계약서 발송 이력">
+        <div class="cesign-hrow is-head" role="row"><span role="columnheader">발송 일시</span><span role="columnheader">업체</span><span role="columnheader">문서</span><span role="columnheader">받는 사람</span><span role="columnheader">상대방 서명</span><span role="columnheader">상태</span><span role="columnheader">처리자</span><span role="columnheader">관리</span></div>
+        ${rows.map(historyRow).join('')}
+      </div>`:''}
+    </div>`;
+    hq('#cesignHReload').onclick=loadHistory;
+    hq('#cesignHClose').onclick=()=>closeHistory(true);
+    el.querySelectorAll('[data-hfilter]').forEach(b=>b.onclick=()=>{hs.filter=b.dataset.hfilter;renderHistory();});
+    const search=hq('#cesignHSearch');
+    search.oninput=e=>{hs.search=e.target.value;clearTimeout(hs.timer);hs.timer=setTimeout(renderHistory,150);};
+    if(focus){search.focus();search.setSelectionRange(search.value.length,search.value.length);}
+    el.querySelectorAll('[data-hrefresh]').forEach(b=>b.onclick=()=>refreshRow(b.dataset.hrefresh));
+    el.querySelectorAll('[data-hview]').forEach(b=>b.onclick=()=>{const [sendId,type]=b.dataset.hview.split('|');const s=hs.rows.find(x=>x.sendId===sendId);viewSigned({sendId,docType:type,companyName:s&&s.companyName});});
+    el.querySelectorAll('[data-hcancel]').forEach(b=>b.onclick=()=>{
+      const [sendId,type]=b.dataset.hcancel.split('|');const s=hs.rows.find(x=>x.sendId===sendId);
+      cancelFlow({sendId,type,companyName:s&&s.companyName,back:close,done:(next)=>{close();replaceRow(next);}});
+    });
+  }
+  function historyRow(r){
+    const {s,d}=r;
+    const [label,cls]=docStateLabel(d);
+    const key=`${esc(s.sendId)}|${esc(d.type)}`;
+    const signed=d.counterpartySignedAt?fmtDate(d.counterpartySignedAt):(d.abortedAt?'-':'대기');
+    return `<div class="cesign-hrow" role="row">
+      <span role="cell" data-l="발송 일시">${esc(fmtDate(s.createdAt))}</span>
+      <span role="cell" data-l="업체" class="is-strong">${esc(s.companyName)}${s.test?' <small>(시험)</small>':''}</span>
+      <span role="cell" data-l="문서">${esc(TYPE_LABEL[d.type])}</span>
+      <span role="cell" data-l="받는 사람" class="is-break">${esc(s.recipientEmail)}</span>
+      <span role="cell" data-l="상대방 서명">${esc(signed)}</span>
+      <span role="cell" data-l="상태"><span class="cesign-state is-${cls}">${esc(label)}</span></span>
+      <span role="cell" data-l="처리자" class="is-break">${esc((s.processedBy&&s.processedBy.email)||'')}</span>
+      <span role="cell" data-l="관리" class="cesign-hacts">
+        <button type="button" class="cesign-chip" data-hrefresh="${esc(s.sendId)}">상태 갱신</button>
+        ${d.counterpartySignedAt||d.allSignedAt?`<button type="button" class="cesign-chip" data-hview="${key}">문서 보기</button>`:''}
+        ${cancellable(d)?`<button type="button" class="cesign-chip is-danger" data-hcancel="${key}">취소</button>`:''}
+      </span>
+    </div>`;
+  }
+  function replaceRow(next){
+    const i=hs.rows.findIndex(x=>x.sendId===next.sendId);
+    if(i>=0) hs.rows[i]=next;
+    renderHistory();
+  }
+  async function refreshRow(sendId){
+    try{replaceRow(await api('POST','/refresh',{sendId}));hs.error=null;}
+    catch(e){hs.error=e;renderHistory();}
+  }
+  function installHistoryTab(){
+    const nav=document.getElementById('crmTopTabs');
+    if(!nav||document.getElementById('crmTabContracts')) return;
+    const btn=document.createElement('button');
+    btn.type='button';btn.className='top-tab';btn.id='crmTabContracts';btn.dataset.cesignTab='1';
+    btn.innerHTML='<svg class="top-tab-ico" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="m9 15 2 2 4-4"/></svg>계약서 발송';
+    btn.onclick=openHistory;
+    nav.appendChild(btn);
+    const drawer=document.querySelector('.gnav-drawer-menu');
+    const mail=document.getElementById('gnavDrawerTabMailSettings');
+    if(drawer){
+      const item=document.createElement('button');
+      item.type='button';item.className='gnav-drawer-item';item.id='gnavDrawerTabContracts';item.dataset.cesignTab='1';item.textContent='계약서 발송';
+      item.onclick=()=>{const c=document.getElementById('gnavDrawerCloseBtn');if(c)c.click();openHistory();};
+      if(mail&&mail.parentNode===drawer) mail.after(item); else drawer.appendChild(item);
+    }
+    // 다른 탭·메뉴를 누르면 이 화면을 닫는다(그 탭의 원래 동작은 그대로 실행된다).
+    document.addEventListener('click',e=>{
+      const t=e.target.closest&&e.target.closest('#crmTopTabs .top-tab,.gnav-drawer-menu .gnav-drawer-item');
+      if(t&&!t.dataset.cesignTab) closeHistory(false);
+    },true);
+    window.addEventListener('resize',()=>{const el=document.getElementById('cesignHistory');if(el)placeHistory(el);});
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',installHistoryTab); else installHistoryTab();
+
+  window.SHIN2_CONTRACT_ESIGN={open,viewSigned,openHistory};
 })();

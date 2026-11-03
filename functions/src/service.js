@@ -579,6 +579,36 @@ function createService({ store, blobs, modusign, config, now, fontBytes, serverT
     if (!s || s.test !== true) throw new AppError(404, 'SEND_NOT_FOUND', '시험 발송 기록을 찾을 수 없습니다.');
   }
 
+  // 서명 요청 취소. 모두사인에 취소를 요청한 뒤, 다시 조회한 상태만 반영한다(applyRemote).
+  // 이미 끝난 문서는 모두사인을 부르지 않는다. 취소 응답이 불명확해도 조회 결과로 판단한다.
+  async function cancelDoc({ sendId, type, reason }, sender) {
+    docType(type);
+    const message = clean(reason);
+    if (message.length < 2 || message.length > 200) throw new AppError(400, 'BAD_REASON', '취소 사유를 2~200자로 입력해주세요.');
+    const s = await store.get(sendPath(sendId));
+    if (!s) throw new AppError(404, 'SEND_NOT_FOUND', '발송 기록을 찾을 수 없습니다.');
+    const d = s.documents[type];
+    if (d.delivery !== 'created' || !d.modusignDocumentId) throw new AppError(409, 'NOT_CANCELLABLE', '모두사인에 만들어진 문서만 취소할 수 있습니다.');
+    if (d.abortedAt) return sendView(s);
+    if (d.allSignedAt) throw new AppError(409, 'ALREADY_COMPLETED', '양측 서명이 끝난 문서는 취소할 수 없습니다.');
+
+    let failure = null;
+    try { await modusign.cancelDocument(d.modusignDocumentId, message); }
+    catch (err) { if (!(err instanceof ModusignError)) throw err; failure = err; }
+    const remote = await modusign.getDocument(d.modusignDocumentId);
+    await applyRemote(sendId, type, remote);
+    const canceled = remote.status === 'ABORTED';
+    await updateDoc(sendId, type, (x) => {
+      x.cancellations = (x.cancellations || []).concat([{ at: nowIso(), by: sender.email || sender.uid, reason: message, result: canceled ? 'canceled' : 'not_canceled' }]);
+      return x;
+    });
+    if (!canceled) {
+      if (remote.status === 'COMPLETED') throw new AppError(409, 'ALREADY_COMPLETED', '양측 서명이 끝난 문서는 취소할 수 없습니다.');
+      throw new AppError(409, 'CANCEL_FAILED', '모두사인에서 취소되지 않았습니다. 문서 상태를 확인해주세요.', { modusignStatus: remote.status || null, status: failure ? failure.status : null });
+    }
+    return sendView(await store.get(sendPath(sendId)));
+  }
+
   async function refresh({ sendId }) {
     if (!(await store.get(sendPath(sendId)))) throw new AppError(404, 'SEND_NOT_FOUND', '발송 기록을 찾을 수 없습니다.');
     for (const type of DOC_TYPES) {
@@ -629,6 +659,13 @@ function createService({ store, blobs, modusign, config, now, fontBytes, serverT
     return rows.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))).map(sendView);
   }
 
+  // 발송 이력 탭: 전체 업체의 최근 발송. 시험 발송은 기본으로 뺀다.
+  async function listAllSends({ limit, includeTests } = {}) {
+    const n = Math.min(Math.max(Number(limit) || 200, 1), 300);
+    const rows = await store.recent('contractSends', 'createdAt', n);
+    return rows.filter((s) => includeTests === true || includeTests === '1' || s.test !== true).map(sendView);
+  }
+
   function sendView(s) {
     const documents = {};
     for (const type of DOC_TYPES) {
@@ -638,6 +675,7 @@ function createService({ store, blobs, modusign, config, now, fontBytes, serverT
         failure: d.failure, attempts: d.attempts, recovered: d.recovered === true, modusignStatus: d.modusignStatus,
         counterpartySignedAt: d.counterpartySignedAt, companySignedAt: d.companySignedAt, allSignedAt: d.allSignedAt,
         abortedAt: d.abortedAt, abortType: d.abortType, duplicateCandidates: d.duplicateCandidates || [],
+        cancellations: d.cancellations || [],
       };
     }
     return {
@@ -662,7 +700,7 @@ function createService({ store, blobs, modusign, config, now, fontBytes, serverT
     return { bytes, title: remote.title || DOC_LABELS[type] };
   }
 
-  return { checkCompany, prepare, prepareTest, assertTestSend, getPdf, send, retryDoc, resolveDuplicate, refresh, handleWebhook, reconcile, listSends, signedDocument, sendBlockers, sealNeedsPersonal, pdfNeedsPersonal };
+  return { checkCompany, prepare, prepareTest, assertTestSend, cancelDoc, listAllSends, getPdf, send, retryDoc, resolveDuplicate, refresh, handleWebhook, reconcile, listSends, signedDocument, sendBlockers, sealNeedsPersonal, pdfNeedsPersonal };
 }
 
 const safeId = (id) => sha256(String(id)).slice(0, 40);

@@ -49,6 +49,9 @@ function createRouter({ service, auth, allowedOrigins, logger }) {
       case 'GET /sends':
         await auth.requireShared(headers);
         return json(200, { sends: await service.listSends(query) });
+      case 'GET /sends/all':
+        await auth.requireShared(headers);
+        return json(200, { sends: await service.listAllSends({ limit: query.limit, includeTests: query.includeTests }) });
       case 'POST /refresh':
         await auth.requireShared(headers);
         return json(200, await service.refresh(body));
@@ -56,6 +59,8 @@ function createRouter({ service, auth, allowedOrigins, logger }) {
         return json(200, await service.send(body, await auth.requireSender(headers)));
       case 'POST /retry':
         return json(200, await service.retryDoc(body, await auth.requireSender(headers)));
+      case 'POST /cancel':
+        return json(200, await service.cancelDoc(body, await auth.requireSender(headers)));
       case 'POST /resolve-duplicate':
         return json(200, await service.resolveDuplicate(body, await auth.requireSender(headers)));
       // ---- 우리 측 시험 발송(서버 직접 요청). 업체 ID 는 서버가 고정하고, 발송 ID 는 시험 발송인지 확인한다.
@@ -75,6 +80,11 @@ function createRouter({ service, auth, allowedOrigins, logger }) {
         await auth.requirePersonalSender(headers);
         await service.assertTestSend(body.sendId);
         return json(200, await service.refresh(body));
+      case 'POST /test/cancel': {
+        const sender = await auth.requirePersonalSender(headers);
+        await service.assertTestSend(body.sendId);
+        return json(200, await service.cancelDoc(body, sender));
+      }
       case 'POST /test/retry': {
         const sender = await auth.requirePersonalSender(headers);
         await service.assertTestSend(body.sendId);

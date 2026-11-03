@@ -9,6 +9,7 @@ const BASE_URL = 'https://mock.modusign.test';
 function createMockModusign({ scenarios, now } = {}) {
   const documents = new Map();
   const posts = [];
+  const cancels = [];
   const plan = { supply: [...((scenarios && scenarios.supply) || [])], mou: [...((scenarios && scenarios.mou) || [])] };
   const state = { hideFromSearch: false, down: false };
   const nowIso = () => new Date(now ? now() : Date.now()).toISOString();
@@ -73,6 +74,19 @@ function createMockModusign({ scenarios, now } = {}) {
       const rows = state.hideFromSearch ? [] : Array.from(documents.values()).filter((d) => Object.entries(filter).every(([k, v]) => (d.metadatas || []).some((m) => m.key === k && m.value === v)));
       return reply(200, { count: rows.length, documents: rows.map(publicDoc) });
     }
+    const cancel = init.method === 'POST' && /^\/documents\/[^/]+\/cancel$/.test(u.pathname);
+    if (cancel) {
+      const doc = documents.get(decodeURIComponent(u.pathname.split('/')[2]));
+      if (!doc) return reply(404, { code: 'NOT_FOUND' });
+      const body = JSON.parse(init.body || '{}');
+      if (!body.message || body.message.length < 2 || body.message.length > 200) return reply(400, { code: 'INVALID_message' });
+      if (doc.status !== 'ON_GOING') return reply(422, { title: 'Document status is invalid' });
+      doc.status = 'ABORTED';
+      doc.updatedAt = nowIso();
+      doc.abort = { type: 'REQUEST_CANCELLATION', message: body.message, abortedAt: doc.updatedAt, participantId: null };
+      cancels.push({ id: doc.id, message: body.message, accessibleByParticipant: body.accessibleByParticipant });
+      return reply(200, publicDoc(doc));
+    }
     if (init.method === 'GET' && u.pathname.startsWith('/documents/')) {
       const doc = documents.get(decodeURIComponent(u.pathname.slice(11)));
       return doc ? reply(200, publicDoc(doc)) : reply(404, { code: 'NOT_FOUND' });
@@ -92,7 +106,7 @@ function createMockModusign({ scenarios, now } = {}) {
     return { event: { type: last ? 'document_all_signed' : 'document_signed' }, document: { id: documentId, requester: { email: 'requester@example.test' } } };
   }
 
-  return { baseUrl: BASE_URL, fetchImpl, documents, posts, plan, state, sign };
+  return { baseUrl: BASE_URL, fetchImpl, documents, posts, cancels, plan, state, sign };
 }
 
 module.exports = { createMockModusign, BASE_URL };
