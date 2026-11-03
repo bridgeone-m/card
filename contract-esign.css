@@ -70,6 +70,7 @@
 .cesign-state.is-ok2{ background:#E3EEFF; color:#1B4480; }
 .cesign-state.is-muted{ background:#EEF2F7; color:#5B6B82; }
 .cesign-btn.is-danger,.cesign-chip.is-danger{ border-color:#E3B4AE; color:#9A2A20; }
+.cesign-chip.is-primary{ border-color:#1B4480; background:#1B4480; color:#fff; font-weight:700; }
 
 /* 상단 [계약서 발송] 탭: 모두사인 발송 이력. 헤더 아래를 덮는 화면이고, 모바일은 카드로 쌓는다. */
 .cesign-history{ position:fixed; left:0; right:0; bottom:0; top:0; z-index:900; overflow:auto; background:#F5F7FA; -webkit-overflow-scrolling:touch; }

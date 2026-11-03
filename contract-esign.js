@@ -345,6 +345,7 @@
     document.querySelectorAll('#cesignOverlay [data-retry]').forEach(b=>b.onclick=()=>retry(b.dataset.retry));
     document.querySelectorAll('#cesignOverlay [data-keep]').forEach(b=>b.onclick=()=>keepDuplicate(b.dataset.keepType,b.dataset.keep));
     document.querySelectorAll('#cesignOverlay [data-view]').forEach(b=>b.onclick=()=>viewSigned({sendId:s.sendId,docType:b.dataset.view,companyName:s.companyName}));
+    document.querySelectorAll('#cesignOverlay [data-print]').forEach(b=>b.onclick=()=>viewSigned({sendId:s.sendId,docType:b.dataset.print,companyName:s.companyName,autoPrint:true}));
     document.querySelectorAll('#cesignOverlay [data-cancel]').forEach(b=>b.onclick=()=>{
       const el=document.getElementById('cesignOverlay');
       const back=()=>{el.classList.remove('is-plain');renderResult();};
@@ -372,6 +373,7 @@
       <div class="cesign-doc-actions">
         ${retryable?`<button type="button" class="cesign-btn" data-retry="${esc(d.type)}">이 문서만 재시도</button>`:''}
         ${d.delivery==='duplicate_suspect'?(d.duplicateCandidates||[]).map(id=>`<button type="button" class="cesign-btn" data-keep-type="${esc(d.type)}" data-keep="${esc(id)}">이 문서로 확정: ${esc(String(id).slice(0,8))}</button>`).join(''):''}
+        ${d.allSignedAt?`<button type="button" class="cesign-btn is-primary" data-print="${esc(d.type)}">인쇄</button>`:''}
         ${d.modusignDocumentId?`<button type="button" class="cesign-btn" data-view="${esc(d.type)}">문서 보기</button>`:''}
         ${cancellable(d)?`<button type="button" class="cesign-btn is-danger" data-cancel="${esc(d.type)}">서명 요청 취소</button>`:''}
       </div>
@@ -458,11 +460,31 @@
         return;
       }
       q('.cesign-body').innerHTML='<div class="cesign-pages" id="cesignPages"></div>';
-      foot([{label:'다운로드',onClick:()=>saveBlob(file.bytes,`${TYPE_LABEL[item.docType]}_${item.companyName||''}.pdf`)},{label:'닫기',primary:true,onClick:backToResult}]);
+      foot([{label:'인쇄',onClick:()=>printPdf(file.bytes)},{label:'다운로드',onClick:()=>saveBlob(file.bytes,`${TYPE_LABEL[item.docType]}_${item.companyName||''}.pdf`)},{label:'닫기',primary:true,onClick:backToResult}]);
+      // [인쇄] 버튼으로 연 경우 PC 에서는 바로 인쇄 창을 띄운다(휴대폰은 위 [인쇄]를 눌러 새 창에서 인쇄·공유).
+      if(item.autoPrint&&!isMobile()) printPdf(file.bytes);
       try{await renderPages(q('#cesignPages'),file.bytes,null,false,()=>!!document.getElementById('cesignOverlay'));}
       catch(e){q('#cesignPages').innerHTML=errorBox(e);}
     };
     await show();
+  }
+  const isMobile=()=>window.matchMedia('(max-width:767px)').matches||(navigator.maxTouchPoints>0&&window.matchMedia('(pointer:coarse)').matches);
+  // 모두사인 완료 문서(PDF)를 인쇄한다. PC 는 숨긴 틀에서 인쇄 창을, 휴대폰은 새 창에서 PDF 를 연다.
+  function printPdf(bytes){
+    const url=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));
+    const later=()=>setTimeout(()=>URL.revokeObjectURL(url),120000);
+    if(isMobile()){ if(!window.open(url,'_blank')) location.href=url; later(); return; }
+    const frame=document.createElement('iframe');
+    frame.setAttribute('aria-hidden','true');
+    frame.style.cssText='position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
+    frame.onload=()=>setTimeout(()=>{
+      try{ frame.contentWindow.focus(); frame.contentWindow.print(); }
+      catch(_){ window.open(url,'_blank'); }
+    },300);
+    frame.src=url;
+    document.body.appendChild(frame);
+    setTimeout(()=>frame.remove(),120000);
+    later();
   }
 
   // ---- 상단 [계약서 발송] 탭: 모두사인 발송 이력·상대방 서명 여부 ------------------------
@@ -563,6 +585,7 @@
     if(focus){search.focus();search.setSelectionRange(search.value.length,search.value.length);}
     el.querySelectorAll('[data-hrefresh]').forEach(b=>b.onclick=()=>refreshRow(b.dataset.hrefresh));
     el.querySelectorAll('[data-hview]').forEach(b=>b.onclick=()=>{const [sendId,type]=b.dataset.hview.split('|');const s=hs.rows.find(x=>x.sendId===sendId);viewSigned({sendId,docType:type,companyName:s&&s.companyName});});
+    el.querySelectorAll('[data-hprint]').forEach(b=>b.onclick=()=>{const [sendId,type]=b.dataset.hprint.split('|');const s=hs.rows.find(x=>x.sendId===sendId);viewSigned({sendId,docType:type,companyName:s&&s.companyName,autoPrint:true});});
     el.querySelectorAll('[data-hcancel]').forEach(b=>b.onclick=()=>{
       const [sendId,type]=b.dataset.hcancel.split('|');const s=hs.rows.find(x=>x.sendId===sendId);
       cancelFlow({sendId,type,companyName:s&&s.companyName,back:close,done:(next)=>{close();replaceRow(next);}});
@@ -583,6 +606,7 @@
       <span role="cell" data-l="처리자" class="is-break">${esc((s.processedBy&&s.processedBy.email)||'')}</span>
       <span role="cell" data-l="관리" class="cesign-hacts">
         <button type="button" class="cesign-chip" data-hrefresh="${esc(s.sendId)}">상태 갱신</button>
+        ${d.allSignedAt?`<button type="button" class="cesign-chip is-primary" data-hprint="${key}">인쇄</button>`:''}
         ${d.counterpartySignedAt||d.allSignedAt?`<button type="button" class="cesign-chip" data-hview="${key}">문서 보기</button>`:''}
         ${cancellable(d)?`<button type="button" class="cesign-chip is-danger" data-hcancel="${key}">취소</button>`:''}
       </span>
