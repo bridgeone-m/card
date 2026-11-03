@@ -87,6 +87,8 @@
   async function reloadInfo(){
     setBusy('업체 정보를 확인하는 중…');
     try{
+      // 이 기기에 저장된 담당자 로그인이 복원될 때까지 기다린다(복원 전이면 인증 칸이 잠깐 보이는 것 방지).
+      if(auth()&&auth().senderReady) await auth().senderReady().catch(()=>{});
       const [check,list]=await Promise.all([
         api('POST','/company-check',{companyId:st.companyId,companyCode:st.companyCode}),
         api('GET',`/sends?companyId=${encodeURIComponent(st.companyId)}`),

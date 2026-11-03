@@ -31,8 +31,9 @@ test('알림 제목과 버튼 연결',()=>{
   assert.ok(ui.includes('문서 보기')&&ui.includes('상대방 서명 완료일'));
   new vm.Script(ui);new vm.Script(fs.readFileSync(__dirname+'/contract-esign.js','utf8'));
 });
-test('index.html: 준비 버튼과 스크립트 연결, 개인 인증은 메모리에만',()=>{
+test('index.html: 준비 버튼과 스크립트 연결, 개인 인증은 기기에 유지하되 공용 로그아웃 때 함께 로그아웃',()=>{
   assert.ok(html.includes('id="cesignOpenBtn"'));
   assert.ok(html.includes('src="contract-esign.js"')&&html.includes('src="contractEsignConfig.js"')&&html.includes('href="contract-esign.css"'));
-  assert.ok(html.includes('setPersistence(contractSenderAuth, inMemoryPersistence)'));
+  assert.ok(html.includes('setPersistence(contractSenderAuth, browserLocalPersistence)'));
+  assert.ok(html.includes('if(!user) window.SHIN2_CONTRACT_AUTH.signOutSender()'));
 });

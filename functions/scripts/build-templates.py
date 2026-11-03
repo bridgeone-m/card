@@ -108,9 +108,10 @@ def build_supply():
             label='첫 문단', page=1, template=paragraph, size=9.7, maxLines=5, lineHeight=line_height, minLineHeight=20.0,
             x=rects[0].x0, y=rects[0].y0 - 6, w=W - 2 * rects[0].x0, h=next_top - rects[0].y0 + 2,
         )],
+        # 우리 도장은 (인) 위에 이미지로 넣고, 우리 측 모두사인 서명 칸은 도장과 겹치지 않게 바로 오른쪽에 둔다.
         'signature': {
             'counterparty': rounded(page=page_no, x=eul_in.x0 - 10, y=eul_in.y0 - 14, w=44.0, h=40.0),
-            'company': rounded(page=page_no, x=gab_in.x0 - 10, y=gab_in.y0 - 14, w=44.0, h=40.0),
+            'company': rounded(page=page_no, x=gab_in.x0 - 8 + 40 + 8, y=gab_in.y0 - 14, w=44.0, h=40.0),
         },
         'sealImage': rounded(page=page_no, x=gab_in.x0 - 8, y=gab_in.y0 - 14, w=40.0, h=40.0),
     }
@@ -156,7 +157,8 @@ def build_mou():
         ],
         'signature': {
             'counterparty': dict(page=2, x=450, y=sig_y, w=40, h=sig_h),
-            'company': dict(page=2, x=171.6, y=sig_y, w=40, h=sig_h),
+            # 우리 도장(sealImage)이 (인) 자리를 차지하므로 우리 측 서명 칸은 같은 칸 안 오른쪽에 둔다.
+            'company': dict(page=2, x=225, y=sig_y, w=40, h=sig_h),
         },
         'sealImage': dict(page=2, x=172, y=745, w=39, h=39),
     }

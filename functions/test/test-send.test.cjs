@@ -31,7 +31,7 @@ test('시험 경로는 개인 발송 권한만 통과한다(공용 로그인만�
       assert.equal(parse(res).error.code, code, `${p} ${sender}`);
     }
   }
-  env.clock.t += 16 * 60 * 1000;
+  env.clock.t += 31 * 24 * 60 * 60 * 1000;
   assert.equal(parse(await env.router(req('POST', '/test/prepare', { sender: 'sender-token', body: prepBody() }))).error.code, 'SENDER_REAUTH_REQUIRED');
 });
 

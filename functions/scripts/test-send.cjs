@@ -56,6 +56,9 @@ async function login(opts) {
   }
   const email = await ask('발송 담당자 이메일: ');
   const password = await ask('비밀번호(화면에 표시되지 않음): ', true);
+  // 가려진 입력은 한글 입력 상태·붙여넣기 문제를 눈으로 알 수 없다. 값은 출력하지 않고 형태만 알려 준다.
+  console.log(`입력 확인: 이메일 ${email}, 비밀번호 ${password.length}자${/[^ -~]/.test(password) ? ' (한글 등 영문 외 문자 포함 — 한/영 전환 확인)' : ''}`);
+  if (/[^ -~]/.test(password)) throw new Error('비밀번호에 영문 외 문자가 들어갔습니다. 한/영 키를 영문으로 바꾼 뒤 다시 실행해주세요.');
   if (opts.mock) return mockLogin(opts, email, password);
   return firebaseLogin(email, password);
 }
@@ -114,6 +117,19 @@ function printSend(s) {
   }
   opts.api = opts.api || PROD_API;
   console.log(`서버: ${opts.api}`);
+  // 발송은 내용 확인 → 확인 문구 → 로그인(비밀번호가 마지막 입력) 순서다. 비밀번호를 확인 칸에 넣는 실수를 막는다.
+  let confirmedSend = null;
+  if (command === 'send') {
+    const v = JSON.parse(fs.readFileSync(path.join(outDir(opts, opts.version), 'version.json'), 'utf8'));
+    console.log(`
+보낼 문서: ${v.docs.supply.title}, ${v.docs.mou.title}`);
+    console.log(`상대방(을) 서명자: ${v.company.representative} <${v.recipientEmail}>  계약일 ${v.contractDate}`);
+    console.log('모두사인 문서 2건이 만들어지고 수신자에게 서명 요청 메일이 갑니다.');
+    const typed = opts.mock && opts['mock-confirm'] ? CONFIRM_TEXT : await ask(`계속하려면 "${CONFIRM_TEXT}" 를 입력하세요(한글): `);
+    if (typed !== CONFIRM_TEXT) { console.log('취소했습니다. 발송하지 않았습니다.'); return; }
+    console.log('확인했습니다. 이제 발송 담당자 로그인을 합니다(비밀번호 입력 뒤 바로 발송).');
+    confirmedSend = v;
+  }
   const call = client(opts.api, await login(opts));
 
   if (command === 'prepare') {
@@ -136,7 +152,7 @@ function printSend(s) {
 
   if (command === 'send') {
     const dir = outDir(opts, opts.version);
-    const v = JSON.parse(fs.readFileSync(path.join(dir, 'version.json'), 'utf8'));
+    const v = confirmedSend;
     const hashes = {};
     for (const type of ['supply', 'mou']) {
       const local = sha(fs.readFileSync(path.join(dir, `${type}.pdf`)));
@@ -144,11 +160,6 @@ function printSend(s) {
       if (local !== v.docs[type].sha256 || remote.sha256 !== local) throw new Error(`${type}: 확인한 PDF와 서버 PDF가 다릅니다. prepare 부터 다시 하세요.`);
       hashes[type] = local;
     }
-    console.log(`\n보낼 문서: ${v.docs.supply.title}, ${v.docs.mou.title}`);
-    console.log(`상대방(을) 서명자: ${v.company.representative} <${v.recipientEmail}>  계약일 ${v.contractDate}`);
-    console.log('모두사인 문서 2건이 만들어지고 수신자에게 서명 요청 메일이 갑니다.');
-    const typed = opts.mock && opts['mock-confirm'] ? CONFIRM_TEXT : await ask(`계속하려면 "${CONFIRM_TEXT}" 를 입력하세요: `);
-    if (typed !== CONFIRM_TEXT) { console.log('취소했습니다. 발송하지 않았습니다.'); return; }
     const s = await call('POST', '/test/send', { body: { version: v.version, hashes, recipientEmail: v.recipientEmail, representative: v.company.representative, confirmed: true } });
     printSend(s);
     return;

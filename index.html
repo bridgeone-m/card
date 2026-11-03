@@ -13166,21 +13166,24 @@ window.SHIN2_ADMIN_VAULT = {"v":1,"it":310000,"s":"LR69gP2hfdC4DCenIz+Grw==","iv
       };
 
       // §계약서 2종 준비 — 서버 호출용 토큰. 공용 로그인은 미리보기까지만 허용되고, 발송·서명 문서 열람은
-      // 공용 계정과 별개인 개인 계정(별도 앱 인스턴스, 메모리에만 유지) 토큰을 서버가 따로 검증한다.
+      // 공용 계정과 별개인 개인 계정(별도 앱 인스턴스) 토큰을 서버가 따로 검증한다.
+      // 개인 계정 로그인은 이 기기에 유지한다(매번 인증하지 않음). 공용 로그아웃·[다른 계정] 때 함께 로그아웃한다.
       let contractSenderAuth = null;
       function getContractSenderAuth(){
         if(!contractSenderAuth){
           contractSenderAuth = getAuth(initializeApp(cfg, 'shin2crm-contract-sender'));
-          setPersistence(contractSenderAuth, inMemoryPersistence).catch(()=>{});
+          setPersistence(contractSenderAuth, browserLocalPersistence).catch(()=>{});
         }
         return contractSenderAuth;
       }
+      getContractSenderAuth(); // 저장된 개인 로그인을 페이지 시작 때 복원한다.
       window.SHIN2_CONTRACT_AUTH = {
         sharedToken: () => auth.currentUser ? auth.currentUser.getIdToken() : Promise.reject(new Error('로그인이 필요합니다.')),
         senderToken: () => (contractSenderAuth && contractSenderAuth.currentUser) ? contractSenderAuth.currentUser.getIdToken() : Promise.resolve(''),
         senderEmail: () => (contractSenderAuth && contractSenderAuth.currentUser) ? contractSenderAuth.currentUser.email : '',
         signInSender: (email, password) => signInWithEmailAndPassword(getContractSenderAuth(), email, password),
-        signOutSender: () => contractSenderAuth ? signOut(contractSenderAuth) : Promise.resolve()
+        signOutSender: () => contractSenderAuth ? signOut(contractSenderAuth) : Promise.resolve(),
+        senderReady: () => { const a = getContractSenderAuth(); return a.authStateReady ? a.authStateReady() : Promise.resolve(); }
       };
 
       // customerDocuments 전용 실시간 동기화 — v2 SHIN2_SYNC_KEYS.customerDocuments와

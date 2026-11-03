@@ -5,7 +5,8 @@
 // 관리자 모드는 브라우저 설정이므로 권한 근거로 쓰지 않는다.
 const { AppError } = require('./errors');
 
-const SENDER_REAUTH_SECONDS = 15 * 60;
+// 개인 로그인은 기기에 유지한다. 오래된 로그인만 다시 받는다(권한 회수 시 토큰 무효화로 즉시 차단).
+const SENDER_REAUTH_SECONDS = 30 * 24 * 60 * 60;
 
 function createAuth({ verifyIdToken, sharedUid, now }) {
   async function verify(token, label) {
@@ -23,7 +24,7 @@ function createAuth({ verifyIdToken, sharedUid, now }) {
     if (claims.uid === sharedUid) throw new AppError(403, 'SHARED_ACCOUNT_NOT_ALLOWED', '공용 계정으로는 이 작업을 할 수 없습니다.');
     if (claims.email_verified !== true) throw new AppError(403, 'EMAIL_NOT_VERIFIED', '확인된 이메일의 개인 계정만 사용할 수 있습니다.');
   }
-  // 발송·재시도: 공용 로그인 + 개인 발송 권한 + 최근 15분 내 비밀번호 입력.
+  // 발송·재시도: 공용 로그인 + 개인 발송 권한 + 최근 30일 내 비밀번호 입력.
   async function requireSender(headers) {
     await requireShared(headers);
     return requirePersonalSender(headers);

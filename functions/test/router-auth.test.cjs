@@ -45,9 +45,9 @@ test('공용 로그인은 미리보기까지만: 발송·재시도는 개인 발
   }
   assert.equal(env.mock.posts.length, 0);
 
-  env.tokens['sender-token'].auth_time -= 16 * 60;
+  env.tokens['sender-token'].auth_time -= 31 * 24 * 60 * 60;
   assert.equal(parse(await env.router(req('POST', '/send', { body, sender: 'sender-token' }))).error.code, 'SENDER_REAUTH_REQUIRED');
-  env.tokens['sender-token'].auth_time += 16 * 60;
+  env.tokens['sender-token'].auth_time += 31 * 24 * 60 * 60;
   assert.equal(env.mock.posts.length, 0);
 
   const ok = await env.router(req('POST', '/send', { body, sender: 'sender-token' }));
