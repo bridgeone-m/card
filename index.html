@@ -11276,6 +11276,12 @@ body:not(.crm-admin-mode) #crmUpdateMenuWrap{ display:none !important; }
 #crmUpcomingMeetings .crm-team-memo-input:focus,
 #crmUpcomingMeetings .crm-team-memo-edit:focus{ outline:none; border-color:#7FA2D2; box-shadow:0 0 0 3px rgba(27,68,128,.10); }
 #crmUpcomingMeetings .crm-team-memo-new{ display:flex; flex-direction:column; gap:6px; flex:none; }
+/* 지도 아래 남은 높이가 작아도 목록이 보이게 — 새 메모 칸은 평소 한 줄, 누르거나 글이 있을 때만 커지고 [저장]도 그때만 */
+#crmUpcomingMeetings .crm-team-memo-input{ min-height:40px; height:40px; resize:none; overflow:hidden; transition:height .12s ease; }
+#crmUpcomingMeetings .crm-team-memo-new:focus-within .crm-team-memo-input,
+#crmUpcomingMeetings .crm-team-memo-input:not(:placeholder-shown){ height:84px; resize:vertical; overflow:auto; }
+#crmUpcomingMeetings .crm-team-memo-new:not(:focus-within):has(.crm-team-memo-input:placeholder-shown) .crm-team-memo-save{ display:none; }
+#crmUpcomingMeetings .crm-team-memo-new:not(:focus-within):has(.crm-team-memo-input:placeholder-shown):has(.crm-team-memo-status:empty) .crm-team-memo-foot{ display:none; }
 #crmUpcomingMeetings .crm-team-memo-foot{ display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:4px 10px; min-height:22px; }
 #crmUpcomingMeetings .crm-team-memo-save{ margin-left:auto; min-height:34px; padding:0 16px; }
 #crmUpcomingMeetings .crm-team-memo-list{ flex:1 1 auto; min-height:0; overflow-y:auto; margin:4px -4px 0; padding:0 4px; }
@@ -23192,7 +23198,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     return `
       <div class="crm-team-memo">
         <div class="crm-team-memo-new">
-          <textarea id="crmTeamMemoInput" class="crm-team-memo-input" rows="3" placeholder="전 직원이 함께 보는 메모입니다. 쓰고 [저장]을 누르세요.">${esc(teamMemoDraft())}</textarea>
+          <textarea id="crmTeamMemoInput" class="crm-team-memo-input" rows="3" placeholder="새 메모 쓰기 (전 직원 공유)">${esc(teamMemoDraft())}</textarea>
           <div class="crm-team-memo-foot">
             <span class="crm-team-memo-status${teamMemoUi.msgKind ? ' is-' + teamMemoUi.msgKind : ''}" id="crmTeamMemoStatus" role="status">${esc(teamMemoUi.msg)}</span>
             <button type="button" class="co-text-action primary crm-team-memo-save" id="crmTeamMemoSave">${teamMemoUi.msgKind === 'err' ? '다시 시도' : '저장'}</button>
