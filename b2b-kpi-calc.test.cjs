@@ -11,18 +11,19 @@ test('kpiActual_uses_auto_first', () => {
   const a = C.kpiActual(F.base(), M);
   const k1 = a.rows.find(r => r.id === 'MK1');
   assert.equal(r1(k1.rate), 17.6);
-  assert.equal(r1(k1.ach), 29.4);
-  assert.equal(r1(a.rows.find(r => r.id === 'MK2').ach), 73.5);
-  assert.equal(r1(a.rows.find(r => r.id === 'MK3').ach), 5.4);
-  assert.ok(Math.abs(a.value - 36.1) < 0.05);
-  assert.equal(k1.target, 60); assert.equal(k1.base, 50); assert.equal(k1.challenge, 70);
+  assert.equal(r1(k1.ach), 25.2);
+  assert.equal(r1(a.rows.find(r => r.id === 'MK2').ach), 65.8); // KPI3 다른 단지 재사용, 목표 95
+  assert.equal(r1(a.rows.find(r => r.id === 'MK3').ach), 3.7); // KPI2 문의별 L3 도달, 목표 50
+  assert.ok(Math.abs(a.value - 31.58) < 0.05);
+  assert.deepEqual(Array.from(a.rows.map(r => r.label + ' ' + r.name)), ['KPI1 신규 협약 활용', 'KPI2 문의별 L3 도달', 'KPI3 다른 단지 재사용']);
+  assert.equal(k1.target, 70); assert.equal(a.rows[2].target, 95); assert.equal(a.rows[2].floor, 85); assert.equal(a.rows[1].target, 50);
 });
 test('kpiActual_missing_kpi_excluded', () => {
   const s = F.base(); delete s.perfAuto['MK3_2026-11'];
   const a = C.kpiActual(s, M);
   assert.equal(a.measured, 2);
   assert.equal(a.rows.find(r => r.id === 'MK3').state, 'none');
-  assert.ok(Math.abs(a.value - (29.41 + 73.53) / 2) < 0.05);
+  assert.ok(Math.abs(a.value - 45.5) < 0.05);
 });
 test('kpiActual_none_is_null', () => {
   const s = F.base(); s.perfAuto = {}; s.perfMonthly = {};
@@ -83,7 +84,7 @@ test('measuredChanged', () => {
 function model(s){ return C.buildModel(s, M); }
 test('composite_spec_example', () => {
   const m = model(F.base());
-  assert.ok(Math.abs(m.composite.points - 30.0) < 0.05, 'points ' + m.composite.points);
+  assert.ok(Math.abs(m.composite.points - 27.28) < 0.05, 'points ' + m.composite.points);
   assert.equal(m.composite.reflected, 70); assert.equal(m.composite.waiting, 20); assert.equal(m.composite.unassigned, 10);
   const shs = m.shares.rows.find(r => r.memberId === 'shs');
   assert.equal(shs.share, 10); assert.equal(shs.temporary, true);
@@ -96,7 +97,7 @@ test('composite_spec_example2', () => {
   const team = C.teamCommon(s, M);
   assert.equal(team.checked, 9); assert.equal(team.total, 15); assert.equal(team.value, 60);
   const c = C.composite(C.kpiActual(s, M), team, persons, C.shareRows(s));
-  assert.ok(Math.abs(c.points - 40.7) < 0.05, 'points ' + c.points);
+  assert.ok(Math.abs(c.points - 37.95) < 0.05, 'points ' + c.points);
   assert.equal(c.reflected, 90); assert.equal(c.unassigned, 10); assert.equal(c.waiting, 0);
 });
 test('composite_empty_month', () => {
@@ -147,7 +148,7 @@ test('prevMonth_january', () => { assert.equal(C.prevMonth('2027-01'), '2026-12'
 test('laggards_order', () => {
   const l = model(F.base()).laggards;
   assert.ok(l.length <= 5);
-  assert.equal(l[0].kind, 'kpi'); assert.ok(l[0].label.includes('③'));
+  assert.equal(l[0].kind, 'kpi'); assert.ok(l[0].label.includes('KPI2 문의별 L3 도달'));
   assert.ok(l.some(x => x.kind === 'unmeasured' && x.detail.includes('8')));
 });
 
@@ -196,7 +197,7 @@ test('buildModel_lags_reference_only', () => {
   const s = F.base(); s.perfMonthly['LG1_2026-11'] = { num: 1, den: 4 };
   const m = C.buildModel(s, M);
   assert.equal(m.lags.shs.length, 1); assert.equal(m.lags.shs[0].rate, 25); assert.equal(m.lags.m2.length, 0);
-  assert.ok(Math.abs(m.composite.points - 30.0) < 0.05); // 후행은 점수에 넣지 않는다
+  assert.ok(Math.abs(m.composite.points - 27.28) < 0.05); // 후행은 점수에 넣지 않는다
 });
 
 // ---- 최종 검토 수정 ----
@@ -233,4 +234,22 @@ test('validate_card_weight', () => {
   assert.deepEqual(Array.from(C.validateDefInput({ name: 'a', cardWeight: 150 })), ['지표 비중은 0~100 사이 숫자']);
   assert.equal(C.validateDefInput({ name: 'a', cardWeight: null }).length, 0);
   assert.deepEqual(Array.from(C.validateDefInput({ name: 'a', target: NaN })), ['목표값은 0~100 사이']);
+});
+
+// ---- 카드 구축(2026-08) 이후 누적 실적 ----
+test('cumulative_since_card_start', () => {
+  const s = F.base();
+  s.perfMonthly['LI01_2026-08'] = { num: 1, den: 1 }; s.perfMonthly['LI01_2026-09'] = { num: 4, den: 6 };
+  s.perfMonthly['LI01_2026-07'] = { num: 9, den: 9 }; // 구축 전 — 빼야 함
+  delete s.perfAuto['LI01_2026-10']; s.perfMonthly['LI01_2026-10'] = { mode: 'direct', direct: 50 }; // 분자·분모 없는 직접 입력 — 빼야 함
+  const c = C.cumulative(s, 'LI01', '2026-11');
+  // 8월 1/1 + 9월 4/6 + 11월 자동 5/6 (10월은 직접 입력이라 제외, 7월은 구축 전이라 제외)
+  assert.equal(c.num, 10); assert.equal(c.den, 13); assert.equal(c.months, 3); assert.equal(c.from, '2026-08');
+  assert.equal(C.CARD_START_MONTH, '2026-08');
+  assert.equal(C.cumulative(F.base(), 'LI02', '2026-11').den, 0);
+});
+test('cumulative_in_person_rows', () => {
+  const s = F.base(); s.perfMonthly['LI01_2026-09'] = { num: 4, den: 6 };
+  const row = C.buildModel(s, M).persons.shs.rows.find(r => r.id === 'LI01');
+  assert.equal(row.cum.num, 16); assert.equal(row.cum.den, 20); // 9월 4/6 + 10월 자동 7/8 + 11월 자동 5/6
 });

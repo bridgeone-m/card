@@ -112,3 +112,15 @@ textarea.b2bkpi-in{ min-height:96px; resize:vertical; }
 /* §B2B KPI 화면이 열려 있는 동안 아래 화면을 숨긴다 — 아래 화면 안의 드롭다운층(--z-dropdown:1000, 예: MOU 진행상황 검색줄·자동완성·상태 메뉴)이
    이 화면(z-index 900) 위로 비치는 것을 막는다. 상단 메뉴(설정 9020·휴대폰 메뉴 9000)는 그대로 위에 뜬다. */
 body.b2bkpi-on #listView, body.b2bkpi-on #cardView, body.b2bkpi-on #workQueueView, body.b2bkpi-on #mailSettingsView{ visibility:hidden !important; }
+/* §팀 3대 KPI 카드(안내서 색) — KPI1 초록, KPI2 파랑, KPI3 주황 윗줄 */
+.b2bkpi-kpi{ border-top-width:4px; }
+.b2bkpi-kpi.is-kpi1{ border-top-color:#1F8A70; } .b2bkpi-kpi.is-kpi2{ border-top-color:#3366CC; } .b2bkpi-kpi.is-kpi3{ border-top-color:#C26A1E; }
+.b2bkpi-kpi-tag{ display:flex; gap:6px; margin-bottom:6px; }
+.b2bkpi-pill.is-kpi{ background:#EEF2F8; color:#17345F; }
+.b2bkpi-kpi.is-kpi1 .b2bkpi-pill.is-kpi{ background:#E3F4EE; color:#1F6B57; } .b2bkpi-kpi.is-kpi2 .b2bkpi-pill.is-kpi{ background:#E6EDFA; color:#244E9E; } .b2bkpi-kpi.is-kpi3 .b2bkpi-pill.is-kpi{ background:#FBEEDF; color:#8A4A12; }
+.b2bkpi-kpi-name{ font-size:16px !important; font-weight:800 !important; color:#0B2037 !important; }
+.b2bkpi-goal{ font-size:13px; font-weight:700; color:#1B4480; margin-top:2px; }
+.b2bkpi-kpi.is-kpi1 .b2bkpi-goal{ color:#1F8A70; } .b2bkpi-kpi.is-kpi2 .b2bkpi-goal{ color:#3366CC; } .b2bkpi-kpi.is-kpi3 .b2bkpi-goal{ color:#C26A1E; }
+.b2bkpi-kpi.is-kpi1 .b2bkpi-bar .is-cur{ background:#1F8A70; } .b2bkpi-kpi.is-kpi2 .b2bkpi-bar .is-cur{ background:#3366CC; } .b2bkpi-kpi.is-kpi3 .b2bkpi-bar .is-cur{ background:#C26A1E; }
+.b2bkpi-kpi-desc{ margin-top:8px; font-size:13px; color:#33415C; line-height:1.5; }
+.b2bkpi-cum{ font-size:12.5px; color:#1B4480; font-weight:700; padding:2px 0 4px; }

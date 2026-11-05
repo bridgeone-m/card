@@ -34,8 +34,8 @@ const UI = { state: 'ready', month: '2026-11' };
 const R = s => T.renderHtml(C.buildModel(s, '2026-11'), UI);
 test('render_spec_example', () => {
   const h = R(F.base());
-  ['30.0점', '반영 70%', '대기 20%', '미배정 10%', '실제 KPI 실적', '업무 관리점수', '1/9개 측정', '(임시 비중)', '지표 미등록',
-    '다른 팀원에게 넘기지 않습니다', '100점 환산 안 함', '목표 60', '목표 85', '목표 35', '뒤처진 부분', '팀 진척', '팀원 진척', '개인 트래커 추가',
+  ['27.3점', '반영 70%', '대기 20%', '미배정 10%', '실제 KPI 실적', '업무 관리점수', '1/9개 측정', '(임시 비중)', '지표 미등록',
+    '다른 팀원에게 넘기지 않습니다', '100점 환산 안 함', 'KPI1', '신규 협약 활용', '목표 70%', 'KPI2', '문의별 L3 도달', '목표 50%', 'KPI3', '다른 단지 재사용', '목표 95% 도전 · 85% 하한', '첫 요청이 없기 전에 시작 장벽을 없앤다', '문의 다음 단계가 고객에게 보이게 한다', '첫 도움의 막힘을 해결하고 다음 요청을 잇는다', '뒤처진 부분', '팀 진척', '팀원 진척', '개인 트래커 추가',
     '업무 관리점수는 실제 KPI 실적에 더해지지 않습니다', 'K1 관리 1']
     .forEach(t => assert.ok(h.includes(t), '없음: ' + t));
 });
@@ -170,4 +170,9 @@ test('underlying_views_hidden_while_open', () => {
   const m = c.match(/([^{}]*)\{ ?visibility:hidden !important; ?\}/);
   assert.ok(m, 'visibility 규칙 없음');
   ['#listView', '#cardView', '#workQueueView', '#mailSettingsView'].forEach(id => assert.ok(m[1].includes('body.b2bkpi-on ' + id), id));
+});
+test('render_cumulative', () => {
+  const s = F.base(); s.perfMonthly['LI01_2026-09'] = { num: 4, den: 6 };
+  const h = R(s);
+  assert.ok(h.includes('카드 구축 이후 누적 16/20'), h.match(/카드 구축 이후[^<]*/));
 });

@@ -3,9 +3,17 @@
    100점으로 다시 환산하지 않는다. 데이터는 B2B 업무트래커(shared/b2bOpsTracker)와 같은 모양을 읽는다. */
 (function(){
   'use strict';
-  var TARGETS = { MK1: { base: 50, target: 60, challenge: 70 }, MK2: { base: 80, target: 85, challenge: 90 }, MK3: { base: 30, target: 35, challenge: 40 } };
+  /* 팀 3대 KPI(2026-11-05 사용자 확정, 팀원 안내서 '3대 KPI와 팀 행동' 문구 기준). 실적 값은 업무트래커 팀 KPI 자동값(ref)을 쓴다.
+     KPI1 신규 협약 활용 ← MK1(신규업체 첫 서비스 이용률) / KPI2 문의별 L3 도달 ← MK3(L2→L3) / KPI3 다른 단지 재사용 ← MK2(다른 현장 재이용) */
+  var KPIS = [
+    { id: 'MK1', label: 'KPI1', name: '신규 협약 활용', desc: '첫 요청이 없기 전에 시작 장벽을 없앤다', target: 70 },
+    { id: 'MK3', label: 'KPI2', name: '문의별 L3 도달', desc: '문의 다음 단계가 고객에게 보이게 한다', target: 50 },
+    { id: 'MK2', label: 'KPI3', name: '다른 단지 재사용', desc: '첫 도움의 막힘을 해결하고 다음 요청을 잇는다', target: 95, floor: 85 }
+  ];
+  var TARGETS = {}; KPIS.forEach(function(k){ TARGETS[k.id] = { target: k.target, floor: k.floor || null }; });
+  var CARD_START_MONTH = '2026-08'; // 고객관리카드 구축(2026-08-21) — 누적 실적 시작 달
   var WEIGHTS = { actual: 0.6, team: 0.2, personal: 0.2 };
-  var KPI_IDS = ['MK1', 'MK2', 'MK3'];
+  var KPI_IDS = KPIS.map(function(k){ return k.id; });
 
   function isNum(v){ return typeof v === 'number' && isFinite(v); }
   function clamp(v){ return Math.max(0, Math.min(100, v)); }
@@ -32,12 +40,12 @@
   /* 실제 KPI 실적 — KPI별 달성 = min(100, 실적률 ÷ 공식 목표), 값 = 측정된 KPI 평균 */
   function kpiActual(shape, month){
     var mk = (shape && shape.mainKpis) || {};
-    var rows = KPI_IDS.map(function(id){
-      var t = TARGETS[id], d = mk[id] || {}, r = rate(view(shape, id, month));
-      var row = { id: id, no: d.no || '', name: d.name || id, state: r.state, rate: r.state === 'ok' ? r.value : null,
-        num: isNum(r.num) ? r.num : null, den: isNum(r.den) ? r.den : null, base: t.base, target: t.target, challenge: t.challenge,
+    var rows = KPIS.map(function(k){
+      var id = k.id, r = rate(view(shape, id, month));
+      var row = { id: id, label: k.label, no: k.label, name: k.name, desc: k.desc, srcName: (mk[id] || {}).name || id, state: r.state, rate: r.state === 'ok' ? r.value : null,
+        num: isNum(r.num) ? r.num : null, den: isNum(r.den) ? r.den : null, target: k.target, floor: k.floor || null,
         auto: !!(((shape && shape.perfAuto) || {})[id + '_' + month]) };
-      row.ach = r.state === 'ok' ? Math.min(100, r.value / t.target * 100) : null;
+      row.ach = r.state === 'ok' ? Math.min(100, r.value / k.target * 100) : null;
       return row;
     });
     var ok = rows.filter(function(r){ return r.ach != null; });
@@ -70,7 +78,8 @@
         score: r.state === 'ok' ? (tgt ? Math.min(100, r.value / tgt * 100) : r.value) : null,
         weight: isNum(d.cardWeight) ? d.cardWeight : null,
         auto: !!(((shape && shape.perfAuto) || {})[d.id + '_' + month]),
-        tasks: taskStats(d.tasks, ((shape && shape.perfMonthly) || {})[d.id + '_' + month]) };
+        tasks: taskStats(d.tasks, ((shape && shape.perfMonthly) || {})[d.id + '_' + month]),
+        cum: cumulative(shape, d.id, month) };
     });
     var out = { rows: rows, total: rows.length, measured: 0, measuredIds: [], value: null };
     if(!rows.length){ out.state = 'nodefs'; return out; }
@@ -82,6 +91,16 @@
     if(!wsum){ out.state = 'wait'; return out; }
     out.value = use.reduce(function(s, x){ return s + x.s * x.w; }, 0) / wsum;
     out.state = 'ok';
+    return out;
+  }
+  /* 카드 구축(2026-08) 이후 누적 — 달마다 분자·분모가 있는 기록만 더한다(직접 입력 달성률·구축 전 달은 제외) */
+  function cumulative(shape, ref, toMonth, fromMonth){
+    var from = fromMonth || CARD_START_MONTH, out = { num: 0, den: 0, months: 0, from: from, to: toMonth }, m = from, guard = 0;
+    while(m <= toMonth && guard++ < 240){
+      var rec = view(shape, ref, m);
+      if(rec && rec.mode !== 'direct' && isNum(rec.num) && isNum(rec.den) && rec.den > 0){ out.num += rec.num; out.den += rec.den; out.months++; }
+      var a = m.split('-'), y = +a[0], mo = +a[1] + 1; if(mo > 12){ y++; mo = 1; } m = y + '-' + (mo < 10 ? '0' : '') + mo;
+    }
     return out;
   }
   function measuredChanged(prevIds, curIds){
@@ -106,8 +125,8 @@
      KPI별 체크 비율의 평균). 그 달 기록이 하나도 없으면 산출 대기 */
   function teamCommon(shape, month){
     var mk = (shape && shape.mainKpis) || {}, tc = (shape && shape.kpiTeamChecks) || {}, any = false, checked = 0, total = 0, ratios = [];
-    var byKpi = KPI_IDS.map(function(id){
-      var d = mk[id] || {}, rec = tc[id + '_' + month], kc = 0;
+    var byKpi = KPIS.map(function(k){
+      var id = k.id, d = mk[id] || {}, rec = tc[id + '_' + month], kc = 0;
       if(rec) any = true;
       var items = (d.manage || []).map(function(text, i){
         var on = !!(rec && rec.checks && rec.checks['c' + (i + 1)] === true);
@@ -116,7 +135,7 @@
         return { i: i, text: text, checked: on };
       });
       if(items.length) ratios.push(kc / items.length * 100);
-      return { id: id, no: d.no || '', name: d.name || id, items: items };
+      return { id: id, no: k.label, name: k.name, items: items };
     });
     var ok = any && ratios.length;
     return { state: ok ? 'ok' : 'wait', value: ok ? ratios.reduce(function(s, v){ return s + v; }, 0) / ratios.length : null, checked: checked, total: total, byKpi: byKpi };
@@ -250,7 +269,7 @@
   function nextTaskProg(p){ return p >= 100 ? 0 : p > 0 ? 100 : 50; }
 
   var api = { newMemberId: newMemberId, buildMember: buildMember, nextDefId: nextDefId, buildLeadDef: buildLeadDef, buildLagDef: buildLagDef,
-    validateDefInput: validateDefInput, nextTaskProg: nextTaskProg, TARGETS: TARGETS, WEIGHTS: WEIGHTS, KPI_IDS: KPI_IDS, DEFAULT_MEMBERS: DEFAULT_MEMBERS, rate: rate, view: view, kpiActual: kpiActual,
+    validateDefInput: validateDefInput, nextTaskProg: nextTaskProg, TARGETS: TARGETS, KPIS: KPIS, CARD_START_MONTH: CARD_START_MONTH, cumulative: cumulative, WEIGHTS: WEIGHTS, KPI_IDS: KPI_IDS, DEFAULT_MEMBERS: DEFAULT_MEMBERS, rate: rate, view: view, kpiActual: kpiActual,
     leadDefsOf: leadDefsOf, taskPct: taskPct, personScore: personScore, measuredChanged: measuredChanged, prevMonth: prevMonth,
     memberName: memberName, teamCommon: teamCommon, shareRows: shareRows, validateShares: validateShares, composite: composite,
     laggards: laggards, buildModel: buildModel };
