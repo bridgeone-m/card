@@ -109,3 +109,10 @@ test('gate_tracker_link', () => {
   assert.ok(/#gateScreen \.gate-tracker-link-m\{[^}]*display:none/.test(c));
   assert.ok(/@media \(max-width:860px\)\{[^}]*#gateScreen \.gate-tracker-link-m\{[^}]*display:flex/.test(c));
 });
+
+// ---- 화면 확인 중 발견: 3명일 때 비중 반올림 합이 101 ----
+test('weight_line_three_members_sums_100', () => {
+  const s = F.base(); s.kpiTabConfig = { members: ['shs', 'm2', 'm1'] }; s.leadDefs['LI-m1-1'] = { id: 'LI-m1-1', member: 'm1', name: 'y' };
+  const h = R(s);
+  assert.ok(h.includes('반영 66.7%'), '반영'); assert.ok(h.includes('대기 26.7%'), '대기'); assert.ok(h.includes('미배정 6.7%'), '미배정');
+});

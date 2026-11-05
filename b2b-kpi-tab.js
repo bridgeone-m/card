@@ -45,9 +45,9 @@
     return '<section class="b2bkpi-sec"><div class="b2bkpi-sec-head"><h3>' + no + ' ' + esc(title) + '</h3>' + (sub ? '<span class="b2bkpi-muted">' + sub + '</span>' : '') + (extra || '') + '</div>' + body + '</section>';
   }
   function weightLine(c){
-    var a = ['반영 ' + Math.round(c.reflected) + '%'];
-    if(c.waiting > 0.001) a.push('대기 ' + Math.round(c.waiting) + '%');
-    if(c.unassigned > 0.001) a.push('미배정 ' + Math.round(c.unassigned) + '%');
+    var w = function(v){ return f1(v).replace(/\.0$/, ''); }, a =['반영 ' + w(c.reflected) + '%'];
+    if(c.waiting > 0.001) a.push('대기 ' + w(c.waiting) + '%');
+    if(c.unassigned > 0.001) a.push('미배정 ' + w(c.unassigned) + '%');
     return a.join(' · ');
   }
   function bar(r){
