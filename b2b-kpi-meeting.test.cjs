@@ -55,6 +55,17 @@ test('no_target_and_unmeasured_labels', () => {
   assert.equal(M.label(onlyUnknown), '미측정');
   assert.equal(M.label(run().summary.all.m1), '관리 완료 1/3곳 · 33.3%');
 });
+test('deadline_day_itself_is_not_missed_like_card_rule', () => {
+  // 카드 규칙: 예정일 다음 날 = 1일, 3일을 '넘어야' 누락. 예정일 11/2 → 기한 11/5, 11/5 낮에는 아직 기한 전
+  const c = co('기한당일', '2026-08-25T00:00:00Z', { qSentLabel: '26.10.01', qReplyLabel: '26.10.02' }, { m1Scheduled: corr('scheduled', '2026.11.02') });
+  const run1 = now => M.evaluateMeetings([c], LOGIC, now, { start: d(2026, 8, 21), bulkEnd: d(2026, 8, 26) });
+  const a = run1(NOW), r = a.rows.find(x => x.stage === 'm1');
+  assert.equal(r.due, '2026-11-05'); assert.equal(r.cls, 'upcoming'); assert.equal(a.summary.all.m1.missed, 0); assert.equal(a.summary.all.m1.due, 0);
+  const b = run1(new Date(2026, 10, 6, 0, 0, 1).getTime());
+  assert.equal(b.rows.find(x => x.stage === 'm1').cls, 'missed'); assert.equal(b.summary.all.m1.missed, 1);
+  // 카드 원본 판정과 같다
+  assert.equal(LOGIC.classifyMeetingMiss(c, LOGIC.buildProgressStages(c), NOW).find(x => x.key === 'm1').status, 'scheduled');
+});
 test('pooled_indicator_rate', () => {
   const p = M.pooled(run().summary.all);
   // 1차 1/3 + 2차 0/2(1차 완료 뒤 14일 안에 2차 미등록 2건이 누락) = 1/5

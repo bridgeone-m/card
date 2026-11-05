@@ -3,7 +3,7 @@
      기한 = 예정일 + 3일(예정일이 있을 때) / 앞 단계 완료일 + 14일(예정일이 없을 때)
      ② 기한 내 완료  : 실제 완료일 ≤ 기한
      ③ 기한 초과 후 처리: 실제 완료일 > 기한 — 지금은 처리 완료지만 기한 내 성공으로 세지 않는다
-     ④ 미처리 누락  : 기한이 지났는데 완료 기록 없음
+     ④ 미처리 누락  : 기한 날이 지났는데 완료 기록 없음(기한 당일까지는 '기한 전' — 카드 원본 규칙과 같음)
      ⑤ 판정 불가    : 실제 완료일 기록이 없는 '완료 간주'(협약 체결 등), 지사·조율 메모, 날짜 없음
    누락 방지율 = ② ÷ (② + ③ + ④). 기한이 아직 안 온 건은 대상에 넣지 않는다. 등록일로는 대상·완료를 추정하지 않는다
    (등록일은 8/25 일괄 등록과 그 뒤 신규 등록을 나누는 데만 쓴다). */
@@ -45,12 +45,12 @@
         } else if(s.state === 'done' && doneTs == null){ cls = 'unknown'; why = '완료로 표시되지만 실제 완료일 기록 없음(협약 체결 등으로 완료 간주)'; }
         else if(due == null){ cls = 'unknown'; why = '기한을 정할 날짜 없음'; }
         else if(doneTs != null){ cls = doneTs <= due ? 'ontime' : 'late'; why = basis + ' → 완료 ' + d10(doneTs); }
-        else if(due <= now){ cls = 'missed'; why = basis + ' 지남, 완료 기록 없음'; }
+        else if(now >= due + DAY){ cls = 'missed'; why = basis + ' 지남, 완료 기록 없음'; } // 카드 규칙과 같이 기한 당일까지는 기다린다
         else { cls = 'upcoming'; why = basis + '(아직 기한 전)'; }
         rows.push({ id: String(co.id), name: co.name || '', code: co.code || '', group: group, regDate: d10(ca), stage: k, stageName: STAGE[k],
           cls: cls, due: due != null ? d10(due) : '', dueTs: due, doneAt: doneTs != null ? d10(doneTs) : '', why: why,
           owner: (sched && sched.owner) || nm[k + 'Owner'] || '',
-          inScope: due != null && (start == null || due >= start) && due <= now });
+          inScope: cls !== 'upcoming' && due != null && (start == null || due >= start) && due <= now });
       });
     });
     function sum(filter, k){
