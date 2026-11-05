@@ -11264,6 +11264,22 @@ body:not(.crm-admin-mode) #crmTabMailSettings,
 body:not(.crm-admin-mode) #gnavDrawerTabWorkQueue,
 body:not(.crm-admin-mode) #gnavDrawerTabMailSettings,
 body:not(.crm-admin-mode) #crmUpdateMenuWrap{ display:none !important; }
+/* §공용 메모장(2026-11) — 다가오는 미팅 카드 [메모] 탭. 탭 4개(전체·1차·2차·메모), 메모장은 카드 남은 높이를 쓴다 */
+#crmUpcomingMeetings .crm-upcoming-tabs{ grid-template-columns:repeat(4, minmax(0,1fr)); }
+#crmUpcomingMeetings .crm-team-memo{ flex:1 1 auto; min-height:0; display:flex; flex-direction:column; gap:6px; padding:0 20px 14px; }
+#crmUpcomingMeetings .crm-team-memo-input{
+  flex:1 1 auto; width:100%; min-height:180px; box-sizing:border-box; resize:vertical;
+  padding:10px 12px; border:1px solid var(--line, #E3EAF3); border-radius:10px; background:#fff;
+  font:inherit; font-size:14px; line-height:1.6; color:#13243E;
+}
+#crmUpcomingMeetings .crm-team-memo-input:focus{ outline:none; border-color:#7FA2D2; box-shadow:0 0 0 3px rgba(27,68,128,.10); }
+#crmUpcomingMeetings .crm-team-memo-foot{ display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:4px 10px; min-height:22px; }
+#crmUpcomingMeetings .crm-team-memo-meta{ font-size:12px; color:#7C8BA1; }
+#crmUpcomingMeetings .crm-team-memo-status{ font-size:12px; font-weight:700; color:#5B7393; display:inline-flex; align-items:center; gap:6px; }
+#crmUpcomingMeetings .crm-team-memo-status.is-ok{ color:#2E7D4F; }
+#crmUpcomingMeetings .crm-team-memo-status.is-err{ color:#B3261E; }
+#crmUpcomingMeetings .crm-team-memo-status.is-warn{ color:#9A6B00; }
+@media (max-width:760px){ #crmUpcomingMeetings .crm-team-memo{ padding:0 16px 12px; } #crmUpcomingMeetings .crm-team-memo-input{ font-size:16px; min-height:160px; } }
 /* §계약서 발송 관리자 전용(2026-11, 사용자 요청) — 계약서 준비·발송·발송 이력은 관리자 로그인에서만 보인다 */
 body:not(.crm-admin-mode) #cesignOpenBtn,
 body:not(.crm-admin-mode) #crmTabContracts,
@@ -13174,7 +13190,7 @@ window.SHIN2_ADMIN_VAULT = {"v":1,"it":310000,"s":"LR69gP2hfdC4DCenIz+Grw==","iv
       // 완전히 같은 메커니즘(push/pull/localRev-snapRev 충돌비교/빈 배열 가드)을 그대로
       // 재사용하며, 키 문자열은 데이터 레이어의 SALES_PENDING_LEDGER_KEY 등과 반드시 같아야
       // 한다(다른 <script> 블록이라 직접 참조 불가, 위 CO_KEY 등과 같은 이유로 리터럴 그대로).
-      const SHARED_ARRAY_KEYS = { companies: 'shin2-companies-staging', customerActivities: 'shin2-customer-activities-v1', memos: 'shin2-memos-v1', mailAssets: 'shin2-mail-assets-v1', salesLedger: 'shin2-sales-ledger-v1', salesPendingReview2026: 'shin2-sales-pending-2026-v1', salesCrossYearReview2026: 'shin2-sales-crossyear-review-2026-v1', salesCompanyReview2026: 'shin2-sales-company-review-2026-v1', alertDismissals: 'shin2-task-alerts-dismissed-rows', pourImportRecords: 'shin2-pour-import-records-v1' };   // §알림 지우기 공유 — 지운 알림 항목 키(모든 컴퓨터 공통)
+      const SHARED_ARRAY_KEYS = { companies: 'shin2-companies-staging', customerActivities: 'shin2-customer-activities-v1', memos: 'shin2-memos-v1', mailAssets: 'shin2-mail-assets-v1', salesLedger: 'shin2-sales-ledger-v1', salesPendingReview2026: 'shin2-sales-pending-2026-v1', salesCrossYearReview2026: 'shin2-sales-crossyear-review-2026-v1', salesCompanyReview2026: 'shin2-sales-company-review-2026-v1', alertDismissals: 'shin2-task-alerts-dismissed-rows', pourImportRecords: 'shin2-pour-import-records-v1', teamMemo: 'shin2-team-memo-v1' };   // teamMemo — 다가오는 미팅 [메모] 탭(전 직원 공용 메모장, 2026-11)   // §알림 지우기 공유 — 지운 알림 항목 키(모든 컴퓨터 공통)
       const sharedSyncStarted = {};
       const sharedPushTimers = {};
       const lifecycleSyncLocks = new Set();
@@ -14396,6 +14412,9 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
   const DOC_FILE_DB_NAME = 'shin2-customer-document-files-v1';
   const DOC_FILE_DB_STORE = 'files';
   const MEMO_KEY = 'shin2-memos-v1';
+  // §공용 메모장(2026-11) — 다가오는 미팅 카드의 [메모] 탭. 전 직원이 같이 쓰는 메모 1장(배열 1칸).
+  // 위 Firebase 모듈의 SHARED_ARRAY_KEYS.teamMemo 문자열과 반드시 같아야 한다.
+  const TEAM_MEMO_KEY = 'shin2-team-memo-v1';
   // §업체코드 중복발급 방지 라운드(신규) — 연도별 "마지막 발급 번호" 영구 저장소(§요청 6/7).
   // 위 Firebase 모듈 블록의 COMPANY_CODE_COUNTER_STORAGE_KEY 문자열과 반드시 같아야
   // 한다(§CO_KEY 등과 동일한 이유로 리터럴을 그대로 옮겨 적음, 서로 다른 스크립트 블록).
@@ -14487,7 +14506,7 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
     try{
       const reg = window.__SHIN2_LOCAL_WRITE_FAILED = window.__SHIN2_LOCAL_WRITE_FAILED || {};
       const names = [key];
-      try{ if(typeof CO_KEY !== 'undefined') names.push(({ [CO_KEY]:'companies', [ACT_KEY]:'customerActivities', [MEMO_KEY]:'memos', [MAIL_ASSETS_KEY]:'mailAssets' })[key]); }catch(e){}
+      try{ if(typeof CO_KEY !== 'undefined') names.push(({ [CO_KEY]:'companies', [ACT_KEY]:'customerActivities', [MEMO_KEY]:'memos', [MAIL_ASSETS_KEY]:'mailAssets', 'shin2-team-memo-v1':'teamMemo' })[key]); }catch(e){}
       names.filter(Boolean).forEach(n=>{ if(ok) delete reg[n]; else reg[n] = Date.now(); });
     }catch(e){}
   }
@@ -14535,7 +14554,7 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
     // 위 Firebase 모듈 정의). 아직 로그인 전이거나 이 기기에서 최초 병합이 안 끝났으면 함수 내부
     // 가드가 조용히 무시한다 — 로컬 저장
     // 자체는 항상 그대로 이루어진다.
-    const SYNC_NAME_BY_KEY = { [CO_KEY]: 'companies', [ACT_KEY]: 'customerActivities', [MEMO_KEY]: 'memos', [MAIL_ASSETS_KEY]: 'mailAssets', [SALES_LEDGER_KEY]: 'salesLedger', 'shin2-sales-pending-2026-v1': 'salesPendingReview2026', 'shin2-sales-crossyear-review-2026-v1': 'salesCrossYearReview2026', 'shin2-sales-company-review-2026-v1': 'salesCompanyReview2026', 'shin2-pour-import-records-v1': 'pourImportRecords' };
+    const SYNC_NAME_BY_KEY = { [CO_KEY]: 'companies', [ACT_KEY]: 'customerActivities', [MEMO_KEY]: 'memos', [MAIL_ASSETS_KEY]: 'mailAssets', [SALES_LEDGER_KEY]: 'salesLedger', 'shin2-sales-pending-2026-v1': 'salesPendingReview2026', 'shin2-sales-crossyear-review-2026-v1': 'salesCrossYearReview2026', 'shin2-sales-company-review-2026-v1': 'salesCompanyReview2026', 'shin2-pour-import-records-v1': 'pourImportRecords', 'shin2-team-memo-v1': 'teamMemo' };
     const syncName = SYNC_NAME_BY_KEY[key];
     markLocalWriteResult(key, true);
     if(syncName){ try{ if(window.SHIN2_CRM_SHARED_SYNC) window.SHIN2_CRM_SHARED_SYNC.push(syncName, arr); }catch(e){} }
@@ -15993,6 +16012,16 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
   function memosFor(companyId){
     return readArrShared(MEMO_KEY).filter(m=> m.targetType==='company' && String(m.targetId)===String(companyId)).map(cloneRecord)
       .sort((a,b)=> (b.updatedAt||b.createdAt) - (a.updatedAt||a.createdAt));
+  }
+  // ---- 공용 메모장(다가오는 미팅 [메모] 탭) — 업체 메모와 따로 둔다(업체 메모 목록·건수에 섞이지 않게) ----
+  const TEAM_MEMO_ID = 'team-pad';
+  function loadTeamMemo(){
+    const rec = readArr(TEAM_MEMO_KEY).find(r=> r && r.id === TEAM_MEMO_ID);
+    return rec ? { text: String(rec.text || ''), updatedAt: rec.updatedAt || '', updatedBy: rec.updatedBy || '' } : { text:'', updatedAt:'', updatedBy:'' };
+  }
+  function saveTeamMemo(text, by){
+    const rec = { id: TEAM_MEMO_ID, text: String(text || ''), updatedAt: nowIso(), updatedBy: by || '' };
+    return writeArr(TEAM_MEMO_KEY, [rec]) ? rec : null;
   }
   // §속도 개선 라운드: 목록 화면이 매번(검색 타이핑마다 포함) 보이는 업체 수만큼
   // memosFor/activitiesForCompany를 각각 다시 불러(각 함수가 매번 전체 배열을
@@ -18985,7 +19014,7 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
     loadDocuments, documentsForCompany, buildDocumentsIndex, addDocument, updateDocumentExtracted, getBlob, getLocalDocFile, renameDocument, setDocumentMemo, setDocumentQaAnswers, setDocumentConsultation, normalizeQuestionnaireRating, QUESTIONNAIRE_RATINGS, markDocumentMaterialsSent, pendingRequestMaterialDocs,
     readConsultReview, setDocumentConsultReview, pendingConsultReviewDocs, markConsultRequestDone,
     CONSULT_REVIEW_RATED, CONSULT_REVIEW_CHOICE, CONSULT_INTEREST_POINTS, setDocumentVerification, deleteDocument, findDocument, migrateDocumentToCloud,
-    loadMemos, memosFor, addMemo, updateMemo, deleteMemo, buildMemosIndex,
+    loadMemos, memosFor, addMemo, updateMemo, deleteMemo, buildMemosIndex, loadTeamMemo, saveTeamMemo,
     pendingActivitiesForCompany, tasksForCompany, calendarEventsForCompany, upcomingCalendarEventsForCompany,
     DEAL_STAGES, setDealStage, setAssigneeUserId, addNeed, removeNeed, dismissNeedSuggestion, addSpecialNote, removeSpecialNote, setImportant, suggestNeedFor,
     addWhyPour, removeWhyPour, setCoreNeed, addKeyFactor, removeKeyFactor,
@@ -19646,6 +19675,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     companies: ()=> D.loadCompanies(),
     customerActivities: ()=> D.loadActivities(),
     memos: ()=> D.loadMemos(),
+    teamMemo: ()=> { try{ const a = JSON.parse(localStorage.getItem('shin2-team-memo-v1') || '[]'); return Array.isArray(a) ? a : []; }catch(e){ return []; } },
     mailAssets: ()=> D.loadMailAssets()
   };
   // §협약 진행관리 저장 성능 개선 라운드(신규) — preloadedData(선택)를 넘기면 loader()로
@@ -23080,9 +23110,92 @@ window.SHIN2_CRM_APP_INIT = function(){
     out.sort((a,b)=> (a.ts - b.ts) || String(a.time).localeCompare(String(b.time)) || String(a.co.name || '').localeCompare(String(b.co.name || ''), 'ko'));
     return out;
   }
+  // §공용 메모장(2026-11, 사용자 요청) — 다가오는 미팅 카드의 [메모] 탭. 전 직원이 같이 보는 메모 1장.
+  //   · 입력을 멈추면(0.8초) 또는 칸을 벗어나면 저장 → 서버 저장 확인 후 "저장됨"(실패면 입력 유지·다시 시도)
+  //   · 쓰는 중에는 목록 다시 그리기·다른 사람 저장으로 입력칸을 덮지 않는다(다른 사람이 고쳤다고만 알림)
+  // dirty = 이 기기에서 아직 저장 안 된 입력이 있음. 입력이 없으면 칸을 벗어나도 저장하지 않는다
+  // (다른 PC가 고친 최신 내용을 이 화면의 옛 글로 덮어쓰지 않게).
+  const teamMemoState = { saving:false, rerun:false, timer:null, remoteChanged:false, dirty:false };
+  function teamMemoEditing(){ const el = document.getElementById('crmTeamMemoInput'); return !!el && document.activeElement === el; }
+  function teamMemoMetaText(m){
+    if(!m.updatedAt) return '아직 메모가 없습니다.';
+    // 직원들이 같은 계정을 쓰므로 작성자 이름(사용자 1 등)은 보이지 않고 시각만(값은 저장해 둔다)
+    return '마지막 수정 ' + fmtDate(m.updatedAt) + ' ' + fmtTime(m.updatedAt);
+  }
+  function renderTeamMemoPanel(){
+    const m = D.loadTeamMemo();
+    return `
+      <div class="crm-team-memo">
+        <textarea id="crmTeamMemoInput" class="crm-team-memo-input" rows="8" placeholder="전 직원이 함께 보는 메모입니다. 일정·전달 사항 등을 적어 두세요.">${esc(m.text)}</textarea>
+        <div class="crm-team-memo-foot">
+          <span class="crm-team-memo-meta" id="crmTeamMemoMeta">${esc(teamMemoMetaText(m))}</span>
+          <span class="crm-team-memo-status" id="crmTeamMemoStatus" role="status"></span>
+        </div>
+      </div>`;
+  }
+  function bindTeamMemoPanel(){
+    const input = document.getElementById('crmTeamMemoInput');
+    const status = document.getElementById('crmTeamMemoStatus');
+    if(!input || !status) return;
+    const setStatus = (text, kind)=>{ status.textContent = text; status.className = 'crm-team-memo-status' + (kind ? ' is-' + kind : ''); };
+    const save = async ()=>{
+      clearTimeout(teamMemoState.timer);
+      if(window.SHIN2_PENDING_SAVES) window.SHIN2_PENDING_SAVES.clear('teamMemo');
+      if(teamMemoState.saving){ teamMemoState.rerun = true; return; }
+      if(!teamMemoState.dirty) return;
+      const val = input.value;
+      if(val === D.loadTeamMemo().text){ teamMemoState.dirty = false; return; }
+      teamMemoState.saving = true;
+      try{
+        setStatus('저장 중…');
+        if(!D.saveTeamMemo(val, crmCurrentUserLabel())){ setStatus('저장 실패 · 이 기기 저장 공간 확인', 'err'); return; }
+        if(input.value === val) teamMemoState.dirty = false;   // 저장 도중 더 쓴 글은 다음 저장으로
+        const r = await confirmCloudSave('teamMemo');
+        const meta = document.getElementById('crmTeamMemoMeta'); if(meta) meta.textContent = teamMemoMetaText(D.loadTeamMemo());
+        if(r.ok){ teamMemoState.remoteChanged = false; setStatus('저장됨', 'ok'); setTimeout(()=>{ if(status.textContent === '저장됨') setStatus(''); }, 1800); }
+        else {
+          setStatus('서버 저장 실패 ', 'err'); status.title = cloudSaveErrorMessage(r.err);
+          const retry = document.createElement('button'); retry.type = 'button'; retry.className = 'co-text-action'; retry.textContent = '다시 시도';
+          retry.addEventListener('click', async ()=>{ retry.disabled = true; setStatus('저장 중…'); const r2 = await confirmCloudSave('teamMemo'); if(r2.ok) setStatus('저장됨', 'ok'); else { setStatus('서버 저장 실패 · 잠시 후 다시 시도', 'err'); } });
+          status.appendChild(retry);
+        }
+      } finally {
+        teamMemoState.saving = false;
+        if(teamMemoState.rerun){ teamMemoState.rerun = false; save(); }
+      }
+    };
+    teamMemoState.dirty = false;
+    input.addEventListener('input', ()=>{
+      teamMemoState.dirty = true;
+      clearTimeout(teamMemoState.timer); teamMemoState.timer = setTimeout(save, 800);
+      if(window.SHIN2_PENDING_SAVES) window.SHIN2_PENDING_SAVES.set('teamMemo', save);   // 창을 닫기 전에 바로 저장
+    });
+    input.addEventListener('blur', ()=>{ clearTimeout(teamMemoState.timer); save().then(()=>{ if(teamMemoState.remoteChanged) scheduleUpcomingMeetingsRender(); }); });
+  }
+  // 다른 PC에서 메모를 고치면 바로 반영한다(이 기기에서 쓰는 중이면 덮지 않고 알림만).
+  window.addEventListener('shin2-crm-cloud-update', (e)=>{
+    if(!e || !e.detail || e.detail.key !== 'teamMemo' || upcomingMeetingsTab !== 'memo') return;
+    if(teamMemoEditing()){
+      const input = document.getElementById('crmTeamMemoInput');
+      if(!teamMemoState.dirty && !teamMemoState.saving){
+        // 커서만 있고 아직 고친 게 없으면 최신 내용으로 그 자리에서 바꾼다
+        const m = D.loadTeamMemo();
+        input.value = m.text;
+        const meta = document.getElementById('crmTeamMemoMeta'); if(meta) meta.textContent = teamMemoMetaText(m);
+        return;
+      }
+      teamMemoState.remoteChanged = true;
+      const st = document.getElementById('crmTeamMemoStatus');
+      if(st && !teamMemoState.saving){ st.textContent = '다른 사람이 방금 메모를 고쳤습니다 — 지금 쓰는 내용으로 저장됩니다'; st.className = 'crm-team-memo-status is-warn'; }
+      return;
+    }
+    renderUpcomingMeetings();
+  });
   function renderUpcomingMeetings(){
     const box = document.getElementById('crmUpcomingMeetings');
     if(!box) return;
+    // 메모를 쓰는 중이면(입력칸에 커서) 다시 그리지 않는다 — 쓰던 글자·커서가 날아가지 않게
+    if(upcomingMeetingsTab === 'memo' && teamMemoEditing()) return;
     const all = collectUpcomingMeetings();
     const counts = { all: all.length, m1: all.filter(x=> x.kind === 'm1').length, m2: all.filter(x=> x.kind === 'm2').length };
     const rows = upcomingMeetingsTab === 'all' ? all : all.filter(x=> x.kind === upcomingMeetingsTab);
@@ -23095,8 +23208,10 @@ window.SHIN2_CRM_APP_INIT = function(){
       <div class="crm-upcoming-tabs" role="tablist" aria-label="미팅 차수">
         ${tabs.map(([k,l])=> `<button type="button" class="crm-upcoming-tab${k === upcomingMeetingsTab ? ' is-active' : ''}" role="tab"
           aria-selected="${k === upcomingMeetingsTab ? 'true' : 'false'}" data-upcoming-tab="${k}">${l} <span>${counts[k]}</span></button>`).join('')}
+        <button type="button" class="crm-upcoming-tab crm-upcoming-tab-memo${upcomingMeetingsTab === 'memo' ? ' is-active' : ''}" role="tab"
+          aria-selected="${upcomingMeetingsTab === 'memo' ? 'true' : 'false'}" data-upcoming-tab="memo">메모</button>
       </div>
-      <div class="crm-upcoming-list">
+      ${upcomingMeetingsTab === 'memo' ? renderTeamMemoPanel() : `<div class="crm-upcoming-list">
         ${rows.length ? rows.map(r=>{
           const d = new Date(r.ts);
           const md = String(d.getMonth()+1).padStart(2,'0') + '.' + String(d.getDate()).padStart(2,'0');
@@ -23115,7 +23230,8 @@ window.SHIN2_CRM_APP_INIT = function(){
             </span>
           </button>`;
         }).join('') : `<div class="crm-upcoming-empty">예정된 ${upcomingMeetingsTab === 'm1' ? '1차 ' : upcomingMeetingsTab === 'm2' ? '2차 ' : ''}미팅이 없습니다.</div>`}
-      </div>`;
+      </div>`}`;
+    if(upcomingMeetingsTab === 'memo') bindTeamMemoPanel();
     box.querySelectorAll('[data-upcoming-tab]').forEach(btn=> btn.addEventListener('click', ()=>{
       upcomingMeetingsTab = btn.getAttribute('data-upcoming-tab');
       renderUpcomingMeetings();
