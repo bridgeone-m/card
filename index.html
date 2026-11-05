@@ -11310,6 +11310,8 @@ body:not(.crm-admin-mode) #crmTabContracts,
 body:not(.crm-admin-mode) #gnavDrawerTabContracts,
 body:not(.crm-admin-mode) #cesignHistory,
 body:not(.crm-admin-mode) #cesignOverlay{ display:none !important; }
+/* §B2B KPI 탭 관리자 전용(2026-11) */
+body:not(.crm-admin-mode) #crmTabB2bKpi, body:not(.crm-admin-mode) #gnavDrawerTabB2bKpi, body:not(.crm-admin-mode) #b2bKpiView{ display:none !important; }
 /* design-refresh.css의 버튼 모양 규칙(html body #chartBody .agr-stage-btn-row #cesignOpenBtn, display !important)보다 우선 */
 html body:not(.crm-admin-mode) #chartBody .agr-stage-btn-row #cesignOpenBtn{ display:none !important; }
 /* 관리자 비밀번호가 설정되면 역할은 로그인 비밀번호로만 정한다(🔒 버튼 숨김) */
@@ -11407,6 +11409,7 @@ body.crm-fixed-view .crm-list-col .list-pagination{ display:grid !important; }
 <script src="firebaseConfig.js" onerror="console.warn('firebaseConfig.js 없음 — 서류함이 로컬 전용 모드로 동작합니다')"></script>
 <script src="contractEsignConfig.js"></script>
 <link rel="stylesheet" href="contract-esign.css">
+<link rel="stylesheet" href="b2b-kpi-tab.css">
 <!-- §디자인 리프레시(2026-11): 모양만 덮어쓰는 스타일. 이 한 줄을 지우면 이전 디자인으로 돌아간다. -->
 <link rel="stylesheet" href="design-refresh.css">
 <!-- §지도 분포 라운드(신규): 카카오맵 JavaScript 키 설정 — firebaseConfig.js와 완전히
@@ -52337,6 +52340,7 @@ if(!window.__mapxRowDelegated){
       if(!on){
         const hClose = document.getElementById('cesignHClose'); if(hClose) hClose.click();
         const ov = document.getElementById('cesignOverlay'); if(ov) ov.remove();
+        if(window.B2BKpiTab) window.B2BKpiTab.close();
       }
     };
     async function sha256Hex(text){
@@ -53265,6 +53269,9 @@ else { window.addEventListener('shin2-crm-gate-passed', window.SHIN2_CRM_APP_INI
 .co-form-row3:has(> #crmNewF_contactName){ grid-template-columns:repeat(2,minmax(0,1fr)); }
 </style>
 <script src="contract-esign.js"></script>
+<script src="b2b-kpi-calc.js"></script>
+<script src="b2b-kpi-store.js"></script>
+<script src="b2b-kpi-tab.js"></script>
 <script src="website-cleanup-ui.js"></script>
 </body>
 </html>

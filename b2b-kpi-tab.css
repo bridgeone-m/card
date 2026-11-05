@@ -1,0 +1,21 @@
+/* §B2B KPI 탭(2026-11) — 남색·흰 카드(기존 design-refresh.css 톤). 휴대폰 360px 에서 가로 스크롤 없이 1열. */
+.b2bkpi-view{ position:fixed; left:0; right:0; bottom:0; top:0; z-index:900; overflow:auto; background:#F5F7FA; -webkit-overflow-scrolling:touch; color:#121A2A; }
+.b2bkpi-inner{ box-sizing:border-box; max-width:1480px; margin:0 auto; padding:14px 16px 40px; }
+.b2bkpi-head{ display:flex; flex-wrap:wrap; align-items:center; gap:10px 14px; margin-bottom:12px; }
+.b2bkpi-title{ margin:0; font-size:20px; font-weight:800; color:#0B2037; }
+.b2bkpi-month{ display:flex; align-items:center; gap:6px; font-size:15px; }
+.b2bkpi-headr{ margin-left:auto; display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.b2bkpi-muted{ color:#6B7A90; font-size:12.5px; }
+.b2bkpi-link{ color:#1B4480; font-size:13px; font-weight:700; text-decoration:none; }
+.b2bkpi-link:hover{ text-decoration:underline; }
+.b2bkpi-btn{ min-height:36px; min-width:36px; padding:0 12px; border:1px solid #CBD5E1; border-radius:8px; background:#fff; color:#1B4480; font:inherit; font-size:13.5px; font-weight:700; cursor:pointer; }
+.b2bkpi-btn:hover{ border-color:#1B4480; }
+.b2bkpi-btn.is-primary{ background:#1B4480; border-color:#1B4480; color:#fff; }
+.b2bkpi-btn[disabled]{ opacity:.55; cursor:default; }
+.b2bkpi-card{ box-sizing:border-box; min-width:0; background:#fff; border:1px solid #E3EAF3; border-radius:14px; padding:16px 18px; }
+.b2bkpi-error b{ color:#B42318; }
+@media (max-width:640px){
+  .b2bkpi-inner{ padding:12px 12px 32px; }
+  .b2bkpi-headr{ margin-left:0; width:100%; }
+  .b2bkpi-btn{ min-height:44px; min-width:44px; }
+}
