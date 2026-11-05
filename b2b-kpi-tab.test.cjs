@@ -116,3 +116,8 @@ test('weight_line_three_members_sums_100', () => {
   const h = R(s);
   assert.ok(h.includes('반영 66.7%'), '반영'); assert.ok(h.includes('대기 26.7%'), '대기'); assert.ok(h.includes('미배정 6.7%'), '미배정');
 });
+test('mobile_touch_targets_44', () => {
+  const c = fs.readFileSync(__dirname + '/b2b-kpi-tab.css', 'utf8').replace(/\s+/g, ' ');
+  assert.ok(/@media \(max-width:640px\)\{[^@]*\.b2bkpi-link\{[^}]*min-height:44px/.test(c), 'link');
+  assert.ok(/@media \(max-width:640px\)\{[^@]*\.b2bkpi-task \.b2bkpi-st\{[^}]*width:44px; height:44px/.test(c), 'task button');
+});

@@ -105,3 +105,7 @@ textarea.b2bkpi-in{ min-height:96px; resize:vertical; }
 #gateScreen .gate-tracker-link-m{ display:none; }
 @media (max-width:860px){ #gateScreen .gate-tracker-link-m{ display:flex; order:11; align-self:center; justify-content:center; min-height:44px; margin-top:14px; font-size:13px; color:#5F6B7D; } }
 #gateScreen .gate-tracker-link-m:hover, #gateScreen .gate-tracker-link-m:focus-visible{ color:#1B4480; }
+@media (max-width:640px){
+  .b2bkpi-link{ display:inline-flex; align-items:center; min-height:44px; }
+  .b2bkpi-task .b2bkpi-st{ width:44px; height:44px; }
+}
