@@ -95,3 +95,17 @@ test('planSave_existing_member_without_defs', () => {
   const r = P(F.base(), { member: { id: 'm1' }, leads: [{ name: 'c', tasks: [] }], lags: [] });
   assert.equal(r.member, null); assert.equal(r.leads[0].def.id, 'LI-m1-1'); assert.equal(r.leads[0].def.owner, '시험C');
 });
+
+// ---- Task 7b: 로그인 화면 '개인 업무트래커 →' 보조 링크 ----
+test('gate_tracker_link', () => {
+  const h = fs.readFileSync(__dirname + '/index.html', 'utf8'), c = fs.readFileSync(__dirname + '/b2b-kpi-tab.css', 'utf8');
+  const cnt = (s, t) => s.split(t).length - 1;
+  assert.equal(cnt(h, 'id="gateTrackerLink"'), 1); assert.equal(cnt(h, 'id="gateTrackerLinkM"'), 1);
+  const a = h.match(/<a [^>]*id="gateTrackerLink"[^>]*>[^<]*<\/a>/)[0], m = h.match(/<a [^>]*id="gateTrackerLinkM"[^>]*>[^<]*<\/a>/)[0];
+  [a, m].forEach(x => { assert.ok(x.includes('href="https://hansol941201.github.io/B2B/"')); assert.ok(x.includes('rel="noopener"')); assert.ok(x.includes('target="_blank"')); assert.ok(x.includes('개인 업무트래커 →')); });
+  assert.ok(h.indexOf('id="gateTrackerLink"') < h.indexOf('class="gate-hero-foot"'));
+  assert.ok(h.indexOf('id="gateTrackerLink"') > h.indexOf('class="gate-hero"'));
+  assert.ok(h.indexOf('id="gateTrackerLinkM"') > h.indexOf('class="gate-card"'));
+  assert.ok(/#gateScreen \.gate-tracker-link-m\{[^}]*display:none/.test(c));
+  assert.ok(/@media \(max-width:860px\)\{[^}]*#gateScreen \.gate-tracker-link-m\{[^}]*display:flex/.test(c));
+});
