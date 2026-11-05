@@ -192,3 +192,9 @@ test('validateDefInput', () => {
 test('nextTaskProg', () => {
   assert.equal(C.nextTaskProg(0), 50); assert.equal(C.nextTaskProg(50), 100); assert.equal(C.nextTaskProg(100), 0);
 });
+test('buildModel_lags_reference_only', () => {
+  const s = F.base(); s.perfMonthly['LG1_2026-11'] = { num: 1, den: 4 };
+  const m = C.buildModel(s, M);
+  assert.equal(m.lags.shs.length, 1); assert.equal(m.lags.shs[0].rate, 25); assert.equal(m.lags.m2.length, 0);
+  assert.ok(Math.abs(m.composite.points - 30.0) < 0.05); // 후행은 점수에 넣지 않는다
+});

@@ -178,13 +178,18 @@
   }
 
   function buildModel(shape, month){
-    var pm = prevMonth(month), actual = kpiActual(shape, month), team = teamCommon(shape, month), shares = shareRows(shape), persons = {}, notes = {};
+    var pm = prevMonth(month), actual = kpiActual(shape, month), team = teamCommon(shape, month), shares = shareRows(shape), persons = {}, notes = {}, lags = {};
     shares.rows.forEach(function(r){
+      // 후행지표 — 관리 후 고객 변화(참고 표시만, 점수에 넣지 않음)
+      lags[r.memberId] = vals(shape && shape.lagDefs).filter(function(d){ return d && d.member === r.memberId; }).sort(byId).map(function(d){
+        var x = rate(view(shape, d.id, month));
+        return { id: d.id, no: d.no || '', name: d.name || d.id, state: x.state, rate: x.state === 'ok' ? x.value : null, target: isNum(d.target) ? d.target : null };
+      });
       var cur = personScore(shape, r.memberId, month), prev = personScore(shape, r.memberId, pm);
       persons[r.memberId] = cur;
       notes[r.memberId] = prev.measured > 0 && measuredChanged(prev.measuredIds, cur.measuredIds);
     });
-    return { month: month, prevMonth: pm, actual: actual, team: team, persons: persons, shares: shares,
+    return { month: month, prevMonth: pm, actual: actual, team: team, persons: persons, shares: shares, lags: lags,
       composite: composite(actual, team, persons, shares), laggards: laggards(actual, persons, shape), compareNotes: notes };
   }
 
