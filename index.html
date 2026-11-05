@@ -11267,19 +11267,37 @@ body:not(.crm-admin-mode) #crmUpdateMenuWrap{ display:none !important; }
 /* §공용 메모장(2026-11) — 다가오는 미팅 카드 [메모] 탭. 탭 4개(전체·1차·2차·메모), 메모장은 카드 남은 높이를 쓴다 */
 #crmUpcomingMeetings .crm-upcoming-tabs{ grid-template-columns:repeat(4, minmax(0,1fr)); }
 #crmUpcomingMeetings .crm-team-memo{ flex:1 1 auto; min-height:0; display:flex; flex-direction:column; gap:6px; padding:0 20px 14px; }
-#crmUpcomingMeetings .crm-team-memo-input{
-  flex:1 1 auto; width:100%; min-height:180px; box-sizing:border-box; resize:vertical;
-  padding:10px 12px; border:1px solid var(--line, #E3EAF3); border-radius:10px; background:#fff;
-  font:inherit; font-size:14px; line-height:1.6; color:#13243E;
+#crmUpcomingMeetings .crm-team-memo-input,
+#crmUpcomingMeetings .crm-team-memo-edit{
+  width:100%; min-height:72px; box-sizing:border-box; resize:vertical;
+  padding:9px 12px; border:1px solid var(--line, #E3EAF3); border-radius:10px; background:#fff;
+  font:inherit; font-size:14px; line-height:1.55; color:#13243E;
 }
-#crmUpcomingMeetings .crm-team-memo-input:focus{ outline:none; border-color:#7FA2D2; box-shadow:0 0 0 3px rgba(27,68,128,.10); }
+#crmUpcomingMeetings .crm-team-memo-input:focus,
+#crmUpcomingMeetings .crm-team-memo-edit:focus{ outline:none; border-color:#7FA2D2; box-shadow:0 0 0 3px rgba(27,68,128,.10); }
+#crmUpcomingMeetings .crm-team-memo-new{ display:flex; flex-direction:column; gap:6px; flex:none; }
 #crmUpcomingMeetings .crm-team-memo-foot{ display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:4px 10px; min-height:22px; }
-#crmUpcomingMeetings .crm-team-memo-meta{ font-size:12px; color:#7C8BA1; }
+#crmUpcomingMeetings .crm-team-memo-save{ margin-left:auto; min-height:34px; padding:0 16px; }
+#crmUpcomingMeetings .crm-team-memo-list{ flex:1 1 auto; min-height:0; overflow-y:auto; margin:4px -4px 0; padding:0 4px; }
+#crmUpcomingMeetings .crm-team-memo-item{ padding:9px 2px; border-top:1px solid #E8EFF7; }
+#crmUpcomingMeetings .crm-team-memo-item-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+#crmUpcomingMeetings .crm-team-memo-when{ font-size:12px; font-weight:700; color:#7C8BA1; }
+#crmUpcomingMeetings .crm-team-memo-item-acts{ display:inline-flex; align-items:center; gap:2px; flex-wrap:wrap; justify-content:flex-end; }
+#crmUpcomingMeetings .crm-team-memo-item-acts .co-text-action{ font-size:12px; padding:2px 8px; min-height:28px; }
+#crmUpcomingMeetings .crm-team-memo-item.is-editing .crm-team-memo-item-acts{ display:flex; margin-top:6px; }
+#crmUpcomingMeetings .crm-team-memo-text{ margin-top:3px; font-size:14px; line-height:1.55; color:#13243E; white-space:pre-wrap; overflow-wrap:anywhere; }
 #crmUpcomingMeetings .crm-team-memo-status{ font-size:12px; font-weight:700; color:#5B7393; display:inline-flex; align-items:center; gap:6px; }
 #crmUpcomingMeetings .crm-team-memo-status.is-ok{ color:#2E7D4F; }
 #crmUpcomingMeetings .crm-team-memo-status.is-err{ color:#B3261E; }
 #crmUpcomingMeetings .crm-team-memo-status.is-warn{ color:#9A6B00; }
-@media (max-width:760px){ #crmUpcomingMeetings .crm-team-memo{ padding:0 16px 12px; } #crmUpcomingMeetings .crm-team-memo-input{ font-size:16px; min-height:160px; } }
+@media (max-width:760px){
+  #crmUpcomingMeetings .crm-team-memo{ padding:0 16px 12px; }
+  #crmUpcomingMeetings .crm-team-memo-input, #crmUpcomingMeetings .crm-team-memo-edit{ font-size:16px; }   /* 휴대폰 확대 방지 */
+  #crmUpcomingMeetings .crm-team-memo-item-acts .co-text-action{ min-height:34px; padding:2px 10px; }
+  #crmUpcomingMeetings .crm-team-memo-list{ max-height:60vh; }
+  /* 휴대폰: 다가오는 미팅 카드 최대 높이(460px, design-refresh.css)는 메모 탭에서만 푼다 — 메모가 한두 건만 보이던 것 */
+  #listView > #crmUpcomingMeetings.is-memo, body #crmUpcomingMeetings.is-memo{ max-height:none; }
+}
 /* §계약서 발송 관리자 전용(2026-11, 사용자 요청) — 계약서 준비·발송·발송 이력은 관리자 로그인에서만 보인다 */
 body:not(.crm-admin-mode) #cesignOpenBtn,
 body:not(.crm-admin-mode) #crmTabContracts,
@@ -16013,15 +16031,31 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
     return readArrShared(MEMO_KEY).filter(m=> m.targetType==='company' && String(m.targetId)===String(companyId)).map(cloneRecord)
       .sort((a,b)=> (b.updatedAt||b.createdAt) - (a.updatedAt||a.createdAt));
   }
-  // ---- 공용 메모장(다가오는 미팅 [메모] 탭) — 업체 메모와 따로 둔다(업체 메모 목록·건수에 섞이지 않게) ----
-  const TEAM_MEMO_ID = 'team-pad';
-  function loadTeamMemo(){
-    const rec = readArr(TEAM_MEMO_KEY).find(r=> r && r.id === TEAM_MEMO_ID);
-    return rec ? { text: String(rec.text || ''), updatedAt: rec.updatedAt || '', updatedBy: rec.updatedBy || '' } : { text:'', updatedAt:'', updatedBy:'' };
+  // ---- 공용 메모(다가오는 미팅 [메모] 탭) — 여러 건 목록. 업체 메모와 따로 둔다(업체 메모 목록·건수에 섞이지 않게) ----
+  // 한 건 = { id, text, createdAt, updatedAt, updatedBy, deletedAt? }. 삭제는 deletedAt 표시(배열이 줄지 않아
+  // 줄어듦 방지 가드·빈 목록 가드에 걸리지 않고, 다른 PC와 동시에 지워도 안전). 예전 한 장짜리(id 'team-pad')도 한 건으로 보인다.
+  function loadTeamMemos(){
+    return readArr(TEAM_MEMO_KEY).filter(r=> r && r.id && !r.deletedAt && String(r.text || '').trim())
+      .map(r=> ({ id: r.id, text: String(r.text), createdAt: r.createdAt || r.updatedAt || '', updatedAt: r.updatedAt || '' }))
+      .sort((a,b)=> String(b.createdAt).localeCompare(String(a.createdAt)));
   }
-  function saveTeamMemo(text, by){
-    const rec = { id: TEAM_MEMO_ID, text: String(text || ''), updatedAt: nowIso(), updatedBy: by || '' };
-    return writeArr(TEAM_MEMO_KEY, [rec]) ? rec : null;
+  function addTeamMemo(text, by){
+    const list = readArr(TEAM_MEMO_KEY);
+    const now = nowIso();
+    const rec = { id: genId('tmemo'), text: String(text || ''), createdAt: now, updatedAt: now, updatedBy: by || '' };
+    list.push(rec);
+    return writeArr(TEAM_MEMO_KEY, list) ? rec : null;
+  }
+  // 고친 뒤 이전 값을 돌려준다(서버 저장 실패 시 되돌리기용).
+  function updateTeamMemo(id, patch, by){
+    const list = readArr(TEAM_MEMO_KEY);
+    const rec = list.find(r=> r && r.id === id);
+    if(!rec) return null;
+    const prev = Object.assign({}, rec);
+    // 되돌리기(patch에 이전 updatedAt을 넣음)는 수정 시각도 원래대로 — "수정됨"이 잘못 붙지 않게
+    Object.assign(rec, { updatedAt: nowIso(), updatedBy: by || rec.updatedBy || '' }, patch);
+    if(patch && patch.deletedAt === null) delete rec.deletedAt;
+    return writeArr(TEAM_MEMO_KEY, list, { knownExistingLength: list.length }) ? prev : null;
   }
   // §속도 개선 라운드: 목록 화면이 매번(검색 타이핑마다 포함) 보이는 업체 수만큼
   // memosFor/activitiesForCompany를 각각 다시 불러(각 함수가 매번 전체 배열을
@@ -19014,7 +19048,7 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
     loadDocuments, documentsForCompany, buildDocumentsIndex, addDocument, updateDocumentExtracted, getBlob, getLocalDocFile, renameDocument, setDocumentMemo, setDocumentQaAnswers, setDocumentConsultation, normalizeQuestionnaireRating, QUESTIONNAIRE_RATINGS, markDocumentMaterialsSent, pendingRequestMaterialDocs,
     readConsultReview, setDocumentConsultReview, pendingConsultReviewDocs, markConsultRequestDone,
     CONSULT_REVIEW_RATED, CONSULT_REVIEW_CHOICE, CONSULT_INTEREST_POINTS, setDocumentVerification, deleteDocument, findDocument, migrateDocumentToCloud,
-    loadMemos, memosFor, addMemo, updateMemo, deleteMemo, buildMemosIndex, loadTeamMemo, saveTeamMemo,
+    loadMemos, memosFor, addMemo, updateMemo, deleteMemo, buildMemosIndex, loadTeamMemos, addTeamMemo, updateTeamMemo,
     pendingActivitiesForCompany, tasksForCompany, calendarEventsForCompany, upcomingCalendarEventsForCompany,
     DEAL_STAGES, setDealStage, setAssigneeUserId, addNeed, removeNeed, dismissNeedSuggestion, addSpecialNote, removeSpecialNote, setImportant, suggestNeedFor,
     addWhyPour, removeWhyPour, setCoreNeed, addKeyFactor, removeKeyFactor,
@@ -23110,92 +23144,148 @@ window.SHIN2_CRM_APP_INIT = function(){
     out.sort((a,b)=> (a.ts - b.ts) || String(a.time).localeCompare(String(b.time)) || String(a.co.name || '').localeCompare(String(b.co.name || ''), 'ko'));
     return out;
   }
-  // §공용 메모장(2026-11, 사용자 요청) — 다가오는 미팅 카드의 [메모] 탭. 전 직원이 같이 보는 메모 1장.
-  //   · 입력을 멈추면(0.8초) 또는 칸을 벗어나면 저장 → 서버 저장 확인 후 "저장됨"(실패면 입력 유지·다시 시도)
-  //   · 쓰는 중에는 목록 다시 그리기·다른 사람 저장으로 입력칸을 덮지 않는다(다른 사람이 고쳤다고만 알림)
-  // dirty = 이 기기에서 아직 저장 안 된 입력이 있음. 입력이 없으면 칸을 벗어나도 저장하지 않는다
-  // (다른 PC가 고친 최신 내용을 이 화면의 옛 글로 덮어쓰지 않게).
-  const teamMemoState = { saving:false, rerun:false, timer:null, remoteChanged:false, dirty:false };
-  function teamMemoEditing(){ const el = document.getElementById('crmTeamMemoInput'); return !!el && document.activeElement === el; }
-  function teamMemoMetaText(m){
-    if(!m.updatedAt) return '아직 메모가 없습니다.';
-    // 직원들이 같은 계정을 쓰므로 작성자 이름(사용자 1 등)은 보이지 않고 시각만(값은 저장해 둔다)
-    return '마지막 수정 ' + fmtDate(m.updatedAt) + ' ' + fmtTime(m.updatedAt);
+  // §공용 메모(2026-11, 사용자 요청) — 다가오는 미팅 카드의 [메모] 탭. 전 직원이 같이 보는 메모를 여러 건 쌓는다.
+  //   · 쓰고 [저장] → 서버 저장 확인 후 목록 맨 위에 날짜와 함께. 실패하면 쓴 글은 입력칸에 그대로·[다시 시도]
+  //   · 건별 [수정]·[삭제]. 실패하면 저장 전 상태로 되돌린다(화면 = 서버). 삭제는 지움 표시(다른 PC와 동시에 지워도 안전)
+  //   · 쓰는 중(입력칸에 커서)에는 다른 사람 저장·목록 다시 그리기로 화면을 바꾸지 않고, 칸을 벗어나면 그때 최신으로
+  const TEAM_MEMO_DRAFT_KEY = 'shin2-team-memo-draft';   // 저장 전 쓰던 글(이 기기에만, 새로고침해도 남게)
+  const teamMemoUi = { editingId:null, editDraft:'', busy:false, deferRender:false, msg:'', msgKind:'', editMsg:'' };
+  function teamMemoDraft(){ try{ return localStorage.getItem(TEAM_MEMO_DRAFT_KEY) || ''; }catch(e){ return ''; } }
+  function setTeamMemoDraft(v){ try{ if(v) localStorage.setItem(TEAM_MEMO_DRAFT_KEY, v); else localStorage.removeItem(TEAM_MEMO_DRAFT_KEY); }catch(e){} }
+  function teamMemoEditing(){
+    const ae = document.activeElement;
+    return teamMemoUi.busy || !!(ae && ae.closest && ae.closest('#crmUpcomingMeetings .crm-team-memo') && /^(TEXTAREA|INPUT)$/.test(ae.tagName));
+  }
+  function teamMemoWhen(iso){
+    if(!iso) return '';
+    const d = new Date(iso);
+    if(isNaN(d)) return '';
+    return String(d.getMonth()+1).padStart(2,'0') + '.' + String(d.getDate()).padStart(2,'0') + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
   }
   function renderTeamMemoPanel(){
-    const m = D.loadTeamMemo();
+    const list = D.loadTeamMemos();
+    const rows = list.map(m=>{
+      const edited = m.updatedAt && m.createdAt && m.updatedAt !== m.createdAt;
+      if(teamMemoUi.editingId === m.id){
+        return `
+        <div class="crm-team-memo-item is-editing" data-team-memo="${esc(m.id)}">
+          <textarea class="crm-team-memo-edit" id="crmTeamMemoEditInput" rows="3" aria-label="메모 고치기">${esc(teamMemoUi.editDraft)}</textarea>
+          <div class="crm-team-memo-item-acts">
+            ${teamMemoUi.editMsg ? `<span class="crm-team-memo-status is-err">${esc(teamMemoUi.editMsg)}</span>` : ''}
+            <button type="button" class="co-text-action" data-team-memo-edit-cancel>취소</button>
+            <button type="button" class="co-text-action primary" data-team-memo-edit-save>${teamMemoUi.editMsg ? '다시 시도' : '저장'}</button>
+          </div>
+        </div>`;
+      }
+      return `
+        <div class="crm-team-memo-item" data-team-memo="${esc(m.id)}">
+          <div class="crm-team-memo-item-head">
+            <span class="crm-team-memo-when">${esc(teamMemoWhen(m.createdAt))}${edited ? ' · 수정됨' : ''}</span>
+            <span class="crm-team-memo-item-acts">
+              <button type="button" class="co-text-action" data-team-memo-edit="${esc(m.id)}">수정</button>
+              <button type="button" class="co-text-action" data-team-memo-del="${esc(m.id)}">삭제</button>
+            </span>
+          </div>
+          <div class="crm-team-memo-text">${esc(m.text)}</div>
+        </div>`;
+    }).join('');
     return `
       <div class="crm-team-memo">
-        <textarea id="crmTeamMemoInput" class="crm-team-memo-input" rows="8" placeholder="전 직원이 함께 보는 메모입니다. 일정·전달 사항 등을 적어 두세요.">${esc(m.text)}</textarea>
-        <div class="crm-team-memo-foot">
-          <span class="crm-team-memo-meta" id="crmTeamMemoMeta">${esc(teamMemoMetaText(m))}</span>
-          <span class="crm-team-memo-status" id="crmTeamMemoStatus" role="status"></span>
+        <div class="crm-team-memo-new">
+          <textarea id="crmTeamMemoInput" class="crm-team-memo-input" rows="3" placeholder="전 직원이 함께 보는 메모입니다. 쓰고 [저장]을 누르세요.">${esc(teamMemoDraft())}</textarea>
+          <div class="crm-team-memo-foot">
+            <span class="crm-team-memo-status${teamMemoUi.msgKind ? ' is-' + teamMemoUi.msgKind : ''}" id="crmTeamMemoStatus" role="status">${esc(teamMemoUi.msg)}</span>
+            <button type="button" class="co-text-action primary crm-team-memo-save" id="crmTeamMemoSave">${teamMemoUi.msgKind === 'err' ? '다시 시도' : '저장'}</button>
+          </div>
         </div>
+        <div class="crm-team-memo-list">${rows || '<div class="crm-upcoming-empty">아직 저장된 메모가 없습니다.</div>'}</div>
       </div>`;
   }
-  function bindTeamMemoPanel(){
-    const input = document.getElementById('crmTeamMemoInput');
-    const status = document.getElementById('crmTeamMemoStatus');
-    if(!input || !status) return;
-    const setStatus = (text, kind)=>{ status.textContent = text; status.className = 'crm-team-memo-status' + (kind ? ' is-' + kind : ''); };
-    const save = async ()=>{
-      clearTimeout(teamMemoState.timer);
-      if(window.SHIN2_PENDING_SAVES) window.SHIN2_PENDING_SAVES.clear('teamMemo');
-      if(teamMemoState.saving){ teamMemoState.rerun = true; return; }
-      if(!teamMemoState.dirty) return;
-      const val = input.value;
-      if(val === D.loadTeamMemo().text){ teamMemoState.dirty = false; return; }
-      teamMemoState.saving = true;
-      try{
-        setStatus('저장 중…');
-        if(!D.saveTeamMemo(val, crmCurrentUserLabel())){ setStatus('저장 실패 · 이 기기 저장 공간 확인', 'err'); return; }
-        if(input.value === val) teamMemoState.dirty = false;   // 저장 도중 더 쓴 글은 다음 저장으로
-        const r = await confirmCloudSave('teamMemo');
-        const meta = document.getElementById('crmTeamMemoMeta'); if(meta) meta.textContent = teamMemoMetaText(D.loadTeamMemo());
-        if(r.ok){ teamMemoState.remoteChanged = false; setStatus('저장됨', 'ok'); setTimeout(()=>{ if(status.textContent === '저장됨') setStatus(''); }, 1800); }
-        else {
-          setStatus('서버 저장 실패 ', 'err'); status.title = cloudSaveErrorMessage(r.err);
-          const retry = document.createElement('button'); retry.type = 'button'; retry.className = 'co-text-action'; retry.textContent = '다시 시도';
-          retry.addEventListener('click', async ()=>{ retry.disabled = true; setStatus('저장 중…'); const r2 = await confirmCloudSave('teamMemo'); if(r2.ok) setStatus('저장됨', 'ok'); else { setStatus('서버 저장 실패 · 잠시 후 다시 시도', 'err'); } });
-          status.appendChild(retry);
-        }
-      } finally {
-        teamMemoState.saving = false;
-        if(teamMemoState.rerun){ teamMemoState.rerun = false; save(); }
-      }
-    };
-    teamMemoState.dirty = false;
-    input.addEventListener('input', ()=>{
-      teamMemoState.dirty = true;
-      clearTimeout(teamMemoState.timer); teamMemoState.timer = setTimeout(save, 800);
-      if(window.SHIN2_PENDING_SAVES) window.SHIN2_PENDING_SAVES.set('teamMemo', save);   // 창을 닫기 전에 바로 저장
-    });
-    input.addEventListener('blur', ()=>{ clearTimeout(teamMemoState.timer); save().then(()=>{ if(teamMemoState.remoteChanged) scheduleUpcomingMeetingsRender(); }); });
+  // 내가 저장·수정·삭제한 뒤에는 커서가 입력칸에 남아 있어도 바로 다시 그린다(새 메모 칸에 있던 커서는 되돌려 준다).
+  function teamMemoRerender(){
+    const hadFocus = document.activeElement && document.activeElement.id === 'crmTeamMemoInput';
+    teamMemoUi.deferRender = false;
+    renderUpcomingMeetings({ force:true });
+    if(hadFocus){ const el = document.getElementById('crmTeamMemoInput'); if(el) el.focus(); }
   }
-  // 다른 PC에서 메모를 고치면 바로 반영한다(이 기기에서 쓰는 중이면 덮지 않고 알림만).
+  function bindTeamMemoPanel(){
+    const box = document.getElementById('crmUpcomingMeetings');
+    const input = document.getElementById('crmTeamMemoInput');
+    const saveBtn = document.getElementById('crmTeamMemoSave');
+    if(!box || !input || !saveBtn) return;
+    const by = ()=> crmCurrentUserLabel();
+    input.addEventListener('input', ()=> setTeamMemoDraft(input.value));
+    input.addEventListener('keydown', e=>{ if(e.key === 'Enter' && (e.ctrlKey || e.metaKey)){ e.preventDefault(); saveBtn.click(); } });
+    // 쓰는 동안 미뤄 둔 다시 그리기는 칸을 벗어나면 한다
+    box.querySelector('.crm-team-memo').addEventListener('focusout', ()=> setTimeout(()=>{ if(teamMemoUi.deferRender && !teamMemoEditing()) teamMemoRerender(); }, 0));
+    saveBtn.addEventListener('click', async ()=>{
+      const text = input.value.trim();
+      if(!text || teamMemoUi.busy){ if(!text) input.focus(); return; }
+      teamMemoUi.busy = true; teamMemoUi.msg = ''; teamMemoUi.msgKind = '';
+      setSaveBtnBusy(saveBtn, true);
+      await nextPaint();
+      const rec = D.addTeamMemo(text, by());
+      let r = rec ? await confirmCloudSave('teamMemo') : { ok:false, err:{ code:'LOCAL_WRITE_FAILED' } };
+      if(!r.ok && rec) D.updateTeamMemo(rec.id, { deletedAt: new Date().toISOString() }, by());   // 서버에 안 들어간 메모는 목록에서 빼 둔다(글은 입력칸에 남음)
+      teamMemoUi.busy = false;
+      if(r.ok){ setTeamMemoDraft(''); teamMemoUi.msg = '저장됨'; teamMemoUi.msgKind = 'ok'; setTimeout(()=>{ if(teamMemoUi.msg === '저장됨'){ teamMemoUi.msg = ''; teamMemoUi.msgKind = ''; const s = document.getElementById('crmTeamMemoStatus'); if(s){ s.textContent = ''; s.className = 'crm-team-memo-status'; } } }, 1800); }
+      else { setTeamMemoDraft(input.value); teamMemoUi.msg = '저장하지 못했습니다 — ' + cloudSaveErrorMessage(r.err); teamMemoUi.msgKind = 'err'; }
+      teamMemoRerender();
+    });
+    box.querySelectorAll('[data-team-memo-edit]').forEach(b=> b.addEventListener('click', ()=>{
+      if(teamMemoUi.busy) return;
+      const m = D.loadTeamMemos().find(x=> x.id === b.getAttribute('data-team-memo-edit'));
+      if(!m) return;
+      teamMemoUi.editingId = m.id; teamMemoUi.editDraft = m.text; teamMemoUi.editMsg = '';
+      teamMemoRerender();
+      const ed = document.getElementById('crmTeamMemoEditInput'); if(ed){ ed.focus(); ed.setSelectionRange(ed.value.length, ed.value.length); }
+    }));
+    const ed = document.getElementById('crmTeamMemoEditInput');
+    if(ed){
+      ed.addEventListener('input', ()=>{ teamMemoUi.editDraft = ed.value; });
+      ed.addEventListener('keydown', e=>{ if(e.key === 'Enter' && (e.ctrlKey || e.metaKey)){ e.preventDefault(); const s = box.querySelector('[data-team-memo-edit-save]'); if(s) s.click(); } if(e.key === 'Escape'){ e.preventDefault(); const c = box.querySelector('[data-team-memo-edit-cancel]'); if(c) c.click(); } });
+    }
+    const cancel = box.querySelector('[data-team-memo-edit-cancel]');
+    if(cancel) cancel.addEventListener('click', ()=>{ if(teamMemoUi.busy) return; teamMemoUi.editingId = null; teamMemoUi.editMsg = ''; teamMemoRerender(); });
+    const editSave = box.querySelector('[data-team-memo-edit-save]');
+    if(editSave) editSave.addEventListener('click', async ()=>{
+      const id = teamMemoUi.editingId, text = (ed ? ed.value : teamMemoUi.editDraft).trim();
+      if(!id || !text || teamMemoUi.busy) return;
+      teamMemoUi.busy = true; setSaveBtnBusy(editSave, true);
+      await nextPaint();
+      const prev = D.updateTeamMemo(id, { text }, by());
+      const r = prev ? await confirmCloudSave('teamMemo') : { ok:false, err:{ code:'LOCAL_WRITE_FAILED' } };
+      if(!r.ok && prev) D.updateTeamMemo(id, { text: prev.text, updatedAt: prev.updatedAt, updatedBy: prev.updatedBy });   // 저장 전 글로 되돌림(고친 글은 입력칸에 남김)
+      teamMemoUi.busy = false;
+      if(r.ok){ teamMemoUi.editingId = null; teamMemoUi.editMsg = ''; }
+      else { teamMemoUi.editDraft = text; teamMemoUi.editMsg = '저장하지 못했습니다'; }
+      teamMemoRerender();
+    });
+    box.querySelectorAll('[data-team-memo-del]').forEach(b=> b.addEventListener('click', async ()=>{
+      if(teamMemoUi.busy) return;
+      if(!confirm('이 메모를 지울까요? 모든 직원 화면에서 사라집니다.')) return;
+      const id = b.getAttribute('data-team-memo-del');
+      teamMemoUi.busy = true; setSaveBtnBusy(b, true, '삭제 중…');
+      await nextPaint();
+      const prev = D.updateTeamMemo(id, { deletedAt: new Date().toISOString() }, by());
+      const r = prev ? await confirmCloudSave('teamMemo') : { ok:false, err:{ code:'LOCAL_WRITE_FAILED' } };
+      if(!r.ok && prev) D.updateTeamMemo(id, { deletedAt: null, updatedAt: prev.updatedAt, updatedBy: prev.updatedBy });   // 지우지 못했으면 되살린다
+      teamMemoUi.busy = false;
+      teamMemoRerender();
+      if(!r.ok) alert('메모를 지우지 못했습니다 — ' + cloudSaveErrorMessage(r.err));
+    }));
+  }
+  // 다른 PC에서 메모를 저장·수정·삭제하면 바로 반영한다(이 기기에서 쓰는 중이면 칸을 벗어날 때 반영).
   window.addEventListener('shin2-crm-cloud-update', (e)=>{
     if(!e || !e.detail || e.detail.key !== 'teamMemo' || upcomingMeetingsTab !== 'memo') return;
-    if(teamMemoEditing()){
-      const input = document.getElementById('crmTeamMemoInput');
-      if(!teamMemoState.dirty && !teamMemoState.saving){
-        // 커서만 있고 아직 고친 게 없으면 최신 내용으로 그 자리에서 바꾼다
-        const m = D.loadTeamMemo();
-        input.value = m.text;
-        const meta = document.getElementById('crmTeamMemoMeta'); if(meta) meta.textContent = teamMemoMetaText(m);
-        return;
-      }
-      teamMemoState.remoteChanged = true;
-      const st = document.getElementById('crmTeamMemoStatus');
-      if(st && !teamMemoState.saving){ st.textContent = '다른 사람이 방금 메모를 고쳤습니다 — 지금 쓰는 내용으로 저장됩니다'; st.className = 'crm-team-memo-status is-warn'; }
-      return;
-    }
+    if(teamMemoEditing()){ teamMemoUi.deferRender = true; return; }
     renderUpcomingMeetings();
   });
-  function renderUpcomingMeetings(){
+  function renderUpcomingMeetings(opts){
     const box = document.getElementById('crmUpcomingMeetings');
     if(!box) return;
     // 메모를 쓰는 중이면(입력칸에 커서) 다시 그리지 않는다 — 쓰던 글자·커서가 날아가지 않게
-    if(upcomingMeetingsTab === 'memo' && teamMemoEditing()) return;
+    if(upcomingMeetingsTab === 'memo' && !(opts && opts.force) && teamMemoEditing()){ teamMemoUi.deferRender = true; return; }
     const all = collectUpcomingMeetings();
     const counts = { all: all.length, m1: all.filter(x=> x.kind === 'm1').length, m2: all.filter(x=> x.kind === 'm2').length };
     const rows = upcomingMeetingsTab === 'all' ? all : all.filter(x=> x.kind === upcomingMeetingsTab);
@@ -23231,10 +23321,11 @@ window.SHIN2_CRM_APP_INIT = function(){
           </button>`;
         }).join('') : `<div class="crm-upcoming-empty">예정된 ${upcomingMeetingsTab === 'm1' ? '1차 ' : upcomingMeetingsTab === 'm2' ? '2차 ' : ''}미팅이 없습니다.</div>`}
       </div>`}`;
+    box.classList.toggle('is-memo', upcomingMeetingsTab === 'memo');
     if(upcomingMeetingsTab === 'memo') bindTeamMemoPanel();
     box.querySelectorAll('[data-upcoming-tab]').forEach(btn=> btn.addEventListener('click', ()=>{
       upcomingMeetingsTab = btn.getAttribute('data-upcoming-tab');
-      renderUpcomingMeetings();
+      renderUpcomingMeetings({ force:true });
     }));
     box.querySelectorAll('[data-upcoming-co]').forEach(btn=> btn.addEventListener('click', ()=>{
       openCustomerDetail(btn.getAttribute('data-upcoming-co'), 'agreement');
