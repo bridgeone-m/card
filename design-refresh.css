@@ -300,15 +300,6 @@ html body .list-filter-chip.is-active{ background:var(--navy) !important; border
 #mapModalBody{ background:var(--bg-soft-2) !important; }
 .map-modal-tab-btn.is-active{ background:var(--navy-100) !important; border-color:var(--navy-200) !important; color:var(--navy) !important; }
 
-/* ---------- 10-4. B2B KPI ---------- */
-#crmKpiGoalPanel.kgoal, .b2b-card.b2b-card-tab{ border-color:var(--line) !important; box-shadow:var(--dr-shadow-card) !important; }
-.kgoal-row{ border-color:#E8EFF7 !important; }
-.kgoal-track{ background:#EBF2FA !important; }
-.kgoal-total-box{ background:var(--navy) !important; background-image:none !important; }
-.b2b-risk-head{ background:var(--bg-soft-2) !important; }
-.b2b-pill.is-na{ background:#EBF2FA !important; color:var(--text-muted) !important; }
-.b2b-pill.is-vip{ background:var(--navy) !important; }
-
 /* ---------- 10-5. MOU 진행상황 ---------- */
 .stage-bar, .stage-bar-seg.is-current, .stage-bar-seg.is-pending{ background:#E1EAF5 !important; }
 .stage-bar-seg.is-done{ background:var(--navy) !important; }
@@ -845,17 +836,16 @@ body.crm-mapdock[data-crm-view="listView"] #mapDistributionModalRoot .map-modal-
      큰 제목 → 요약 띠 → 검색·필터 → 흰 카드 표
    ========================================================================== */
 /* 페이지 제목 — 지금 탭 이름 그대로(메일 설정은 원래 제목을 키운다) */
-#workQueueView::before, #kpiView .kpiv-wrap::before{
+#workQueueView::before{
   display:block; font-size:34px; line-height:1.15; font-weight:800; letter-spacing:-.03em; color:var(--navy);
   margin:6px 0 18px;
 }
 #workQueueView::before{ content:'MOU 진행상황'; }
-#kpiView .kpiv-wrap::before{ content:'B2B KPI'; }
 #mailSettingsView .workq-title{ font-size:34px !important; line-height:1.15 !important; font-weight:800 !important; letter-spacing:-.03em !important; color:var(--navy) !important; }
 #mailSettingsView .workq-subtitle{ font-size:14px !important; color:var(--text-muted) !important; margin-top:6px !important; }
 #workQueueView{ padding-top:14px !important; }
 @media (max-width:760px){
-  #workQueueView::before, #kpiView .kpiv-wrap::before{ font-size:26px; margin:2px 0 12px; }
+  #workQueueView::before{ font-size:26px; margin:2px 0 12px; }
   #mailSettingsView .workq-title{ font-size:26px !important; }
 }
 
@@ -898,14 +888,6 @@ html body #workQueueView .workq-filter-row .list-filter-chip{ height:38px !impor
   html body #workQueueView .workq-task-card.is-inline .workq-task-card-num{ font-size:30px !important; }
   html body #workQueueView .workq-task-card.is-inline .workq-task-card-unit{ font-size:13px !important; }
 }
-
-/* B2B KPI — 구역마다 흰 카드, 제목 위계 */
-#kpiView .kpiv-sec{ background:#fff; border:1px solid var(--line); border-radius:16px; padding:20px 22px !important; margin-bottom:16px !important; box-shadow:0 1px 2px rgba(20,28,42,.03); }
-#kpiView .kpiv-sec #crmKpiGoalPanel.kgoal{ border:0 !important; box-shadow:none !important; padding:0 !important; }
-#kpiView .kpiv-title{ font-size:18px !important; font-weight:800 !important; color:var(--navy) !important; letter-spacing:-.02em; }
-#kpiView .kpiv-sub{ font-size:13px !important; color:var(--text-muted) !important; }
-#kpiView .kpiv-head{ margin-bottom:14px !important; gap:10px !important; align-items:baseline !important; }
-#kpiView .kgoal-total-box .kgoal-total-num, #kpiView .kgoal-total-box [class*="num"]{ font-family:var(--dr-serif) !important; }
 
 /* 메일 설정 — 메일 종류 탭을 밑줄형으로 */
 #mailSettingsView .mail-tabs-bar{ border-bottom:1px solid var(--line) !important; gap:2px !important; padding:0 4px !important; background:transparent !important; }
@@ -1221,7 +1203,7 @@ html body #gateScreen #gateEnterBtn.gate-enter-btn:focus-visible{ box-shadow:0 0
    §페이지 제목 삭제 (2026-11, 사용자 요청) — MOU 진행상황·메일 설정(·B2B KPI도 같은 기준)
    메일 설정의 오른쪽 [발송 이력][발송 계정] 버튼은 그대로 오른쪽에 둔다.
    ========================================================================== */
-#workQueueView::before, #kpiView .kpiv-wrap::before{ content:none !important; display:none !important; }
+#workQueueView::before{ content:none !important; display:none !important; }
 #mailSettingsView .mailx-header-row .workq-header{ display:none !important; }
 #mailSettingsView .mailx-header-row{ justify-content:flex-end !important; }
 
@@ -1426,9 +1408,6 @@ body[data-crm-view="mailSettingsView"] #mailSettingsView #mailTabsBar{ margin-to
 @media (min-width:1101px) and (max-width:1365px){
   .gnav-right > .mailx-header-btns .mailx-account-btn{ height:40px !important; min-height:40px !important; padding:0 11px !important; font-size:13.5px !important; }
 }
-
-/* §B2B KPI 메뉴 이동 (2026-11, 사용자 요청) — 상단 탭·휴대폰 메뉴에서 감추고 설정(톱니) 메뉴에서 연다 */
-#crmTabKpi, #gnavDrawerTabKpi{ display:none !important; }
 
 /* §지도 미리보기 2차 — 실제 지도를 "그림"처럼: 지도 위 조작 버튼(확대·축소·지도/위성·범례)은 감추고,
    [지도 크게 보기] 버튼을 키운다 */

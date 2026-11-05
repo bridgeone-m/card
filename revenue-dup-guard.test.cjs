@@ -26,7 +26,7 @@ test('2025 집계 함수가 차단 행을 건너뛴다(코드 확인)',()=>{
 function guard(chk,kpi){
   const calls=[];const g={D:{checkAliasRevenueOverlap:()=>chk,findCompany:()=>({name:'테스트건설'})},window:{SHIN2_B2B_KPI_PREVIEW:()=>kpi},
     alert:m=>calls.push(['alert',m]),confirm:m=>{calls.push(['confirm',m]);return true;}};
-  vm.runInNewContext(slice('  function confirmAliasLink(','  function renderB2bLeading(')+';this.f=confirmAliasLink;',g);
+  vm.runInNewContext(slice('  function confirmAliasLink(','  function renderKpiStrip(')+';this.f=confirmAliasLink;',g);
   return {r:g.f('c1','별칭'),calls};
 }
 const base={added:{y2024:0,y2025:0,y2026:0,pour:0},conflicts:[],warnings:[],level:'ok'};
