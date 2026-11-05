@@ -146,3 +146,20 @@ test('render_needs_rebalance_note', () => {
   assert.ok(R(s).includes('개인 몫을 다시 나눠 주세요'));
   assert.ok(!R(F.base()).includes('개인 몫을 다시 나눠 주세요'));
 });
+
+// ---- 남은 개선점 ----
+test('circled_numbers_no_dot', () => {
+  const s = F.base(); s.leadDefs.LI01.no = '①';
+  const h = R(s);
+  assert.ok(h.includes('① 시험 선행 1')); assert.ok(!h.includes('①.'));
+  assert.ok(h.includes('2. 시험 선행 2'), '숫자 번호는 점 유지');
+});
+test('render_stale_banner', () => {
+  const h = T.renderHtml(C.buildModel(F.base(), '2026-11'), { state: 'ready', month: '2026-11', stale: true, loadedAt: '16:38' });
+  assert.ok(h.includes('연결이 끊겼습니다')); assert.ok(h.includes('마지막 읽기 16:38')); assert.ok(h.includes('data-kpi-act="reload"'));
+  assert.ok(!R(F.base()).includes('연결이 끊겼습니다'));
+});
+test('editor_lags_sorted', () => {
+  const i = tabSrc.indexOf('function openEditor(');
+  assert.ok(tabSrc.slice(i, i + 900).includes('d.member === memberId; }).sort('));
+});

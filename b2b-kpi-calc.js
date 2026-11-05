@@ -223,7 +223,8 @@
     d.name = String(input.name || '').trim();
     if('numLabel' in input) setOrDrop(d, 'numLabel', String(input.numLabel || '').trim());
     if('denLabel' in input) setOrDrop(d, 'denLabel', String(input.denLabel || '').trim());
-    if(d.numLabel && d.denLabel) d.formula = d.numLabel + ' ÷ ' + d.denLabel + ' × 100';
+    // 계산식 문구는 분자·분모 이름이 바뀌었거나 없을 때만 다시 만든다(기존 지표의 직접 쓴 문구 보존)
+    if(d.numLabel && d.denLabel && (!prev || !prev.formula || prev.numLabel !== d.numLabel || prev.denLabel !== d.denLabel)) d.formula = d.numLabel + ' ÷ ' + d.denLabel + ' × 100';
     setOrDrop(d, 'target', isNum(input.target) ? input.target : null);
     d.by = 'card-kpi-tab'; d.updatedAt = nowIso; d.rev = prev ? (prev.rev || 0) + 1 : 0;
     return d;
@@ -243,6 +244,7 @@
     var e = [];
     if(!String((input && input.name) || '').trim()) e.push('지표 이름을 입력해 주세요');
     if(input && input.target != null && (!isNum(input.target) || input.target < 0 || input.target > 100)) e.push('목표값은 0~100 사이');
+    if(input && input.cardWeight != null && (!isNum(input.cardWeight) || input.cardWeight < 0 || input.cardWeight > 100)) e.push('지표 비중은 0~100 사이 숫자');
     return e;
   }
   function nextTaskProg(p){ return p >= 100 ? 0 : p > 0 ? 100 : 50; }

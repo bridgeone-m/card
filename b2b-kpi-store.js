@@ -71,11 +71,25 @@
       var body = {}; body['kpiTeamChecks/' + id] = next;
       return patch(body).then(function(){ return next; });
     }
-    function saveConfig(cfg, actor){
-      var v = copy(cfg) || {}; v.updatedAt = new Date().toISOString(); v.by = actor;
-      return patch({ kpiTabConfig: v });
+    /* openedAt(세 번째 값)를 주면, 화면이 연 뒤 다른 관리자가 먼저 저장했는지(updatedAt 다름) 확인하고 멈춘다 */
+    function saveConfig(cfg, actor, openedAt){
+      var check = arguments.length >= 3;
+      return (check ? get('kpiTabConfig') : Promise.resolve(null)).then(function(remote){
+        if(check && ((remote && remote.updatedAt) || null) !== (openedAt || null)) return { ok: false, reason: 'conflict' };
+        var v = copy(cfg) || {}; v.updatedAt = new Date().toISOString(); v.by = actor;
+        return patch({ kpiTabConfig: v }).then(function(){ return { ok: true, value: v }; });
+      });
     }
-    return { read: function(){ return get(''); }, saveDef: saveDef, setTaskProg: setTaskProg, toggleTeamCheck: toggleTeamCheck, saveConfig: saveConfig };
+    /* 탭에 보일 팀원 추가 — 최신 설정을 읽어 그 위에 더한다(다른 관리자의 변경 보존, 개인 몫 값은 그대로) */
+    function addTabMember(memberId, defaults, actor){
+      return get('kpiTabConfig').then(function(remote){
+        var v = copy(remote) || {}, ids = (v.members && v.members.length ? v.members : (defaults || [])).slice();
+        if(ids.indexOf(memberId) >= 0) return { ok: true, value: remote };
+        v.members = ids.concat([memberId]); v.updatedAt = new Date().toISOString(); v.by = actor;
+        return patch({ kpiTabConfig: v }).then(function(){ return { ok: true, value: v }; });
+      });
+    }
+    return { read: function(){ return get(''); }, saveDef: saveDef, setTaskProg: setTaskProg, toggleTeamCheck: toggleTeamCheck, saveConfig: saveConfig, addTabMember: addTabMember };
   }
 
   var api = { PROD: PROD, resolveBase: resolveBase, createStore: createStore };

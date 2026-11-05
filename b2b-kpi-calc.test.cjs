@@ -220,3 +220,17 @@ test('teamCommon_equal_weight_per_kpi', () => {
   const t = C.teamCommon(s, M);
   assert.ok(Math.abs(t.value - (100 + 0 + 0) / 3) < 1e-9, String(t.value));
 });
+
+// ---- 남은 개선점 ----
+test('formula_kept_when_labels_unchanged', () => {
+  const s = F.base(), prev = Object.assign({}, s.leadDefs.LI01, { numLabel: '완료', denLabel: '대상', formula: '직접 쓴 계산식', rev: 1 });
+  assert.equal(C.buildLeadDef('shs', { name: 'x', numLabel: '완료', denLabel: '대상' }, s, NOW, prev).formula, '직접 쓴 계산식');
+  assert.equal(C.buildLeadDef('shs', { name: 'x', numLabel: '처리', denLabel: '대상' }, s, NOW, prev).formula, '처리 ÷ 대상 × 100');
+  assert.equal(C.buildLeadDef('shs', { name: 'x', numLabel: 'a', denLabel: 'b' }, s, NOW).formula, 'a ÷ b × 100');
+});
+test('validate_card_weight', () => {
+  assert.deepEqual(Array.from(C.validateDefInput({ name: 'a', cardWeight: NaN })), ['지표 비중은 0~100 사이 숫자']);
+  assert.deepEqual(Array.from(C.validateDefInput({ name: 'a', cardWeight: 150 })), ['지표 비중은 0~100 사이 숫자']);
+  assert.equal(C.validateDefInput({ name: 'a', cardWeight: null }).length, 0);
+  assert.deepEqual(Array.from(C.validateDefInput({ name: 'a', target: NaN })), ['목표값은 0~100 사이']);
+});

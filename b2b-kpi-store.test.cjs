@@ -115,3 +115,31 @@ test('toggleTeamCheck_uses_fresh_remote', async () => {
   const rec = await store.toggleTeamCheck(s, 'MK1', '2026-11', 0, 'x');
   assert.equal(rec.checks.c1, true); assert.equal(rec.checks.c2, true);
 });
+
+// ---- 남은 개선점: 개인 몫·탭 팀원 설정 동시 저장 ----
+test('saveConfig_conflict_when_changed', async () => {
+  const { calls, store } = fake({ [BASE + '/kpiTabConfig.json']: { members: ['shs'], updatedAt: 'T2' } });
+  const r = await store.saveConfig({ members: ['shs', 'm2'] }, 'x', 'T1');
+  assert.deepEqual({ ...r }, { ok: false, reason: 'conflict' }); assert.equal(patches(calls).length, 0);
+});
+test('saveConfig_ok_when_same', async () => {
+  const { calls, store } = fake({ [BASE + '/kpiTabConfig.json']: { members: ['shs'], updatedAt: 'T1' } });
+  const r = await store.saveConfig({ members: ['shs', 'm2'] }, 'x', 'T1');
+  assert.equal(r.ok, true); assert.equal(patches(calls).length, 1);
+});
+test('addTabMember_uses_fresh_config', async () => {
+  const { calls, store } = fake({ [BASE + '/kpiTabConfig.json']: { members: ['shs', 'm2', 'm5'], shares: { shs: 10, m2: 10 }, updatedAt: 'T9' } });
+  await store.addTabMember('m6', ['shs', 'm2'], 'x');
+  const b = patches(calls)[0].body.kpiTabConfig;
+  assert.deepEqual(b.members, ['shs', 'm2', 'm5', 'm6']); assert.deepEqual(b.shares, { shs: 10, m2: 10 });
+});
+test('addTabMember_defaults_when_empty', async () => {
+  const { calls, store } = fake({});
+  await store.addTabMember('m3', ['shs', 'm2'], 'x');
+  assert.deepEqual(patches(calls)[0].body.kpiTabConfig.members, ['shs', 'm2', 'm3']);
+});
+test('addTabMember_skip_when_present', async () => {
+  const { calls, store } = fake({ [BASE + '/kpiTabConfig.json']: { members: ['shs', 'm2'] } });
+  await store.addTabMember('m2', ['shs', 'm2'], 'x');
+  assert.equal(patches(calls).length, 0);
+});

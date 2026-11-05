@@ -35,10 +35,13 @@
     } else if(ui.state !== 'ready' || !model){
       out += '<div class="b2bkpi-card b2bkpi-muted">불러오는 중…</div>';
     } else {
+      if(ui.stale) out += '<div class="b2bkpi-note b2bkpi-stale">연결이 끊겼습니다 · 마지막 읽기 ' + esc(ui.loadedAt || '') + ' · 아래 숫자는 그때 기준입니다 <button type="button" class="b2bkpi-btn" data-kpi-act="reload">다시 시도</button></div>';
       out += renderReady(model, ui);
     }
     return out + '</div>';
   }
+  /* 번호: 숫자는 '2. ', 원문자(①) 등은 '① ' — '①.' 처럼 점이 겹치지 않게 */
+  function numPre(no){ no = String(no == null ? '' : no); return !no ? '' : /^\d+$/.test(no) ? no + '. ' : no + ' '; }
   function pts(v){ return v == null ? '— 점' : f1(v) + '점'; }
   function pill(kind, text){ return '<span class="b2bkpi-pill is-' + kind + '">' + esc(text) + '</span>'; }
   function sec(no, title, sub, body, extra){
@@ -74,7 +77,7 @@
     out += (p.rows || []).map(function(r){
       var open = ui.openDef === r.id;
       var val = r.state === 'ok' ? f1(r.rate) + '%' : r.state === 'empty' ? '대상 없음' : '미측정';
-      var line = '<div class="b2bkpi-lead' + (r.state === 'ok' ? '' : ' is-none') + '"><div class="b2bkpi-lead-main"><span class="b2bkpi-lead-name">' + esc((r.no ? r.no + '. ' : '') + r.name) + '</span>' + (r.auto ? pill('auto', '자동') : '') +
+      var line = '<div class="b2bkpi-lead' + (r.state === 'ok' ? '' : ' is-none') + '"><div class="b2bkpi-lead-main"><span class="b2bkpi-lead-name">' + esc(numPre(r.no) + r.name) + '</span>' + (r.auto ? pill('auto', '자동') : '') +
         '<span class="b2bkpi-lead-val">' + val + (r.target ? ' <span class="b2bkpi-muted">/ 목표 ' + r.target + '</span>' : '') + '</span></div>' +
         '<div class="b2bkpi-lead-sub"><button type="button" class="b2bkpi-linkbtn" data-kpi-act="toggleDef" data-def="' + esc(r.id) + '">세부업무 완료 ' + r.tasks.done + ' · 진행 ' + r.tasks.doing + ' · 남음 ' + r.tasks.todo + (open ? ' · 접기' : ' · 펼치기') + '</button>' +
         '<a class="b2bkpi-linkbtn" href="' + TRACKER_URL + '" target="_blank" rel="noopener">트래커에서 입력</a></div>';
@@ -82,7 +85,7 @@
       return line + '</div>';
     }).join('');
     if(lags.length) out += '<div class="b2bkpi-lags"><div class="b2bkpi-muted">후행지표 · 관리 후 고객 변화(점수에 넣지 않음)</div>' + lags.map(function(g){
-      return '<div class="b2bkpi-lag"><span>' + esc((g.no ? g.no + '. ' : '') + g.name) + '</span><span>' + (g.rate == null ? '미측정' : f1(g.rate) + '%') + (g.target != null ? ' <span class="b2bkpi-muted">/ 목표 ' + g.target + '</span>' : '') + '</span></div>';
+      return '<div class="b2bkpi-lag"><span>' + esc(numPre(g.no) + g.name) + '</span><span>' + (g.rate == null ? '미측정' : f1(g.rate) + '%') + (g.target != null ? ' <span class="b2bkpi-muted">/ 목표 ' + g.target + '</span>' : '') + '</span></div>';
     }).join('') + '</div>';
     return out + '<div class="b2bkpi-person-foot"><button type="button" class="b2bkpi-btn" data-kpi-act="edit" data-member="' + esc(row.memberId) + '">지표 등록·수정</button></div></div>';
   }
@@ -142,12 +145,12 @@
     fillTasks();
   }
   function load(){
-    if(!window.B2BKpiStore) return Promise.resolve();
+    if(!window.B2BKpiStore){ st.ui.state = 'error'; st.ui.error = '업무트래커 연결 파일(b2b-kpi-store.js)을 불러오지 못했습니다'; render(); return Promise.resolve(); }
     return window.B2BKpiStore.read().then(function(s){
-      st.shape = s || {}; st.ui.state = 'ready'; st.ui.error = null;
+      st.shape = s || {}; st.ui.state = 'ready'; st.ui.error = null; st.ui.stale = false;
       var d = new Date(); st.ui.loadedAt = (d.getHours() < 10 ? '0' : '') + d.getHours() + ':' + (d.getMinutes() < 10 ? '0' : '') + d.getMinutes();
     }).catch(function(e){
-      if(!st.shape){ st.ui.state = 'error'; st.ui.error = String(e && e.message || e); }
+      if(!st.shape){ st.ui.state = 'error'; st.ui.error = String(e && e.message || e); } else st.ui.stale = true;
     }).then(render);
   }
   function open(){
@@ -252,7 +255,7 @@
   function openEditor(memberId){
     var s = st.shape || {}, C = window.B2BKpiCalc, cfgIds = C.shareRows(s).rows.map(function(r){ return r.memberId; });
     var others = Object.keys(s.members || {}).filter(function(id){ return cfgIds.indexOf(id) < 0; });
-    var leads = memberId ? C.leadDefsOf(s, memberId) : [], lags = memberId ? Object.keys(s.lagDefs || {}).map(function(k){ return s.lagDefs[k]; }).filter(function(d){ return d && d.member === memberId; }) : [];
+    var leads = memberId ? C.leadDefsOf(s, memberId) : [], lags = memberId ? Object.keys(s.lagDefs || {}).map(function(k){ return s.lagDefs[k]; }).filter(function(d){ return d && d.member === memberId; }).sort(function(a, b){ return a.id < b.id ? -1 : 1; }) : [];
     var who = memberId ? '<div class="b2bkpi-f"><span>담당자</span><b>' + esc(C.memberName(s, memberId)) + '</b><input type="hidden" data-f="memberId" value="' + esc(memberId) + '"></div>'
       : field('기존 팀원에서 고르기', '<select class="b2bkpi-in" data-f="memberId"><option value="">새 사람</option>' + others.map(function(id){ return '<option value="' + esc(id) + '">' + esc(C.memberName(s, id)) + '</option>'; }).join('') + '</select>') +
         '<div class="b2bkpi-f2">' + field('새 사람 이름', inp('newName', '')) + field('역할(선택)', inp('newRole', '')) + '</div>';
@@ -295,11 +298,7 @@
     return chain;
   }
   function addToTab(memberId){
-    var cfg = JSON.parse(JSON.stringify((st.shape && st.shape.kpiTabConfig) || {}));
-    var ids = window.B2BKpiCalc.shareRows(st.shape || {}).rows.map(function(r){ return r.memberId; });
-    if(ids.indexOf(memberId) >= 0) return Promise.resolve();
-    cfg.members = ids.concat([memberId]);
-    return window.B2BKpiStore.saveConfig(cfg, ACTOR).then(function(){ st.shape.kpiTabConfig = cfg; });
+    return window.B2BKpiStore.addTabMember(memberId, window.B2BKpiCalc.DEFAULT_MEMBERS, ACTOR).then(function(r){ if(r && r.value) st.shape.kpiTabConfig = r.value; });
   }
   function saveEditor(btn){
     var root = modalRoot(), errEl = document.getElementById('b2bKpiErr');
@@ -317,6 +316,7 @@
     });
   }
   function openShares(){
+    st.shareOpenedAt = (st.shape && st.shape.kpiTabConfig && st.shape.kpiTabConfig.updatedAt) || null;
     var C = window.B2BKpiCalc, sh = C.shareRows(st.shape || {});
     modalRoot().innerHTML = '<div class="pi-overlay b2bkpi-ov"><div class="pi-panel b2bkpi-modal" role="dialog" aria-modal="true" aria-label="개인 몫 나누기"><h3>개인 몫 나누기</h3>' +
       '<p class="b2bkpi-muted">개인 업무 20% 를 나눕니다(합계 20). 관리자가 정한 비중으로 저장됩니다. 저장 전까지는 같은 비율의 임시 비중입니다.</p>' +
@@ -330,7 +330,7 @@
     if(errs.length){ document.getElementById('b2bKpiErr').textContent = errs.join(' / '); return; }
     btn.disabled = true;
     var cfg = JSON.parse(JSON.stringify((st.shape && st.shape.kpiTabConfig) || {})); cfg.members = ids; cfg.shares = map;
-    window.B2BKpiStore.saveConfig(cfg, ACTOR).then(function(){ closeModal(); return load(); }).catch(function(e){ btn.disabled = false; document.getElementById('b2bKpiErr').textContent = '저장하지 못했습니다: ' + (e && e.message || e); });
+    window.B2BKpiStore.saveConfig(cfg, ACTOR, st.shareOpenedAt).then(function(r){ if(!r.ok) throw new Error('다른 관리자가 먼저 바꿨습니다. 창을 닫고 다시 열어 주세요'); closeModal(); return load(); }).catch(function(e){ btn.disabled = false; document.getElementById('b2bKpiErr').textContent = '저장하지 못했습니다: ' + (e && e.message || e); });
   }
   function onModalClick(e){
     var t = e.target.closest && e.target.closest('[data-m]');
