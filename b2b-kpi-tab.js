@@ -138,6 +138,7 @@
     var model = null;
     if(st.ui.state === 'ready' && st.shape && window.B2BKpiCalc) model = window.B2BKpiCalc.buildModel(st.shape, st.ui.month);
     v.innerHTML = renderHtml(model, st.ui);
+    fillTasks();
   }
   function load(){
     if(!window.B2BKpiStore) return Promise.resolve();
@@ -176,7 +177,174 @@
     if(act === 'month'){ st.ui.month = shiftMonth(st.ui.month, +t.getAttribute('data-n')); render(); return; }
     if(handlers[act]) handlers[act](t, e);
   }
-  var handlers = {};
+  /* ---- 개인 트래커 추가·수정: 폼 값 → 입력 → 저장 계획(순수 함수, 테스트 대상) ---- */
+  function numOrNull(v){ var s = String(v == null ? '' : v).trim(); if(!s) return null; var n = Number(s); return isFinite(n) ? n : NaN; }
+  function formToInputs(fv){
+    var leadEmpty = function(r){ return !r.id && !String(r.name || '').trim() && !String(r.tasksText || '').trim() && !String(r.target || '').trim() && !String(r.numLabel || '').trim() && !String(r.denLabel || '').trim(); };
+    var member = fv.memberId ? { id: fv.memberId } : { name: String(fv.newName || '').trim(), role: String(fv.newRole || '').trim() };
+    var leads = (fv.leads || []).filter(function(r){ return !leadEmpty(r); }).map(function(r){
+      var o = { name: String(r.name || '').trim(), cycle: String(r.cycle || '').trim(), purpose: String(r.purpose || '').trim(),
+        tasks: String(r.tasksText || '').split(/\r?\n/).map(function(t){ return t.trim(); }).filter(Boolean),
+        numLabel: String(r.numLabel || '').trim(), denLabel: String(r.denLabel || '').trim(), target: numOrNull(r.target),
+        cardKpis: (r.kpis || []).slice(), cardWeight: numOrNull(r.weight) };
+      if(r.id) o.id = r.id;
+      return o;
+    });
+    var lags = (fv.lags || []).filter(function(r){ return !leadEmpty(r); }).map(function(r){
+      var o = { name: String(r.name || '').trim(), numLabel: String(r.numLabel || '').trim(), denLabel: String(r.denLabel || '').trim(), target: numOrNull(r.target) };
+      if(r.id) o.id = r.id;
+      return o;
+    });
+    return { member: member, leads: leads, lags: lags };
+  }
+  /* 저장할 정의와 ID 를 미리 확정한다(두 번 눌러도 같은 ID → 두 번째는 저장소가 'exists' 로 막음). */
+  function planSave(shape, inp, nowIso, calc){
+    calc = calc || (typeof window !== 'undefined' && window.B2BKpiCalc);
+    var tmp = JSON.parse(JSON.stringify(shape || {})); tmp.members = tmp.members || {}; tmp.leadDefs = tmp.leadDefs || {}; tmp.lagDefs = tmp.lagDefs || {};
+    var out = { member: null, leads: [], lags: [], errors: [] }, memberId = inp.member && inp.member.id;
+    if(!memberId){
+      if(!inp.member || !String(inp.member.name || '').trim()) out.errors.push('새 트래커의 이름을 입력해 주세요');
+      else { var m = calc.buildMember(inp.member, tmp, nowIso); tmp.members[m.id] = m; memberId = m.id; out.member = { def: m, openedRev: null }; }
+    } else if(!tmp.members[memberId]) out.errors.push('트래커 담당자를 찾을 수 없습니다');
+    if(!memberId) return out;
+    [['leads', 'leadDefs', 'buildLeadDef'], ['lags', 'lagDefs', 'buildLagDef']].forEach(function(k){
+      (inp[k[0]] || []).forEach(function(x, i){
+        var e = calc.validateDefInput(x);
+        if(e.length){ out.errors.push((k[0] === 'leads' ? '선행' : '후행') + ' ' + (i + 1) + '번째: ' + e.join(', ')); return; }
+        var prev = x.id ? tmp[k[1]][x.id] : null;
+        if(x.id && !prev){ out.errors.push(x.id + ' 지표를 찾을 수 없습니다'); return; }
+        var input = Object.assign({}, x); delete input.id;
+        var def = calc[k[2]](memberId, input, tmp, nowIso, prev || undefined);
+        tmp[k[1]][def.id] = def;
+        out[k[0]].push({ def: def, openedRev: prev ? (prev.rev || 0) : null });
+      });
+    });
+    return out;
+  }
+
+  /* ---- 조작(업무트래커에 저장 후 다시 읽기) ---- */
+  function busy(on){ st.busy = on; var v = el(); if(v) v.classList.toggle('is-busy', on); }
+  function afterWrite(p){
+    busy(true);
+    return p.then(function(){ return load(); }).catch(function(e){ alert('저장하지 못했습니다: ' + (e && e.message || e)); }).then(function(){ busy(false); });
+  }
+  function modalRoot(){ var r = document.getElementById('b2bKpiModal'); if(!r){ r = document.createElement('div'); r.id = 'b2bKpiModal'; document.body.appendChild(r); r.addEventListener('click', onModalClick); } return r; }
+  function closeModal(){ var r = document.getElementById('b2bKpiModal'); if(r) r.innerHTML = ''; }
+  function field(label, html){ return '<label class="b2bkpi-f"><span>' + label + '</span>' + html + '</label>'; }
+  function inp(name, v, extra){ return '<input class="b2bkpi-in" data-f="' + name + '" value="' + esc(v == null ? '' : v) + '"' + (extra || '') + '>'; }
+  function leadRow(d, isLag){
+    var kpis = (d && d.cardKpis) || (d && !isLag && d.id && st.shape.mainKpis ? Object.keys(st.shape.mainKpis).filter(function(k){ return (st.shape.mainKpis[k].links || []).some(function(l){ return l.li === d.id; }); }) : []);
+    var o = '<fieldset class="b2bkpi-row" data-row="' + (isLag ? 'lag' : 'lead') + '" data-id="' + esc(d && d.id || '') + '"><legend>' + (isLag ? '후행지표' : '선행지표') + (d && d.id ? ' · ' + esc(d.id) : ' · 새로 추가') + '</legend>' +
+      field('지표 이름', inp('name', d && d.name)) +
+      '<div class="b2bkpi-f2">' + field('분자 이름', inp('numLabel', d && d.numLabel)) + field('분모 이름', inp('denLabel', d && d.denLabel)) + field('목표(%)', inp('target', d && d.target, ' inputmode="decimal"')) + '</div>';
+    if(!isLag){
+      o += '<div class="b2bkpi-f2">' + field('주기', inp('cycle', d && d.cycle)) + field('지표 비중(비우면 같은 비율)', inp('weight', d && d.cardWeight, ' inputmode="decimal"')) + '</div>' +
+        field('목적(선택)', inp('purpose', d && d.purpose)) +
+        field('세부업무(한 줄에 하나)', '<textarea class="b2bkpi-in" data-f="tasksText" rows="4">' + esc(((d && d.tasks) || []).join('\n')) + '</textarea>') +
+        '<div class="b2bkpi-f"><span>연결 KPI(이 탭 표시용)</span><div class="b2bkpi-kpichk">' + ['MK1', 'MK2', 'MK3'].map(function(k, i){
+          return '<label><input type="checkbox" data-kpi="' + k + '"' + (kpis.indexOf(k) >= 0 ? ' checked' : '') + '> ' + ['①', '②', '③'][i] + '</label>';
+        }).join('') + '</div></div>';
+    }
+    if(!(d && d.id)) o += '<button type="button" class="b2bkpi-linkbtn" data-m="rmrow">이 줄 빼기</button>';
+    return o + '</fieldset>';
+  }
+  function openEditor(memberId){
+    var s = st.shape || {}, C = window.B2BKpiCalc, cfgIds = C.shareRows(s).rows.map(function(r){ return r.memberId; });
+    var others = Object.keys(s.members || {}).filter(function(id){ return cfgIds.indexOf(id) < 0; });
+    var leads = memberId ? C.leadDefsOf(s, memberId) : [], lags = memberId ? Object.keys(s.lagDefs || {}).map(function(k){ return s.lagDefs[k]; }).filter(function(d){ return d && d.member === memberId; }) : [];
+    var who = memberId ? '<div class="b2bkpi-f"><span>담당자</span><b>' + esc(C.memberName(s, memberId)) + '</b><input type="hidden" data-f="memberId" value="' + esc(memberId) + '"></div>'
+      : field('기존 팀원에서 고르기', '<select class="b2bkpi-in" data-f="memberId"><option value="">새 사람</option>' + others.map(function(id){ return '<option value="' + esc(id) + '">' + esc(C.memberName(s, id)) + '</option>'; }).join('') + '</select>') +
+        '<div class="b2bkpi-f2">' + field('새 사람 이름', inp('newName', '')) + field('역할(선택)', inp('newRole', '')) + '</div>';
+    modalRoot().innerHTML = '<div class="pi-overlay b2bkpi-ov"><div class="pi-panel b2bkpi-modal" role="dialog" aria-modal="true" aria-label="개인 트래커">' +
+      '<h3>' + (memberId ? '지표 등록·수정' : '개인 트래커 추가') + '</h3><p class="b2bkpi-muted">업무트래커와 같은 기록에 저장됩니다. 삭제는 하지 않습니다.</p>' + who +
+      '<div data-list="lead">' + leads.map(function(d){ return leadRow(d, false); }).join('') + (leads.length ? '' : leadRow(null, false)) + '</div>' +
+      '<button type="button" class="b2bkpi-btn" data-m="addLead">+ 선행지표 줄</button>' +
+      '<div data-list="lag">' + lags.map(function(d){ return leadRow(d, true); }).join('') + '</div>' +
+      '<button type="button" class="b2bkpi-btn" data-m="addLag">+ 후행지표 줄</button>' +
+      '<div class="b2bkpi-err" id="b2bKpiErr"></div><div class="b2bkpi-mfoot"><button type="button" class="b2bkpi-btn" data-m="cancel">취소</button><button type="button" class="b2bkpi-btn is-primary" data-m="save">저장</button></div></div></div>';
+  }
+  function readForm(root){
+    var g = function(sc, f){ var x = sc.querySelector('[data-f="' + f + '"]'); return x ? x.value : ''; };
+    var rows = function(kind){ return Array.prototype.slice.call(root.querySelectorAll('fieldset[data-row="' + kind + '"]')).map(function(fs){
+      return { id: fs.getAttribute('data-id') || '', name: g(fs, 'name'), cycle: g(fs, 'cycle'), purpose: g(fs, 'purpose'), tasksText: g(fs, 'tasksText'),
+        numLabel: g(fs, 'numLabel'), denLabel: g(fs, 'denLabel'), target: g(fs, 'target'), weight: g(fs, 'weight'),
+        kpis: Array.prototype.slice.call(fs.querySelectorAll('input[data-kpi]:checked')).map(function(c){ return c.getAttribute('data-kpi'); }) };
+    }); };
+    return { memberId: g(root, 'memberId'), newName: g(root, 'newName'), newRole: g(root, 'newRole'), leads: rows('lead'), lags: rows('lag') };
+  }
+  function saveEditor(btn){
+    var root = modalRoot(), errEl = document.getElementById('b2bKpiErr');
+    var plan = planSave(st.shape, formToInputs(readForm(root)), new Date().toISOString());
+    if(plan.errors.length){ errEl.textContent = plan.errors.join(' / '); return; }
+    if(btn.disabled) return;
+    btn.disabled = true; btn.textContent = '저장 중…';
+    var S = window.B2BKpiStore, items = [];
+    if(plan.member) items.push(['members', plan.member]);
+    plan.leads.forEach(function(x){ items.push(['leadDefs', x]); }); plan.lags.forEach(function(x){ items.push(['lagDefs', x]); });
+    var chain = Promise.resolve();
+    items.forEach(function(it){ chain = chain.then(function(){ return S.saveDef(it[0], it[1].def, it[1].openedRev).then(function(r){ if(!r.ok) throw new Error(r.reason); }); }); });
+    if(plan.member){
+      chain = chain.then(function(){
+        var cfg = JSON.parse(JSON.stringify((st.shape && st.shape.kpiTabConfig) || {}));
+        cfg.members = (cfg.members && cfg.members.length ? cfg.members : window.B2BKpiCalc.DEFAULT_MEMBERS).concat([plan.member.def.id]);
+        return S.saveConfig(cfg, ACTOR);
+      });
+    } else if(!plan.member){
+      var mid = readForm(root).memberId, ids = window.B2BKpiCalc.shareRows(st.shape).rows.map(function(r){ return r.memberId; });
+      if(mid && ids.indexOf(mid) < 0) chain = chain.then(function(){
+        var cfg = JSON.parse(JSON.stringify((st.shape && st.shape.kpiTabConfig) || {})); cfg.members = ids.concat([mid]); return S.saveConfig(cfg, ACTOR);
+      });
+    }
+    chain.then(function(){ closeModal(); return load(); }).catch(function(e){
+      var why = String(e && e.message || e);
+      errEl.textContent = why === 'conflict' || why === 'exists' ? '다른 곳에서 먼저 수정되었습니다. 새로 읽은 뒤 다시 저장해 주세요' : '저장하지 못했습니다: ' + why;
+      btn.textContent = '저장'; btn.disabled = false; load();
+    });
+  }
+  function openShares(){
+    var C = window.B2BKpiCalc, sh = C.shareRows(st.shape || {});
+    modalRoot().innerHTML = '<div class="pi-overlay b2bkpi-ov"><div class="pi-panel b2bkpi-modal" role="dialog" aria-modal="true" aria-label="개인 몫 나누기"><h3>개인 몫 나누기</h3>' +
+      '<p class="b2bkpi-muted">개인 업무 20% 를 나눕니다(합계 20). 관리자가 정한 비중으로 저장됩니다. 저장 전까지는 같은 비율의 임시 비중입니다.</p>' +
+      sh.rows.map(function(r){ return field(esc(r.name) + (r.hasDefs ? '' : ' (지표 미등록)'), '<input class="b2bkpi-in" data-share="' + esc(r.memberId) + '" inputmode="decimal" value="' + (Math.round(r.share * 100) / 100) + '">'); }).join('') +
+      '<div class="b2bkpi-err" id="b2bKpiErr"></div><div class="b2bkpi-mfoot"><button type="button" class="b2bkpi-btn" data-m="cancel">취소</button><button type="button" class="b2bkpi-btn is-primary" data-m="saveShares">저장</button></div></div></div>';
+  }
+  function saveShares(btn){
+    var C = window.B2BKpiCalc, ids = C.shareRows(st.shape).rows.map(function(r){ return r.memberId; }), map = {};
+    Array.prototype.slice.call(document.querySelectorAll('[data-share]')).forEach(function(x){ map[x.getAttribute('data-share')] = numOrNull(x.value); });
+    var errs = C.validateShares(map, ids);
+    if(errs.length){ document.getElementById('b2bKpiErr').textContent = errs.join(' / '); return; }
+    btn.disabled = true;
+    var cfg = JSON.parse(JSON.stringify((st.shape && st.shape.kpiTabConfig) || {})); cfg.members = ids; cfg.shares = map;
+    window.B2BKpiStore.saveConfig(cfg, ACTOR).then(function(){ closeModal(); return load(); }).catch(function(e){ btn.disabled = false; document.getElementById('b2bKpiErr').textContent = '저장하지 못했습니다: ' + (e && e.message || e); });
+  }
+  function onModalClick(e){
+    var t = e.target.closest && e.target.closest('[data-m]');
+    if(!t){ if(e.target.classList && e.target.classList.contains('b2bkpi-ov')) closeModal(); return; }
+    var m = t.getAttribute('data-m');
+    if(m === 'cancel') closeModal();
+    else if(m === 'save') saveEditor(t);
+    else if(m === 'saveShares') saveShares(t);
+    else if(m === 'addLead' || m === 'addLag'){ var list = modalRoot().querySelector('[data-list="' + (m === 'addLead' ? 'lead' : 'lag') + '"]'); list.insertAdjacentHTML('beforeend', leadRow(null, m === 'addLag')); }
+    else if(m === 'rmrow'){ var fs = t.closest('fieldset'); if(fs) fs.remove(); }
+  }
+  function fillTasks(){
+    var v = el(); if(!v || !st.shape) return;
+    Array.prototype.slice.call(v.querySelectorAll('[data-def-tasks]')).forEach(function(box){
+      var id = box.getAttribute('data-def-tasks'), d = (st.shape.leadDefs || {})[id] || {}, rec = (st.shape.perfMonthly || {})[id + '_' + st.ui.month];
+      box.innerHTML = (d.tasks || []).length ? (d.tasks || []).map(function(name, i){
+        var p = window.B2BKpiCalc.taskPct(rec, i), k = p >= 100 ? 'done' : p > 0 ? 'doing' : 'todo';
+        return '<div class="b2bkpi-task is-' + k + '"><button type="button" class="b2bkpi-st" data-kpi-act="task" data-def="' + esc(id) + '" data-i="' + i + '" data-p="' + p + '" aria-label="' + esc(name) + ' 상태 바꾸기">' + { todo: '○', doing: '▶', done: '✓' }[k] + '</button><span>' + (i + 1) + '. ' + esc(name) + '</span><span class="b2bkpi-muted">' + p + '%</span></div>';
+      }).join('') : '<span class="b2bkpi-muted">세부업무가 없습니다</span>';
+    });
+  }
+  var handlers = {
+    toggleDef: function(t){ var id = t.getAttribute('data-def'); st.ui.openDef = st.ui.openDef === id ? null : id; render(); },
+    task: function(t){ if(st.busy) return; afterWrite(window.B2BKpiStore.setTaskProg(st.shape, t.getAttribute('data-def'), st.ui.month, +t.getAttribute('data-i'), window.B2BKpiCalc.nextTaskProg(+t.getAttribute('data-p')), ACTOR)); },
+    team: function(t){ if(st.busy) return; afterWrite(window.B2BKpiStore.toggleTeamCheck(st.shape, t.getAttribute('data-k'), st.ui.month, +t.getAttribute('data-i'), ACTOR)); },
+    add: function(){ openEditor(null); },
+    edit: function(t){ openEditor(t.getAttribute('data-member')); },
+    shares: function(){ openShares(); }
+  };
 
   var ICON = '<svg class="top-tab-ico" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19h16"/><path d="M7 16v-5"/><path d="M12 16V7"/><path d="M17 16v-8"/></svg>';
   function install(){
@@ -203,7 +371,7 @@
     window.addEventListener('resize', function(){ var v = el(); if(v) place(v); });
   }
 
-  var api = { renderHtml: renderHtml, open: open, close: close, render: render };
+  var api = { renderHtml: renderHtml, open: open, close: close, render: render, formToInputs: formToInputs, planSave: planSave };
   if(typeof module !== 'undefined' && module.exports) module.exports = api;
   if(typeof window !== 'undefined' && typeof document !== 'undefined'){
     window.B2BKpiTab = api;

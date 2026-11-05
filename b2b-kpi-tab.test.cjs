@@ -57,3 +57,41 @@ test('render_escapes', () => {
   const h = R(s);
   assert.ok(!h.includes('<b>x</b>')); assert.ok(h.includes('&lt;b&gt;x&lt;/b&gt;'));
 });
+
+// ---- Task 7: 개인 트래커 추가·수정 저장 계획(순수 함수) ----
+const NOW = '2026-11-05T00:00:00.000Z';
+const P = (s, inp) => T.planSave(s, inp, NOW, C);
+test('formToInputs_tasks_lines', () => {
+  const x = T.formToInputs({ memberId: '', newName: ' 새사람 ', newRole: '', leads: [{ name: 'a', tasksText: 'a\n\n b \n', target: '80', weight: '', kpis: ['MK1'] }, { name: '', tasksText: '', target: '', weight: '' }], lags: [] });
+  assert.equal(x.member.name, '새사람'); assert.ok(!x.member.id);
+  assert.equal(x.leads.length, 1, '완전히 빈 줄은 건너뜀');
+  assert.deepEqual(Array.from(x.leads[0].tasks), ['a', 'b']); assert.equal(x.leads[0].target, 80); assert.equal(x.leads[0].cardWeight, null);
+  assert.deepEqual(Array.from(x.leads[0].cardKpis), ['MK1']);
+});
+test('planSave_new_member_two_leads', () => {
+  const r = P(F.base(), { member: { name: '새사람', role: '' }, leads: [{ name: 'a', tasks: [] }, { name: 'b', tasks: [] }], lags: [{ name: 'g' }] });
+  assert.equal(r.errors.length, 0);
+  assert.equal(r.member.def.id, 'm3'); assert.equal(r.member.openedRev, null);
+  assert.deepEqual(Array.from(r.leads.map(x => x.def.id)), ['LI-m3-1', 'LI-m3-2']);
+  r.leads.forEach(x => { assert.equal(x.openedRev, null); assert.equal(x.def.owner, '새사람'); assert.equal(x.def.member, 'm3'); });
+  assert.equal(r.lags[0].def.id, 'LG-m3-1');
+});
+test('planSave_double_submit_same_ids', () => {
+  const s = F.base(), inp = { member: { id: 'shs' }, leads: [{ name: 'a', tasks: [] }], lags: [] };
+  assert.equal(P(s, inp).leads[0].def.id, P(s, inp).leads[0].def.id);
+  assert.equal(P(s, inp).member, null);
+});
+test('planSave_edit_keeps_id', () => {
+  const s = F.base(); s.leadDefs.LI01.rev = 4;
+  const r = P(s, { member: { id: 'shs' }, leads: [{ id: 'LI01', name: '고침', tasks: ['x'], target: 90 }], lags: [] });
+  assert.equal(r.leads[0].def.id, 'LI01'); assert.equal(r.leads[0].openedRev, 4); assert.equal(r.leads[0].def.rev, 5);
+});
+test('planSave_errors', () => {
+  const r = P(F.base(), { member: { id: 'shs' }, leads: [{ name: '', target: 50 }], lags: [] });
+  assert.ok(r.errors.some(e => e.includes('지표 이름을 입력해 주세요')));
+  assert.ok(P(F.base(), { member: { name: '' }, leads: [], lags: [] }).errors.some(e => e.includes('이름')));
+});
+test('planSave_existing_member_without_defs', () => {
+  const r = P(F.base(), { member: { id: 'm1' }, leads: [{ name: 'c', tasks: [] }], lags: [] });
+  assert.equal(r.member, null); assert.equal(r.leads[0].def.id, 'LI-m1-1'); assert.equal(r.leads[0].def.owner, '시험C');
+});
