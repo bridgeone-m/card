@@ -78,3 +78,75 @@ test('measuredChanged', () => {
   assert.equal(C.measuredChanged(['A'], ['A', 'B']), true);
   assert.equal(C.measuredChanged(['B', 'A'], ['A', 'B']), false);
 });
+
+// ---- Task 2: 팀 공동·개인 몫·종합점수(환산 없음)·뒤처진 부분 ----
+function model(s){ return C.buildModel(s, M); }
+test('composite_spec_example', () => {
+  const m = model(F.base());
+  assert.ok(Math.abs(m.composite.points - 30.0) < 0.05, 'points ' + m.composite.points);
+  assert.equal(m.composite.reflected, 70); assert.equal(m.composite.waiting, 20); assert.equal(m.composite.unassigned, 10);
+  const shs = m.shares.rows.find(r => r.memberId === 'shs');
+  assert.equal(shs.share, 10); assert.equal(shs.temporary, true);
+  assert.equal(m.team.state, 'wait');
+});
+test('composite_spec_example2', () => {
+  const s = F.base();
+  s.kpiTeamChecks = { 'MK1_2026-11': { checks: { c1: true, c2: true, c3: true, c4: true, c5: true } }, 'MK2_2026-11': { checks: { c1: true, c2: true, c3: true, c4: true } } };
+  const persons = { shs: { state: 'ok', value: 70 }, m2: { state: 'nodefs', value: null } };
+  const team = C.teamCommon(s, M);
+  assert.equal(team.checked, 9); assert.equal(team.total, 15); assert.equal(team.value, 60);
+  const c = C.composite(C.kpiActual(s, M), team, persons, C.shareRows(s));
+  assert.ok(Math.abs(c.points - 40.7) < 0.05, 'points ' + c.points);
+  assert.equal(c.reflected, 90); assert.equal(c.unassigned, 10); assert.equal(c.waiting, 0);
+});
+test('composite_empty_month', () => {
+  const s = F.base(); s.perfAuto = {}; s.perfMonthly = {};
+  const c = model(s).composite;
+  assert.equal(c.points, 0); assert.equal(c.reflected, 0); assert.equal(c.waiting, 90); assert.equal(c.unassigned, 10);
+  c.parts.forEach(p => { assert.ok(p.state === 'wait' || p.state === 'unassigned', p.key); assert.equal(p.points, null); });
+});
+test('shares_no_redistribution', () => {
+  const sh = C.shareRows(F.base());
+  assert.equal(sh.rows.find(r => r.memberId === 'shs').share, 10);
+  assert.equal(sh.unassigned, 10); assert.equal(sh.assigned, 10);
+  assert.equal(sh.rows.find(r => r.memberId === 'm2').hasDefs, false);
+});
+test('shares_three_members_still_20', () => {
+  const s = F.base(); s.kpiTabConfig = { members: ['shs', 'm2', 'm1'] };
+  s.leadDefs['LI-m2-1'] = { id: 'LI-m2-1', member: 'm2', name: 'x' }; s.leadDefs['LI-m1-1'] = { id: 'LI-m1-1', member: 'm1', name: 'y' };
+  const sh = C.shareRows(s);
+  assert.ok(Math.abs(sh.rows.reduce((t, r) => t + r.share, 0) - 20) < 1e-9);
+  assert.ok(Math.abs(sh.rows[0].share - 6.667) < 0.01);
+});
+test('shares_saved_not_temporary', () => {
+  const s = F.base(); s.kpiTabConfig = { members: ['shs', 'm2'], shares: { shs: 12, m2: 8 } };
+  const sh = C.shareRows(s);
+  assert.equal(sh.rows[0].share, 12); assert.equal(sh.rows[0].temporary, false); assert.equal(sh.unassigned, 8);
+});
+test('validateShares', () => {
+  assert.deepEqual(Array.from(C.validateShares({ shs: 15, m2: 10 }, ['shs', 'm2'])), ['합계 25 — 20이 되어야 합니다']);
+  assert.equal(C.validateShares({ shs: 10, m2: 10 }, ['shs', 'm2']).length, 0);
+  assert.equal(C.validateShares({ shs: -1, m2: 21 }, ['shs', 'm2']).length, 2);
+});
+test('actual_not_changed_by_work', () => {
+  const s = F.base(), before = C.kpiActual(s, M).value;
+  s.kpiTeamChecks = { 'MK1_2026-11': { checks: { c1: true } } };
+  s.perfMonthly['LI02_2026-11'] = { num: 1, den: 1, prog: { t1: 100 } };
+  const m = model(s);
+  assert.equal(m.actual.value, before);
+  assert.equal(m.composite.parts.find(p => p.key === 'actual').points, before * 0.6);
+});
+test('buildModel_compare_note', () => {
+  const s = F.base(); s.perfMonthly['LI02_2026-11'] = { num: 1, den: 2 };
+  const m = model(s);
+  assert.equal(m.prevMonth, '2026-10');
+  assert.equal(m.compareNotes.shs, true);
+  assert.equal(C.buildModel(F.base(), M).compareNotes.shs, false);
+});
+test('prevMonth_january', () => { assert.equal(C.prevMonth('2027-01'), '2026-12'); });
+test('laggards_order', () => {
+  const l = model(F.base()).laggards;
+  assert.ok(l.length <= 5);
+  assert.equal(l[0].kind, 'kpi'); assert.ok(l[0].label.includes('③'));
+  assert.ok(l.some(x => x.kind === 'unmeasured' && x.detail.includes('8')));
+});
