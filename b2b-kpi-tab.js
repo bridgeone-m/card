@@ -64,9 +64,11 @@
   function kpiCard(r){
     var p = r.ach == null ? pill('wait', '실적 대기') : r.ach >= 100 ? pill('ok', '순조') : pill('warn', '뒤처짐');
     return '<div class="b2bkpi-card b2bkpi-kpi is-' + esc(String(r.label || '').toLowerCase()) + '"><div class="b2bkpi-kpi-tag">' + pill('kpi', r.label) + (r.auto ? pill('auto', '자동') : '') + '</div><div class="b2bkpi-kpi-name">' + esc(r.name) + '</div>' +
-      '<div class="b2bkpi-kpi-val"><b>' + (r.rate == null ? '—' : f1(r.rate) + '%') + '</b>' + (r.num != null && r.den != null ? '<span class="b2bkpi-muted"> ' + r.num + ' / ' + r.den + '</span>' : '') + '</div>' +
+      '<div class="b2bkpi-kpi-val"><b>' + (r.rate == null ? '—' : f1(r.rate) + '%') + '</b></div>' +
+      (r.num != null && r.den != null ? '<div class="b2bkpi-muted">' + (r.source === 'official' ? esc(r.num.toLocaleString('ko-KR') + '/' + r.den.toLocaleString('ko-KR') + ' ' + (r.unit || '') + ' · 확인분') : r.num + ' / ' + r.den) + '</div>' : '') +
       '<div class="b2bkpi-goal">' + esc(goalText(r)) + '</div>' + bar(r) + '<div class="b2bkpi-kpi-foot"><span class="b2bkpi-muted">목표 대비 달성 ' + pct(r.ach) + '</span>' + p + '</div>' +
-      '<div class="b2bkpi-kpi-desc">' + esc(r.desc || '') + '</div></div>';
+      '<div class="b2bkpi-kpi-desc">' + esc(r.desc || '') + '</div>' +
+      (r.source === 'official' && r.autoRate != null ? '<div class="b2bkpi-muted b2bkpi-autoref">자동 집계 참고 ' + f1(r.autoRate) + '% (' + r.autoNum + '/' + r.autoDen + ', 정의·기간 다름)</div>' : '') + '</div>';
   }
   function personCard(model, row, ui){
     var p = model.persons[row.memberId] || { state: 'nodefs', rows: [], total: 0, measured: 0 }, lags = (model.lags || {})[row.memberId] || [];
@@ -106,7 +108,8 @@
         '<div class="b2bkpi-muted">KPI ' + a.total + '개 중 ' + a.measured + '개 측정 · 고객 요청 기록 기준</div></div>' +
       '<div class="b2bkpi-card"><div class="b2bkpi-muted">업무 관리점수 (40%)</div><div class="b2bkpi-num">' + (teamP.state === 'ok' || persOk.length ? f1((teamP.points || 0) + persPts) + '점' : '산출 대기') + '</div>' +
         '<div class="b2bkpi-muted">팀 공동 ' + (teamP.state === 'ok' ? f1(teamP.points) + '점 / 20' : '산출 대기') + ' · 개인 ' + (persOk.length ? f1(persPts) + '점 / 20' : '산출 대기') + '</div></div>' +
-      '</div><div class="b2bkpi-kpis">' + a.rows.map(kpiCard).join('') + '</div>');
+      '</div><div class="b2bkpi-kpis">' + a.rows.map(kpiCard).join('') + '</div>' +
+      (a.cutoff ? '<p class="b2bkpi-muted b2bkpi-cutoff">현재값은 ' + esc(a.cutoff.replace(/-/g, '.')) + ' 마감 확인분 기준선입니다. 전체 공식 최신 실적이 아니며, 분모·연결 기준이 달라 다른 숫자와 직접 증감 비교하지 않습니다. 막대는 현재 관측 비율, 세로선은 목표입니다.</p>' : ''));
     // ② 뒤처진 부분
     out += sec('②', '뒤처진 부분', '', model.laggards.length ? '<ul class="b2bkpi-lag-list">' + model.laggards.map(function(x){
       return '<li>' + pill(x.kind === 'kpi' ? 'warn' : x.kind === 'lead' ? 'warn' : 'wait', x.kind === 'kpi' ? 'KPI' : x.kind === 'lead' ? '업무' : '미측정') + ' <b>' + esc(x.label) + '</b> <span class="b2bkpi-muted">' + esc(x.detail) + '</span></li>';

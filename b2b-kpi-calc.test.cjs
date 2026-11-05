@@ -258,3 +258,23 @@ test('teamCommon_all_unchecked_is_wait', () => {
   const t = C.teamCommon(s, M);
   assert.equal(t.state, 'wait'); assert.equal(t.value, null);
 });
+
+// ---- 팀 3대 KPI 공식 확인분 값(kpiOfficial) 우선 ----
+function official(s){
+  s.kpiOfficial = { cutoff: '2026-10-20', note: '확인분', items: {
+    MK1: { num: 8, den: 25, value: 32, unit: '곳' }, MK3: { num: 315, den: 1025, value: 30.73, unit: '기회' }, MK2: { num: 44, den: 79, value: 55.7, unit: '곳' } } };
+  return s;
+}
+test('kpiActual_uses_official_values', () => {
+  const a = C.kpiActual(official(F.base()), M);
+  const [k1, k2, k3] = a.rows;
+  assert.equal(k1.rate, 32); assert.equal(k1.num, 8); assert.equal(k1.den, 25); assert.equal(k1.unit, '곳'); assert.equal(k1.source, 'official');
+  assert.equal(k2.rate, 30.73); assert.equal(k3.rate, 55.7); assert.equal(a.cutoff, '2026-10-20');
+  assert.equal(r1(k1.ach), 45.7); assert.equal(r1(k2.ach), 61.5); assert.equal(r1(k3.ach), 58.6);
+  assert.equal(r1(k1.autoRate), 17.6); // 자동 집계값은 참고로 남긴다
+});
+test('kpiActual_official_partial_falls_back', () => {
+  const s = official(F.base()); delete s.kpiOfficial.items.MK2;
+  const a = C.kpiActual(s, M);
+  assert.equal(a.rows[2].source, 'auto'); assert.equal(r1(a.rows[2].rate), 62.5);
+});

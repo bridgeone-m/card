@@ -176,3 +176,8 @@ test('render_cumulative', () => {
   const h = R(s);
   assert.ok(h.includes('카드 구축 이후 누적 16/20'), h.match(/카드 구축 이후[^<]*/));
 });
+test('render_official_kpi', () => {
+  const s = F.base(); s.kpiOfficial = { cutoff: '2026-10-20', note: '확인분', items: { MK1: { num: 8, den: 25, value: 32, unit: '곳' }, MK3: { num: 315, den: 1025, value: 30.73, unit: '기회' }, MK2: { num: 44, den: 79, value: 55.7, unit: '곳' } } };
+  const h = R(s);
+  ['32.0%', '8/25 곳 · 확인분', '30.7%', '315/1,025 기회 · 확인분', '55.7%', '44/79 곳 · 확인분', '2026.10.20 마감 확인분', '자동 집계 참고 17.6%'].forEach(t => assert.ok(h.includes(t), '없음: ' + t));
+});

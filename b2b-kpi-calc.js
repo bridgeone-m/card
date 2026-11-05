@@ -37,19 +37,23 @@
     return ((shape && shape.perfAuto) || {})[k] || ((shape && shape.perfMonthly) || {})[k] || null;
   }
 
-  /* 실제 KPI 실적 — KPI별 달성 = min(100, 실적률 ÷ 공식 목표), 값 = 측정된 KPI 평균 */
+  /* 실제 KPI 실적 — 팀 공식 확인분 값(kpiOfficial, 팀원 안내서와 같은 숫자)이 있으면 그 값을, 없으면 업무트래커 자동값을 쓴다.
+     KPI별 달성 = min(100, 실적률 ÷ 목표), 값 = 측정된 KPI 평균. 자동값은 정의가 달라 참고(autoRate)로만 남긴다. */
   function kpiActual(shape, month){
-    var mk = (shape && shape.mainKpis) || {};
+    var mk = (shape && shape.mainKpis) || {}, off = (shape && shape.kpiOfficial) || null, offItems = (off && off.items) || {};
     var rows = KPIS.map(function(k){
-      var id = k.id, r = rate(view(shape, id, month));
+      var id = k.id, auto = rate(view(shape, id, month)), o = offItems[id], useOff = !!(o && isNum(o.value));
+      var r = useOff ? { state: 'ok', value: clamp(o.value), num: isNum(o.num) ? o.num : null, den: isNum(o.den) ? o.den : null } : auto;
       var row = { id: id, label: k.label, no: k.label, name: k.name, desc: k.desc, srcName: (mk[id] || {}).name || id, state: r.state, rate: r.state === 'ok' ? r.value : null,
         num: isNum(r.num) ? r.num : null, den: isNum(r.den) ? r.den : null, target: k.target, floor: k.floor || null,
-        auto: !!(((shape && shape.perfAuto) || {})[id + '_' + month]) };
+        auto: !useOff && !!(((shape && shape.perfAuto) || {})[id + '_' + month]),
+        source: useOff ? 'official' : 'auto', unit: useOff ? (o.unit || '') : '', autoRate: auto.state === 'ok' ? auto.value : null, autoNum: isNum(auto.num) ? auto.num : null, autoDen: isNum(auto.den) ? auto.den : null };
       row.ach = r.state === 'ok' ? Math.min(100, r.value / k.target * 100) : null;
       return row;
     });
     var ok = rows.filter(function(r){ return r.ach != null; });
-    return { rows: rows, value: ok.length ? ok.reduce(function(s, r){ return s + r.ach; }, 0) / ok.length : null, measured: ok.length, total: KPI_IDS.length };
+    return { rows: rows, value: ok.length ? ok.reduce(function(s, r){ return s + r.ach; }, 0) / ok.length : null, measured: ok.length, total: KPI_IDS.length,
+      cutoff: off && off.cutoff || null, officialNote: off && off.note || null };
   }
 
   function leadDefsOf(shape, memberId){
