@@ -137,7 +137,7 @@
       if(items.length) ratios.push(kc / items.length * 100);
       return { id: id, no: k.label, name: k.name, items: items };
     });
-    var ok = any && ratios.length;
+    var ok = any && checked > 0 && ratios.length; // 체크를 모두 해제한 달은 미입력과 같다 — 0%로 반영하지 않고 산출 대기
     return { state: ok ? 'ok' : 'wait', value: ok ? ratios.reduce(function(s, v){ return s + v; }, 0) / ratios.length : null, checked: checked, total: total, byKpi: byKpi };
   }
 

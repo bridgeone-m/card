@@ -253,3 +253,8 @@ test('cumulative_in_person_rows', () => {
   const row = C.buildModel(s, M).persons.shs.rows.find(r => r.id === 'LI01');
   assert.equal(row.cum.num, 16); assert.equal(row.cum.den, 20); // 9월 4/6 + 10월 자동 7/8 + 11월 자동 5/6
 });
+test('teamCommon_all_unchecked_is_wait', () => {
+  const s = F.base(); s.kpiTeamChecks = { 'MK2_2026-11': { checks: { c1: false } } };
+  const t = C.teamCommon(s, M);
+  assert.equal(t.state, 'wait'); assert.equal(t.value, null);
+});
