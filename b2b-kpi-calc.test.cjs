@@ -150,3 +150,45 @@ test('laggards_order', () => {
   assert.equal(l[0].kind, 'kpi'); assert.ok(l[0].label.includes('③'));
   assert.ok(l.some(x => x.kind === 'unmeasured' && x.detail.includes('8')));
 });
+
+// ---- Task 3: 개인 트래커·지표 정의 ----
+const NOW = '2026-11-05T00:00:00.000Z';
+test('ids_do_not_collide', () => {
+  const s = F.base();
+  assert.equal(C.newMemberId(s), 'm3');
+  assert.equal(C.nextDefId(s, 'lead', 'm3'), 'LI-m3-1');
+  s.leadDefs['LI-m3-1'] = { id: 'LI-m3-1', member: 'm3' };
+  assert.equal(C.nextDefId(s, 'lead', 'm3'), 'LI-m3-2');
+  assert.equal(C.nextDefId(s, 'lag', 'm3'), 'LG-m3-1');
+});
+test('buildMember_shape', () => {
+  const m = C.buildMember({ name: ' 새사람 ', role: '매니저' }, F.base(), NOW);
+  assert.equal(m.id, 'm3'); assert.equal(m.name, '새사람'); assert.equal(m.teamId, 'team_b2b');
+  assert.equal(m.by, 'card-kpi-tab'); assert.equal(m.updatedAt, NOW); assert.match(m.color, /^#[0-9A-F]{6}$/i);
+});
+test('buildLeadDef_shape', () => {
+  const s = F.base();
+  const d = C.buildLeadDef('shs', { name: '새 지표', cycle: '매주', purpose: '', tasks: ['a', 'b'], numLabel: '완료', denLabel: '대상', target: 80, cardKpis: ['MK1'], cardWeight: null }, s, NOW);
+  assert.equal(d.id, 'LI-shs-1'); assert.equal(d.member, 'shs'); assert.equal(d.owner, '시험A');
+  assert.equal(d.formula, '완료 ÷ 대상 × 100'); assert.equal(d.target, 80); assert.deepEqual(Array.from(d.cardKpis), ['MK1']);
+  assert.equal(d.src, '수동 관리'); assert.equal(d.by, 'card-kpi-tab'); assert.equal(d.rev, 0);
+  assert.ok(!('cardWeight' in d) || d.cardWeight === undefined);
+});
+test('buildLeadDef_edit_preserves_unknown', () => {
+  const s = F.base(), prev = Object.assign({}, s.leadDefs.LI01, { foo: 1, rev: 2 });
+  const d = C.buildLeadDef('shs', { name: '고친 이름', tasks: ['x'], target: null }, s, NOW, prev);
+  assert.equal(d.id, 'LI01'); assert.equal(d.no, prev.no); assert.equal(d.foo, 1); assert.equal(d.rev, 3); assert.equal(d.name, '고친 이름');
+  assert.ok(!('target' in d) || d.target === undefined);
+});
+test('buildLagDef_shape', () => {
+  const d = C.buildLagDef('shs', { name: '후행', numLabel: 'a', denLabel: 'b', target: 30 }, F.base(), NOW);
+  assert.equal(d.id, 'LG-shs-1'); assert.equal(d.member, 'shs'); assert.equal(d.target, 30); assert.equal(d.rev, 0);
+});
+test('validateDefInput', () => {
+  assert.deepEqual(Array.from(C.validateDefInput({ name: '', target: null })), ['지표 이름을 입력해 주세요']);
+  assert.deepEqual(Array.from(C.validateDefInput({ name: 'a', target: 120 })), ['목표값은 0~100 사이']);
+  assert.equal(C.validateDefInput({ name: 'a', target: null }).length, 0);
+});
+test('nextTaskProg', () => {
+  assert.equal(C.nextTaskProg(0), 50); assert.equal(C.nextTaskProg(50), 100); assert.equal(C.nextTaskProg(100), 0);
+});

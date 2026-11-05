@@ -188,7 +188,56 @@
       composite: composite(actual, team, persons, shares), laggards: laggards(actual, persons, shape), compareNotes: notes };
   }
 
-  var api = { TARGETS: TARGETS, WEIGHTS: WEIGHTS, KPI_IDS: KPI_IDS, DEFAULT_MEMBERS: DEFAULT_MEMBERS, rate: rate, view: view, kpiActual: kpiActual,
+  /* ---- 개인 트래커·지표 정의(업무트래커 leadDefs/lagDefs/members 와 같은 모양) ---- */
+  var MEMBER_COLORS = ['#1B4480', '#4A73B5', '#2E7D52', '#B4651E', '#5B4B8A', '#B83A2E'];
+  function newMemberId(shape){
+    var max = 0;
+    Object.keys((shape && shape.members) || {}).forEach(function(id){ var m = /^m(\d+)$/.exec(id); if(m) max = Math.max(max, +m[1]); });
+    return 'm' + (max + 1);
+  }
+  function buildMember(input, shape, nowIso){
+    return { id: newMemberId(shape), teamId: 'team_b2b', name: String(input.name || '').trim(), role: String(input.role || '').trim(),
+      color: MEMBER_COLORS[Object.keys((shape && shape.members) || {}).length % MEMBER_COLORS.length], by: 'card-kpi-tab', updatedAt: nowIso };
+  }
+  function nextDefId(shape, kind, memberId){
+    var pre = (kind === 'lag' ? 'LG-' : 'LI-') + memberId + '-', col = (shape && shape[kind === 'lag' ? 'lagDefs' : 'leadDefs']) || {}, max = 0;
+    Object.keys(col).forEach(function(id){ if(id.indexOf(pre) === 0){ var n = +id.slice(pre.length); if(n > max) max = n; } });
+    return pre + (max + 1);
+  }
+  function setOrDrop(o, k, v){ if(v === null || v === undefined || v === '') delete o[k]; else o[k] = v; }
+  function baseDef(kind, memberId, input, shape, nowIso, prev){
+    var d = prev ? JSON.parse(JSON.stringify(prev)) : {};
+    if(!prev){ d.id = nextDefId(shape, kind, memberId); d.no = String(d.id.split('-').pop()); }
+    d.member = memberId; d.owner = memberName(shape, memberId);
+    d.name = String(input.name || '').trim();
+    if('numLabel' in input) setOrDrop(d, 'numLabel', String(input.numLabel || '').trim());
+    if('denLabel' in input) setOrDrop(d, 'denLabel', String(input.denLabel || '').trim());
+    if(d.numLabel && d.denLabel) d.formula = d.numLabel + ' ÷ ' + d.denLabel + ' × 100';
+    setOrDrop(d, 'target', isNum(input.target) ? input.target : null);
+    d.by = 'card-kpi-tab'; d.updatedAt = nowIso; d.rev = prev ? (prev.rev || 0) + 1 : 0;
+    return d;
+  }
+  function buildLeadDef(memberId, input, shape, nowIso, prev){
+    var d = baseDef('lead', memberId, input, shape, nowIso, prev);
+    if('cycle' in input) setOrDrop(d, 'cycle', String(input.cycle || '').trim());
+    if('purpose' in input) setOrDrop(d, 'purpose', String(input.purpose || '').trim());
+    if('tasks' in input) d.tasks = (input.tasks || []).map(function(t){ return String(t).trim(); }).filter(Boolean);
+    if('cardKpis' in input) d.cardKpis = (input.cardKpis || []).filter(function(k){ return KPI_IDS.indexOf(k) >= 0; });
+    if('cardWeight' in input) setOrDrop(d, 'cardWeight', isNum(input.cardWeight) ? input.cardWeight : null);
+    if(!prev) d.src = '수동 관리';
+    return d;
+  }
+  function buildLagDef(memberId, input, shape, nowIso, prev){ return baseDef('lag', memberId, input, shape, nowIso, prev); }
+  function validateDefInput(input){
+    var e = [];
+    if(!String((input && input.name) || '').trim()) e.push('지표 이름을 입력해 주세요');
+    if(input && input.target != null && (!isNum(input.target) || input.target < 0 || input.target > 100)) e.push('목표값은 0~100 사이');
+    return e;
+  }
+  function nextTaskProg(p){ return p >= 100 ? 0 : p > 0 ? 100 : 50; }
+
+  var api = { newMemberId: newMemberId, buildMember: buildMember, nextDefId: nextDefId, buildLeadDef: buildLeadDef, buildLagDef: buildLagDef,
+    validateDefInput: validateDefInput, nextTaskProg: nextTaskProg, TARGETS: TARGETS, WEIGHTS: WEIGHTS, KPI_IDS: KPI_IDS, DEFAULT_MEMBERS: DEFAULT_MEMBERS, rate: rate, view: view, kpiActual: kpiActual,
     leadDefsOf: leadDefsOf, taskPct: taskPct, personScore: personScore, measuredChanged: measuredChanged, prevMonth: prevMonth,
     memberName: memberName, teamCommon: teamCommon, shareRows: shareRows, validateShares: validateShares, composite: composite,
     laggards: laggards, buildModel: buildModel };
