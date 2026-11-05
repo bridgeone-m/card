@@ -82,8 +82,8 @@
   .b2bkpi-check{ min-height:44px; } .b2bkpi-linkbtn{ min-height:44px; }
 }
 .b2bkpi-view.is-busy{ cursor:progress; }
-#b2bKpiModal .b2bkpi-ov{ z-index:1000; }
-.b2bkpi-modal{ box-sizing:border-box; width:min(720px, calc(100vw - 24px)); max-height:calc(100vh - 32px); overflow:auto; padding:18px 20px; }
+#b2bKpiModal .b2bkpi-ov{ z-index:1000; padding:12px; }
+.b2bkpi-modal{ box-sizing:border-box; display:block !important; width:100%; max-width:720px !important; max-height:calc(100vh - 24px) !important; overflow:auto !important; padding:18px 20px; }
 .b2bkpi-modal h3{ margin:0 0 4px; font-size:18px; color:#0B2037; }
 .b2bkpi-f{ display:flex; flex-direction:column; gap:4px; margin:8px 0; min-width:0; font-size:13px; color:#55657C; }
 .b2bkpi-f b{ font-size:15px; color:#0B2037; }
