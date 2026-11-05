@@ -12,7 +12,7 @@ test('index_wiring', () => {
   const ce = html.indexOf('<script src="contract-esign.js"></script>');
   const a = html.indexOf('<script src="b2b-kpi-calc.js"></script>'), b = html.indexOf('<script src="b2b-kpi-store.js"></script>'), c = html.indexOf('<script src="b2b-kpi-tab.js"></script>');
   assert.ok(ce > 0 && ce < a && a < b && b < c, 'script order');
-  assert.ok(html.includes('body:not(.crm-admin-mode) #crmTabB2bKpi, body:not(.crm-admin-mode) #gnavDrawerTabB2bKpi, body:not(.crm-admin-mode) #b2bKpiView{ display:none !important; }'));
+  assert.ok(html.includes('body:not(.crm-admin-mode) #crmTabB2bKpi, body:not(.crm-admin-mode) #gnavDrawerTabB2bKpi, body:not(.crm-admin-mode) #b2bKpiView, body:not(.crm-admin-mode) #b2bKpiModal{ display:none !important; }'));
   assert.ok(html.includes('if(window.B2BKpiTab) window.B2BKpiTab.close();'));
 });
 test('syntax', () => { ['b2b-kpi-calc.js', 'b2b-kpi-store.js', 'b2b-kpi-tab.js'].forEach(f => new vm.Script(fs.readFileSync(__dirname + '/' + f, 'utf8'))); });
@@ -120,4 +120,29 @@ test('mobile_touch_targets_44', () => {
   const c = fs.readFileSync(__dirname + '/b2b-kpi-tab.css', 'utf8').replace(/\s+/g, ' ');
   assert.ok(/@media \(max-width:640px\)\{[^@]*\.b2bkpi-link\{[^}]*min-height:44px/.test(c), 'link');
   assert.ok(/@media \(max-width:640px\)\{[^@]*\.b2bkpi-task \.b2bkpi-st\{[^}]*width:44px; height:44px/.test(c), 'task button');
+});
+
+// ---- 최종 검토 수정 ----
+test('planSave_uses_opened_rev_not_current', () => {
+  const s = F.base(); s.leadDefs.LI01.rev = 7; // 팝업을 연 뒤 다시 읽기로 rev 가 7 로 올라감
+  const r = P(s, { member: { id: 'shs' }, leads: [{ id: 'LI01', openedRev: 4, name: '고침', tasks: [] }], lags: [] });
+  assert.equal(r.leads[0].openedRev, 4);
+});
+test('runSavePlan_retry_skips_saved', async () => {
+  const saved = [], plan = { member: { def: { id: 'm3' }, openedRev: null }, leads: [{ def: { id: 'LI-m3-1' }, openedRev: null }, { def: { id: 'LI-m3-2' }, openedRev: null }], lags: [] };
+  let fail = true;
+  const store = { saveDef: async (col, def) => { if(def.id === 'LI-m3-2' && fail){ fail = false; return { ok: false, reason: 'conflict' }; } saved.push(def.id); return { ok: true }; } };
+  await assert.rejects(T.runSavePlan(plan, store), /conflict/);
+  await T.runSavePlan(plan, store);
+  assert.deepEqual(saved, ['m3', 'LI-m3-1', 'LI-m3-2']);
+});
+test('close_clears_modal_and_staff_hidden', () => {
+  const i = tabSrc.indexOf('function close(');
+  assert.ok(tabSrc.slice(i, i + 200).includes('closeModal()'));
+  assert.ok(html.includes('body:not(.crm-admin-mode) #b2bKpiModal'));
+});
+test('render_needs_rebalance_note', () => {
+  const s = F.base(); s.kpiTabConfig = { members: ['shs', 'm2', 'm1'], shares: { shs: 10, m2: 10 } };
+  assert.ok(R(s).includes('개인 몫을 다시 나눠 주세요'));
+  assert.ok(!R(F.base()).includes('개인 몫을 다시 나눠 주세요'));
 });

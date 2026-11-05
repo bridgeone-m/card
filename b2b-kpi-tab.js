@@ -117,6 +117,7 @@
     var un = model.shares.rows.filter(function(r){ return !r.hasDefs; });
     out += sec('④', '팀원 진척', '개인 업무 20% 안에서 나눔', '<div class="b2bkpi-people">' + model.shares.rows.map(function(r){ return personCard(model, r, ui); }).join('') +
       '<button type="button" class="b2bkpi-card b2bkpi-add" data-kpi-act="add">+ 개인 트래커 추가</button></div>' +
+      (model.shares.needsRebalance ? '<div class="b2bkpi-note">새로 들어온 사람의 몫이 정해지지 않았습니다(남은 몫만 임시로 나눔). [개인 몫 나누기]에서 개인 몫을 다시 나눠 주세요</div>' : '') +
       (un.length ? '<div class="b2bkpi-note">미배정 ' + f1(model.shares.unassigned).replace(/\.0$/, '') + '% · ' + un.map(function(r){ return esc(r.name); }).join('·') + ' 지표 미등록 — 다른 팀원에게 넘기지 않습니다</div>' : ''),
       '<button type="button" class="b2bkpi-btn" data-kpi-act="shares">개인 몫 나누기</button>');
     // ⑤ 점수 반영 흐름
@@ -162,7 +163,7 @@
     st.timer = setInterval(function(){ if(!document.hidden && !st.busy) load(); }, POLL_MS);
   }
   function close(){
-    clearInterval(st.timer); st.timer = null;
+    clearInterval(st.timer); st.timer = null; closeModal();
     var v = el(); if(v) v.remove();
     if(!document.body.classList.contains('b2bkpi-on')) return;
     document.body.classList.remove('b2bkpi-on');
@@ -187,12 +188,12 @@
         tasks: String(r.tasksText || '').split(/\r?\n/).map(function(t){ return t.trim(); }).filter(Boolean),
         numLabel: String(r.numLabel || '').trim(), denLabel: String(r.denLabel || '').trim(), target: numOrNull(r.target),
         cardKpis: (r.kpis || []).slice(), cardWeight: numOrNull(r.weight) };
-      if(r.id) o.id = r.id;
+      if(r.id){ o.id = r.id; if(String(r.rev || '') !== '') o.openedRev = Number(r.rev); }
       return o;
     });
     var lags = (fv.lags || []).filter(function(r){ return !leadEmpty(r); }).map(function(r){
       var o = { name: String(r.name || '').trim(), numLabel: String(r.numLabel || '').trim(), denLabel: String(r.denLabel || '').trim(), target: numOrNull(r.target) };
-      if(r.id) o.id = r.id;
+      if(r.id){ o.id = r.id; if(String(r.rev || '') !== '') o.openedRev = Number(r.rev); }
       return o;
     });
     return { member: member, leads: leads, lags: lags };
@@ -213,10 +214,10 @@
         if(e.length){ out.errors.push((k[0] === 'leads' ? '선행' : '후행') + ' ' + (i + 1) + '번째: ' + e.join(', ')); return; }
         var prev = x.id ? tmp[k[1]][x.id] : null;
         if(x.id && !prev){ out.errors.push(x.id + ' 지표를 찾을 수 없습니다'); return; }
-        var input = Object.assign({}, x); delete input.id;
+        var input = Object.assign({}, x); delete input.id; delete input.openedRev;
         var def = calc[k[2]](memberId, input, tmp, nowIso, prev || undefined);
         tmp[k[1]][def.id] = def;
-        out[k[0]].push({ def: def, openedRev: prev ? (prev.rev || 0) : null });
+        out[k[0]].push({ def: def, openedRev: prev ? (typeof x.openedRev === 'number' && isFinite(x.openedRev) ? x.openedRev : (prev.rev || 0)) : null });
       });
     });
     return out;
@@ -229,12 +230,12 @@
     return p.then(function(){ return load(); }).catch(function(e){ alert('저장하지 못했습니다: ' + (e && e.message || e)); }).then(function(){ busy(false); });
   }
   function modalRoot(){ var r = document.getElementById('b2bKpiModal'); if(!r){ r = document.createElement('div'); r.id = 'b2bKpiModal'; document.body.appendChild(r); r.addEventListener('click', onModalClick); } return r; }
-  function closeModal(){ var r = document.getElementById('b2bKpiModal'); if(r) r.innerHTML = ''; }
+  function closeModal(){ st.editPlan = null; var r = typeof document !== 'undefined' && document.getElementById('b2bKpiModal'); if(r) r.innerHTML = ''; }
   function field(label, html){ return '<label class="b2bkpi-f"><span>' + label + '</span>' + html + '</label>'; }
   function inp(name, v, extra){ return '<input class="b2bkpi-in" data-f="' + name + '" value="' + esc(v == null ? '' : v) + '"' + (extra || '') + '>'; }
   function leadRow(d, isLag){
     var kpis = (d && d.cardKpis) || (d && !isLag && d.id && st.shape.mainKpis ? Object.keys(st.shape.mainKpis).filter(function(k){ return (st.shape.mainKpis[k].links || []).some(function(l){ return l.li === d.id; }); }) : []);
-    var o = '<fieldset class="b2bkpi-row" data-row="' + (isLag ? 'lag' : 'lead') + '" data-id="' + esc(d && d.id || '') + '"><legend>' + (isLag ? '후행지표' : '선행지표') + (d && d.id ? ' · ' + esc(d.id) : ' · 새로 추가') + '</legend>' +
+    var o = '<fieldset class="b2bkpi-row" data-row="' + (isLag ? 'lag' : 'lead') + '" data-id="' + esc(d && d.id || '') + '" data-rev="' + (d && d.id ? (d.rev || 0) : '') + '"><legend>' + (isLag ? '후행지표' : '선행지표') + (d && d.id ? ' · ' + esc(d.id) : ' · 새로 추가') + '</legend>' +
       field('지표 이름', inp('name', d && d.name)) +
       '<div class="b2bkpi-f2">' + field('분자 이름', inp('numLabel', d && d.numLabel)) + field('분모 이름', inp('denLabel', d && d.denLabel)) + field('목표(%)', inp('target', d && d.target, ' inputmode="decimal"')) + '</div>';
     if(!isLag){
@@ -266,39 +267,53 @@
   function readForm(root){
     var g = function(sc, f){ var x = sc.querySelector('[data-f="' + f + '"]'); return x ? x.value : ''; };
     var rows = function(kind){ return Array.prototype.slice.call(root.querySelectorAll('fieldset[data-row="' + kind + '"]')).map(function(fs){
-      return { id: fs.getAttribute('data-id') || '', name: g(fs, 'name'), cycle: g(fs, 'cycle'), purpose: g(fs, 'purpose'), tasksText: g(fs, 'tasksText'),
+      return { id: fs.getAttribute('data-id') || '', rev: fs.getAttribute('data-rev') || '', name: g(fs, 'name'), cycle: g(fs, 'cycle'), purpose: g(fs, 'purpose'), tasksText: g(fs, 'tasksText'),
         numLabel: g(fs, 'numLabel'), denLabel: g(fs, 'denLabel'), target: g(fs, 'target'), weight: g(fs, 'weight'),
         kpis: Array.prototype.slice.call(fs.querySelectorAll('input[data-kpi]:checked')).map(function(c){ return c.getAttribute('data-kpi'); }) };
     }); };
     return { memberId: g(root, 'memberId'), newName: g(root, 'newName'), newRole: g(root, 'newRole'), leads: rows('lead'), lags: rows('lag') };
   }
-  function saveEditor(btn){
-    var root = modalRoot(), errEl = document.getElementById('b2bKpiErr');
-    var plan = planSave(st.shape, formToInputs(readForm(root)), new Date().toISOString());
-    if(plan.errors.length){ errEl.textContent = plan.errors.join(' / '); return; }
-    if(btn.disabled) return;
-    btn.disabled = true; btn.textContent = '저장 중…';
-    var S = window.B2BKpiStore, items = [];
+  /* 저장 계획을 순서대로 저장한다. 이미 저장한 항목(plan._done)은 건너뛰므로, 중간에 실패한 뒤 다시 눌러도
+     같은 ID 로 이어서 저장되고 사람·지표가 두 번 생기지 않는다. config(콜백)는 새 사람 저장 직후에 부른다. */
+  function runSavePlan(plan, store, afterMember){
+    plan._done = plan._done || {};
+    var items = [];
     if(plan.member) items.push(['members', plan.member]);
     plan.leads.forEach(function(x){ items.push(['leadDefs', x]); }); plan.lags.forEach(function(x){ items.push(['lagDefs', x]); });
     var chain = Promise.resolve();
-    items.forEach(function(it){ chain = chain.then(function(){ return S.saveDef(it[0], it[1].def, it[1].openedRev).then(function(r){ if(!r.ok) throw new Error(r.reason); }); }); });
-    if(plan.member){
+    items.forEach(function(it){
+      var key = it[0] + '/' + it[1].def.id;
       chain = chain.then(function(){
-        var cfg = JSON.parse(JSON.stringify((st.shape && st.shape.kpiTabConfig) || {}));
-        cfg.members = (cfg.members && cfg.members.length ? cfg.members : window.B2BKpiCalc.DEFAULT_MEMBERS).concat([plan.member.def.id]);
-        return S.saveConfig(cfg, ACTOR);
+        if(plan._done[key]) return;
+        return store.saveDef(it[0], it[1].def, it[1].openedRev).then(function(r){
+          if(!r.ok) throw new Error(r.reason);
+          plan._done[key] = true;
+          if(it[0] === 'members' && afterMember) return afterMember(it[1].def.id);
+        });
       });
-    } else if(!plan.member){
-      var mid = readForm(root).memberId, ids = window.B2BKpiCalc.shareRows(st.shape).rows.map(function(r){ return r.memberId; });
-      if(mid && ids.indexOf(mid) < 0) chain = chain.then(function(){
-        var cfg = JSON.parse(JSON.stringify((st.shape && st.shape.kpiTabConfig) || {})); cfg.members = ids.concat([mid]); return S.saveConfig(cfg, ACTOR);
-      });
-    }
-    chain.then(function(){ closeModal(); return load(); }).catch(function(e){
+    });
+    return chain;
+  }
+  function addToTab(memberId){
+    var cfg = JSON.parse(JSON.stringify((st.shape && st.shape.kpiTabConfig) || {}));
+    var ids = window.B2BKpiCalc.shareRows(st.shape || {}).rows.map(function(r){ return r.memberId; });
+    if(ids.indexOf(memberId) >= 0) return Promise.resolve();
+    cfg.members = ids.concat([memberId]);
+    return window.B2BKpiStore.saveConfig(cfg, ACTOR).then(function(){ st.shape.kpiTabConfig = cfg; });
+  }
+  function saveEditor(btn){
+    var root = modalRoot(), errEl = document.getElementById('b2bKpiErr');
+    if(btn.disabled) return;
+    // 첫 시도의 계획을 팝업 동안 유지 — 다시 시도해도 같은 ID 로 이어서 저장
+    var plan = st.editPlan || planSave(st.shape, formToInputs(readForm(root)), new Date().toISOString());
+    if(plan.errors.length){ errEl.textContent = plan.errors.join(' / '); return; }
+    st.editPlan = plan;
+    btn.disabled = true; btn.textContent = '저장 중…';
+    var mid = plan.member ? null : readForm(root).memberId;
+    runSavePlan(plan, window.B2BKpiStore, addToTab).then(function(){ return mid ? addToTab(mid) : null; }).then(function(){ st.editPlan = null; closeModal(); return load(); }).catch(function(e){
       var why = String(e && e.message || e);
-      errEl.textContent = why === 'conflict' || why === 'exists' ? '다른 곳에서 먼저 수정되었습니다. 새로 읽은 뒤 다시 저장해 주세요' : '저장하지 못했습니다: ' + why;
-      btn.textContent = '저장'; btn.disabled = false; load();
+      errEl.textContent = why === 'conflict' || why === 'exists' ? '다른 곳에서 먼저 수정되었습니다. 저장된 항목은 그대로 두었습니다. 창을 닫고 다시 열어 저장해 주세요' : '저장하지 못했습니다: ' + why + ' — [저장]을 다시 누르면 남은 항목만 이어서 저장합니다';
+      btn.textContent = '저장'; btn.disabled = false;
     });
   }
   function openShares(){
@@ -371,7 +386,7 @@
     window.addEventListener('resize', function(){ var v = el(); if(v) place(v); });
   }
 
-  var api = { renderHtml: renderHtml, open: open, close: close, render: render, formToInputs: formToInputs, planSave: planSave };
+  var api = { renderHtml: renderHtml, open: open, close: close, render: render, formToInputs: formToInputs, planSave: planSave, runSavePlan: runSavePlan };
   if(typeof module !== 'undefined' && module.exports) module.exports = api;
   if(typeof window !== 'undefined' && typeof document !== 'undefined'){
     window.B2BKpiTab = api;

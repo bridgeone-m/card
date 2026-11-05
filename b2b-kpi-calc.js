@@ -102,21 +102,24 @@
     return m && String(m.name || '').trim() || id;
   }
 
-  /* 팀 공동 업무 — KPI별 '관리 업무'(mainKpis.manage) 체크. 그 달 기록이 하나도 없으면 산출 대기 */
+  /* 팀 공동 업무 — KPI별 '관리 업무'(mainKpis.manage) 체크. KPI 3개를 같은 비율로 합친다(설계 6.3:
+     KPI별 체크 비율의 평균). 그 달 기록이 하나도 없으면 산출 대기 */
   function teamCommon(shape, month){
-    var mk = (shape && shape.mainKpis) || {}, tc = (shape && shape.kpiTeamChecks) || {}, any = false, checked = 0, total = 0;
+    var mk = (shape && shape.mainKpis) || {}, tc = (shape && shape.kpiTeamChecks) || {}, any = false, checked = 0, total = 0, ratios = [];
     var byKpi = KPI_IDS.map(function(id){
-      var d = mk[id] || {}, rec = tc[id + '_' + month];
+      var d = mk[id] || {}, rec = tc[id + '_' + month], kc = 0;
       if(rec) any = true;
       var items = (d.manage || []).map(function(text, i){
         var on = !!(rec && rec.checks && rec.checks['c' + (i + 1)] === true);
-        if(on) checked++;
+        if(on){ checked++; kc++; }
         total++;
         return { i: i, text: text, checked: on };
       });
+      if(items.length) ratios.push(kc / items.length * 100);
       return { id: id, no: d.no || '', name: d.name || id, items: items };
     });
-    return { state: any && total ? 'ok' : 'wait', value: any && total ? checked / total * 100 : null, checked: checked, total: total, byKpi: byKpi };
+    var ok = any && ratios.length;
+    return { state: ok ? 'ok' : 'wait', value: ok ? ratios.reduce(function(s, v){ return s + v; }, 0) / ratios.length : null, checked: checked, total: total, byKpi: byKpi };
   }
 
   /* 개인 몫 나누기 — 저장값(kpiTabConfig.shares)이 없으면 같은 비율의 '임시 비중'.
@@ -124,13 +127,16 @@
   function shareRows(shape){
     var cfg = (shape && shape.kpiTabConfig) || {}, ids = (cfg.members && cfg.members.length ? cfg.members : DEFAULT_MEMBERS).slice();
     var saved = cfg.shares || {}, assigned = 0, unassigned = 0;
+    // 저장값이 일부만 있으면(사람이 새로 들어온 경우) 남은 몫(20 − 저장 합계)만 저장값 없는 사람끼리 나눈다 → 합계는 늘 20
+    var savedIds = ids.filter(function(id){ return isNum(saved[id]); }), unsavedN = ids.length - savedIds.length;
+    var rest = Math.max(0, PERSONAL_TOTAL - savedIds.reduce(function(s, id){ return s + saved[id]; }, 0));
     var rows = ids.map(function(id){
       var has = leadDefsOf(shape, id).length > 0, s = isNum(saved[id]);
-      var share = s ? saved[id] : PERSONAL_TOTAL / ids.length;
+      var share = s ? saved[id] : savedIds.length ? rest / unsavedN : PERSONAL_TOTAL / ids.length;
       if(has) assigned += share; else unassigned += share;
       return { memberId: id, name: memberName(shape, id), share: share, temporary: !s, hasDefs: has };
     });
-    return { rows: rows, assigned: assigned, unassigned: unassigned };
+    return { rows: rows, assigned: assigned, unassigned: unassigned, needsRebalance: savedIds.length > 0 && unsavedN > 0 };
   }
   function validateShares(map, memberIds){
     var errs = [], sum = 0;

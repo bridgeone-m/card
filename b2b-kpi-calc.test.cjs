@@ -198,3 +198,25 @@ test('buildModel_lags_reference_only', () => {
   assert.equal(m.lags.shs.length, 1); assert.equal(m.lags.shs[0].rate, 25); assert.equal(m.lags.m2.length, 0);
   assert.ok(Math.abs(m.composite.points - 30.0) < 0.05); // 후행은 점수에 넣지 않는다
 });
+
+// ---- 최종 검토 수정 ----
+test('shares_saved_plus_new_member_still_20', () => {
+  const s = F.base(); s.kpiTabConfig = { members: ['shs', 'm2', 'm1'], shares: { shs: 10, m2: 10 } };
+  s.leadDefs['LI-m1-1'] = { id: 'LI-m1-1', member: 'm1', name: 'y' };
+  const sh = C.shareRows(s);
+  assert.ok(Math.abs(sh.rows.reduce((t, r) => t + r.share, 0) - 20) < 1e-9);
+  const m1 = sh.rows.find(r => r.memberId === 'm1'); assert.equal(m1.share, 0); assert.equal(m1.temporary, true);
+  assert.equal(sh.needsRebalance, true);
+  const c = C.buildModel(s, M).composite; assert.ok(Math.abs(c.reflected + c.waiting + c.unassigned - 100) < 1e-6);
+});
+test('shares_partial_saved_remainder_split', () => {
+  const s = F.base(); s.kpiTabConfig = { members: ['shs', 'm2', 'm1'], shares: { shs: 12 } };
+  const sh = C.shareRows(s);
+  assert.equal(sh.rows.find(r => r.memberId === 'm2').share, 4); assert.equal(sh.rows.find(r => r.memberId === 'm1').share, 4);
+});
+test('teamCommon_equal_weight_per_kpi', () => {
+  const s = F.base(); s.mainKpis.MK3.manage = ['a', 'b'];
+  s.kpiTeamChecks = { 'MK1_2026-11': { checks: { c1: true, c2: true, c3: true, c4: true, c5: true } }, 'MK3_2026-11': { checks: {} } };
+  const t = C.teamCommon(s, M);
+  assert.ok(Math.abs(t.value - (100 + 0 + 0) / 3) < 1e-9, String(t.value));
+});

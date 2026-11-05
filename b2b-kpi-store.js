@@ -42,8 +42,12 @@
       });
     }
     /* 세부업무 진행률 — 트래커 b2bSubSet 과 같은 레코드 모양 + 변경 이력 1건 */
+    /* 쓰기 직전에 그 레코드만 새로 읽어 그 위에서 고친다(화면 사본이 최대 30초 묵어 트래커 입력값을 지우지 않도록) */
     function setTaskProg(shape, defId, month, i, pct, actor){
-      var id = defId + '_' + month, cur = ((shape && shape.perfMonthly) || {})[id];
+      var id = defId + '_' + month;
+      return get('perfMonthly/' + encodeURIComponent(id)).then(function(cur){ return writeTaskProg(shape, cur, id, defId, month, i, pct, actor); });
+    }
+    function writeTaskProg(shape, cur, id, defId, month, i, pct, actor){
       var def = ((shape && shape.leadDefs) || {})[defId] || {}, name = (def.tasks || [])[i] || ('업무' + (i + 1));
       var k = 't' + (i + 1), before = cur && cur.prog && typeof cur.prog[k] === 'number' ? cur.prog[k] : cur && cur.checks && cur.checks[k] ? 100 : 0;
       var next = cur ? copy(cur) : { id: id, ref: defId, month: month, mode: 'auto' };
@@ -55,7 +59,10 @@
       return patch(body).then(function(){ return next; });
     }
     function toggleTeamCheck(shape, kpiId, month, i, actor){
-      var id = kpiId + '_' + month, cur = ((shape && shape.kpiTeamChecks) || {})[id];
+      var id = kpiId + '_' + month;
+      return get('kpiTeamChecks/' + encodeURIComponent(id)).then(function(cur){ return writeTeamCheck(cur, id, kpiId, month, i, actor); });
+    }
+    function writeTeamCheck(cur, id, kpiId, month, i, actor){
       var next = cur ? copy(cur) : { id: id, ref: kpiId, month: month };
       next.id = id; next.ref = kpiId; next.month = month;
       next.checks = next.checks || {};
