@@ -163,3 +163,11 @@ test('editor_lags_sorted', () => {
   const i = tabSrc.indexOf('function openEditor(');
   assert.ok(tabSrc.slice(i, i + 900).includes('d.member === memberId; }).sort('));
 });
+
+// ---- 운영 버그: MOU 진행상황 검색줄(z-index 1000)이 B2B KPI 화면 위로 비침 ----
+test('underlying_views_hidden_while_open', () => {
+  const c = fs.readFileSync(__dirname + '/b2b-kpi-tab.css', 'utf8').replace(/\s+/g, ' ');
+  const m = c.match(/([^{}]*)\{ ?visibility:hidden !important; ?\}/);
+  assert.ok(m, 'visibility 규칙 없음');
+  ['#listView', '#cardView', '#workQueueView', '#mailSettingsView'].forEach(id => assert.ok(m[1].includes('body.b2bkpi-on ' + id), id));
+});

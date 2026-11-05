@@ -109,3 +109,6 @@ textarea.b2bkpi-in{ min-height:96px; resize:vertical; }
   .b2bkpi-link{ display:inline-flex; align-items:center; min-height:44px; }
   .b2bkpi-task .b2bkpi-st{ width:44px; height:44px; }
 }
+/* §B2B KPI 화면이 열려 있는 동안 아래 화면을 숨긴다 — 아래 화면 안의 드롭다운층(--z-dropdown:1000, 예: MOU 진행상황 검색줄·자동완성·상태 메뉴)이
+   이 화면(z-index 900) 위로 비치는 것을 막는다. 상단 메뉴(설정 9020·휴대폰 메뉴 9000)는 그대로 위에 뜬다. */
+body.b2bkpi-on #listView, body.b2bkpi-on #cardView, body.b2bkpi-on #workQueueView, body.b2bkpi-on #mailSettingsView{ visibility:hidden !important; }
