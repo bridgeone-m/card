@@ -124,3 +124,17 @@ body.b2bkpi-on #listView, body.b2bkpi-on #cardView, body.b2bkpi-on #workQueueVie
 .b2bkpi-kpi.is-kpi1 .b2bkpi-bar .is-cur{ background:#1F8A70; } .b2bkpi-kpi.is-kpi2 .b2bkpi-bar .is-cur{ background:#3366CC; } .b2bkpi-kpi.is-kpi3 .b2bkpi-bar .is-cur{ background:#C26A1E; }
 .b2bkpi-kpi-desc{ margin-top:8px; font-size:13px; color:#33415C; line-height:1.5; }
 .b2bkpi-cum{ font-size:12.5px; color:#1B4480; font-weight:700; padding:2px 0 4px; }
+/* §1·2차 미팅 누락 방지 실측 */
+.b2bkpi-nums{ margin:6px 0 2px; padding:8px 10px; border-radius:10px; background:#F2F6FB; display:flex; flex-direction:column; gap:4px; }
+.b2bkpi-num{ display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 8px; width:100%; min-height:40px; padding:6px 4px; border:0; background:none; text-align:left; font:inherit; font-size:13.5px; color:#121A2A; cursor:pointer; border-radius:8px; }
+.b2bkpi-num:hover{ background:#E6EEF8; }
+.b2bkpi-num-val{ font-weight:800; color:#1B4480; }
+.b2bkpi-num-new{ display:flex; flex-direction:column; gap:2px; padding-top:4px; border-top:1px dashed #D3DDEA; }
+.b2bkpi-num-err{ font-size:12.5px; color:#8A5200; padding:4px 0; }
+.b2bkpi-mlist{ display:flex; flex-direction:column; gap:8px; margin:8px 0; }
+.b2bkpi-mrow{ border:1px solid #E3EAF3; border-radius:10px; padding:8px 10px; font-size:13.5px; }
+.b2bkpi-mrow.is-missed{ border-color:#F3C98A; background:#FFF9F0; }
+.b2bkpi-mrow-h{ display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+.b2bkpi-mrow-b{ color:#33415C; margin-top:3px; overflow-wrap:anywhere; }
+.b2bkpi-mrow-why{ color:#6B7A90; font-size:12.5px; margin-top:2px; overflow-wrap:anywhere; }
+@media (max-width:640px){ .b2bkpi-num{ min-height:44px; } }

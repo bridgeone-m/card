@@ -70,6 +70,34 @@
       '<div class="b2bkpi-kpi-desc">' + esc(r.desc || '') + '</div>' +
       (r.source === 'official' && r.autoRate != null ? '<div class="b2bkpi-muted b2bkpi-autoref">자동 집계 참고 ' + f1(r.autoRate) + '% (' + r.autoNum + '/' + r.autoDen + ', 정의·기간 다름)</div>' : '') + '</div>';
   }
+  /* §1·2차 미팅 누락 방지 실측(고객관리카드 도입 2026-08-21 이후) — 숫자를 누르면 업체 목록 */
+  var MEETING_DEF = 'LI01';
+  var MEET_CLS = { ontime: '기한 내 완료', late: '기한 초과 후 처리(현재 처리 완료)', missed: '미처리 누락', unknown: '판정 불가', upcoming: '기한 전' };
+  function meetingLabel(s){ if(!s || !s.due) return '대상 없음'; if(!s.judged) return '미측정'; return '관리 완료 ' + s.ontime + '/' + s.judged + '곳 · ' + (Math.round(s.rate * 10) / 10) + '%'; }
+  function meetingExtra(s){ if(!s) return ''; var a = []; if(s.late) a.push('기한 초과 처리 ' + s.late); a.push('누락 ' + s.missed); if(s.unknown) a.push('판정 불가 ' + s.unknown); if(s.upcoming) a.push('기한 전 ' + s.upcoming); return a.join(' · '); }
+  function meetingBtn(meeting, stage, group, title){
+    var s = meeting.summary[group][stage];
+    return '<button type="button" class="b2bkpi-num" data-kpi-act="meetingList" data-stage="' + stage + '" data-group="' + group + '"><b>' + esc(title) + '</b> <span class="b2bkpi-num-val">' + esc(meetingLabel(s)) + '</span>' + (s && s.due ? ' <span class="b2bkpi-muted">' + esc(meetingExtra(s)) + '</span>' : '') + '</button>';
+  }
+  function meetingBlock(meeting){
+    return '<div class="b2bkpi-nums"><div class="b2bkpi-muted">카드 도입 ' + esc(meeting.rule.start) + ' 이후 기한이 돌아온 건 · 누락 방지율 = 기한 내 완료 ÷ 판정 가능 대상</div>' +
+      meetingBtn(meeting, 'm1', 'all', '1차 미팅 관리') + meetingBtn(meeting, 'm2', 'all', '2차 미팅 관리') +
+      '<div class="b2bkpi-num-new"><span class="b2bkpi-muted">8/25 이후 신규 등록 업체만</span>' + meetingBtn(meeting, 'm1', 'new', '1차') + meetingBtn(meeting, 'm2', 'new', '2차') + '</div></div>';
+  }
+  function meetingListHtml(meeting, stage, group){
+    var ord = { missed: 0, late: 1, unknown: 2, ontime: 3, upcoming: 4 };
+    var rows = (meeting.rows || []).filter(function(r){ return r.stage === stage && (group === 'all' || r.group === group) && (r.inScope || r.cls === 'upcoming'); })
+      .sort(function(a, b){ return (ord[a.cls] - ord[b.cls]) || (a.due < b.due ? -1 : a.due > b.due ? 1 : 0); });
+    var s = meeting.summary[group][stage];
+    return '<h3>' + (stage === 'm1' ? '1차' : '2차') + ' 미팅 관리' + (group === 'new' ? ' · 8/25 이후 신규 등록' : '') + '</h3>' +
+      '<p class="b2bkpi-muted">' + esc(meetingLabel(s)) + (s && s.due ? ' · ' + esc(meetingExtra(s)) : '') + '. 기한 = 예정일 + ' + meeting.rule.grace + '일(예정일 없으면 앞 단계 완료 + ' + meeting.rule.reg + '일). 기준일 ' + esc(meeting.rule.now) + '. 원본 기록은 바꾸지 않습니다.</p>' +
+      (rows.length ? '<div class="b2bkpi-mlist">' + rows.map(function(r){
+        return '<div class="b2bkpi-mrow is-' + r.cls + '"><div class="b2bkpi-mrow-h"><b>' + esc(r.name) + '</b>' + (r.code ? ' <span class="b2bkpi-muted">' + esc(r.code) + '</span>' : '') + ' <span class="b2bkpi-pill is-' + (r.cls === 'ontime' ? 'ok' : r.cls === 'missed' ? 'warn' : 'wait') + '">' + esc(MEET_CLS[r.cls]) + '</span></div>' +
+          '<div class="b2bkpi-mrow-b">' + esc(r.stageName) + ' · ' + (r.group === 'new' ? '신규 등록 ' + esc(r.regDate) : '8/25 일괄 등록') + ' · 기한 ' + esc(r.due || '—') + ' · 실제 처리일 ' + esc(r.doneAt || '—') + ' · ' + (r.owner ? '담당 ' + esc(r.owner) : '담당 기록 없음') + '</div>' +
+          '<div class="b2bkpi-mrow-why">' + esc(r.why) + '</div></div>';
+      }).join('') + '</div>' : '<p>대상 없음</p>') +
+      (s && s.unplaced ? '<p class="b2bkpi-muted">기한 날짜가 없어 기간에 넣을 수 없는 기록 ' + s.unplaced + '건(대부분 협약 체결로 완료 간주된 도입 전 업체)은 비율에서 뺐습니다.</p>' : '');
+  }
   function personCard(model, row, ui){
     var p = model.persons[row.memberId] || { state: 'nodefs', rows: [], total: 0, measured: 0 }, lags = (model.lags || {})[row.memberId] || [];
     var score = p.state === 'ok' ? '<b class="b2bkpi-big2">' + f1(p.value) + '점</b>' : p.state === 'nodefs' ? pill('wait', '지표 미등록') : pill('wait', '산출 대기');
@@ -81,11 +109,13 @@
     out += (p.rows || []).map(function(r){
       var open = ui.openDef === r.id;
       var val = r.state === 'ok' ? f1(r.rate) + '%' : r.state === 'empty' ? '대상 없음' : '미측정';
-      var line = '<div class="b2bkpi-lead' + (r.state === 'ok' ? '' : ' is-none') + '"><div class="b2bkpi-lead-main"><span class="b2bkpi-lead-name">' + esc(numPre(r.no) + r.name) + '</span>' + (r.auto ? pill('auto', '자동') : '') +
+      var line = '<div class="b2bkpi-lead' + (r.state === 'ok' ? '' : ' is-none') + '"><div class="b2bkpi-lead-main"><span class="b2bkpi-lead-name">' + esc(numPre(r.no) + r.name) + '</span>' + (r.numeric ? pill('auto', '카드 실측') : r.auto ? pill('auto', '자동') : '') +
         '<span class="b2bkpi-lead-val">' + val + (r.target ? ' <span class="b2bkpi-muted">/ 목표 ' + r.target + '</span>' : '') + '</span></div>' +
         '<div class="b2bkpi-lead-sub"><button type="button" class="b2bkpi-linkbtn" data-kpi-act="toggleDef" data-def="' + esc(r.id) + '">세부업무 완료 ' + r.tasks.done + ' · 진행 ' + r.tasks.doing + ' · 남음 ' + r.tasks.todo + (open ? ' · 접기' : ' · 펼치기') + '</button>' +
         '<a class="b2bkpi-linkbtn" href="' + TRACKER_URL + '" target="_blank" rel="noopener">트래커에서 입력</a></div>' +
         (r.cum && r.cum.den > 0 && r.cum.months > 1 ? '<div class="b2bkpi-cum">카드 구축 이후 누적 ' + r.cum.num + '/' + r.cum.den + ' (' + f1(r.cum.num / r.cum.den * 100) + '%) · ' + r.cum.months + '개월</div>' : '');
+      if(r.id === MEETING_DEF && model.meeting) line += meetingBlock(model.meeting);
+      else if(r.id === MEETING_DEF && model.meetingError) line += '<div class="b2bkpi-num-err">1·2차 미팅 실측: 미측정 (' + esc(model.meetingError) + ')</div>';
       if(open) line += '<div class="b2bkpi-tasks" data-def-tasks="' + esc(r.id) + '"></div>';
       return line + '</div>';
     }).join('');
@@ -143,10 +173,27 @@
   /* ---- DOM ---- */
   function el(){ return document.getElementById('b2bKpiView'); }
   function place(v){ var h = document.querySelector('header.gnav'); v.style.top = Math.max(0, h ? h.getBoundingClientRect().bottom : 0) + 'px'; }
+  function computeMeeting(){
+    var L = window.SHIN2_MEETING_LOGIC, D = window.SHIN2_CRM_DATA, Mt = window.B2BKpiMeeting;
+    if(!L || !D || !Mt) throw new Error('카드 판정 함수를 찾지 못함');
+    ['buildProgressStages', 'classifyMeetingMiss', 'resolveNewMouForCompany', 'getStageCorrections', 'parsePartnerDateLabel'].forEach(function(k){ if(typeof L[k] !== 'function') throw new Error('카드 함수 없음: ' + k); });
+    return Mt.evaluateMeetings(D.loadCompanies(), L, Date.now(), { start: new Date(2026, 7, 21).getTime(), bulkEnd: new Date(2026, 7, 26).getTime() });
+  }
   function render(){
     var v = el(); if(!v) return;
     var model = null;
-    if(st.ui.state === 'ready' && st.shape && window.B2BKpiCalc) model = window.B2BKpiCalc.buildModel(st.shape, st.ui.month);
+    if(st.ui.state === 'ready' && st.shape && window.B2BKpiCalc){
+      // 이번 달을 볼 때만 카드 기록으로 1·2차 미팅을 실측해 LI01 달성률에 연결한다(지난달 화면은 그 달 기록 그대로)
+      var shape = st.shape, meeting = null, meetingError = null;
+      if(st.ui.month === nowMonth()){
+        try { meeting = computeMeeting(); }
+        catch(e){ meetingError = String(e && e.message || e); }
+        if(meeting){ var p = window.B2BKpiMeeting.pooled(meeting.summary.all); shape = Object.assign({}, st.shape); shape.__cardNumeric = {}; shape.__cardNumeric[MEETING_DEF] = { num: p.num, den: p.den, state: p.state, source: '카드 실측(1·2차 미팅)' }; }
+      }
+      model = window.B2BKpiCalc.buildModel(shape, st.ui.month);
+      model.meeting = meeting; model.meetingError = meetingError;
+      st.meeting = meeting;
+    }
     v.innerHTML = renderHtml(model, st.ui);
     fillTasks();
   }
@@ -364,7 +411,8 @@
     team: function(t){ if(st.busy) return; afterWrite(window.B2BKpiStore.toggleTeamCheck(st.shape, t.getAttribute('data-k'), st.ui.month, +t.getAttribute('data-i'), ACTOR)); },
     add: function(){ openEditor(null); },
     edit: function(t){ openEditor(t.getAttribute('data-member')); },
-    shares: function(){ openShares(); }
+    shares: function(){ openShares(); },
+    meetingList: function(t){ if(!st.meeting) return; modalRoot().innerHTML = '<div class="pi-overlay b2bkpi-ov"><div class="pi-panel b2bkpi-modal" role="dialog" aria-modal="true" aria-label="미팅 관리 목록">' + meetingListHtml(st.meeting, t.getAttribute('data-stage'), t.getAttribute('data-group')) + '<div class="b2bkpi-mfoot"><button type="button" class="b2bkpi-btn" data-m="cancel">닫기</button></div></div></div>'; }
   };
 
   var ICON = '<svg class="top-tab-ico" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19h16"/><path d="M7 16v-5"/><path d="M12 16V7"/><path d="M17 16v-8"/></svg>';
@@ -392,7 +440,7 @@
     window.addEventListener('resize', function(){ var v = el(); if(v) place(v); });
   }
 
-  var api = { renderHtml: renderHtml, open: open, close: close, render: render, formToInputs: formToInputs, planSave: planSave, runSavePlan: runSavePlan };
+  var api = { renderHtml: renderHtml, open: open, close: close, render: render, formToInputs: formToInputs, planSave: planSave, runSavePlan: runSavePlan, meetingListHtml: meetingListHtml };
   if(typeof module !== 'undefined' && module.exports) module.exports = api;
   if(typeof window !== 'undefined' && typeof document !== 'undefined'){
     window.B2BKpiTab = api;

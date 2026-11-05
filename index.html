@@ -22724,6 +22724,17 @@ window.SHIN2_CRM_APP_INIT = function(){
     });
     return out;
   }
+  // §B2B KPI 탭(2026-11) — 1·2차 미팅 누락 방지 실측에 쓰도록 카드 원본 판정 함수를 읽기 전용으로 내보낸다(데이터 쓰기 없음).
+  //   이 블록 밖에 있는 함수는 typeof 로 확인해 없으면 빠진다(탭은 빠진 것이 있으면 실측을 "미측정"으로 둔다).
+  window.SHIN2_MEETING_LOGIC = Object.freeze({
+    buildProgressStages: typeof buildProgressStages === "function" ? buildProgressStages : null,
+    classifyMeetingMiss: classifyMeetingMiss,
+    resolveNewMouForCompany: typeof resolveNewMouForCompany === "function" ? resolveNewMouForCompany : null,
+    getStageCorrections: typeof getStageCorrections === "function" ? getStageCorrections : null,
+    parsePartnerDateLabel: typeof parsePartnerDateLabel === "function" ? parsePartnerDateLabel : null,
+    isAgreementTerminated: function(co){ return D.isAgreementTerminated(co); },
+    GRACE: MEETING_MISS_GRACE_DAYS, REG: MEETING_REG_LIMIT_DAYS
+  });
   const MEETING_LABEL = { m1:'1차 미팅', m2:'2차 미팅' };
   const MEETING_CHECK_LABEL = { coord:'일정 조율 중', branch:'지사 진행', format:'날짜 확인 필요' };
   function collectMeetingMiss(){
@@ -53273,6 +53284,7 @@ else { window.addEventListener('shin2-crm-gate-passed', window.SHIN2_CRM_APP_INI
 <script src="contract-esign.js"></script>
 <script src="b2b-kpi-calc.js"></script>
 <script src="b2b-kpi-store.js"></script>
+<script src="b2b-kpi-meeting.js"></script>
 <script src="b2b-kpi-tab.js"></script>
 <script src="website-cleanup-ui.js"></script>
 </body>

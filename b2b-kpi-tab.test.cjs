@@ -181,3 +181,28 @@ test('render_official_kpi', () => {
   const h = R(s);
   ['32.0%', '8/25 곳 · 확인분', '30.7%', '315/1,025 기회 · 확인분', '55.7%', '44/79 곳 · 확인분', '2026.10.20 마감 확인분', '자동 집계 참고 17.6%'].forEach(t => assert.ok(h.includes(t), '없음: ' + t));
 });
+
+// ---- 1·2차 미팅 누락 방지 실측 표시 ----
+const meetingFixture = () => ({
+  rule: { grace: 3, reg: 14, start: '2026-08-21', bulkEnd: '2026-08-26', now: '2026-11-05' },
+  summary: { all: { m1: { due: 11, ontime: 8, late: 0, missed: 2, unknown: 1, judged: 10, rate: 80, upcoming: 1, unplaced: 184 }, m2: { due: 6, ontime: 4, late: 0, missed: 1, unknown: 1, judged: 5, rate: 80, upcoming: 4, unplaced: 184 } },
+    new: { m1: { due: 5, ontime: 4, late: 0, missed: 1, unknown: 0, judged: 5, rate: 80, upcoming: 1, unplaced: 1 }, m2: { due: 0, ontime: 0, late: 0, missed: 0, unknown: 0, judged: 0, rate: null, upcoming: 0, unplaced: 0 } } },
+  rows: [{ id: 'a', name: '<시험>건설', code: 'B2B1', group: 'bulk', regDate: '2026-08-25', stage: 'm1', stageName: '1차', cls: 'missed', due: '2026-09-02', doneAt: '', why: '질문서 회신 2026-08-19 + 14일 지남, 완료 기록 없음', owner: '', inScope: true }],
+  excluded: []
+});
+test('render_meeting_numeric', () => {
+  const s = F.base(); const m = C.buildModel(s, '2026-11'); m.meeting = meetingFixture();
+  const h = T.renderHtml(m, { state: 'ready', month: '2026-11' });
+  ['1차 미팅 관리', '관리 완료 8/10곳 · 80%', '누락 2', '판정 불가 1', '기한 전 1', '2차 미팅 관리', '관리 완료 4/5곳 · 80%', '8/25 이후 신규 등록', '대상 없음', 'data-kpi-act="meetingList"'].forEach(t => assert.ok(h.includes(t), '없음: ' + t));
+});
+test('meeting_list_html', () => {
+  const h = T.meetingListHtml(meetingFixture(), 'm1', 'all');
+  ['&lt;시험&gt;건설', '1차', '미처리 누락', '2026-09-02', '질문서 회신 2026-08-19', '담당 기록 없음'].forEach(t => assert.ok(h.includes(t), '없음: ' + t));
+  assert.ok(!h.includes('<시험>'));
+});
+test('index_exports_meeting_logic', () => {
+  assert.ok(html.includes('window.SHIN2_MEETING_LOGIC = Object.freeze({'));
+  const a = html.indexOf('<script src="b2b-kpi-meeting.js"></script>'), b = html.indexOf('<script src="b2b-kpi-tab.js"></script>');
+  assert.ok(a > 0 && a < b);
+  new vm.Script(fs.readFileSync(__dirname + '/b2b-kpi-meeting.js', 'utf8'));
+});
