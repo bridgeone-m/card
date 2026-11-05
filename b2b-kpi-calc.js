@@ -76,12 +76,15 @@
   function personScore(shape, memberId, month){
     var defs = leadDefsOf(shape, memberId);
     var rows = defs.map(function(d){
-      var r = rate(view(shape, d.id, month)), tgt = isNum(d.target) && d.target > 0 ? d.target : null;
+      // 수치형 세부업무 실측(카드 기록, 탭이 계산해 shape.__cardNumeric 에 넣음)이 있으면 지표 달성률을 대신한다 — 체크·월 기록과 더하지 않음
+      var nv = ((shape && shape.__cardNumeric) || {})[d.id];
+      var r = nv ? (nv.state === 'ok' && isNum(nv.num) && isNum(nv.den) && nv.den > 0 ? { state: 'ok', value: clamp(nv.num / nv.den * 100), num: nv.num, den: nv.den } : { state: nv.state === 'empty' ? 'empty' : 'none' }) : rate(view(shape, d.id, month));
+      var tgt = isNum(d.target) && d.target > 0 ? d.target : null;
       return { id: d.id, no: d.no || '', name: d.name || d.id, state: r.state, rate: r.state === 'ok' ? r.value : null,
         num: isNum(r.num) ? r.num : null, den: isNum(r.den) ? r.den : null, target: tgt,
         score: r.state === 'ok' ? (tgt ? Math.min(100, r.value / tgt * 100) : r.value) : null,
         weight: isNum(d.cardWeight) ? d.cardWeight : null,
-        auto: !!(((shape && shape.perfAuto) || {})[d.id + '_' + month]),
+        auto: !nv && !!(((shape && shape.perfAuto) || {})[d.id + '_' + month]), numeric: !!nv, numericSource: nv ? (nv.source || '') : '',
         tasks: taskStats(d.tasks, ((shape && shape.perfMonthly) || {})[d.id + '_' + month]),
         cum: cumulative(shape, d.id, month) };
     });

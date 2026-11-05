@@ -278,3 +278,19 @@ test('kpiActual_official_partial_falls_back', () => {
   const a = C.kpiActual(s, M);
   assert.equal(a.rows[2].source, 'auto'); assert.equal(r1(a.rows[2].rate), 62.5);
 });
+
+// ---- 수치형 세부업무(카드 실측)가 지표 달성률을 대신한다 — 체크와 더하지 않음 ----
+test('numeric_override_replaces_indicator_rate', () => {
+  const s = F.base(); s.__cardNumeric = { LI01: { num: 12, den: 15, state: 'ok', source: '카드 실측' } };
+  s.perfMonthly['LI01_2026-11'] = { prog: { t1: 100, t2: 100 } }; // 체크는 점수에 안 들어감
+  const p = C.personScore(s, 'shs', M), r = p.rows.find(x => x.id === 'LI01');
+  assert.equal(r.rate, 80); assert.equal(r.num, 12); assert.equal(r.den, 15); assert.equal(r.numeric, true); assert.equal(r.score, 80);
+  assert.equal(p.value, 80); assert.equal(p.measured, 1);
+});
+test('numeric_override_unmeasured_and_empty', () => {
+  const s = F.base(); s.__cardNumeric = { LI01: { num: 0, den: 0, state: 'none' } };
+  const r = C.personScore(s, 'shs', M).rows.find(x => x.id === 'LI01');
+  assert.equal(r.state, 'none'); assert.equal(r.rate, null);
+  s.__cardNumeric = { LI01: { num: 0, den: 0, state: 'empty' } };
+  assert.equal(C.personScore(s, 'shs', M).rows.find(x => x.id === 'LI01').state, 'empty');
+});
