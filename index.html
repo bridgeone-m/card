@@ -11264,6 +11264,14 @@ body:not(.crm-admin-mode) #crmTabMailSettings,
 body:not(.crm-admin-mode) #gnavDrawerTabWorkQueue,
 body:not(.crm-admin-mode) #gnavDrawerTabMailSettings,
 body:not(.crm-admin-mode) #crmUpdateMenuWrap{ display:none !important; }
+/* §계약서 발송 관리자 전용(2026-11, 사용자 요청) — 계약서 준비·발송·발송 이력은 관리자 로그인에서만 보인다 */
+body:not(.crm-admin-mode) #cesignOpenBtn,
+body:not(.crm-admin-mode) #crmTabContracts,
+body:not(.crm-admin-mode) #gnavDrawerTabContracts,
+body:not(.crm-admin-mode) #cesignHistory,
+body:not(.crm-admin-mode) #cesignOverlay{ display:none !important; }
+/* design-refresh.css의 버튼 모양 규칙(html body #chartBody .agr-stage-btn-row #cesignOpenBtn, display !important)보다 우선 */
+html body:not(.crm-admin-mode) #chartBody .agr-stage-btn-row #cesignOpenBtn{ display:none !important; }
 /* 관리자 비밀번호가 설정되면 역할은 로그인 비밀번호로만 정한다(🔒 버튼 숨김) */
 body.crm-admin-vault .crm-admin-mode-btn{ display:none !important; }
 .crm-staff-signout, .crm-staff-signout-item{ display:none !important; }
@@ -36978,7 +36986,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     `;
     // §계약서 버튼 이동(2026-11) — 하단 고정 영역에 있던 [계약서 2종 준비]를 메일 버튼 줄 끝에 둔다(동작은 그대로).
     const cesignBtn = body.querySelector('#cesignOpenBtn');
-    if(cesignBtn) cesignBtn.addEventListener('click', ()=>{ if(window.SHIN2_CONTRACT_ESIGN) window.SHIN2_CONTRACT_ESIGN.open(co); });
+    if(cesignBtn) cesignBtn.addEventListener('click', ()=>{ if(!window.crmAdminOk('계약서 발송')) return; if(window.SHIN2_CONTRACT_ESIGN) window.SHIN2_CONTRACT_ESIGN.open(co); });
     // §상세 팝업 compact 라운드 — [협약무효]는 본문 아래 작은 버튼 줄(#agrInvalidateSlot)에 둔다.
     // 고객 상세가 아닌 곳(슬롯 없음)에서는 예전처럼 본문 끝에 붙인다.
     const invalidateSlot = document.getElementById('agrInvalidateSlot');
@@ -52112,6 +52120,11 @@ if(!window.__mapxRowDelegated){
       // 내부직원은 고객관리 화면만 — 다른 화면에 있었다면 고객관리로 돌린다
       const view = document.body.getAttribute('data-crm-view');
       if(!on && view && view !== 'listView' && typeof showCustomerTab === 'function') showCustomerTab();
+      // 계약서 화면(준비 팝업·발송 이력)이 열려 있었다면 닫는다(관리자 전용)
+      if(!on){
+        const hClose = document.getElementById('cesignHClose'); if(hClose) hClose.click();
+        const ov = document.getElementById('cesignOverlay'); if(ov) ov.remove();
+      }
     };
     async function sha256Hex(text){
       const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
