@@ -84,8 +84,9 @@ test('measuredChanged', () => {
 function model(s){ return C.buildModel(s, M); }
 test('composite_spec_example', () => {
   const m = model(F.base());
-  assert.ok(Math.abs(m.composite.points - 27.28) < 0.05, 'points ' + m.composite.points);
-  assert.equal(m.composite.reflected, 70); assert.equal(m.composite.waiting, 20); assert.equal(m.composite.unassigned, 10);
+  // 공식 실적 60% 대기 + 팀 공동 20% 대기 → 반영은 신한솔 개인 몫 10%(83.3점 → 8.33점)뿐, 환산 없음
+  assert.ok(Math.abs(m.composite.points - 8.33) < 0.05, 'points ' + m.composite.points);
+  assert.equal(m.composite.reflected, 10); assert.equal(m.composite.waiting, 80); assert.equal(m.composite.unassigned, 10);
   const shs = m.shares.rows.find(r => r.memberId === 'shs');
   assert.equal(shs.share, 10); assert.equal(shs.temporary, true);
   assert.equal(m.team.state, 'wait');
@@ -97,8 +98,9 @@ test('composite_spec_example2', () => {
   const team = C.teamCommon(s, M);
   assert.equal(team.checked, 9); assert.equal(team.total, 15); assert.equal(team.value, 60);
   const c = C.composite(C.kpiActual(s, M), team, persons, C.shareRows(s));
-  assert.ok(Math.abs(c.points - 37.95) < 0.05, 'points ' + c.points);
-  assert.equal(c.reflected, 90); assert.equal(c.unassigned, 10); assert.equal(c.waiting, 0);
+  // 팀 공동 60% × 20 = 12 + 신한솔 70 × 10% = 7 → 19점. 공식 실적 60%는 대기(0점 아님, 환산 없음)
+  assert.ok(Math.abs(c.points - 19) < 0.05, 'points ' + c.points);
+  assert.equal(c.reflected, 30); assert.equal(c.unassigned, 10); assert.equal(c.waiting, 60);
 });
 test('composite_empty_month', () => {
   const s = F.base(); s.perfAuto = {}; s.perfMonthly = {};
@@ -134,8 +136,8 @@ test('actual_not_changed_by_work', () => {
   s.kpiTeamChecks = { 'MK1_2026-11': { checks: { c1: true } } };
   s.perfMonthly['LI02_2026-11'] = { num: 1, den: 1, prog: { t1: 100 } };
   const m = model(s);
-  assert.equal(m.actual.value, before);
-  assert.equal(m.composite.parts.find(p => p.key === 'actual').points, before * 0.6);
+  assert.equal(m.actual.value, before); // 참고 평균은 업무 체크로 바뀌지 않는다
+  assert.equal(m.composite.parts.find(p => p.key === 'actual').points, null); // 공식 실적은 대기 — 0점도 아니고 참고 평균을 넣지도 않는다
 });
 test('buildModel_compare_note', () => {
   const s = F.base(); s.perfMonthly['LI02_2026-11'] = { num: 1, den: 2 };
@@ -197,7 +199,7 @@ test('buildModel_lags_reference_only', () => {
   const s = F.base(); s.perfMonthly['LG1_2026-11'] = { num: 1, den: 4 };
   const m = C.buildModel(s, M);
   assert.equal(m.lags.shs.length, 1); assert.equal(m.lags.shs[0].rate, 25); assert.equal(m.lags.m2.length, 0);
-  assert.ok(Math.abs(m.composite.points - 27.28) < 0.05); // 후행은 점수에 넣지 않는다
+  assert.ok(Math.abs(m.composite.points - 8.33) < 0.05); // 후행은 점수에 넣지 않는다
 });
 
 // ---- 최종 검토 수정 ----
@@ -319,13 +321,21 @@ test('kpi3_floor_state_between_and_met', () => {
   const mk = v => { const s = official(F.base()); s.kpiOfficial.items.MK2 = { num: v, den: 100, value: v, unit: '곳' }; return C.kpiActual(s, M).rows[2]; };
   assert.equal(mk(90).floorState, 'between'); assert.equal(mk(85).floorState, 'between'); assert.equal(mk(95).floorState, 'met'); assert.equal(mk(84.9).floorState, 'below');
 });
-test('composite_floor_basis_separate_default_unchanged', () => {
+test('official_actual_is_wait_never_zero_never_rescaled', () => {
   const m = C.buildModel(official(F.base()), M);
-  assert.ok(m.compositeFloorBasis, '하한 기준 종합 없음');
-  // 기본(도전 95% 기준)은 그대로, 하한 85% 기준은 따로 — 차이 = (65.5 − 58.6) ÷ 3 × 0.6
-  const diff = m.compositeFloorBasis.points - m.composite.points;
-  assert.ok(Math.abs(diff - (m.actual.valueFloor - m.actual.value) * 0.6) < 1e-9);
-  assert.ok(diff > 0);
-  // 실적이 없으면 둘 다 실적 몫을 더하지 않는다
-  const n = C.buildModel(F.base(), '2026-12'); assert.equal(n.actual.valueFloor, null);
+  const a = m.composite.parts.find(p => p.key === 'actual');
+  assert.equal(a.state, 'wait'); assert.equal(a.points, null); assert.equal(a.weight, 60);
+  // 확인분 3개 평균은 참고로만 남는다(종합에 더하지 않는다)
+  assert.equal(r1(m.actual.value), 55.3); assert.equal(r1(m.actual.valueFloor), 57.6);
+  // 종합 = 반영된 부분의 합 그대로(100점 환산 없음)
+  const sumPts = m.composite.parts.reduce((s, p) => s + (p.points || 0), 0);
+  assert.ok(Math.abs(m.composite.points - sumPts) < 1e-9);
+  assert.ok(m.composite.waiting >= 60 - 1e-9);
+  assert.equal(m.compositeFloorBasis, undefined);
+  // 확인분이 없어 자동값만 있어도 공식 실적은 대기
+  assert.equal(C.buildModel(F.base(), M).composite.parts.find(p => p.key === 'actual').state, 'wait');
+});
+test('kpi3_composite_basis_unconfirmed', () => {
+  const rows = C.kpiActual(official(F.base()), M).rows;
+  assert.equal(rows[2].compositeBasis, 'unconfirmed'); assert.equal(rows[0].compositeBasis, null); assert.equal(rows[1].compositeBasis, null);
 });

@@ -34,9 +34,9 @@ const UI = { state: 'ready', month: '2026-11' };
 const R = s => T.renderHtml(C.buildModel(s, '2026-11'), UI);
 test('render_spec_example', () => {
   const h = R(F.base());
-  ['27.3점', '반영 70%', '대기 20%', '미배정 10%', '실제 KPI 실적', '업무 관리점수', '1/9개 측정', '(임시 비중)', '지표 미등록',
+  ['8.3점', '반영 10%', '대기 80%', '미배정 10%', '공식 실적', '업무 관리점수', '1/9개 측정', '(임시 비중)', '지표 미등록',
     '다른 팀원에게 넘기지 않습니다', '100점 환산 안 함', 'KPI1', '신규 협약 활용', '목표 70%', 'KPI2', '문의별 L3 도달', '목표 50%', 'KPI3', '다른 단지 재사용', '목표 95% 도전 · 85% 하한', '첫 요청이 없기 전에 시작 장벽을 없앤다', '문의 다음 단계가 고객에게 보이게 한다', '첫 도움의 막힘을 해결하고 다음 요청을 잇는다', '뒤처진 부분', '팀 진척', '팀원 진척', '개인 트래커 추가',
-    '업무 관리점수는 실제 KPI 실적에 더해지지 않습니다', 'K1 관리 1']
+    '업무 관리점수와 공식 실적은 섞이지 않습니다', 'K1 관리 1']
     .forEach(t => assert.ok(h.includes(t), '없음: ' + t));
 });
 test('render_compare_note', () => {
@@ -114,7 +114,7 @@ test('gate_tracker_link', () => {
 test('weight_line_three_members_sums_100', () => {
   const s = F.base(); s.kpiTabConfig = { members: ['shs', 'm2', 'm1'] }; s.leadDefs['LI-m1-1'] = { id: 'LI-m1-1', member: 'm1', name: 'y' };
   const h = R(s);
-  assert.ok(h.includes('반영 66.7%'), '반영'); assert.ok(h.includes('대기 26.7%'), '대기'); assert.ok(h.includes('미배정 6.7%'), '미배정');
+  assert.ok(h.includes('반영 6.7%'), '반영'); assert.ok(h.includes('대기 86.7%'), '대기'); assert.ok(h.includes('미배정 6.7%'), '미배정');
 });
 test('mobile_touch_targets_44', () => {
   const c = fs.readFileSync(__dirname + '/b2b-kpi-tab.css', 'utf8').replace(/\s+/g, ' ');
@@ -179,7 +179,7 @@ test('render_cumulative', () => {
 test('render_official_kpi', () => {
   const s = F.base(); s.kpiOfficial = { cutoff: '2026-10-20', note: '확인분', items: { MK1: { num: 8, den: 25, value: 32, unit: '곳' }, MK3: { num: 315, den: 1025, value: 30.73, unit: '기회' }, MK2: { num: 44, den: 79, value: 55.7, unit: '곳' } } };
   const h = R(s);
-  ['32.0%', '8/25 곳 · 확인분', '30.7%', '315/1,025 기회 · 확인분', '55.7%', '44/79 곳 · 확인분', '2026.10.20 마감 확인분', '다른 정의의 자동값 참고 17.6%'].forEach(t => assert.ok(h.includes(t), '없음: ' + t));
+  ['32.0%', '8/25 곳 · 10/20 마감 확인분', '30.7%', '315/1,025 기회 · 10/20 마감 확인분', '55.7%', '44/79 곳 · 10/20 마감 확인분', '10/20 마감 확인분이며 11월 최신 실적이 아닙니다', '다른 정의의 자동값 참고 17.6%'].forEach(t => assert.ok(h.includes(t), '없음: ' + t));
 });
 
 // ---- 1·2차 미팅 누락 방지 실측 표시 ----
@@ -215,8 +215,28 @@ test('render_kpi_definitions_and_floor', () => {
     '도전 95% 대비 58.6%', '하한 85% 대비 65.5%', '하한 85%까지 29.3%p 부족', '하한 미달', '목표 95% 도전 · 85% 하한'].forEach(t => assert.ok(h.includes(t), '없음: ' + t));
   assert.equal((h.match(/class="b2bkpi-def"/g) || []).length, 3);
 });
-test('render_composite_basis_notice', () => {
-  const s = F.base(); s.kpiOfficial = { cutoff: '2026-10-20', note: '확인분', items: { MK1: { num: 8, den: 25, value: 32, unit: '곳' }, MK3: { num: 315, den: 1025, value: 30.73, unit: '기회' }, MK2: { num: 44, den: 79, value: 55.7, unit: '곳' } } };
+// ---- 공식 실적 산출 대기 · 확인분은 참고 영역 · 측정/대기 구분 ----
+const officialShape = () => { const s = F.base(); s.kpiOfficial = { cutoff: '2026-10-20', note: '확인분', items: { MK1: { num: 8, den: 25, value: 32, unit: '곳' }, MK3: { num: 315, den: 1025, value: 30.73, unit: '기회' }, MK2: { num: 44, den: 79, value: 55.7, unit: '곳' } } }; return s; };
+test('render_official_actual_wait_and_reference_area', () => {
+  const h = R(officialShape());
+  ['공식 실적 산출 대기', '참고 · 확인분 3개 평균', '공식 점수가 아닙니다', '종합점수 적용 기준: 미확정', '팀장님 확인 대기',
+    '도전 95% 기준 55.3%', '하한 85% 기준 57.6%', '10/20 마감 확인분', '11월 최신 실적이 아닙니다', '공식 실적 60%는 산출 대기'].forEach(t => assert.ok(h.includes(t), '없음: ' + t));
+  assert.ok(!h.includes('실제 KPI 실적 (60%)'), '옛 표기 남음');
+  assert.ok(!h.includes('하한 85% 기준이면'), '옛 점수 안내 남음');
+});
+test('render_official_wait_not_zero_points_not_rescaled', () => {
+  const m = C.buildModel(officialShape(), '2026-11'); const h = T.renderHtml(m, { state: 'ready', month: '2026-11' });
+  const personal = m.composite.parts.filter(p => p.key.indexOf('p:') === 0).reduce((s, p) => s + (p.points || 0), 0);
+  assert.ok(Math.abs(m.composite.points - personal) < 1e-9, '종합에 실적이 섞임');
+  assert.ok(h.includes('100점 환산 안 함'));
+  assert.ok(/대기 [0-9.]+%/.test(h));
+});
+test('render_person_measured_and_waiting_groups', () => {
+  const h = R(F.base());
+  ['측정된 항목 (1개)', '대기 항목 (8개)', '점수에 반영', '점수에 넣지 않음'].forEach(t => assert.ok(h.includes(t), '없음: ' + t));
+});
+test('render_team_measured_and_waiting_counts', () => {
+  const s = F.base(); s.kpiTeamChecks = { 'MK1_2026-11': { checks: { c1: true, c2: true } } };
   const h = R(s);
-  ['팀 공식 점수가 아닙니다', '재사용 기준이 정해지지 않아', '임시로 도전 95%', '하한 85% 기준이면'].forEach(t => assert.ok(h.includes(t), '없음: ' + t));
+  ['체크 2개 · 대기 3개', '체크 0개 · 대기 5개', '측정 2개 · 대기 13개'].forEach(t => assert.ok(h.includes(t), '없음: ' + t));
 });

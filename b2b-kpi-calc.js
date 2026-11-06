@@ -63,11 +63,13 @@
         auto: !useOff && !!(((shape && shape.perfAuto) || {})[id + '_' + month]),
         source: useOff ? 'official' : 'auto', unit: useOff ? (o.unit || '') : '', autoRate: auto.state === 'ok' ? auto.value : null, autoNum: isNum(auto.num) ? auto.num : null, autoDen: isNum(auto.den) ? auto.den : null };
       row.ach = r.state === 'ok' ? Math.min(100, r.value / k.target * 100) : null;
+      row.cutoff = useOff ? (off && off.cutoff || null) : null;
       row.def = k.def; if(!row.unit) row.unit = k.unit || '';
       // 재사용(KPI3)만 하한이 있다 — 도전 95% 대비와 하한 85% 대비를 따로 둔다(종합점수에 어느 쪽을 쓸지는 팀장님 파일에 없어 미확정)
       row.achFloor = k.floor && r.state === 'ok' ? Math.min(100, r.value / k.floor * 100) : null;
       row.floorGap = k.floor && r.state === 'ok' ? r.value - k.floor : null;
       row.targetGap = r.state === 'ok' ? r.value - k.target : null;
+      row.compositeBasis = k.floor ? 'unconfirmed' : null; // 재사용의 종합 적용 기준(도전 95%/하한 85%)은 팀장님 확인 전까지 미확정
       row.floorState = k.floor && r.state === 'ok' ? (r.value >= k.target ? 'met' : r.value >= k.floor ? 'between' : 'below') : null;
       return row;
     });
@@ -199,8 +201,8 @@
   /* 종합점수 = 실적×0.6 + 팀 공동×0.2 + Σ(개인 점수 × 개인 몫%). 산출 대기·미배정은 더하지 않고, 100점으로 환산하지 않는다. */
   function composite(actual, team, persons, shares){
     var parts = [], r2 = function(v){ return Math.round(v * 1e6) / 1e6; };
-    var aOk = actual && actual.value != null;
-    parts.push({ key: 'actual', label: '실제 KPI 실적', weight: WEIGHTS.actual * 100, state: aOk ? 'ok' : 'wait', points: aOk ? actual.value * WEIGHTS.actual : null });
+    // 확인분(10/20 마감)·자동값은 공식 실적이 아니다 — 종합에 더하지 않고 '공식 실적 산출 대기'로 둔다(참고 평균은 actual.value·valueFloor)
+    parts.push({ key: 'actual', label: '공식 실적', weight: WEIGHTS.actual * 100, state: 'wait', points: null, reason: '공식 실적 산출 대기' });
     var tOk = team && team.state === 'ok';
     parts.push({ key: 'team', label: '팀 공동 업무', weight: WEIGHTS.team * 100, state: tOk ? 'ok' : 'wait', points: tOk ? team.value * WEIGHTS.team : null });
     ((shares && shares.rows) || []).forEach(function(r){
@@ -217,7 +219,7 @@
   /* 뒤처진 부분 — 목표 미달 KPI → 목표 대비 낮은 선행지표 → 사람별 미측정 개수(최대 5줄) */
   function laggards(actual, persons, shape){
     var kp = ((actual && actual.rows) || []).filter(function(r){ return r.ach != null && r.ach < 100; }).sort(function(a, b){ return a.ach - b.ach; })
-      .map(function(r){ return { kind: 'kpi', label: (r.no ? r.no + ' ' : '') + r.name, detail: '목표 ' + r.target + '% 대비 달성 ' + Math.round(r.ach * 10) / 10 + '%' }; });
+      .map(function(r){ return { kind: 'kpi', label: (r.no ? r.no + ' ' : '') + r.name, detail: '10/20 마감 확인분 기준 · 목표 ' + r.target + '% 대비 ' + Math.round(r.ach * 10) / 10 + '%' }; });
     var leads = [], um = [];
     Object.keys(persons || {}).forEach(function(id){
       var p = persons[id]; if(!p || !p.rows) return;
@@ -244,8 +246,7 @@
     });
     return { month: month, prevMonth: pm, actual: actual, team: team, persons: persons, shares: shares, lags: lags,
       composite: composite(actual, team, persons, shares),
-      /* 재사용을 하한 85% 대비로 볼 때의 종합(참고) */
-      compositeFloorBasis: composite({ value: actual.valueFloor }, team, persons, shares), laggards: laggards(actual, persons, shape), compareNotes: notes };
+      laggards: laggards(actual, persons, shape), compareNotes: notes };
   }
 
   /* ---- 개인 트래커·지표 정의(업무트래커 leadDefs/lagDefs/members 와 같은 모양) ---- */
