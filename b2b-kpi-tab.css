@@ -158,3 +158,4 @@ body.b2bkpi-on #listView, body.b2bkpi-on #cardView, body.b2bkpi-on #workQueueVie
 .b2bkpi-mrow-b{ color:#33415C; margin-top:3px; overflow-wrap:anywhere; }
 .b2bkpi-mrow-why{ color:#6B7A90; font-size:12.5px; margin-top:2px; overflow-wrap:anywhere; }
 @media (max-width:640px){ .b2bkpi-num{ min-height:44px; } }
+.b2bkpi-obs{ margin-top:8px; padding:6px 10px; background:#EEF3FB; border-radius:8px; font-size:13px; line-height:1.5; color:#1B4480; overflow-wrap:anywhere; }

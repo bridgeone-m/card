@@ -339,3 +339,17 @@ test('kpi3_composite_basis_unconfirmed', () => {
   const rows = C.kpiActual(official(F.base()), M).rows;
   assert.equal(rows[2].compositeBasis, 'unconfirmed'); assert.equal(rows[0].compositeBasis, null); assert.equal(rows[1].compositeBasis, null);
 });
+
+// ---- 집계 내역(관찰 중·제외·세부 건수) — 업체명 없는 숫자만, 값 저장소 kpiOfficial 의 breakdown ----
+test('kpiActual_breakdown_normalized', () => {
+  const s = official(F.base());
+  s.kpiOfficial.items.MK1.breakdown = [{ key: 'observing', label: '관찰 중 · 분모에 넣지 않음', n: 8, unit: '곳', note: '이미 요청 3곳' }, { label: '협약일 불확정 · 제외', n: 3, unit: '곳' }];
+  // RTDB 는 배열을 {0:..,1:..} 로 돌려줄 수도 있다 — 둘 다 같게 읽는다
+  s.kpiOfficial.items.MK3.breakdown = { 0: { key: 'observing', label: '관찰 중', n: 166, unit: '기회' }, 1: { label: '직접 L3', n: 227, unit: '기회' } };
+  s.kpiOfficial.items.MK2.breakdown = [{ label: '깨진 항목', n: 'x' }, { label: '정상', n: 5, unit: '곳' }, null];
+  const [k1, k2, k3] = C.kpiActual(s, M).rows;
+  assert.equal(k1.breakdown.length, 2); assert.equal(k1.breakdown[0].n, 8); assert.equal(k1.observing.n, 8); assert.equal(k1.observing.note, '이미 요청 3곳');
+  assert.equal(k2.breakdown.length, 2); assert.equal(k2.observing.n, 166);
+  assert.equal(k3.breakdown.length, 1); assert.equal(k3.observing, null); // 숫자가 아닌 항목·빈 항목은 버린다
+  assert.equal(C.kpiActual(official(F.base()), M).rows[0].breakdown.length, 0); // 없으면 빈 목록
+});

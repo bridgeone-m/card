@@ -240,3 +240,13 @@ test('render_team_measured_and_waiting_counts', () => {
   const h = R(s);
   ['체크 2개 · 대기 3개', '체크 0개 · 대기 5개', '측정 2개 · 대기 13개'].forEach(t => assert.ok(h.includes(t), '없음: ' + t));
 });
+
+test('render_breakdown_observing_and_detail', () => {
+  const s = officialShape();
+  s.kpiOfficial.items.MK1.breakdown = [{ key: 'observing', label: '관찰 중 · 분모에 넣지 않음', n: 8, unit: '곳', note: '이미 요청 3곳' }, { label: '활성 8곳 중 협약 전 활동', n: 1, unit: '곳' }];
+  s.kpiOfficial.items.MK3.breakdown = [{ key: 'observing', label: '관찰 중 · 분모에 넣지 않음', n: 166, unit: '기회', note: '이미 L3 35기회' }, { label: '도달 중 직접 L3', n: 227, unit: '기회' }];
+  const h = R(s);
+  ['관찰 중 · 분모에 넣지 않음 8곳', '이미 요청 3곳', '166기회', '이미 L3 35기회', '집계 내역', '활성 8곳 중 협약 전 활동 1곳', '도달 중 직접 L3 227기회'].forEach(t => assert.ok(h.includes(t), '없음: ' + t));
+  assert.equal((h.match(/class="b2bkpi-obs"/g) || []).length, 2); // 관찰 중은 접지 않고 바로 보인다
+  assert.ok(!R(officialShape()).includes('b2bkpi-obs'), '내역이 없으면 줄도 없다');
+});

@@ -67,6 +67,17 @@
       '<p><b>관찰기간</b> ' + esc(d.period) + '</p><p><b>분자</b> ' + esc(d.num) + '</p><p><b>분모</b> ' + esc(d.den) + '</p>' +
       '<p class="b2bkpi-muted">' + esc(d.note) + '</p><p class="b2bkpi-muted"><b>범위</b> ' + esc(d.scope) + '</p></div></details>';
   }
+  /* 관찰 중(분모 밖) 건수는 접지 않고 바로, 나머지 집계 내역은 펼치기 안에 — 설계: 진행 중 조기 요청은 보이되 관찰 완료분과 합치지 않는다 */
+  function obsLine(r){
+    var o = r.observing; if(!o) return '';
+    return '<div class="b2bkpi-obs"><b>' + esc(o.label + ' ' + o.n.toLocaleString('ko-KR') + (o.unit || '')) + '</b>' + (o.note ? ' <span class="b2bkpi-muted">· ' + esc(o.note) + '</span>' : '') + '</div>';
+  }
+  function breakdownBlock(r){
+    var rest = (r.breakdown || []).filter(function(x){ return x.key !== 'observing'; }); if(!rest.length) return '';
+    return '<details class="b2bkpi-def"><summary>집계 내역</summary><div class="b2bkpi-def-b">' + rest.map(function(x){
+      return '<p>' + esc(x.label + ' ' + x.n.toLocaleString('ko-KR') + (x.unit || '')) + (x.note ? ' <span class="b2bkpi-muted">· ' + esc(x.note) + '</span>' : '') + '</p>';
+    }).join('') + '<p class="b2bkpi-muted">업체명 없는 숫자만 저장합니다. 마감일 기준 확인분입니다.</p></div></details>';
+  }
   function floorLines(r){
     if(r.floor == null || r.achFloor == null) return '';
     var gap = r.floorState === 'below' ? '하한 ' + r.floor + '%까지 ' + f1(Math.abs(r.floorGap)) + '%p 부족' : r.floorState === 'between' ? '하한 충족 · 도전까지 ' + f1(Math.abs(r.targetGap)) + '%p' : '도전 목표 달성';
@@ -80,7 +91,7 @@
       '<div class="b2bkpi-kpi-val"><b>' + (r.rate == null ? '—' : f1(r.rate) + '%') + '</b></div>' +
       (r.num != null && r.den != null ? '<div class="b2bkpi-muted">' + (r.source === 'official' ? esc(r.num.toLocaleString('ko-KR') + '/' + r.den.toLocaleString('ko-KR') + ' ' + (r.unit || '') + ' · ' + cutoffShort(r.cutoff) + ' 마감 확인분') : r.num + ' / ' + r.den) + '</div>' : '') +
       '<div class="b2bkpi-goal">' + esc(goalText(r)) + '</div>' + bar(r) + (r.floor ? floorLines(r) : '') + '<div class="b2bkpi-kpi-foot"><span class="b2bkpi-muted">' + (r.floor ? '도전 목표 대비 달성 ' : '목표 대비 달성 ') + pct(r.ach) + '</span>' + p + '</div>' +
-      '<div class="b2bkpi-kpi-desc">' + esc(r.desc || '') + '</div>' + defBlock(r) +
+      '<div class="b2bkpi-kpi-desc">' + esc(r.desc || '') + '</div>' + obsLine(r) + defBlock(r) + breakdownBlock(r) +
       (r.source === 'official' && r.autoRate != null ? '<div class="b2bkpi-muted b2bkpi-autoref">다른 정의의 자동값 참고 ' + f1(r.autoRate) + '% (' + r.autoNum + '/' + r.autoDen + ') · 위 정의와 달라 비교하지 않습니다</div>' : '') + '</div>';
   }
   /* §1·2차 미팅 누락 방지 실측(고객관리카드 도입 2026-08-21 이후) — 숫자를 누르면 업체 목록 */

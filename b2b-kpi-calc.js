@@ -51,6 +51,11 @@
     return ((shape && shape.perfAuto) || {})[k] || ((shape && shape.perfMonthly) || {})[k] || null;
   }
 
+  /* 집계 내역(breakdown) — 업체명 없는 숫자만. 배열 또는 {0:..,1:..} 모양을 같게 읽고, 숫자가 아닌 항목은 버린다 */
+  function breakdownOf(o){
+    var raw = o && o.breakdown, arr = Array.isArray(raw) ? raw : raw && typeof raw === 'object' ? Object.keys(raw).sort(function(a, b){ return a - b; }).map(function(k){ return raw[k]; }) : [];
+    return arr.filter(function(x){ return x && typeof x === 'object' && x.label && isNum(x.n); }).map(function(x){ return { key: x.key || '', label: String(x.label), n: x.n, unit: x.unit ? String(x.unit) : '', note: x.note ? String(x.note) : '' }; });
+  }
   /* 실제 KPI 실적 — 팀 공식 확인분 값(kpiOfficial, 팀원 안내서와 같은 숫자)이 있으면 그 값을, 없으면 업무트래커 자동값을 쓴다.
      KPI별 달성 = min(100, 실적률 ÷ 목표), 값 = 측정된 KPI 평균. 자동값은 정의가 달라 참고(autoRate)로만 남긴다. */
   function kpiActual(shape, month){
@@ -64,6 +69,8 @@
         source: useOff ? 'official' : 'auto', unit: useOff ? (o.unit || '') : '', autoRate: auto.state === 'ok' ? auto.value : null, autoNum: isNum(auto.num) ? auto.num : null, autoDen: isNum(auto.den) ? auto.den : null };
       row.ach = r.state === 'ok' ? Math.min(100, r.value / k.target * 100) : null;
       row.cutoff = useOff ? (off && off.cutoff || null) : null;
+      row.breakdown = useOff ? breakdownOf(o) : [];
+      row.observing = row.breakdown.filter(function(x){ return x.key === 'observing'; })[0] || null;
       row.def = k.def; if(!row.unit) row.unit = k.unit || '';
       // 재사용(KPI3)만 하한이 있다 — 도전 95% 대비와 하한 85% 대비를 따로 둔다(종합점수에 어느 쪽을 쓸지는 팀장님 파일에 없어 미확정)
       row.achFloor = k.floor && r.state === 'ok' ? Math.min(100, r.value / k.floor * 100) : null;
