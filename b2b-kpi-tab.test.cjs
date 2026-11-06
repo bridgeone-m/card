@@ -179,7 +179,7 @@ test('render_cumulative', () => {
 test('render_official_kpi', () => {
   const s = F.base(); s.kpiOfficial = { cutoff: '2026-10-20', note: '확인분', items: { MK1: { num: 8, den: 25, value: 32, unit: '곳' }, MK3: { num: 315, den: 1025, value: 30.73, unit: '기회' }, MK2: { num: 44, den: 79, value: 55.7, unit: '곳' } } };
   const h = R(s);
-  ['32.0%', '8/25 곳 · 확인분', '30.7%', '315/1,025 기회 · 확인분', '55.7%', '44/79 곳 · 확인분', '2026.10.20 마감 확인분', '자동 집계 참고 17.6%'].forEach(t => assert.ok(h.includes(t), '없음: ' + t));
+  ['32.0%', '8/25 곳 · 확인분', '30.7%', '315/1,025 기회 · 확인분', '55.7%', '44/79 곳 · 확인분', '2026.10.20 마감 확인분', '다른 정의의 자동값 참고 17.6%'].forEach(t => assert.ok(h.includes(t), '없음: ' + t));
 });
 
 // ---- 1·2차 미팅 누락 방지 실측 표시 ----
@@ -205,4 +205,18 @@ test('index_exports_meeting_logic', () => {
   const a = html.indexOf('<script src="b2b-kpi-meeting.js"></script>'), b = html.indexOf('<script src="b2b-kpi-tab.js"></script>');
   assert.ok(a > 0 && a < b);
   new vm.Script(fs.readFileSync(__dirname + '/b2b-kpi-meeting.js', 'utf8'));
+});
+
+// ---- 팀장님 최종 설계 — 화면에 정의·관찰기간·재사용 하한/도전 표시 ----
+test('render_kpi_definitions_and_floor', () => {
+  const s = F.base(); s.kpiOfficial = { cutoff: '2026-10-20', note: '확인분', items: { MK1: { num: 8, den: 25, value: 32, unit: '곳' }, MK3: { num: 315, den: 1025, value: 30.73, unit: '기회' }, MK2: { num: 44, den: 79, value: 55.7, unit: '곳' } } };
+  const h = R(s);
+  ['무엇을 세나요', '협약 전 90일 ~ 후 89일', '협약 후 90일 관찰', '첫 L2 이후 30일', '첫 유효 L3 요청일 이후 60일', '같은 단지 추가 요청',
+    '도전 95% 대비 58.6%', '하한 85% 대비 65.5%', '하한 85%까지 29.3%p 부족', '하한 미달', '목표 95% 도전 · 85% 하한'].forEach(t => assert.ok(h.includes(t), '없음: ' + t));
+  assert.equal((h.match(/class="b2bkpi-def"/g) || []).length, 3);
+});
+test('render_composite_basis_notice', () => {
+  const s = F.base(); s.kpiOfficial = { cutoff: '2026-10-20', note: '확인분', items: { MK1: { num: 8, den: 25, value: 32, unit: '곳' }, MK3: { num: 315, den: 1025, value: 30.73, unit: '기회' }, MK2: { num: 44, den: 79, value: 55.7, unit: '곳' } } };
+  const h = R(s);
+  ['팀 공식 점수가 아닙니다', '재사용 기준이 정해지지 않아', '임시로 도전 95%', '하한 85% 기준이면'].forEach(t => assert.ok(h.includes(t), '없음: ' + t));
 });

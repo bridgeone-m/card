@@ -294,3 +294,38 @@ test('numeric_override_unmeasured_and_empty', () => {
   s.__cardNumeric = { LI01: { num: 0, den: 0, state: 'empty' } };
   assert.equal(C.personScore(s, 'shs', M).rows.find(x => x.id === 'LI01').state, 'empty');
 });
+
+// ---- 팀장님 최종 설계(브릿지원_3대KPI_행동연결_그림안내_v2) — 정의·관찰기간·재사용 하한/도전 ----
+test('kpi_definitions_follow_leader_design', () => {
+  const [k1, k2, k3] = C.KPIS;
+  assert.deepEqual([k1.label, k1.name, k1.target, k1.unit], ['KPI1', '신규 협약 활용', 70, '곳']);
+  assert.deepEqual([k2.label, k2.name, k2.target, k2.unit], ['KPI2', '문의별 L3 도달', 50, '기회']);
+  assert.deepEqual([k3.label, k3.name, k3.target, k3.floor, k3.unit], ['KPI3', '다른 단지 재사용', 95, 85, '곳']);
+  assert.ok(k1.def.period.includes('협약 전 90일') && k1.def.period.includes('후 89일') && k1.def.period.includes('90일 관찰'));
+  assert.ok(k2.def.period.includes('첫 L2') && k2.def.period.includes('30일'));
+  assert.ok(k3.def.period.includes('첫 유효 L3') && k3.def.period.includes('60일'));
+  assert.ok(k3.def.note.includes('같은 단지 추가 요청'));
+  [k1, k2, k3].forEach(k => ['period', 'num', 'den', 'note', 'scope'].forEach(f => assert.ok(k.def[f] && k.def[f].length > 5, k.id + ' ' + f)));
+});
+test('kpi3_floor_and_challenge_shown_separately', () => {
+  const a = C.kpiActual(official(F.base()), M), [k1, k2, k3] = a.rows;
+  assert.equal(r1(k3.ach), 58.6); assert.equal(r1(k3.achFloor), 65.5); assert.equal(r1(k3.floorGap), -29.3); assert.equal(k3.floorState, 'below');
+  assert.equal(r1(k3.targetGap), -39.3);
+  assert.equal(k1.achFloor, null); assert.equal(k1.floorState, null); assert.equal(k2.floorGap, null);
+  // 하한 기준 평균(참고) = (45.7 + 61.5 + 65.5) / 3
+  assert.equal(r1(a.value), 55.3); assert.equal(r1(a.valueFloor), 57.6);
+});
+test('kpi3_floor_state_between_and_met', () => {
+  const mk = v => { const s = official(F.base()); s.kpiOfficial.items.MK2 = { num: v, den: 100, value: v, unit: '곳' }; return C.kpiActual(s, M).rows[2]; };
+  assert.equal(mk(90).floorState, 'between'); assert.equal(mk(85).floorState, 'between'); assert.equal(mk(95).floorState, 'met'); assert.equal(mk(84.9).floorState, 'below');
+});
+test('composite_floor_basis_separate_default_unchanged', () => {
+  const m = C.buildModel(official(F.base()), M);
+  assert.ok(m.compositeFloorBasis, '하한 기준 종합 없음');
+  // 기본(도전 95% 기준)은 그대로, 하한 85% 기준은 따로 — 차이 = (65.5 − 58.6) ÷ 3 × 0.6
+  const diff = m.compositeFloorBasis.points - m.composite.points;
+  assert.ok(Math.abs(diff - (m.actual.valueFloor - m.actual.value) * 0.6) < 1e-9);
+  assert.ok(diff > 0);
+  // 실적이 없으면 둘 다 실적 몫을 더하지 않는다
+  const n = C.buildModel(F.base(), '2026-12'); assert.equal(n.actual.valueFloor, null);
+});

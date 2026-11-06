@@ -5,10 +5,24 @@
   'use strict';
   /* 팀 3대 KPI(2026-11-05 사용자 확정, 팀원 안내서 '3대 KPI와 팀 행동' 문구 기준). 실적 값은 업무트래커 팀 KPI 자동값(ref)을 쓴다.
      KPI1 신규 협약 활용 ← MK1(신규업체 첫 서비스 이용률) / KPI2 문의별 L3 도달 ← MK3(L2→L3) / KPI3 다른 단지 재사용 ← MK2(다른 현장 재이용) */
+  /* 정의·관찰기간 문구는 팀장님 최종 설계(브릿지원_3대KPI_행동연결_그림안내_v2_20261105 · 고객여정/기준.md)를 그대로 옮긴 것이다.
+     L2 = 고객의 기술문의, L3 = 고객의 PT·설명회 또는 컨설팅내역서 요청. 자료 열람·버튼 선택·만족·의향은 요청이 아니다. */
   var KPIS = [
-    { id: 'MK1', label: 'KPI1', name: '신규 협약 활용', desc: '첫 요청이 없기 전에 시작 장벽을 없앤다', target: 70 },
-    { id: 'MK3', label: 'KPI2', name: '문의별 L3 도달', desc: '문의 다음 단계가 고객에게 보이게 한다', target: 50 },
-    { id: 'MK2', label: 'KPI3', name: '다른 단지 재사용', desc: '첫 도움의 막힘을 해결하고 다음 요청을 잇는다', target: 95, floor: 85 }
+    { id: 'MK1', label: 'KPI1', name: '신규 협약 활용', desc: '첫 요청이 없기 전에 시작 장벽을 없앤다', target: 70, unit: '곳',
+      def: { period: '협약 전 90일 ~ 후 89일의 유효 L2·L3 요청을 인정하고, 협약 후 90일 관찰이 끝난 업체로 집계합니다.',
+        num: '그 기간에 유효한 L2 기술문의 또는 L3 요청이 1회 이상 있는 업체', den: '협약 후 90일 관찰이 끝난 업체',
+        note: '협약 전 요청과 협약 후 첫 요청은 구분해서 봅니다. 협약 전 활동은 조기 활성 관측이며 신규 전환의 원인으로 단정하지 않습니다.',
+        scope: '기존 명단 중 협약일이 확인되고 90일 관찰이 끝난 업체 (전체 신규 아님)' } },
+    { id: 'MK3', label: 'KPI2', name: '문의별 L3 도달', desc: '문의 다음 단계가 고객에게 보이게 한다', target: 50, unit: '기회',
+      def: { period: '시공사·단지·공종별로 첫 L2 이후 30일 안의 실제 L3 요청 또는 확인된 직접 L3를 집계합니다.',
+        num: '30일 안에 실제 L3 요청이 있었거나 직접 L3로 확인된 기회', den: '시공사·단지·공종별 기회 중 30일 관찰이 끝난 것',
+        note: '같은 기회의 경유·직접은 한 번만 세고, 직접 L3에 가짜 L2를 만들지 않습니다. 같은 단지라도 시공사가 다르면 다른 기회입니다. 자료 열람·버튼 선택은 L3가 아닙니다.',
+        scope: '실제 협약 업체에 연결된 유효 기회 (30일 관찰 완료분)' } },
+    { id: 'MK2', label: 'KPI3', name: '다른 단지 재사용', desc: '첫 도움의 막힘을 해결하고 다음 요청을 잇는다', target: 95, floor: 85, unit: '곳',
+      def: { period: '데이터상 첫 유효 L3 요청일 이후 60일 안에, 같은 시공사의 다른 단지에서 생긴 유효 L2 또는 직접 L3를 집계합니다.',
+        num: '같은 시공사가 다른 단지에서 새 유효 L2 또는 직접 L3를 요청한 업체', den: '첫 유효 L3 후 60일 관찰이 끝난 업체',
+        note: '같은 단지 추가 요청·다른 공종만·자료 열람·후보·의향은 분자가 아닙니다. 첫 L3는 데이터에서 처음 보인 기록이며 생애 첫 요청으로 단정하지 않습니다. 95%는 도전 목표, 85%는 하한입니다.',
+        scope: '실제 협약 업체에 연결된 업체 (60일 관찰 완료분)' } }
   ];
   var TARGETS = {}; KPIS.forEach(function(k){ TARGETS[k.id] = { target: k.target, floor: k.floor || null }; });
   var CARD_START_MONTH = '2026-08'; // 고객관리카드 구축(2026-08-21) — 누적 실적 시작 달
@@ -49,10 +63,17 @@
         auto: !useOff && !!(((shape && shape.perfAuto) || {})[id + '_' + month]),
         source: useOff ? 'official' : 'auto', unit: useOff ? (o.unit || '') : '', autoRate: auto.state === 'ok' ? auto.value : null, autoNum: isNum(auto.num) ? auto.num : null, autoDen: isNum(auto.den) ? auto.den : null };
       row.ach = r.state === 'ok' ? Math.min(100, r.value / k.target * 100) : null;
+      row.def = k.def; if(!row.unit) row.unit = k.unit || '';
+      // 재사용(KPI3)만 하한이 있다 — 도전 95% 대비와 하한 85% 대비를 따로 둔다(종합점수에 어느 쪽을 쓸지는 팀장님 파일에 없어 미확정)
+      row.achFloor = k.floor && r.state === 'ok' ? Math.min(100, r.value / k.floor * 100) : null;
+      row.floorGap = k.floor && r.state === 'ok' ? r.value - k.floor : null;
+      row.targetGap = r.state === 'ok' ? r.value - k.target : null;
+      row.floorState = k.floor && r.state === 'ok' ? (r.value >= k.target ? 'met' : r.value >= k.floor ? 'between' : 'below') : null;
       return row;
     });
     var ok = rows.filter(function(r){ return r.ach != null; });
-    return { rows: rows, value: ok.length ? ok.reduce(function(s, r){ return s + r.ach; }, 0) / ok.length : null, measured: ok.length, total: KPI_IDS.length,
+    var avg = function(pick){ return ok.length ? ok.reduce(function(s, r){ return s + pick(r); }, 0) / ok.length : null; };
+    return { rows: rows, value: avg(function(r){ return r.ach; }), valueFloor: avg(function(r){ return r.achFloor != null ? r.achFloor : r.ach; }), measured: ok.length, total: KPI_IDS.length,
       cutoff: off && off.cutoff || null, officialNote: off && off.note || null };
   }
 
@@ -222,7 +243,9 @@
       notes[r.memberId] = prev.measured > 0 && measuredChanged(prev.measuredIds, cur.measuredIds);
     });
     return { month: month, prevMonth: pm, actual: actual, team: team, persons: persons, shares: shares, lags: lags,
-      composite: composite(actual, team, persons, shares), laggards: laggards(actual, persons, shape), compareNotes: notes };
+      composite: composite(actual, team, persons, shares),
+      /* 재사용을 하한 85% 대비로 볼 때의 종합(참고) */
+      compositeFloorBasis: composite({ value: actual.valueFloor }, team, persons, shares), laggards: laggards(actual, persons, shape), compareNotes: notes };
   }
 
   /* ---- 개인 트래커·지표 정의(업무트래커 leadDefs/lagDefs/members 와 같은 모양) ---- */

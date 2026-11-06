@@ -123,6 +123,14 @@ body.b2bkpi-on #listView, body.b2bkpi-on #cardView, body.b2bkpi-on #workQueueVie
 .b2bkpi-kpi.is-kpi1 .b2bkpi-goal{ color:#1F8A70; } .b2bkpi-kpi.is-kpi2 .b2bkpi-goal{ color:#3366CC; } .b2bkpi-kpi.is-kpi3 .b2bkpi-goal{ color:#C26A1E; }
 .b2bkpi-kpi.is-kpi1 .b2bkpi-bar .is-cur{ background:#1F8A70; } .b2bkpi-kpi.is-kpi2 .b2bkpi-bar .is-cur{ background:#3366CC; } .b2bkpi-kpi.is-kpi3 .b2bkpi-bar .is-cur{ background:#C26A1E; }
 .b2bkpi-kpi-desc{ margin-top:8px; font-size:13px; color:#33415C; line-height:1.5; }
+/* 팀장님 설계 — 정의·관찰기간, 재사용 도전/하한, 종합점수 기준 안내 */
+.b2bkpi-def{ margin-top:8px; border-top:1px dashed #D5DCE8; padding-top:6px; }
+.b2bkpi-def summary{ cursor:pointer; font-size:13px; font-weight:700; color:#1B4480; min-height:44px; display:flex; align-items:center; }
+.b2bkpi-def-b p{ margin:0 0 6px; font-size:13px; line-height:1.55; color:#33415C; word-break:keep-all; overflow-wrap:anywhere; }
+.b2bkpi-def-b p b{ color:#0B2037; margin-right:4px; }
+.b2bkpi-floor{ display:flex; flex-direction:column; gap:2px; margin-top:6px; font-size:13px; color:#33415C; }
+.b2bkpi-floor b{ color:#B4651E; }
+.b2bkpi-basis{ margin-top:8px; padding:8px 10px; background:#FFF6E8; border:1px solid #F1D3A6; border-radius:8px; font-size:12.5px; line-height:1.5; color:#5A3A12; overflow-wrap:anywhere; }
 .b2bkpi-cum{ font-size:12.5px; color:#1B4480; font-weight:700; padding:2px 0 4px; }
 /* §1·2차 미팅 누락 방지 실측 */
 .b2bkpi-nums{ margin:6px 0 2px; padding:8px 10px; border-radius:10px; background:#F2F6FB; display:flex; flex-direction:column; gap:4px; }
