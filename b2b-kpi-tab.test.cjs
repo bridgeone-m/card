@@ -250,3 +250,17 @@ test('render_breakdown_observing_and_detail', () => {
   assert.equal((h.match(/class="b2bkpi-obs"/g) || []).length, 2); // 관찰 중은 접지 않고 바로 보인다
   assert.ok(!R(officialShape()).includes('b2bkpi-obs'), '내역이 없으면 줄도 없다');
 });
+
+// ---- 3대 KPI 카드를 맨 위에 — 순서: ① 3대 KPI → ② 종합 KPI → ③ 뒤처진 부분 → ④ 팀 진척 → ⑤ 팀원 진척 → ⑥ 점수 반영 흐름 ----
+test('render_kpi_cards_first_then_composite', () => {
+  const h = R(officialShape());
+  const order = ['① 3대 KPI', '② 종합 KPI', '③ 뒤처진 부분', '④ 팀 진척', '⑤ 팀원 진척', '⑥ 점수 반영 흐름'].map(t => { const i = h.indexOf(t); assert.ok(i >= 0, '없음: ' + t); return i; });
+  order.reduce((prev, cur, k) => { assert.ok(cur > prev, '순서 어긋남 ' + k); return cur; }, -1);
+  const iCards = h.indexOf('b2bkpi-kpis'), iComp = h.indexOf('종합점수 (반영된 부분)'), iRef = h.indexOf('참고 · 확인분 3개 평균'), iCut = h.indexOf('11월 최신 실적이 아닙니다');
+  assert.ok(iCards >= 0 && iCards < iComp, 'KPI 카드가 종합보다 위');
+  assert.ok(iCut > iCards && iCut < iComp, '마감 확인분 안내는 카드 바로 아래, 종합 위');
+  assert.ok(iRef > iCut && iRef < iComp, '참고 영역도 종합 위');
+  assert.ok(h.indexOf('KPI1') < iComp, 'KPI1 이 가장 먼저');
+  assert.ok(!h.includes('① 종합 KPI'), '옛 번호 남음');
+  assert.ok(!h.includes('마감 확인분은 아래 KPI 카드'), '위치 안내 문구 갱신');
+});
