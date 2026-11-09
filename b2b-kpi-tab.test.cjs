@@ -264,3 +264,40 @@ test('render_kpi_cards_first_then_composite', () => {
   assert.ok(!h.includes('① 종합 KPI'), '옛 번호 남음');
   assert.ok(!h.includes('마감 확인분은 아래 KPI 카드'), '위치 안내 문구 갱신');
 });
+
+// ---- 팀 OS 6메뉴(팀장님 지시문) — 홈은 KPI 카드가 가장 먼저, 점수는 팀원 업무·알람으로 ----
+const OS = (() => { const d = load('b2b-kpi-os-data.js'); const c = { module: { exports: {} }, window: { B2BKpiOsData: d } }; vm.runInNewContext(fs.readFileSync(__dirname + '/b2b-kpi-os.js', 'utf8'), c); return c.module.exports; })();
+const RO = (s, menu) => T.renderHtml(C.buildModel(s, '2026-11'), { state: 'ready', month: '2026-11', os: OS, menu });
+test('os_home_kpi_cards_first_then_five_areas', () => {
+  const h = RO(officialShape(), undefined);
+  const order = ['① 3대 KPI', '② KPI별 행동 진척', '③ 오늘 꼭 할 행동', '④ 빨간 알람·병목', '⑤ 신규·기존 고객 흐름', '⑥ 주간 AI 운영 요약'].map(t => { const i = h.indexOf(t); assert.ok(i >= 0, '없음: ' + t); return i; });
+  order.reduce((p, c) => { assert.ok(c > p, '순서'); return c; }, -1);
+  assert.ok(h.indexOf('KPI1') < h.indexOf('KPI별 행동 진척'), 'KPI 카드가 가장 먼저');
+  ['신규 협약', '기존 고객', '상담·전화', '고객 의견·민원', '팀원 업무·알람'].forEach(t => assert.ok(h.includes(t), '메뉴 없음: ' + t));
+  assert.ok(h.includes('10/20 마감 확인분')); assert.ok(h.includes('참고 · 확인분 3개 평균'));
+  assert.ok(!h.includes('종합점수 (반영된 부분)'), '점수 영역은 팀원 업무·알람 메뉴로');
+});
+test('os_tasks_menu_has_templates_and_score_sections_numbered_once', () => {
+  const h = RO(officialShape(), 'tasks');
+  ['업무 템플릿', '알람 기준', '종합 KPI', '뒤처진 부분', '팀 진척', '팀원 진척', '점수 반영 흐름', '공식 실적 산출 대기'].forEach(t => assert.ok(h.includes(t), '없음: ' + t));
+  const heads = (h.match(/<h3>([①②③④⑤⑥⑦])/g) || []).map(x => x.slice(-1));
+  assert.equal(new Set(heads).size, heads.length, '번호 중복 ' + heads.join(''));
+  assert.ok(!h.includes('① 3대 KPI'), '3대 KPI 카드는 홈에만');
+});
+test('os_other_menus_render_with_menu_bar', () => {
+  [['new', '신규 협약 관리'], ['existing', '기존 고객 활용 현황'], ['consult', '상황별 짧은 대본'], ['feedback', '고객 의견·민원 처리 흐름']].forEach(([m, t]) => {
+    const h = RO(officialShape(), m); assert.ok(h.includes(t), m + ' 본문'); assert.equal((h.match(/data-kpi-act="menu"/g) || []).length, 6);
+    assert.ok(h.includes('aria-selected="true"'), m + ' 선택 표시');
+  });
+});
+test('os_menu_click_handler_and_wiring', () => {
+  assert.ok(tabSrc.includes("act === 'menu'"), '메뉴 클릭 처리');
+  assert.ok(html.includes('<script src="b2b-kpi-os-data.js"></script>') && html.includes('<script src="b2b-kpi-os.js"></script>'));
+  const d = html.indexOf('<script src="b2b-kpi-os-data.js"></script>'), o = html.indexOf('<script src="b2b-kpi-os.js"></script>'), t = html.indexOf('<script src="b2b-kpi-tab.js"></script>');
+  assert.ok(d > 0 && d < o && o < t, '스크립트 순서');
+  ['b2b-kpi-os-data.js', 'b2b-kpi-os.js'].forEach(f => new vm.Script(fs.readFileSync(__dirname + '/' + f, 'utf8')));
+});
+test('os_css_menu_mobile_friendly', () => {
+  assert.ok(css.includes('.b2bkpi-menu{') && css.includes('.b2bkpi-menubtn{'));
+  assert.ok(/\.b2bkpi-menubtn\{[^}]*min-height:44px/.test(css), '터치 44px');
+});

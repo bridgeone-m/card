@@ -1,5 +1,5 @@
 /* §B2B KPI 탭(2026-11) — 관리자 전용. 업무트래커(shared/b2bOpsTracker)의 담당자·지표 기록을 함께 읽고 쓴다.
-   화면: 3대 KPI(맨 위) → 종합 KPI → 뒤처진 부분 → 팀 진척 → 팀원 진척 → 점수 반영 흐름.
+   화면: 상단 6메뉴(홈·신규 협약·기존 고객·상담·전화·고객 의견·민원·팀원 업무·알람). 홈 = 3대 KPI 카드가 가장 먼저 → 행동 진척 → 오늘 행동 → 알람·병목 → 고객 흐름 → AI 요약. 업무 관리 점수(종합·팀·팀원·흐름)는 팀원 업무·알람 메뉴. 메뉴 화면은 b2b-kpi-os.js.
    원칙: 실제 KPI 실적과 업무 관리점수 분리, 미측정·미배정은 0점 처리·100점 환산 없이 따로 표시.
    계약서 발송 탭(contract-esign.js)과 같은 방식으로 상단 탭 버튼과 전체 화면 패널을 붙인다. */
 (function(){
@@ -159,18 +159,21 @@
       '<div class="b2bkpi-muted">KPI ' + a.total + '개 중 ' + a.measured + '개의 확인분을 목표 대비로 평균한 값이며 종합점수에 넣지 않습니다. 평균은 공식 점수가 아닙니다.</div>' +
       '<div class="b2bkpi-ref-basis">' + pill('wait', '미확정') + ' <b>종합점수 적용 기준: 미확정</b> <span class="b2bkpi-muted">· 재사용률에 도전 95%·하한 85% 중 어느 쪽을 쓸지 팀장님 확인 대기</span></div></div>';
   }
-  function renderReady(model, ui){
+  /* 화면을 'KPI 카드 영역(kpi)'과 '업무 관리 점수 영역(score)'으로 나눠 만든다. N 은 번호표. */
+  function renderParts(model, ui, N){
+    N = N || ['①', '②', '③', '④', '⑤', '⑥'];
     var c = model.composite, a = model.actual, t = model.team;
     var teamP = c.parts.filter(function(p){ return p.key === 'team'; })[0];
     var persP = c.parts.filter(function(p){ return p.key.indexOf('p:') === 0; }), persOk = persP.filter(function(p){ return p.state === 'ok'; });
     var persPts = persOk.reduce(function(s, p){ return s + p.points; }, 0);
     var out = '';
     // ① 3대 KPI — 화면 맨 위(카드·마감 확인분 안내·참고 영역)
-    out += sec('①', '3대 KPI', a.cutoff ? esc(cutoffShort(a.cutoff)) + ' 마감 확인분' : '', '<div class="b2bkpi-kpis">' + a.rows.map(kpiCard).join('') + '</div>' +
+    out += sec(N[0], '3대 KPI', a.cutoff ? esc(cutoffShort(a.cutoff)) + ' 마감 확인분' : '', '<div class="b2bkpi-kpis">' + a.rows.map(kpiCard).join('') + '</div>' +
       (a.cutoff ? '<p class="b2bkpi-muted b2bkpi-cutoff"><b>위 3개 값은 ' + esc(cutoffShort(a.cutoff)) + ' 마감 확인분이며 11월 최신 실적이 아닙니다.</b> 전체 공식 최신 실적이 아니고, 분모·연결 기준이 달라 다른 숫자와 직접 증감 비교하지 않습니다. 막대는 관측 비율, 세로선은 목표입니다.</p>' : '') +
       referenceArea(a));
+    var kpiHtml = out; out = '';
     // ② 종합 KPI
-    out += sec('②', '종합 KPI', '', '<div class="b2bkpi-big">' +
+    out += sec(N[1], '종합 KPI', '', '<div class="b2bkpi-big">' +
       '<div class="b2bkpi-card b2bkpi-total"><div class="b2bkpi-muted">종합점수 (반영된 부분)</div><div class="b2bkpi-num">' + (c.reflected > 0 ? f1(c.points) + '점' : '— 점') + '</div>' +
         '<div class="b2bkpi-wline">' + weightLine(c) + '</div><div class="b2bkpi-muted">실적 60 + 팀 공동 20 + 개인 20 · 100점 환산 안 함</div>' +
         '<div class="b2bkpi-basis">공식 실적 60%는 산출 대기라 0점으로 넣지 않았고, 나머지 점수를 100점으로 바꾸지도 않았습니다.</div></div>' +
@@ -180,11 +183,11 @@
         '<div class="b2bkpi-muted">팀 공동 ' + (teamP.state === 'ok' ? f1(teamP.points) + '점 / 20' : '산출 대기') + ' · 개인 ' + (persOk.length ? f1(persPts) + '점 / 20' : '산출 대기') + '</div></div>' +
 '</div>');
     // ② 뒤처진 부분
-    out += sec('③', '뒤처진 부분', '', model.laggards.length ? '<ul class="b2bkpi-lag-list">' + model.laggards.map(function(x){
+    out += sec(N[2], '뒤처진 부분', '', model.laggards.length ? '<ul class="b2bkpi-lag-list">' + model.laggards.map(function(x){
       return '<li>' + pill(x.kind === 'kpi' ? 'warn' : x.kind === 'lead' ? 'warn' : 'wait', x.kind === 'kpi' ? 'KPI' : x.kind === 'lead' ? '업무' : '미측정') + ' <b>' + esc(x.label) + '</b> <span class="b2bkpi-muted">' + esc(x.detail) + '</span></li>';
     }).join('') + '</ul>' : '<p class="b2bkpi-muted">지금 뒤처진 항목이 없습니다</p>');
     // ③ 팀 진척
-    out += sec('④', '팀 진척', '팀 공동 업무 (20%) · KPI별 관리 업무 체크', '<div class="b2bkpi-card"><div class="b2bkpi-team-head"><b>팀 공동 업무</b>' +
+    out += sec(N[3], '팀 진척', '팀 공동 업무 (20%) · KPI별 관리 업무 체크', '<div class="b2bkpi-card"><div class="b2bkpi-team-head"><b>팀 공동 업무</b>' +
 (t.state === 'ok' ? '<span><b class="b2bkpi-big2">' + f1(t.value) + '%</b> <span class="b2bkpi-muted">' + t.checked + '/' + t.total + '개 체크</span></span>' : pill('wait', '산출 대기 · 이번 달 체크 기록 없음')) + '</div>' +
       '<div class="b2bkpi-muted b2bkpi-team-sum">측정 ' + t.checked + '개 · 대기 ' + (t.total - t.checked) + '개 <span>(체크한 업무만 측정, 아직 체크하지 않은 업무는 대기)</span></div>' +
       '<div class="b2bkpi-team-grid">' + t.byKpi.map(function(k){
@@ -195,20 +198,30 @@
       }).join('') + '</div><div class="b2bkpi-muted">팀 후행지표는 관리 후 고객 변화로, 점수에 넣지 않습니다.</div></div>');
     // ④ 팀원 진척
     var un = model.shares.rows.filter(function(r){ return !r.hasDefs; });
-    out += sec('⑤', '팀원 진척', '개인 업무 20% 안에서 나눔', '<div class="b2bkpi-people">' + model.shares.rows.map(function(r){ return personCard(model, r, ui); }).join('') +
+    out += sec(N[4], '팀원 진척', '개인 업무 20% 안에서 나눔', '<div class="b2bkpi-people">' + model.shares.rows.map(function(r){ return personCard(model, r, ui); }).join('') +
       '<button type="button" class="b2bkpi-card b2bkpi-add" data-kpi-act="add">+ 개인 트래커 추가</button></div>' +
       (model.shares.needsRebalance ? '<div class="b2bkpi-note">새로 들어온 사람의 몫이 정해지지 않았습니다(남은 몫만 임시로 나눔). [개인 몫 나누기]에서 개인 몫을 다시 나눠 주세요</div>' : '') +
       (un.length ? '<div class="b2bkpi-note">미배정 ' + f1(model.shares.unassigned).replace(/\.0$/, '') + '% · ' + un.map(function(r){ return esc(r.name); }).join('·') + ' 지표 미등록 — 다른 팀원에게 넘기지 않습니다</div>' : ''),
       '<button type="button" class="b2bkpi-btn" data-kpi-act="shares">개인 몫 나누기</button>');
     // ⑥ 점수 반영 흐름
-    out += '<details class="b2bkpi-flow"><summary>⑥ 점수 반영 흐름</summary><ol>' + c.parts.map(function(p){
+    out += '<details class="b2bkpi-flow"><summary>' + N[5] + ' 점수 반영 흐름</summary><ol>' + c.parts.map(function(p){
       var w = p.key.indexOf('p:') === 0 ? '몫 ' + f1(p.weight).replace(/\.0$/, '') + '%' + (p.temporary ? '(임시)' : '') : '× ' + (p.weight / 100);
       var v = p.key === 'actual' ? '공식 실적 산출 대기(확인분 평균은 참고 영역에만 표시, 점수에 넣지 않음)' : p.state === 'ok' ? (p.key === 'team' ? f1(t.value) + '%' : f1(p.score) + '점') + ' ' + w + ' = ' + f1(p.points) + '점'
         : p.state === 'unassigned' ? '미배정(지표 미등록)' : '산출 대기';
       return '<li>' + esc(p.label) + ': ' + esc(v) + '</li>';
     }).join('') + '</ol><p>합계 ' + (c.reflected > 0 ? f1(c.points) + '점' : '— 점') + ' (' + weightLine(c) + ', 100점 환산 안 함)</p>' +
       '<p class="b2bkpi-muted">업무 관리점수와 공식 실적은 섞이지 않습니다. 공식 실적은 산출 대기이며, 대기분은 0점으로 넣지 않고 나머지 점수를 100점으로 바꾸지도 않습니다.</p></details>';
-    return out;
+    return { kpi: kpiHtml, score: out };
+  }
+  function osOf(ui){ return ui.os || (typeof window !== 'undefined' && window.B2BKpiOs) || null; }
+  /* 팀 OS 메뉴가 있으면: 홈 = KPI 카드가 가장 먼저 + 행동 진척·오늘 행동·알람·고객 흐름·AI 요약, 점수는 팀원 업무·알람 메뉴. 없으면 예전 한 화면. */
+  function renderReady(model, ui){
+    var O = osOf(ui);
+    if(!O){ var all = renderParts(model, ui); return all.kpi + all.score; }
+    var menu = ui.menu || 'home', out = O.menuBar(menu);
+    if(menu === 'home') return out + renderParts(model, ui).kpi + O.view('home', model);
+    if(menu === 'tasks') return out + O.view('tasks', model, renderParts(model, ui, ['①', '③', '④', '⑤', '⑥', '⑦']).score);
+    return out + O.view(menu, model);
   }
 
   /* ---- DOM ---- */
@@ -272,6 +285,7 @@
     var act = t.getAttribute('data-kpi-act');
     if(act === 'close'){ var c = document.getElementById('crmTabCustomer'); if(c) c.click(); else close(); return; }
     if(act === 'reload'){ st.ui.state = 'loading'; render(); load(); return; }
+    if(act === 'menu'){ st.ui.menu = t.getAttribute('data-menu') || 'home'; render(); var vv = el(); if(vv) vv.scrollTop = 0; return; }
     if(act === 'month'){ st.ui.month = shiftMonth(st.ui.month, +t.getAttribute('data-n')); render(); return; }
     if(handlers[act]) handlers[act](t, e);
   }
