@@ -155,6 +155,65 @@
       '<div class="b2bkpi-scoreslot">' + (scoreHtml || '') + '</div>';
   }
 
+  /* ---- KPI 상세 — 성과값과 목표 대비 달성률은 다른 이름으로, 아래에 행동 진척·병목·대상 목록 ---- */
+  var CSV_FILE = { MK1: '신규_HTML36_90일.csv', MK3: '기회_30일.csv', MK2: '재사용_60일.csv' };
+  var PAGE = 50;
+  var FILTERS = [['all', '전체'], ['observing', '관찰 중'], ['hit', '기간 종료 · 성과 있음'], ['miss', '기간 종료 · 미관측'], ['excluded', '제외']];
+  function filt(items, f){
+    return items.filter(function(x){ return f === 'observing' ? x.phase === '관찰 중' : f === 'hit' ? x.phase === '기간 종료' && x.ok === true : f === 'miss' ? x.phase === '기간 종료' && x.ok === false : f === 'excluded' ? x.phase === '제외' : true; });
+  }
+  function targetRow(x){
+    var cls = x.phase === '관찰 중' ? 'wait' : x.phase === '제외' ? 'wait' : x.ok ? 'ok' : 'warn';
+    return '<div class="b2bkpi-trow is-' + (x.phase === '관찰 중' ? 'observing' : x.phase === '제외' ? 'excluded' : x.ok ? 'hit' : 'miss') + '"><div class="b2bkpi-trow-h"><b>' + esc(x.name || '(이름 없음)') + '</b> ' + pill('wait', x.phase) + ' ' + pill(cls, x.result) + '</div>' +
+      (x.scope ? '<div class="b2bkpi-trow-b">' + esc(x.scope) + '</div>' : '') +
+      '<div class="b2bkpi-trow-b">시작 ' + esc(x.start || '날짜 미확인') + ' · 마감 ' + esc(x.end || '날짜 미확인') + (x.detail ? ' · ' + esc(x.detail) : '') + '</div>' +
+      '<div class="b2bkpi-muted">우리 행동 · 기록 수집 전 · 담당·다음 행동·다음 확인일 · 미등록</div></div>';
+  }
+  function targetList(model, id, csv, r){
+    var file = CSV_FILE[id], intro = '<p class="b2bkpi-muted">고객 이름이 들어 있는 근거 파일은 공개 저장소에 올리지 않습니다. 내려받아 둔 <b>' + esc(file) + '</b> 를 골라 주시면 이 화면에서만 읽어 목록을 만들고, 저장·전송하지 않습니다(다른 메뉴로 가거나 닫으면 사라집니다).</p>';
+    if(!csv) return intro + '<button type="button" class="b2bkpi-btn is-primary" data-kpi-act="csvPick" data-kpi="' + id + '">근거 파일 고르기 · ' + esc(file) + '</button>';
+    if(csv.error) return intro + '<div class="b2bkpi-note">' + esc(csv.error) + '</div><button type="button" class="b2bkpi-btn is-primary" data-kpi-act="csvPick" data-kpi="' + id + '">다른 파일 고르기</button>';
+    var a = csv.analysis, f = csv.filter || 'all', list = filt(a.items, f), pages = Math.max(1, Math.ceil(list.length / PAGE)), pg = Math.min(Math.max(0, csv.page || 0), pages - 1);
+    var same = r && r.num === a.num && r.den === a.den;
+    var chk = '<div class="b2bkpi-' + (same ? 'obs' : 'note') + '">파일에서 센 값 ' + n0(a.num) + '/' + n0(a.den) + ' · 저장된 확인분 ' + (r && r.num != null ? n0(r.num) + '/' + n0(r.den) : '없음') + ' · ' + (same ? '일치합니다' : '다릅니다(파일 버전이 다르거나 저장값을 다시 확인해야 합니다)') +
+      ' <span class="b2bkpi-muted">· 관찰 중 ' + n0(a.observing) + ' · 제외 ' + n0(a.excluded) + ' · 파일 ' + esc(csv.file) + '</span></div>';
+    var chips = '<div class="b2bkpi-filters">' + FILTERS.map(function(x){ return '<button type="button" class="b2bkpi-filterbtn' + (f === x[0] ? ' is-on' : '') + '" data-kpi-act="csvFilter" data-kpi="' + id + '" data-f="' + x[0] + '" aria-pressed="' + (f === x[0]) + '">' + esc(x[1]) + ' ' + n0(filt(a.items, x[0]).length) + '</button>'; }).join('') + '</div>';
+    var rows = list.slice(pg * PAGE, pg * PAGE + PAGE).map(targetRow).join('') || '<p class="b2bkpi-muted">해당 항목이 없습니다</p>';
+    var pager = list.length > PAGE ? '<div class="b2bkpi-pager"><button type="button" class="b2bkpi-btn" data-kpi-act="csvPage" data-kpi="' + id + '" data-n="-1"' + (pg === 0 ? ' disabled' : '') + '>이전</button><span class="b2bkpi-muted">' + n0(list.length) + '건 중 ' + (pg * PAGE + 1) + '–' + Math.min(list.length, pg * PAGE + PAGE) + '</span><button type="button" class="b2bkpi-btn" data-kpi-act="csvPage" data-kpi="' + id + '" data-n="1"' + (pg >= pages - 1 ? ' disabled' : '') + '>다음</button></div>' : '';
+    return chk + chips + pager + '<div class="b2bkpi-tlist">' + rows + '</div>' + pager +
+      '<button type="button" class="b2bkpi-btn" data-kpi-act="csvClear" data-kpi="' + id + '">파일 내용 지우기</button>';
+  }
+  function kpiDetail(model, id, csv){
+    var r = row(model, id); if(!r) return '<p class="b2bkpi-muted">KPI 정보를 찾지 못했습니다</p>' + menuBtn('home', '홈으로');
+    var back = '<button type="button" class="b2bkpi-btn" data-kpi-act="kpiBack">← 홈으로</button>';
+    var d = r.def || {};
+    var perf = '<div class="b2bkpi-card b2bkpi-kpi is-' + esc(String(r.label || '').toLowerCase()) + '"><div class="b2bkpi-kpi-name">' + esc(r.label + ' ' + r.name) + '</div>' +
+      '<div class="b2bkpi-muted">관측률 · ' + (r.source === 'official' ? esc(cutoffShort(r.cutoff)) + ' 마감 확인분' : '자동 계산값') + '</div>' +
+      '<div class="b2bkpi-kpi-val"><b>' + (r.rate == null ? '—' : f1(r.rate) + '%') + '</b></div>' +
+      (r.num != null && r.den != null ? '<div class="b2bkpi-muted">' + esc(n0(r.num) + '/' + n0(r.den) + ' ' + (r.unit || '')) + '</div>' : '') +
+      '<div class="b2bkpi-goal">' + esc(r.floor ? '목표 도전 ' + r.target + '% · 하한 ' + r.floor + '%' : '목표 ' + r.target + '%') + '</div>' +
+      '<div class="b2bkpi-muted">목표 대비 달성률 ' + (r.ach == null ? '—' : f1(r.ach) + '%') + (r.floor && r.achFloor != null ? ' (도전 기준) · 하한 대비 ' + f1(r.achFloor) + '%' : '') + '</div>' +
+      (r.floor ? '<div class="b2bkpi-ref-basis">' + pill('wait', '미확정') + ' <b>종합점수 적용 기준: 미확정</b> <span class="b2bkpi-muted">· 팀장님 확인 대기</span></div>' : '') +
+      '<p class="b2bkpi-muted">전체 공식 최신 실적이 아니며 일부 확인분입니다. 과거 값과는 정의·범위가 달라 직접 증감 비교하지 않습니다.</p></div>' +
+      '<div class="b2bkpi-card"><b>무엇을 세나요</b><ul class="b2bkpi-flowlist">' + [['관찰기간', d.period], ['분자', d.num], ['분모', d.den], ['범위', d.scope], ['참고', d.note]].filter(function(x){ return x[1]; }).map(function(x){ return '<li><b>' + x[0] + '</b> · ' + esc(x[1]) + '</li>'; }).join('') + '</ul></div>';
+    var br = '';
+    if(r.observing) br += '<div class="b2bkpi-obs"><b>' + esc(r.observing.label + ' ' + n0(r.observing.n) + (r.observing.unit || '')) + '</b>' + (r.observing.note ? ' <span class="b2bkpi-muted">· ' + esc(r.observing.note) + '</span>' : '') + '</div>';
+    var rest = (r.breakdown || []).filter(function(x){ return x.key !== 'observing'; });
+    br += rest.length ? '<div class="b2bkpi-card"><ul class="b2bkpi-flowlist">' + rest.map(function(x){ return '<li>' + esc(x.label + ' ' + n0(x.n) + (x.unit || '')) + '</li>'; }).join('') + '</ul></div>' : (r.observing ? '' : '<p class="b2bkpi-muted">저장된 집계 내역이 없습니다</p>');
+    var tp = tpls(function(t){ return t.kpi === id; });
+    var act = '<div class="b2bkpi-card"><div class="b2bkpi-act-row"><span class="b2bkpi-muted">우리 행동 이행률</span>' + pill('wait', '행동 기록 수집 전') + '</div><div class="b2bkpi-muted">확정 업무 0건 · 행동 템플릿 ' + tp.length + '개(주연결). 행동이 100%여도 고객 성과가 없으면 "행동 완료 · 성과 미관측"으로 따로 표시하며, 미달을 팀원 과실로 단정하지 않습니다.</div>' +
+      '<details class="b2bkpi-flow"><summary>행동 템플릿 보기</summary>' + tp.map(tplRow).join('') + '</details></div>';
+    var bn = '<ul class="b2bkpi-alerts">';
+    var miss = id === 'MK1' ? missedRows(model) : [];
+    if(miss.length) bn += '<li class="is-danger"><div class="b2bkpi-alert-h">' + pill('warn', '위험') + ' <b>미팅 미처리 누락 ' + miss.length + '곳</b></div><div class="b2bkpi-muted">신규 첫 요청 전에 우리 쪽 미팅이 기한을 넘김 · 우리 지원 지연</div><div>다음 행동 · <button type="button" class="b2bkpi-btn" data-kpi-act="meetingList" data-stage="m1" data-group="all">1차 목록</button> <button type="button" class="b2bkpi-btn" data-kpi-act="meetingList" data-stage="m2" data-group="all">2차 목록</button></div></li>';
+    if(r.floorState === 'below') bn += '<li class="is-warn"><div class="b2bkpi-alert-h">' + pill('wait', '주의') + ' <b>하한 85% 미달</b></div><div class="b2bkpi-muted">' + esc(cutoffShort(r.cutoff)) + ' 마감 확인분 ' + f1(r.rate) + '% · 고객 성과 지표</div><div>다음 행동 · 대상 목록에서 막힌 이유 확인(원인 단정 금지)</div></li>';
+    bn += '<li class="is-info"><div class="b2bkpi-alert-h">' + pill('auto', '안내') + ' <b>막힌 이유 분류</b></div><div class="b2bkpi-muted">' + esc((D.blockCodes || []).join(' · ')) + ' — 상담·업무 기록이 쌓이면 고객별로 표시합니다. 고객 일정 대기와 우리 지원 지연은 서로 다른 이유로 나눕니다.</div></li></ul>';
+    return '<div class="b2bkpi-detailtop">' + back + '</div>' +
+      sec('①', '성과값과 목표 대비 달성률', '확인분 기준선', perf) + sec('②', '집계 내역', '관찰 중은 분모에 넣지 않음', br) +
+      sec('③', '우리 행동 진척', '행동과 고객 성과는 섞지 않음', act) + sec('④', '병목', '사유와 다음 행동', bn) +
+      sec('⑤', '대상 목록', '고객 · 단지·공종 · 시작·마감 · 관찰 상태 · 성과 판정', targetList(model, id, csv, r));
+  }
+
   function view(id, model, scoreHtml){
     if(id === 'new') return newView(model);
     if(id === 'existing') return existingView(model);
@@ -164,7 +223,7 @@
     return homeBlocks(model);
   }
 
-  var api = { menuBar: menuBar, homeBlocks: homeBlocks, newView: newView, existingView: existingView, consultView: consultView, feedbackView: feedbackView, tasksView: tasksView, view: view };
+  var api = { kpiDetail: kpiDetail, menuBar: menuBar, homeBlocks: homeBlocks, newView: newView, existingView: existingView, consultView: consultView, feedbackView: feedbackView, tasksView: tasksView, view: view };
   if(typeof module !== 'undefined' && module.exports) module.exports = api;
   if(typeof window !== 'undefined') window.B2BKpiOs = api;
 })();

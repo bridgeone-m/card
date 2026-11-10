@@ -181,3 +181,16 @@ body.b2bkpi-on #listView, body.b2bkpi-on #cardView, body.b2bkpi-on #workQueueVie
 .b2bkpi-chips{ display:flex; flex-wrap:wrap; gap:8px; }
 .b2bkpi-chip{ padding:8px 12px; border:1px solid #CBD5E1; border-radius:999px; background:#fff; font-size:13.5px; font-weight:700; color:#17345F; }
 .b2bkpi-scoreslot{ margin-top:8px; }
+
+/* KPI 상세 — 대상 목록(휴대폰에서는 카드로 쌓임) */
+.b2bkpi-detailtop{ margin:0 0 12px; }
+.b2bkpi-kpi-more{ margin-top:10px; }
+.b2bkpi-filters{ display:flex; flex-wrap:wrap; gap:8px; margin:10px 0; }
+.b2bkpi-filterbtn{ min-height:44px; padding:0 12px; border:1px solid #CBD5E1; border-radius:999px; background:#fff; color:#17345F; font:inherit; font-size:13.5px; font-weight:700; cursor:pointer; }
+.b2bkpi-filterbtn.is-on{ background:#1B4480; border-color:#1B4480; color:#fff; }
+.b2bkpi-pager{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin:8px 0; }
+.b2bkpi-tlist{ display:flex; flex-direction:column; gap:8px; margin:8px 0 12px; }
+.b2bkpi-trow{ background:#fff; border:1px solid #E3EAF3; border-left:4px solid #9AA8BC; border-radius:10px; padding:10px 14px; font-size:13.5px; line-height:1.55; overflow-wrap:anywhere; }
+.b2bkpi-trow.is-hit{ border-left-color:#1E8A4A; } .b2bkpi-trow.is-miss{ border-left-color:#D68910; } .b2bkpi-trow.is-observing{ border-left-color:#4A73B5; } .b2bkpi-trow.is-excluded{ border-left-color:#9AA8BC; background:#FAFBFC; }
+.b2bkpi-trow-h{ display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+.b2bkpi-trow-b{ color:#44546A; }

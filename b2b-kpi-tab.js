@@ -84,7 +84,7 @@
     return '<div class="b2bkpi-floor"><span>도전 ' + r.target + '% 대비 ' + pct(r.ach) + '</span><span>하한 ' + r.floor + '% 대비 ' + pct(r.achFloor) + '</span><b>' + esc(gap) + '</b></div>';
   }
   function cutoffShort(c){ var m = /^\d{4}-(\d{1,2})-(\d{1,2})/.exec(c || ''); return m ? (+m[1]) + '/' + (+m[2]) : '확인분'; }
-  function kpiCard(r){
+  function kpiCard(r, withDetail){
     var p = r.floorState ? (r.floorState === 'below' ? pill('warn', '하한 미달') : r.floorState === 'between' ? pill('wait', '하한 충족 · 도전 미달') : pill('ok', '도전 달성'))
       : r.ach == null ? pill('wait', '실적 대기') : r.ach >= 100 ? pill('ok', '순조') : pill('warn', '뒤처짐');
     return '<div class="b2bkpi-card b2bkpi-kpi is-' + esc(String(r.label || '').toLowerCase()) + '"><div class="b2bkpi-kpi-tag">' + pill('kpi', r.label) + (r.auto ? pill('auto', '자동') : '') + '</div><div class="b2bkpi-kpi-name">' + esc(r.name) + '</div>' +
@@ -92,7 +92,8 @@
       (r.num != null && r.den != null ? '<div class="b2bkpi-muted">' + (r.source === 'official' ? esc(r.num.toLocaleString('ko-KR') + '/' + r.den.toLocaleString('ko-KR') + ' ' + (r.unit || '') + ' · ' + cutoffShort(r.cutoff) + ' 마감 확인분') : r.num + ' / ' + r.den) + '</div>' : '') +
       '<div class="b2bkpi-goal">' + esc(goalText(r)) + '</div>' + bar(r) + (r.floor ? floorLines(r) : '') + '<div class="b2bkpi-kpi-foot"><span class="b2bkpi-muted">' + (r.floor ? '도전 목표 대비 달성 ' : '목표 대비 달성 ') + pct(r.ach) + '</span>' + p + '</div>' +
       '<div class="b2bkpi-kpi-desc">' + esc(r.desc || '') + '</div>' + obsLine(r) + defBlock(r) + breakdownBlock(r) +
-      (r.source === 'official' && r.autoRate != null ? '<div class="b2bkpi-muted b2bkpi-autoref">다른 정의의 자동값 참고 ' + f1(r.autoRate) + '% (' + r.autoNum + '/' + r.autoDen + ') · 위 정의와 달라 비교하지 않습니다</div>' : '') + '</div>';
+      (r.source === 'official' && r.autoRate != null ? '<div class="b2bkpi-muted b2bkpi-autoref">다른 정의의 자동값 참고 ' + f1(r.autoRate) + '% (' + r.autoNum + '/' + r.autoDen + ') · 위 정의와 달라 비교하지 않습니다</div>' : '') +
+      (withDetail ? '<div class="b2bkpi-kpi-more"><button type="button" class="b2bkpi-btn" data-kpi-act="kpiDetail" data-kpi="' + esc(r.id) + '">상세 보기</button></div>' : '') + '</div>';
   }
   /* §1·2차 미팅 누락 방지 실측(고객관리카드 도입 2026-08-21 이후) — 숫자를 누르면 업체 목록 */
   var MEETING_DEF = 'LI01';
@@ -168,7 +169,7 @@
     var persPts = persOk.reduce(function(s, p){ return s + p.points; }, 0);
     var out = '';
     // ① 3대 KPI — 화면 맨 위(카드·마감 확인분 안내·참고 영역)
-    out += sec(N[0], '3대 KPI', a.cutoff ? esc(cutoffShort(a.cutoff)) + ' 마감 확인분' : '', '<div class="b2bkpi-kpis">' + a.rows.map(kpiCard).join('') + '</div>' +
+    out += sec(N[0], '3대 KPI', a.cutoff ? esc(cutoffShort(a.cutoff)) + ' 마감 확인분' : '', '<div class="b2bkpi-kpis">' + a.rows.map(function(r){ return kpiCard(r, !!osOf(ui)); }).join('') + '</div>' +
       (a.cutoff ? '<p class="b2bkpi-muted b2bkpi-cutoff"><b>위 3개 값은 ' + esc(cutoffShort(a.cutoff)) + ' 마감 확인분이며 11월 최신 실적이 아닙니다.</b> 전체 공식 최신 실적이 아니고, 분모·연결 기준이 달라 다른 숫자와 직접 증감 비교하지 않습니다. 막대는 관측 비율, 세로선은 목표입니다.</p>' : '') +
       referenceArea(a));
     var kpiHtml = out; out = '';
@@ -219,6 +220,7 @@
     var O = osOf(ui);
     if(!O){ var all = renderParts(model, ui); return all.kpi + all.score; }
     var menu = ui.menu || 'home', out = O.menuBar(menu);
+    if(ui.detail && O.kpiDetail) return out + O.kpiDetail(model, ui.detail, ui.csv && ui.csv[ui.detail] || null);
     if(menu === 'home') return out + renderParts(model, ui).kpi + O.view('home', model);
     if(menu === 'tasks') return out + O.view('tasks', model, renderParts(model, ui, ['①', '③', '④', '⑤', '⑥', '⑦']).score);
     return out + O.view(menu, model);
@@ -273,7 +275,7 @@
     st.timer = setInterval(function(){ if(!document.hidden && !st.busy) load(); }, POLL_MS);
   }
   function close(){
-    clearInterval(st.timer); st.timer = null; closeModal();
+    clearInterval(st.timer); st.timer = null; closeModal(); st.ui.csv = null; st.ui.detail = null;
     var v = el(); if(v) v.remove();
     if(!document.body.classList.contains('b2bkpi-on')) return;
     document.body.classList.remove('b2bkpi-on');
@@ -285,7 +287,7 @@
     var act = t.getAttribute('data-kpi-act');
     if(act === 'close'){ var c = document.getElementById('crmTabCustomer'); if(c) c.click(); else close(); return; }
     if(act === 'reload'){ st.ui.state = 'loading'; render(); load(); return; }
-    if(act === 'menu'){ st.ui.menu = t.getAttribute('data-menu') || 'home'; render(); var vv = el(); if(vv) vv.scrollTop = 0; return; }
+    if(act === 'menu'){ st.ui.menu = t.getAttribute('data-menu') || 'home'; st.ui.detail = null; render(); var vv = el(); if(vv) vv.scrollTop = 0; return; }
     if(act === 'month'){ st.ui.month = shiftMonth(st.ui.month, +t.getAttribute('data-n')); render(); return; }
     if(handlers[act]) handlers[act](t, e);
   }
@@ -460,7 +462,26 @@
       }).join('') : '<span class="b2bkpi-muted">세부업무가 없습니다</span>';
     });
   }
+  function readCsvFile(file, id){
+    var D = window.B2BKpiDetail, rd = new FileReader(), put = function(o){ st.ui.csv = st.ui.csv || {}; st.ui.csv[id] = o; render(); };
+    rd.onerror = function(){ put({ file: file.name, error: '파일을 읽지 못했습니다' }); };
+    rd.onload = function(){
+      try { put({ file: file.name, analysis: D.analyze(id, D.parseCsv(String(rd.result || ''))), filter: 'all', page: 0 }); }
+      catch(e){ put({ file: file.name, error: String(e && e.message || e) }); }
+    };
+    rd.readAsText(file, 'utf-8');
+  }
   var handlers = {
+    kpiDetail: function(t){ st.ui.detail = t.getAttribute('data-kpi'); render(); var v = el(); if(v) v.scrollTop = 0; },
+    kpiBack: function(){ st.ui.detail = null; render(); var v = el(); if(v) v.scrollTop = 0; },
+    csvPick: function(t){
+      var id = t.getAttribute('data-kpi'), inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.csv,text/csv';
+      inp.onchange = function(){ if(inp.files && inp.files[0]) readCsvFile(inp.files[0], id); };
+      inp.click();
+    },
+    csvClear: function(t){ if(st.ui.csv) delete st.ui.csv[t.getAttribute('data-kpi')]; render(); },
+    csvFilter: function(t){ var c = st.ui.csv && st.ui.csv[t.getAttribute('data-kpi')]; if(c){ c.filter = t.getAttribute('data-f'); c.page = 0; } render(); },
+    csvPage: function(t){ var c = st.ui.csv && st.ui.csv[t.getAttribute('data-kpi')]; if(c){ c.page = Math.max(0, (c.page || 0) + (+t.getAttribute('data-n'))); } render(); },
     toggleDef: function(t){ var id = t.getAttribute('data-def'); st.ui.openDef = st.ui.openDef === id ? null : id; render(); },
     task: function(t){ if(st.busy) return; afterWrite(window.B2BKpiStore.setTaskProg(st.shape, t.getAttribute('data-def'), st.ui.month, +t.getAttribute('data-i'), window.B2BKpiCalc.nextTaskProg(+t.getAttribute('data-p')), ACTOR)); },
     team: function(t){ if(st.busy) return; afterWrite(window.B2BKpiStore.toggleTeamCheck(st.shape, t.getAttribute('data-k'), st.ui.month, +t.getAttribute('data-i'), ACTOR)); },
