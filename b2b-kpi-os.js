@@ -183,7 +183,27 @@
     return chk + chips + pager + '<div class="b2bkpi-tlist">' + rows + '</div>' + pager +
       '<button type="button" class="b2bkpi-btn" data-kpi-act="csvClear" data-kpi="' + id + '">파일 내용 지우기</button>';
   }
-  function kpiDetail(model, id, csv){
+  /* 이어 쌓기 — 시작점(기준선) 위에 마감 이후 새로 성숙한 건을 같은 정의로 더한 값. 행동(선행)은 이 숫자에 섞지 않는다. */
+  var LEDGER_NOTE = '기준 원장 한정정규원장.csv 를 골라 주세요. 단지명이 들어 있어 공개 저장소에는 올리지 않으며, 이 화면에서만 읽고 저장·전송하지 않습니다(다른 메뉴로 가거나 닫으면 사라집니다).';
+  function chainSection(model, id, r, chain){
+    var pick = '<button type="button" class="b2bkpi-btn is-primary" data-kpi-act="ledgerPick" data-kpi="' + id + '">기준 원장 고르기 · 한정정규원장.csv</button>';
+    var intro = '<p class="b2bkpi-muted">' + LEDGER_NOTE + '</p>';
+    if(chain && chain.error) return intro + '<div class="b2bkpi-note">' + esc(chain.error) + '</div>' + pick;
+    if(chain && chain.need === 'cohort') return '<div class="b2bkpi-note">신규 협약 활용은 신규 명단이 필요합니다. 아래 대상 목록에서 신규_HTML36_90일.csv 를 먼저 골라 주세요.</div><button type="button" class="b2bkpi-btn is-primary" data-kpi-act="csvPick" data-kpi="' + id + '">근거 파일 고르기 · 신규_HTML36_90일.csv</button>';
+    if(!chain || !chain.report) return intro + pick;
+    var p = chain.report, u = (r && r.unit) || '', f = function(x){ return x.rate == null ? '—' : f1(x.rate) + '%'; };
+    var head = '<div class="b2bkpi-' + (p.check ? 'obs' : 'note') + '">마감 시점(' + esc(cutoffShort(p.cutoff)) + ')을 기준 원장으로 다시 계산한 값 ' + n0(p.start.num) + '/' + n0(p.start.den) + ' · 저장된 확인분 ' + (r && r.num != null ? n0(r.num) + '/' + n0(r.den) : '없음') + ' · ' + (p.check ? '일치합니다' : '기준선과 다릅니다 — 원장 파일 버전을 확인하세요. 누적 값을 쓰지 않습니다') + '</div>';
+    var body = '';
+    if(p.check){
+      body = '<div class="b2bkpi-flowgrid">' +
+        '<div class="b2bkpi-card"><div class="b2bkpi-muted">시작점 · ' + esc(cutoffShort(p.cutoff)) + ' 마감 확인분</div><div class="b2bkpi-kpi-val"><b>' + f(p.start) + '</b></div><div class="b2bkpi-muted">' + esc(n0(p.start.num) + '/' + n0(p.start.den) + ' ' + u) + '</div></div>' +
+        '<div class="b2bkpi-card"><div class="b2bkpi-muted">이후 새로 성숙한 건</div><div class="b2bkpi-kpi-val"><b>+' + n0(p.added.num) + '/+' + n0(p.added.den) + '</b></div><div class="b2bkpi-muted">' + esc(cutoffShort(p.cutoff) + ' 다음 날 ~ ' + cutoffShort(p.asOf) + ' 사이 관찰이 끝난 건') + '</div></div>' +
+        '<div class="b2bkpi-card b2bkpi-total"><div class="b2bkpi-muted">누적 · ' + esc(cutoffShort(p.asOf)) + ' 기준</div><div class="b2bkpi-kpi-val"><b>' + f(p.now) + '</b></div><div class="b2bkpi-muted">' + esc(n0(p.now.num) + '/' + n0(p.now.den) + ' ' + u) + '</div></div></div>';
+    }
+    return head + body + '<p class="b2bkpi-muted">관찰 중 ' + n0(p.observing) + esc(u) + '은 분모·분자에 넣지 않았습니다(마감 시점 ' + n0(p.observingAtCutoff) + '). 사건 = 기준 원장 ' + n0(p.ledgerEvents) + '건(마감까지) + 카드 기록 ' + n0(p.cardEvents) + '건(마감 이후). 행동(선행)이 올라도 이 숫자는 고객의 실제 요청이 확인되는 후행 결과로만 오릅니다. 과거 값과는 비교하지 않습니다.</p>' +
+      '<button type="button" class="b2bkpi-btn" data-kpi-act="ledgerClear" data-kpi="' + id + '">원장 내용 지우기</button>';
+  }
+  function kpiDetail(model, id, csv, chain){
     var r = row(model, id); if(!r) return '<p class="b2bkpi-muted">KPI 정보를 찾지 못했습니다</p>' + menuBtn('home', '홈으로');
     var back = '<button type="button" class="b2bkpi-btn" data-kpi-act="kpiBack">← 홈으로</button>';
     var d = r.def || {};
@@ -209,9 +229,10 @@
     if(r.floorState === 'below') bn += '<li class="is-warn"><div class="b2bkpi-alert-h">' + pill('wait', '주의') + ' <b>하한 85% 미달</b></div><div class="b2bkpi-muted">' + esc(cutoffShort(r.cutoff)) + ' 마감 확인분 ' + f1(r.rate) + '% · 고객 성과 지표</div><div>다음 행동 · 대상 목록에서 막힌 이유 확인(원인 단정 금지)</div></li>';
     bn += '<li class="is-info"><div class="b2bkpi-alert-h">' + pill('auto', '안내') + ' <b>막힌 이유 분류</b></div><div class="b2bkpi-muted">' + esc((D.blockCodes || []).join(' · ')) + ' — 상담·업무 기록이 쌓이면 고객별로 표시합니다. 고객 일정 대기와 우리 지원 지연은 서로 다른 이유로 나눕니다.</div></li></ul>';
     return '<div class="b2bkpi-detailtop">' + back + '</div>' +
-      sec('①', '성과값과 목표 대비 달성률', '확인분 기준선', perf) + sec('②', '집계 내역', '관찰 중은 분모에 넣지 않음', br) +
-      sec('③', '우리 행동 진척', '행동과 고객 성과는 섞지 않음', act) + sec('④', '병목', '사유와 다음 행동', bn) +
-      sec('⑤', '대상 목록', '고객 · 단지·공종 · 시작·마감 · 관찰 상태 · 성과 판정', targetList(model, id, csv, r));
+      sec('①', '성과값과 목표 대비 달성률', '확인분 기준선', perf) + sec('②', '이어 쌓기', '시작점 위에 같은 정의로 쌓은 값', chainSection(model, id, r, chain)) +
+      sec('③', '집계 내역', '관찰 중은 분모에 넣지 않음', br) +
+      sec('④', '우리 행동 진척', '행동과 고객 성과는 섞지 않음', act) + sec('⑤', '병목', '사유와 다음 행동', bn) +
+      sec('⑥', '대상 목록', '고객 · 단지·공종 · 시작·마감 · 관찰 상태 · 성과 판정', targetList(model, id, csv, r));
   }
 
   function view(id, model, scoreHtml){

@@ -122,3 +122,36 @@ test('css_detail_mobile_friendly', () => {
   assert.ok(css.includes('.b2bkpi-trow{')); assert.ok(css.includes('.b2bkpi-filterbtn{'));
   assert.ok(/\.b2bkpi-filterbtn\{[^}]*min-height:44px/.test(css));
 });
+
+// ---- 이어 쌓기 화면(KPI 상세) ----
+const Ch = load('b2b-kpi-chain.js');
+const rep = (over) => Object.assign({ id: 'MK3', cutoff: '2026-10-20', asOf: '2026-11-11', check: true, start: { num: 315, den: 1025, rate: 30.73 }, now: { num: 330, den: 1100, rate: 30 }, added: { num: 15, den: 75 }, observing: 120, observingAtCutoff: 166, ledgerEvents: 1343, cardEvents: 210 }, over || {});
+test('analyze_kpi1_attaches_cohort_for_chain', () => {
+  const a = Dt.analyze('MK1', Dt.parseCsv(CSV1));
+  assert.ok(Array.isArray(a.cohort)); assert.equal(a.cohort.length, 3, '협약일 불확정 제외 업체는 코호트에서 뺌');
+  assert.deepEqual(Object.keys(a.cohort[0]).sort(), ['id', 'mou']);
+});
+test('chain_section_without_ledger_asks_for_file', () => {
+  const h = O.kpiDetail(model(), 'MK3', null, { need: 'ledger' });
+  has(h, ['이어 쌓기', '기준 원장', '한정정규원장.csv', 'data-kpi-act="ledgerPick"', 'data-kpi="MK3"', '이 화면에서만', '저장·전송하지 않']);
+});
+test('chain_section_shows_start_added_total_and_check', () => {
+  const h = O.kpiDetail(model(), 'MK3', null, { report: rep() });
+  has(h, ['시작점', '315/1,025', '30.7%', '이후 새로 성숙', '+15/+75', '누적', '330/1,100', '30.0%', '관찰 중 120', '일치', '10/20', '11/11', '카드 기록 210건', 'data-kpi-act="ledgerClear"']);
+  has(h, ['행동(선행)이 올라도', '후행']);
+});
+test('chain_section_flags_mismatch_and_hides_total', () => {
+  const h = O.kpiDetail(model(), 'MK3', null, { report: rep({ check: false, start: { num: 300, den: 1000, rate: 30 } }) });
+  has(h, ['기준선과 다릅니다', '누적 값을 쓰지 않습니다']); assert.ok(!h.includes('330/1,100'), '불일치면 누적을 보여주지 않음');
+});
+test('chain_section_error_and_kpi1_needs_cohort', () => {
+  has(O.kpiDetail(model(), 'MK3', null, { error: '원장이 맞지 않습니다' }), ['원장이 맞지 않습니다', 'ledgerPick']);
+  has(O.kpiDetail(model(), 'MK1', null, { need: 'cohort' }), ['신규_HTML36_90일.csv', 'csvPick']);
+});
+test('tab_wiring_ledger_in_memory_and_chain_script', () => {
+  ['ledgerPick', 'ledgerClear'].forEach(k => assert.ok(tabSrc.includes(k + ':'), '핸들러 ' + k));
+  assert.ok(tabSrc.includes('chainReport') && tabSrc.includes('mapCardEvents'));
+  const i = tabSrc.indexOf('function readLedgerFile');
+  assert.ok(i > 0 && !/localStorage|sessionStorage|indexedDB|XMLHttpRequest/.test(tabSrc.slice(i, i + 1400)), '원장 내용을 저장·전송하지 않음');
+  const c = html.indexOf('<script src="b2b-kpi-chain.js"></script>'), t = html.indexOf('<script src="b2b-kpi-tab.js"></script>'); assert.ok(c > 0 && c < t);
+});

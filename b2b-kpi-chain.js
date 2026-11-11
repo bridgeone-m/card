@@ -107,7 +107,39 @@
     var num = base.num + addNum, den = base.den + addDen;
     return { base: base, added: { num: addNum, den: addDen }, total: { num: num, den: den, rate: den ? num / den * 100 : null }, observing: r.observing };
   }
-  var api = { kstDay: kstDay, normSite: normSite, normTrade: normTrade, buildEvents: buildEvents, opportunities: opportunities, kpi1: kpi1, kpi2: kpi2, kpi3: kpi3, chainKpi2: chainKpi2, addDays: addDays };
+  /* 카드 요청 기록 → 사건(업체 id 를 업체 code 로 바꿔 기준 원장의 통합ID 와 같은 이름표로). code 가 없는 업체의 기록은 연결 안 됨으로 센다. */
+  function mapCardEvents(rows, companies){
+    var codeById = {}, unlinked = 0, out = [];
+    (companies || []).forEach(function(c){ if(c && c.id != null && c.code) codeById[String(c.id)] = String(c.code); });
+    buildEvents(rows).events.forEach(function(e){ var code = codeById[e.co]; if(!code){ unlinked++; return; } out.push({ co: code, site: e.site, trade: e.trade, date: e.date, kind: e.kind, src: e.src }); });
+    return { events: out, unlinked: unlinked };
+  }
+  /* 이어 쌓기 보고 — 사건 = 기준 원장(마감까지) + 카드 기록(마감 이후). 마감 시점 재계산이 기준선과 같아야(check) 이후 값을 믿는다. */
+  function chainReport(id, a){
+    var cut = a.cutoff, asOf = diff(cut, a.asOf) < 0 ? cut : a.asOf;
+    var events = (a.ledgerEvents || []).filter(function(e){ return diff(e.date, cut) >= 0; }).concat((a.cardEvents || []).filter(function(e){ return diff(cut, e.date) > 0; }));
+    var fn = id === 'MK1' ? function(ev, d){ return kpi1(a.cohort || [], ev, d); } : id === 'MK3' ? kpi2 : kpi3;
+    var r0 = fn(events, cut), r1 = fn(events, asOf), rate = function(n, d){ return d ? n / d * 100 : null; };
+    return { id: id, cutoff: cut, asOf: asOf, check: !!a.base && r0.num === a.base.num && r0.den === a.base.den,
+      start: { num: r0.num, den: r0.den, rate: rate(r0.num, r0.den) }, now: { num: r1.num, den: r1.den, rate: rate(r1.num, r1.den) },
+      added: { num: r1.num - r0.num, den: r1.den - r0.den }, observing: r1.observing, observingAtCutoff: r0.observing,
+      ledgerEvents: (a.ledgerEvents || []).length, cardEvents: (a.cardEvents || []).filter(function(e){ return diff(cut, e.date) > 0; }).length };
+  }
+  /* 기준 원장(한정정규원장.csv) → 사건. 시간KPI유효 행만 쓴다(단지·공종·날짜 확인된 건). 이름 열은 읽지 않는다. */
+  var LEDGER_NEED = ['통합ID', '단지키', '공종키', '사건유형', '사건일', '시간KPI유효'];
+  function ledgerEvents(rows){
+    if(!rows || !rows.length) throw new Error('원장 파일이 비어 있습니다');
+    var miss = LEDGER_NEED.filter(function(k){ return !(k in rows[0]); });
+    if(miss.length) throw new Error('원장 파일이 맞지 않습니다 — 한정정규원장.csv 가 아닌 것 같습니다(없는 열: ' + miss.join(', ') + ')');
+    var out = [], skipped = 0;
+    rows.forEach(function(r){
+      var date = kstDay(String(r['사건일'] || '').slice(0, 10));
+      if(String(r['시간KPI유효']).toLowerCase() !== 'true' || !r['통합ID'] || !r['단지키'] || !r['공종키'] || !date){ skipped++; return; }
+      out.push({ co: String(r['통합ID']), site: r['단지키'], trade: r['공종키'], date: date, kind: /L3/.test(r['사건유형']) ? 'L3' : 'L2' });
+    });
+    return { events: out, skipped: skipped };
+  }
+  var api = { ledgerEvents: ledgerEvents, mapCardEvents: mapCardEvents, chainReport: chainReport, kstDay: kstDay, normSite: normSite, normTrade: normTrade, buildEvents: buildEvents, opportunities: opportunities, kpi1: kpi1, kpi2: kpi2, kpi3: kpi3, chainKpi2: chainKpi2, addDays: addDays };
   if(typeof module !== 'undefined' && module.exports) module.exports = api;
   if(typeof window !== 'undefined') window.B2BKpiChain = api;
 })();

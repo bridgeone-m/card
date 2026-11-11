@@ -105,3 +105,40 @@ test('kpi2_same_day_l2_and_l3_is_reached_not_direct', () => {
   const r = K.kpi2([ev('a', 's', 't', '2026-03-01', 'L2'), ev('a', 's', 't', '2026-03-01', 'L3')], '2026-10-20');
   assert.equal(r.num, 1); assert.equal(r.den, 1); assert.equal(r.direct, 0);
 });
+
+// ---- 이어 쌓기 보고(chainReport) · 카드 기록 연결(mapCardEvents) ----
+test('mapCardEvents_links_by_company_code_and_counts_unlinked', () => {
+  const rows = [
+    { sourceSheet: '기술자문문의', companyId: 'id1', siteName: '햇살', requestDate: '2026-10-29T15:00:00.000Z', summary: '공종: 우레탄' },
+    { sourceSheet: '기술자문문의', companyId: 'id9', siteName: '달빛', requestDate: '2026-10-29T15:00:00.000Z', summary: '공종: 우레탄' }
+  ];
+  const r = K.mapCardEvents(rows, [{ id: 'id1', code: 'B2B001' }, { id: 'id9', code: '' }]);
+  assert.equal(r.events.length, 1); assert.equal(r.events[0].co, 'B2B001'); assert.equal(r.events[0].date, '2026-10-30'); assert.equal(r.unlinked, 1);
+});
+test('chainReport_start_equals_base_then_adds_new_matured', () => {
+  // 마감 10/20: Z(3/1 진입, L3 없음)만 성숙. A(9/25)·B(10/05)는 관찰 중 → 11/11 에 새로 성숙(진입+31일 ≤ 기준일)
+  const ledger = [ev('A', 's1', 't', '2026-09-25', 'L2'), ev('A', 's1', 't', '2026-10-15', 'L3'), ev('B', 's2', 't', '2026-10-05', 'L2'), ev('Z', 's9', 't', '2026-03-01', 'L2')];
+  const card = [ev('B', 's2', 't', '2026-10-30', 'L3'), ev('A', 's1', 't', '2026-09-01', 'L2')]; // 마감 이전 카드 기록은 원장이 기준이라 무시
+  const base = { num: 0, den: 1 };
+  const r = K.chainReport('MK3', { ledgerEvents: ledger, cardEvents: card, cutoff: '2026-10-20', asOf: '2026-11-11', base });
+  assert.equal(r.check, true, '마감 시점 재계산 = 기준선'); assert.equal(r.start.den, 1); assert.equal(r.start.num, 0); assert.equal(r.observingAtCutoff, 2);
+  assert.equal(r.now.den, 3); assert.equal(r.now.num, 2, 'A 는 20일, B 는 카드의 L3(10/30)로 25일에 도달');
+  assert.equal(r.added.den, 2); assert.equal(r.added.num, 2);
+});
+test('chainReport_detects_mismatch_with_stored_base', () => {
+  const r = K.chainReport('MK3', { ledgerEvents: [ev('Z', 's', 't', '2026-03-01', 'L2')], cardEvents: [], cutoff: '2026-10-20', asOf: '2026-11-11', base: { num: 5, den: 9 } });
+  assert.equal(r.check, false);
+});
+test('chainReport_kpi1_uses_cohort_and_card_events', () => {
+  const cohort = [{ id: 'C1', mou: '2026-07-25' }, { id: 'C2', mou: '2026-03-01' }];
+  const r = K.chainReport('MK1', { ledgerEvents: [ev('C2', 's', 't', '2026-02-01', 'L2')], cardEvents: [ev('C1', 's', 't', '2026-10-21', 'L2')], cutoff: '2026-10-20', asOf: '2026-11-11', base: { num: 1, den: 1 }, cohort });
+  assert.equal(r.check, true); assert.equal(r.start.den, 1); assert.equal(r.now.den, 2, 'C1 은 D+90(10/23)이 지나 새로 성숙'); assert.equal(r.now.num, 2); assert.equal(r.added.num, 1);
+});
+test('ledgerEvents_reads_baseline_ledger_columns_and_rejects_wrong_file', () => {
+  const D = (() => { const c = { module: { exports: {} } }; vm.runInNewContext(fs.readFileSync(__dirname + '/b2b-kpi-detail.js', 'utf8'), c); return c.module.exports; })();
+  const csv = '통합ID,단지키,공종키,사건유형,사건일,시간KPI유효,고객명원문\nB2B001,햇살,우레탄,L2,2026-03-01,True,가나건설\nB2B001,햇살,우레탄,L3요청,2026-03-10,True,가나건설\nB2B002,달빛,에폭시,L2,2026-03-01,False,다라건설\nB2B003,,에폭시,L2,2026-03-01,True,마바건설\n';
+  const r = K.ledgerEvents(D.parseCsv(csv));
+  assert.equal(r.events.length, 2); assert.deepEqual(Array.from(r.events.map(e => e.kind)), ['L2', 'L3']); assert.equal(r.events[0].co, 'B2B001'); assert.equal(r.skipped, 2);
+  assert.throws(() => K.ledgerEvents(D.parseCsv('a,b\n1,2\n')), /원장|열/);
+  assert.throws(() => K.ledgerEvents([]), /비어/);
+});

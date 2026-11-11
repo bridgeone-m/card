@@ -62,7 +62,9 @@
     var f = id === 'MK1' ? kpi1 : id === 'MK3' ? kpi2 : kpi3;
     var items = rows.map(f), den = 0, num = 0, obs = 0, exc = 0;
     items.forEach(function(x){ if(x._mature){ den++; if(x.ok) num++; } if(x.phase === '관찰 중') obs++; if(x.phase === '제외') exc++; delete x._mature; });
-    return { id: id, total: items.length, den: den, num: num, observing: obs, excluded: exc, items: items };
+    var out = { id: id, total: items.length, den: den, num: num, observing: obs, excluded: exc, items: items };
+    if(id === 'MK1') out.cohort = rows.filter(function(r){ return !/제외/.test(String(r['상태'] || '')) && r['통합ID'] && (iso(r['마스터협약일']) || iso(r['HTML협약일'])); }).map(function(r){ return { id: String(r['통합ID']), mou: iso(r['마스터협약일']) || iso(r['HTML협약일']) }; });
+    return out;
   }
   function filterItems(items, f){
     return items.filter(function(x){

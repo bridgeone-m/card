@@ -220,7 +220,7 @@
     var O = osOf(ui);
     if(!O){ var all = renderParts(model, ui); return all.kpi + all.score; }
     var menu = ui.menu || 'home', out = O.menuBar(menu);
-    if(ui.detail && O.kpiDetail) return out + O.kpiDetail(model, ui.detail, ui.csv && ui.csv[ui.detail] || null);
+    if(ui.detail && O.kpiDetail) return out + O.kpiDetail(model, ui.detail, ui.csv && ui.csv[ui.detail] || null, ui.chain && ui.chain[ui.detail] || null);
     if(menu === 'home') return out + renderParts(model, ui).kpi + O.view('home', model);
     if(menu === 'tasks') return out + O.view('tasks', model, renderParts(model, ui, ['①', '③', '④', '⑤', '⑥', '⑦']).score);
     return out + O.view(menu, model);
@@ -250,6 +250,7 @@
       model.meeting = meeting; model.meetingError = meetingError;
       st.meeting = meeting;
     }
+    if(model && st.ui.detail){ st.ui.chain = st.ui.chain || {}; st.ui.chain[st.ui.detail] = computeChain(st.ui.detail, model); }
     v.innerHTML = renderHtml(model, st.ui);
     fillTasks();
   }
@@ -275,7 +276,7 @@
     st.timer = setInterval(function(){ if(!document.hidden && !st.busy) load(); }, POLL_MS);
   }
   function close(){
-    clearInterval(st.timer); st.timer = null; closeModal(); st.ui.csv = null; st.ui.detail = null;
+    clearInterval(st.timer); st.timer = null; closeModal(); st.ui.csv = null; st.ui.detail = null; st.ui.ledger = null; st.ui.ledgerError = null; st.ui.chain = null;
     var v = el(); if(v) v.remove();
     if(!document.body.classList.contains('b2bkpi-on')) return;
     document.body.classList.remove('b2bkpi-on');
@@ -462,6 +463,31 @@
       }).join('') : '<span class="b2bkpi-muted">세부업무가 없습니다</span>';
     });
   }
+  /* 이어 쌓기: 기준 원장(사용자가 고른 파일, 메모리에서만) + 카드 요청 기록(마감 이후) 으로 마감 시점·오늘 값을 계산 */
+  function computeChain(id, model){
+    var Ch = window.B2BKpiChain; if(!Ch) return { error: '이어 쌓기 계산 파일(b2b-kpi-chain.js)을 불러오지 못했습니다' };
+    if(st.ui.ledgerError) return { error: st.ui.ledgerError };
+    if(!st.ui.ledger) return { need: 'ledger' };
+    var row = ((model && model.actual && model.actual.rows) || []).filter(function(r){ return r.id === id; })[0];
+    if(!row || row.source !== 'official' || !row.cutoff) return { error: '저장된 확인분(마감 값)이 없어 이어 쌓을 수 없습니다' };
+    var cohort = null;
+    if(id === 'MK1'){ var c = st.ui.csv && st.ui.csv.MK1; cohort = c && c.analysis && c.analysis.cohort; if(!cohort) return { need: 'cohort' }; }
+    try {
+      var D = window.SHIN2_CRM_DATA; if(!D) return { error: '카드 데이터를 찾지 못했습니다' };
+      var card = Ch.mapCardEvents(D.loadSheetRequests(), D.loadCompanies());
+      return { report: Ch.chainReport(id, { ledgerEvents: st.ui.ledger.events, cardEvents: card.events, cohort: cohort, cutoff: row.cutoff, asOf: Ch.kstDay(new Date().toISOString()), base: { num: row.num, den: row.den } }) };
+    } catch(e){ return { error: String(e && e.message || e) }; }
+  }
+  function readLedgerFile(file){
+    var D = window.B2BKpiDetail, Ch = window.B2BKpiChain, rd = new FileReader();
+    rd.onerror = function(){ st.ui.ledger = null; st.ui.ledgerError = '파일을 읽지 못했습니다'; render(); };
+    rd.onload = function(){
+      try { var r = Ch.ledgerEvents(D.parseCsv(String(rd.result || ''))); st.ui.ledger = { file: file.name, events: r.events, skipped: r.skipped }; st.ui.ledgerError = null; }
+      catch(e){ st.ui.ledger = null; st.ui.ledgerError = String(e && e.message || e); }
+      render();
+    };
+    rd.readAsText(file, 'utf-8');
+  }
   function readCsvFile(file, id){
     var D = window.B2BKpiDetail, rd = new FileReader(), put = function(o){ st.ui.csv = st.ui.csv || {}; st.ui.csv[id] = o; render(); };
     rd.onerror = function(){ put({ file: file.name, error: '파일을 읽지 못했습니다' }); };
@@ -473,6 +499,12 @@
   }
   var handlers = {
     kpiDetail: function(t){ st.ui.detail = t.getAttribute('data-kpi'); render(); var v = el(); if(v) v.scrollTop = 0; },
+    ledgerPick: function(){
+      var inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.csv,text/csv';
+      inp.onchange = function(){ if(inp.files && inp.files[0]) readLedgerFile(inp.files[0]); };
+      inp.click();
+    },
+    ledgerClear: function(){ st.ui.ledger = null; st.ui.ledgerError = null; render(); },
     kpiBack: function(){ st.ui.detail = null; render(); var v = el(); if(v) v.scrollTop = 0; },
     csvPick: function(t){
       var id = t.getAttribute('data-kpi'), inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.csv,text/csv';
