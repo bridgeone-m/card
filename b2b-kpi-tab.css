@@ -194,3 +194,6 @@ body.b2bkpi-on #listView, body.b2bkpi-on #cardView, body.b2bkpi-on #workQueueVie
 .b2bkpi-trow.is-hit{ border-left-color:#1E8A4A; } .b2bkpi-trow.is-miss{ border-left-color:#D68910; } .b2bkpi-trow.is-observing{ border-left-color:#4A73B5; } .b2bkpi-trow.is-excluded{ border-left-color:#9AA8BC; background:#FAFBFC; }
 .b2bkpi-trow-h{ display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
 .b2bkpi-trow-b{ color:#44546A; }
+
+.b2bkpi-filelab{ position:relative; display:inline-flex; align-items:center; overflow:hidden; cursor:pointer; }
+.b2bkpi-fileinp{ position:absolute; left:0; top:0; width:100%; height:100%; opacity:0; cursor:pointer; font-size:0; }

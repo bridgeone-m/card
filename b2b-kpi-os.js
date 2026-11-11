@@ -169,10 +169,12 @@
       '<div class="b2bkpi-trow-b">시작 ' + esc(x.start || '날짜 미확인') + ' · 마감 ' + esc(x.end || '날짜 미확인') + (x.detail ? ' · ' + esc(x.detail) : '') + '</div>' +
       '<div class="b2bkpi-muted">우리 행동 · 기록 수집 전 · 담당·다음 행동·다음 확인일 · 미등록</div></div>';
   }
+  /* 화면 안의 진짜 파일 입력(label 안 input) — 눌러서 파일을 고르면 change 로 전달된다 */
+  function fileBtn(kind, id, text){ return '<label class="b2bkpi-btn is-primary b2bkpi-filelab">' + esc(text) + '<input type="file" accept=".csv,text/csv" class="b2bkpi-fileinp" data-kpi-file="' + kind + '" data-kpi="' + id + '"></label>'; }
   function targetList(model, id, csv, r){
     var file = CSV_FILE[id], intro = '<p class="b2bkpi-muted">고객 이름이 들어 있는 근거 파일은 공개 저장소에 올리지 않습니다. 내려받아 둔 <b>' + esc(file) + '</b> 를 골라 주시면 이 화면에서만 읽어 목록을 만들고, 저장·전송하지 않습니다(다른 메뉴로 가거나 닫으면 사라집니다).</p>';
-    if(!csv) return intro + '<button type="button" class="b2bkpi-btn is-primary" data-kpi-act="csvPick" data-kpi="' + id + '">근거 파일 고르기 · ' + esc(file) + '</button>';
-    if(csv.error) return intro + '<div class="b2bkpi-note">' + esc(csv.error) + '</div><button type="button" class="b2bkpi-btn is-primary" data-kpi-act="csvPick" data-kpi="' + id + '">다른 파일 고르기</button>';
+    if(!csv) return intro + fileBtn('csv', id, '근거 파일 고르기 · ' + file);
+    if(csv.error) return intro + '<div class="b2bkpi-note">' + esc(csv.error) + '</div>' + fileBtn('csv', id, '다른 파일 고르기');
     var a = csv.analysis, f = csv.filter || 'all', list = filt(a.items, f), pages = Math.max(1, Math.ceil(list.length / PAGE)), pg = Math.min(Math.max(0, csv.page || 0), pages - 1);
     var same = r && r.num === a.num && r.den === a.den;
     var chk = '<div class="b2bkpi-' + (same ? 'obs' : 'note') + '">파일에서 센 값 ' + n0(a.num) + '/' + n0(a.den) + ' · 저장된 확인분 ' + (r && r.num != null ? n0(r.num) + '/' + n0(r.den) : '없음') + ' · ' + (same ? '일치합니다' : '다릅니다(파일 버전이 다르거나 저장값을 다시 확인해야 합니다)') +
@@ -186,10 +188,10 @@
   /* 이어 쌓기 — 시작점(기준선) 위에 마감 이후 새로 성숙한 건을 같은 정의로 더한 값. 행동(선행)은 이 숫자에 섞지 않는다. */
   var LEDGER_NOTE = '기준 원장 한정정규원장.csv 를 골라 주세요. 단지명이 들어 있어 공개 저장소에는 올리지 않으며, 이 화면에서만 읽고 저장·전송하지 않습니다(다른 메뉴로 가거나 닫으면 사라집니다).';
   function chainSection(model, id, r, chain){
-    var pick = '<button type="button" class="b2bkpi-btn is-primary" data-kpi-act="ledgerPick" data-kpi="' + id + '">기준 원장 고르기 · 한정정규원장.csv</button>';
+    var pick = fileBtn('ledger', id, '기준 원장 고르기 · 한정정규원장.csv');
     var intro = '<p class="b2bkpi-muted">' + LEDGER_NOTE + '</p>';
     if(chain && chain.error) return intro + '<div class="b2bkpi-note">' + esc(chain.error) + '</div>' + pick;
-    if(chain && chain.need === 'cohort') return '<div class="b2bkpi-note">신규 협약 활용은 신규 명단이 필요합니다. 아래 대상 목록에서 신규_HTML36_90일.csv 를 먼저 골라 주세요.</div><button type="button" class="b2bkpi-btn is-primary" data-kpi-act="csvPick" data-kpi="' + id + '">근거 파일 고르기 · 신규_HTML36_90일.csv</button>';
+    if(chain && chain.need === 'cohort') return '<div class="b2bkpi-note">신규 협약 활용은 신규 명단이 필요합니다. 아래 대상 목록에서 신규_HTML36_90일.csv 를 먼저 골라 주세요.</div>' + fileBtn('csv', id, '근거 파일 고르기 · 신규_HTML36_90일.csv');
     if(!chain || !chain.report) return intro + pick;
     var p = chain.report, u = (r && r.unit) || '', f = function(x){ return x.rate == null ? '—' : f1(x.rate) + '%'; };
     var head = '<div class="b2bkpi-' + (p.check ? 'obs' : 'note') + '">마감 시점(' + esc(cutoffShort(p.cutoff)) + ')을 기준 원장으로 다시 계산한 값 ' + n0(p.start.num) + '/' + n0(p.start.den) + ' · 저장된 확인분 ' + (r && r.num != null ? n0(r.num) + '/' + n0(r.den) : '없음') + ' · ' + (p.check ? '일치합니다' : '기준선과 다릅니다 — 원장 파일 버전을 확인하세요. 누적 값을 쓰지 않습니다') + '</div>';

@@ -63,7 +63,7 @@ test('missing_date_is_unconfirmed_not_failure', () => {
 
 test('kpiDetail_without_file_shows_sections_and_import_button', () => {
   const h = O.kpiDetail(model(), 'MK1', null);
-  has(h, ['신규 협약 활용', '관측률', '10/20 마감 확인분', '목표 대비 달성률', '무엇을 세나요', '집계 내역', '관찰 중 · 분모에 넣지 않음 1곳', '행동 기록 수집 전', '대상 목록', 'data-kpi-act="csvPick"', 'data-kpi="MK1"', 'data-kpi-act="kpiBack"', '신규_HTML36_90일.csv']);
+  has(h, ['신규 협약 활용', '관측률', '10/20 마감 확인분', '목표 대비 달성률', '무엇을 세나요', '집계 내역', '관찰 중 · 분모에 넣지 않음 1곳', '행동 기록 수집 전', '대상 목록', 'data-kpi-file="csv"', 'data-kpi="MK1"', 'data-kpi-act="kpiBack"', '신규_HTML36_90일.csv']);
   has(h, ['공개 저장소에 올리지 않', '이 화면에서만', '저장·전송하지 않']);
   assert.ok(!h.includes('data-kpi-act="csvClear"'));
 });
@@ -111,7 +111,7 @@ test('tab_renders_detail_when_ui_detail_set_and_kpi_cards_link_to_it', () => {
   assert.ok(!legacy.includes('상세 보기'), 'OS 없으면 예전 화면 그대로');
 });
 test('tab_wiring_csv_stays_in_memory_only', () => {
-  ['csvPick', 'csvClear', 'csvFilter', 'csvPage', 'kpiDetail', 'kpiBack'].forEach(k => assert.ok(tabSrc.includes("'" + k + "'") || tabSrc.includes(k + ':'), '핸들러 ' + k));
+  ['csvClear', 'csvFilter', 'csvPage', 'kpiDetail', 'kpiBack'].forEach(k => assert.ok(tabSrc.includes("'" + k + "'") || tabSrc.includes(k + ':'), '핸들러 ' + k));
   assert.ok(tabSrc.includes('FileReader'), '사용자가 고른 파일을 브라우저에서 읽음');
   assert.ok(!/localStorage|sessionStorage|indexedDB|fetch\(.*csv|XMLHttpRequest/.test(tabSrc.slice(tabSrc.indexOf('function readCsvFile'), tabSrc.indexOf('function readCsvFile') + 1500)), '파일 내용을 저장·전송하지 않음');
   const d = html.indexOf('<script src="b2b-kpi-detail.js"></script>'), o = html.indexOf('<script src="b2b-kpi-os.js"></script>'), t = html.indexOf('<script src="b2b-kpi-tab.js"></script>');
@@ -133,7 +133,7 @@ test('analyze_kpi1_attaches_cohort_for_chain', () => {
 });
 test('chain_section_without_ledger_asks_for_file', () => {
   const h = O.kpiDetail(model(), 'MK3', null, { need: 'ledger' });
-  has(h, ['이어 쌓기', '기준 원장', '한정정규원장.csv', 'data-kpi-act="ledgerPick"', 'data-kpi="MK3"', '이 화면에서만', '저장·전송하지 않']);
+  has(h, ['이어 쌓기', '기준 원장', '한정정규원장.csv', 'data-kpi-file="ledger"', 'data-kpi="MK3"', 'type="file"', '이 화면에서만', '저장·전송하지 않']);
 });
 test('chain_section_shows_start_added_total_and_check', () => {
   const h = O.kpiDetail(model(), 'MK3', null, { report: rep() });
@@ -145,13 +145,21 @@ test('chain_section_flags_mismatch_and_hides_total', () => {
   has(h, ['기준선과 다릅니다', '누적 값을 쓰지 않습니다']); assert.ok(!h.includes('330/1,100'), '불일치면 누적을 보여주지 않음');
 });
 test('chain_section_error_and_kpi1_needs_cohort', () => {
-  has(O.kpiDetail(model(), 'MK3', null, { error: '원장이 맞지 않습니다' }), ['원장이 맞지 않습니다', 'ledgerPick']);
-  has(O.kpiDetail(model(), 'MK1', null, { need: 'cohort' }), ['신규_HTML36_90일.csv', 'csvPick']);
+  has(O.kpiDetail(model(), 'MK3', null, { error: '원장이 맞지 않습니다' }), ['원장이 맞지 않습니다', 'data-kpi-file="ledger"']);
+  has(O.kpiDetail(model(), 'MK1', null, { need: 'cohort' }), ['신규_HTML36_90일.csv', 'data-kpi-file="csv"']);
 });
 test('tab_wiring_ledger_in_memory_and_chain_script', () => {
-  ['ledgerPick', 'ledgerClear'].forEach(k => assert.ok(tabSrc.includes(k + ':'), '핸들러 ' + k));
+  ['ledgerClear'].forEach(k => assert.ok(tabSrc.includes(k + ':'), '핸들러 ' + k));
+  assert.ok(tabSrc.includes("'data-kpi-file'") && tabSrc.includes("addEventListener('change'"), '화면 안 파일 입력의 선택 처리');
   assert.ok(tabSrc.includes('chainReport') && tabSrc.includes('mapCardEvents'));
   const i = tabSrc.indexOf('function readLedgerFile');
   assert.ok(i > 0 && !/localStorage|sessionStorage|indexedDB|XMLHttpRequest/.test(tabSrc.slice(i, i + 1400)), '원장 내용을 저장·전송하지 않음');
   const c = html.indexOf('<script src="b2b-kpi-chain.js"></script>'), t = html.indexOf('<script src="b2b-kpi-tab.js"></script>'); assert.ok(c > 0 && c < t);
+});
+
+test('file_inputs_are_real_visible_label_inputs_not_programmatic', () => {
+  const h = O.kpiDetail(model(), 'MK3', null, { need: 'ledger' });
+  assert.ok(/<label[^>]*class="[^"]*b2bkpi-filelab[^"]*"[^>]*>[^<]*<input type="file"/.test(h), 'label 안의 진짜 파일 입력');
+  assert.ok(!tabSrc.includes("document.createElement('input')"), '프로그램으로 만든 파일 입력 사용 안 함');
+  assert.ok(/\.b2bkpi-fileinp\{[^}]*(opacity:0|clip)/.test(css), '입력은 보이지 않게, 라벨이 버튼 역할');
 });

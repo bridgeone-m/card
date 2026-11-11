@@ -266,7 +266,7 @@
   function open(){
     if(!window.crmAdminOk('B2B KPI')) return;
     var v = el();
-    if(!v){ v = document.createElement('section'); v.id = 'b2bKpiView'; v.className = 'b2bkpi-view'; v.setAttribute('aria-label', 'B2B KPI'); document.body.appendChild(v); v.addEventListener('click', onClick); }
+    if(!v){ v = document.createElement('section'); v.id = 'b2bKpiView'; v.className = 'b2bkpi-view'; v.setAttribute('aria-label', 'B2B KPI'); document.body.appendChild(v); v.addEventListener('click', onClick); v.addEventListener('change', onChange); }
     if(!st.ui.month) st.ui.month = nowMonth();
     var tabs = Array.prototype.slice.call(document.querySelectorAll('#crmTopTabs .top-tab,.gnav-drawer-menu .gnav-drawer-item'));
     tabs.forEach(function(b){ b.classList.toggle('is-active', !!b.dataset.b2bkpiTab); });
@@ -282,6 +282,13 @@
     document.body.classList.remove('b2bkpi-on');
     document.querySelectorAll('[data-b2bkpi-tab]').forEach(function(b){ b.classList.remove('is-active'); });
     var cust = document.getElementById('crmTabCustomer'); if(cust && !document.querySelector('#crmTopTabs .top-tab.is-active')) cust.classList.add('is-active');
+  }
+  /* 화면 안의 파일 입력(label+input)에서 고른 파일 — 브라우저 메모리에서만 읽는다 */
+  function onChange(e){
+    var t = e.target, kind = t && t.getAttribute && t.getAttribute('data-kpi-file'); if(!kind) return;
+    var f = t.files && t.files[0]; if(!f) return;
+    if(kind === 'ledger') readLedgerFile(f); else readCsvFile(f, t.getAttribute('data-kpi'));
+    try { t.value = ''; } catch(x){}
   }
   function onClick(e){
     var t = e.target.closest && e.target.closest('[data-kpi-act]'); if(!t) return;
@@ -499,18 +506,8 @@
   }
   var handlers = {
     kpiDetail: function(t){ st.ui.detail = t.getAttribute('data-kpi'); render(); var v = el(); if(v) v.scrollTop = 0; },
-    ledgerPick: function(){
-      var inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.csv,text/csv';
-      inp.onchange = function(){ if(inp.files && inp.files[0]) readLedgerFile(inp.files[0]); };
-      inp.click();
-    },
     ledgerClear: function(){ st.ui.ledger = null; st.ui.ledgerError = null; render(); },
     kpiBack: function(){ st.ui.detail = null; render(); var v = el(); if(v) v.scrollTop = 0; },
-    csvPick: function(t){
-      var id = t.getAttribute('data-kpi'), inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.csv,text/csv';
-      inp.onchange = function(){ if(inp.files && inp.files[0]) readCsvFile(inp.files[0], id); };
-      inp.click();
-    },
     csvClear: function(t){ if(st.ui.csv) delete st.ui.csv[t.getAttribute('data-kpi')]; render(); },
     csvFilter: function(t){ var c = st.ui.csv && st.ui.csv[t.getAttribute('data-kpi')]; if(c){ c.filter = t.getAttribute('data-f'); c.page = 0; } render(); },
     csvPage: function(t){ var c = st.ui.csv && st.ui.csv[t.getAttribute('data-kpi')]; if(c){ c.page = Math.max(0, (c.page || 0) + (+t.getAttribute('data-n'))); } render(); },
