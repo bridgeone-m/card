@@ -23112,7 +23112,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       return shown + (names.length > 5 ? `<span class="crm-map-qs-more">외 ${names.length - 5}곳</span>` : '');
     };
     const list = rows.map(({ e, local, names, inCount })=>{
-      const where = [e.region, e.sigungu].filter(Boolean).filter((v,i,arr)=> arr.indexOf(v) === i).join(' ');
+      const where = e.sigungu || e.region;   // sigungu는 이미 "충남 천안시"처럼 시/도를 앞에 달고 있다(시/도를 두 번 쓰지 않게)
       return `<li class="crm-map-qs-row">
           <button type="button" class="crm-map-qs-co" data-qs-co="${esc(e.co.id)}">${esc(e.co.name || '(이름 없음)')}</button>
           <span class="crm-map-qs-where">${esc(where || '지역 미확인')}${local ? '' : ' · 다른 지역 업체'} · 아파트 ${names.length}곳${inCount ? ` (이 지역 ${inCount})` : ''}</span>
@@ -47588,6 +47588,13 @@ window.SHIN2_CRM_APP_INIT = function(){
     // 공백/문자열 끝이 오는지를 lookahead로 직접 확인한다.
     const m = s.match(/^\S+?(?:특별시|광역시|특별자치시|특별자치도|도)\s+(\S+?(?:시|군|구))(?=\s|$)/);
     if(m) return (sido && sido !== '기타' ? sido + ' ' : '') + m[1];
+    // §줄임 시/도 주소(2026-11, 사용자 확인) — "충남 천안시…", "서울시 강동구…", "대구 수성구…"처럼
+    // 시/도를 줄여 쓴 주소(실데이터 52곳)는 위 패턴에 안 걸려 시/도만 나왔다. 위에서 이미 읽힌
+    // 주소는 그대로 두고, 여기서만 줄임 이름 + 시/군/구를 한 번 더 본다("광주 광역시"는 제외).
+    if(sido && sido !== '기타'){
+      const s2 = s.match(/^(?:서울|부산|대구|인천|광주|대전|울산|세종|경기|강원|충북|충남|전북|전남|경북|경남|제주)시?\s+(\S+?(?:시|군|구))(?=\s|$)/);
+      if(s2 && !/(?:광역|특별|특별자치)시$/.test(s2[1])) return sido + ' ' + s2[1];
+    }
     return sido; // 패턴에 안 걸리면 시/도 단위로만 묶는다(지어내지 않음).
   }
   // 업체 하나당 지도 팝업에 필요한 값을 전부 여기서 한 번만 모은다 — 새 계산이
