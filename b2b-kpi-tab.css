@@ -198,3 +198,19 @@ body.b2bkpi-on #listView, body.b2bkpi-on #cardView, body.b2bkpi-on #workQueueVie
 @media (min-width:640px){ .b2bkpi-actrow{ grid-template-columns:1fr 1fr; } }
 .b2bkpi-actform select, .b2bkpi-actform input[type=date]{ box-sizing:border-box; width:100%; min-height:44px; padding:0 10px; border:1px solid #CBD5E1; border-radius:8px; background:#fff; color:#121A2A; font:inherit; font-size:14px; }
 .b2bkpi-actform .b2bkpi-btn{ min-height:48px; }
+
+/* 점검 요약(KPI 사전 점검) — 화면에서는 항목 줄, 인쇄할 때는 이 구역만 */
+.b2bkpi-printsec{ background:#fff; border:1px solid #E3EAF3; border-radius:12px; padding:12px 14px; margin-bottom:10px; }
+.b2bkpi-printsec h4{ margin:12px 0 4px; font-size:13.5px; color:#17345F; border-bottom:1px solid #E3EAF3; padding-bottom:3px; }
+.b2bkpi-rv-title{ display:flex; flex-wrap:wrap; justify-content:space-between; gap:4px 12px; }
+.b2bkpi-rv{ display:grid; grid-template-columns:92px 1fr; gap:8px; padding:4px 0; font-size:13.5px; line-height:1.55; overflow-wrap:anywhere; }
+.b2bkpi-rv b{ color:#44546A; font-weight:700; }
+@media (max-width:480px){ .b2bkpi-rv{ grid-template-columns:1fr; gap:0; } }
+@media print{
+  body.b2bkpi-on > *:not(#b2bKpiView){ display:none !important; }
+  #b2bKpiView.is-printing{ position:static !important; overflow:visible !important; height:auto !important; background:#fff !important; }
+  #b2bKpiView.is-printing .b2bkpi-head, #b2bKpiView.is-printing .b2bkpi-menu, #b2bKpiView.is-printing .b2bkpi-detailtop, #b2bKpiView.is-printing .b2bkpi-noprint, #b2bKpiView.is-printing .b2bkpi-sec:not(.is-print-target){ display:none !important; }
+  #b2bKpiView.is-printing .b2bkpi-sec-head{ display:none; }
+  #b2bKpiView.is-printing .b2bkpi-printsec{ border:0; padding:0; }
+  .b2bkpi-rv{ grid-template-columns:110px 1fr; font-size:12px; }
+}

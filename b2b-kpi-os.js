@@ -241,7 +241,33 @@
     return head + body + '<p class="b2bkpi-muted">관찰 중 ' + n0(p.observing) + esc(u) + '은 분모·분자에 넣지 않았습니다(마감 시점 ' + n0(p.observingAtCutoff) + '). 사건 = 기준 원장 ' + n0(p.ledgerEvents) + '건(마감까지) + 카드 기록 ' + n0(p.cardEvents) + '건(마감 이후). 행동(선행)이 올라도 이 숫자는 고객의 실제 요청이 확인되는 후행 결과로만 오릅니다. 과거 값과는 비교하지 않습니다.</p>' +
       '<button type="button" class="b2bkpi-btn" data-kpi-act="ledgerClear" data-kpi="' + id + '">원장 내용 지우기</button>';
   }
-  function kpiDetail(model, id, csv, chain){
+  /* 점검 요약 — KPI 사전 점검(근거자료로 목표·실적을 확인, 과장 없이 객관·정확하게)을 위한 한 장. 지금 화면에 있는 값만 모으고 새 숫자·평가 문구를 만들지 않는다. */
+  function rv(label, html){ return '<div class="b2bkpi-rv"><b>' + esc(label) + '</b><span>' + html + '</span></div>'; }
+  function reviewSection(model, id, r, csv, chain, act){
+    var d = r.def || {}, file = CSV_FILE[id], p = act && act.summary && act.summary.perKpi && act.summary.perKpi[id];
+    var goal = r.floor ? '도전 ' + r.target + '% · 하한 ' + r.floor + '%' : '목표 ' + r.target + '%';
+    var g = rv('목표', esc(goal)) + [['관찰기간', d.period], ['분자', d.num], ['분모', d.den], ['범위', d.scope]].filter(function(x){ return x[1]; }).map(function(x){ return rv(x[0], esc(x[1])); }).join('');
+    var a = rv('실적', esc((r.rate == null ? '—' : f1(r.rate) + '%') + ' · ' + (r.num != null ? n0(r.num) + '/' + n0(r.den) + ' ' + (r.unit || '') : '') + ' · ' + (r.source === 'official' ? cutoffShort(r.cutoff) + ' 마감 확인분' : '자동 계산값'))) +
+      rv('목표 대비 달성률', esc(r.ach == null ? '—' : f1(r.ach) + '%' + (r.floor && r.achFloor != null ? ' (도전 기준) · 하한 대비 ' + f1(r.achFloor) + '%' : ''))) + rv('성격', '전체 공식 최신 실적이 아님 · 일부 확인분');
+    var ev = rv('근거 파일', esc(file + ' (팀장님 고객여정 근거 파일)'));
+    if(csv && csv.analysis){ var an = csv.analysis, same = r.num === an.num && r.den === an.den; ev += rv('파일 대조', '파일에서 센 값 ' + n0(an.num) + '/' + n0(an.den) + ' · 저장된 확인분 ' + (r.num != null ? n0(r.num) + '/' + n0(r.den) : '없음') + ' · ' + (same ? '일치합니다' : '다릅니다')); }
+    else ev += rv('파일 대조', '근거 파일을 고르면 파일에서 센 값과 저장된 확인분의 일치 여부를 보여 줍니다');
+    if(chain && chain.report){ var cp = chain.report; ev += rv('이어 쌓기', cp.check ? '시작점 ' + n0(cp.start.num) + '/' + n0(cp.start.den) + ' → 누적 ' + n0(cp.now.num) + '/' + n0(cp.now.den) + ' (' + esc(cutoffShort(cp.asOf)) + ' 기준, 마감 시점 재계산 일치)' : '기준선과 다릅니다 — 누적 값을 쓰지 않았습니다'); }
+    var rest = (r.breakdown || []).filter(function(x){ return x.key !== 'observing'; });
+    ev += rv('관찰 중', r.observing ? esc(r.observing.label + ' ' + n0(r.observing.n) + (r.observing.unit || '')) : '관찰 중 · 분모에 넣지 않음 — 저장된 값이 없습니다');
+    if(rest.length) ev += rv('집계 내역', rest.map(function(x){ return esc(x.label + ' ' + n0(x.n) + (x.unit || '')); }).join(' · '));
+    var lim = ['관측되지 않은 건은 실패로 단정하지 않습니다', '과거 제시값과는 정의·범위가 달라 비교하지 않습니다', '이어 쌓기는 기준 원장과 카드 업체 코드가 연결된 업체만 더해집니다'];
+    if(id === 'MK2') lim.push('종합점수 적용 기준: 도전 95% · 하한 85% 중 어느 쪽을 쓸지 팀장님 확인 전이라 미확정입니다');
+    if(id === 'MK3') lim.push('L3는 팀장님 정의(PT·설명회 또는 컨설팅 내역서 요청)이며 카드의 다른 화면 숫자와 다를 수 있습니다');
+    if(id === 'MK1') lim.push('협약일 불확정 업체는 모수에서 제외했습니다', '기존 HTML 신규 명단 범위이며 전체 신규 모수가 아닙니다');
+    var lm = '<ul class="b2bkpi-flowlist">' + lim.map(function(x){ return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>';
+    var ac = rv('이번 달 행동 기록', p ? '이번 달 ' + n0(p.records) + '건 · 구축 ' + p.buildDone + '/' + p.buildTotal : '행동 기록 수집 전') +
+      rv('유의', '행동 기록은 11/12부터 시작해 과거 행동 이력이 없으며, 행동 기록은 KPI 숫자를 바꾸지 않습니다. 고객이 실제로 요청해야 KPI가 오릅니다.');
+    var title = '<div class="b2bkpi-rv-title"><b>' + esc(r.label + ' ' + r.name) + '</b><span class="b2bkpi-muted">고객관리카드 B2B KPI 탭 · 출력일 ' + new Date().toISOString().slice(0, 10) + '</span></div>';
+    return '<div class="b2bkpi-printsec">' + title + '<h4>목표와 정의</h4>' + g + '<h4>실적</h4>' + a + '<h4>근거</h4>' + ev + '<h4>한계와 미확정</h4>' + lm + '<h4>행동 기록</h4>' + ac + '</div>' +
+      '<button type="button" class="b2bkpi-btn is-primary b2bkpi-noprint" data-kpi-act="printKpi" data-kpi="' + id + '">이 KPI 점검 요약 인쇄</button>';
+  }
+  function kpiDetail(model, id, csv, chain, act){
     var r = row(model, id); if(!r) return '<p class="b2bkpi-muted">KPI 정보를 찾지 못했습니다</p>' + menuBtn('home', '홈으로');
     var back = '<button type="button" class="b2bkpi-btn" data-kpi-act="kpiBack">← 홈으로</button>';
     var d = r.def || {};
@@ -259,7 +285,7 @@
     var rest = (r.breakdown || []).filter(function(x){ return x.key !== 'observing'; });
     br += rest.length ? '<div class="b2bkpi-card"><ul class="b2bkpi-flowlist">' + rest.map(function(x){ return '<li>' + esc(x.label + ' ' + n0(x.n) + (x.unit || '')) + '</li>'; }).join('') + '</ul></div>' : (r.observing ? '' : '<p class="b2bkpi-muted">저장된 집계 내역이 없습니다</p>');
     var tp = tpls(function(t){ return t.kpi === id; });
-    var act = '<div class="b2bkpi-card"><div class="b2bkpi-act-row"><span class="b2bkpi-muted">우리 행동 이행률</span>' + pill('wait', '행동 기록 수집 전') + '</div><div class="b2bkpi-muted">확정 업무 0건 · 행동 템플릿 ' + tp.length + '개(주연결). 행동이 100%여도 고객 성과가 없으면 "행동 완료 · 성과 미관측"으로 따로 표시하며, 미달을 팀원 과실로 단정하지 않습니다.</div>' +
+    var actHtml = '<div class="b2bkpi-card"><div class="b2bkpi-act-row"><span class="b2bkpi-muted">우리 행동 이행률</span>' + pill('wait', '행동 기록 수집 전') + '</div><div class="b2bkpi-muted">확정 업무 0건 · 행동 템플릿 ' + tp.length + '개(주연결). 행동이 100%여도 고객 성과가 없으면 "행동 완료 · 성과 미관측"으로 따로 표시하며, 미달을 팀원 과실로 단정하지 않습니다.</div>' +
       '<details class="b2bkpi-flow"><summary>행동 템플릿 보기</summary>' + tp.map(tplRow).join('') + '</details></div>';
     var bn = '<ul class="b2bkpi-alerts">';
     var miss = id === 'MK1' ? missedRows(model) : [];
@@ -269,8 +295,9 @@
     return '<div class="b2bkpi-detailtop">' + back + '</div>' +
       sec('①', '성과값과 목표 대비 달성률', '확인분 기준선', perf) + sec('②', '이어 쌓기', '시작점 위에 같은 정의로 쌓은 값', chainSection(model, id, r, chain)) +
       sec('③', '집계 내역', '관찰 중은 분모에 넣지 않음', br) +
-      sec('④', '우리 행동 진척', '행동과 고객 성과는 섞지 않음', act) + sec('⑤', '병목', '사유와 다음 행동', bn) +
-      sec('⑥', '대상 목록', '고객 · 단지·공종 · 시작·마감 · 관찰 상태 · 성과 판정', targetList(model, id, csv, r));
+      sec('④', '우리 행동 진척', '행동과 고객 성과는 섞지 않음', actHtml) + sec('⑤', '병목', '사유와 다음 행동', bn) +
+      sec('⑥', '대상 목록', '고객 · 단지·공종 · 시작·마감 · 관찰 상태 · 성과 판정', targetList(model, id, csv, r)) +
+      sec('⑦', '점검 요약', 'KPI 사전 점검용 · 지금 화면에 있는 값만', reviewSection(model, id, r, csv, chain, act));
   }
 
   function view(id, model, scoreHtml, act){

@@ -163,3 +163,33 @@ test('file_inputs_are_real_visible_label_inputs_not_programmatic', () => {
   assert.ok(!tabSrc.includes("document.createElement('input')"), '프로그램으로 만든 파일 입력 사용 안 함');
   assert.ok(/\.b2bkpi-fileinp\{[^}]*(opacity:0|clip)/.test(css), '입력은 보이지 않게, 라벨이 버튼 역할');
 });
+
+// ---- 점검 요약(KPI 사전 점검 대비) — 지금 화면에 있는 값만 모으고, 새 숫자·과장 문구를 만들지 않는다 ----
+const actFor = (id, p) => ({ summary: { perKpi: { [id]: Object.assign({ records: 2, buildDone: 1, buildDoing: 0, buildTotal: 4 }, p || {}) }, total: { records: 2, buildDone: 1, buildTotal: 12 }, recent: [] }, companies: [], build: {}, form: {} });
+test('review_section_collects_goal_actual_evidence_limits_and_print_button', () => {
+  const h = O.kpiDetail(model(), 'MK3', null, null, actFor('MK3'));
+  has(h, ['점검 요약', 'data-kpi-act="printKpi"', 'class="b2bkpi-printsec"', '목표와 정의', '실적', '1/2 기회', '10/20 마감 확인분', '전체 공식 최신 실적이 아님', '근거', '기회_30일.csv', '관찰 중 · 분모에 넣지 않음', '한계와 미확정', '행동 기록', '이번 달 2건', '구축 1/4']);
+  has(h, ['관측되지 않은 건은 실패로 단정하지 않습니다', '정의·범위가 달라 비교하지 않습니다', '행동 기록은 KPI 숫자를 바꾸지 않습니다', '11/12']);
+});
+test('review_section_kpi_specific_limits', () => {
+  has(O.kpiDetail(model(), 'MK2', null, null, actFor('MK2')), ['종합점수 적용 기준', '미확정', '도전 95%', '하한 85%']);
+  has(O.kpiDetail(model(), 'MK3', null, null, actFor('MK3')), ['카드의 다른 화면 숫자와 다를 수 있습니다', 'PT·설명회 또는 컨설팅 내역서']);
+  has(O.kpiDetail(model(), 'MK1', null, null, actFor('MK1')), ['협약일 불확정', '신규 명단']);
+});
+test('review_section_evidence_states_file_and_chain', () => {
+  const none = O.kpiDetail(model(), 'MK1', null, null, actFor('MK1')); has(none, ['근거 파일을 고르면']);
+  const a = Dt.analyze('MK1', Dt.parseCsv(CSV1));
+  const withFile = O.kpiDetail(model(), 'MK1', { file: 'f.csv', analysis: a, filter: 'all', page: 0 }, null, actFor('MK1')); has(withFile, ['파일에서 센 값', '저장된 확인분']);
+  const withChain = O.kpiDetail(model(), 'MK3', null, { report: rep() }, actFor('MK3')); has(withChain, ['이어 쌓기', '시작점 315/1,025', '누적 330/1,100']);
+});
+test('review_section_without_act_still_renders_and_adds_no_new_numbers', () => {
+  const h = O.kpiDetail(model(), 'MK3', null, null); has(h, ['점검 요약', '행동 기록 수집 전']);
+  const sec = h.slice(h.indexOf('class="b2bkpi-printsec"'));
+  const nums = (sec.replace(/<[^>]+>/g, ' ').match(/\d[\d,]*\.?\d*%?/g) || []).filter(x => x.length > 1);
+  nums.map(n => n.replace('%', '')).forEach(n => assert.ok(['50', '1', '2', '10', '20', '95', '85', '30', '90', '60', '36', '11', '12', '100', '0'].includes(n.replace(/[,%]/g, '')) || /^\d+\.\d$/.test(n) || /^\d+$/.test(n), '낯선 숫자 ' + n));
+});
+test('print_wiring_only_summary_prints', () => {
+  assert.ok(tabSrc.includes('printKpi:') && tabSrc.includes('window.print'));
+  assert.ok(/@media print\{[^}]*#b2bKpiView/.test(css.replace(/\s+/g, ' ')) || css.includes('@media print'));
+  assert.ok(css.includes('.b2bkpi-printsec') && css.includes('is-printing'));
+});

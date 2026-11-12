@@ -220,7 +220,7 @@
     var O = osOf(ui);
     if(!O){ var all = renderParts(model, ui); return all.kpi + all.score; }
     var menu = ui.menu || 'home', out = O.menuBar(menu);
-    if(ui.detail && O.kpiDetail) return out + O.kpiDetail(model, ui.detail, ui.csv && ui.csv[ui.detail] || null, ui.chain && ui.chain[ui.detail] || null);
+    if(ui.detail && O.kpiDetail) return out + O.kpiDetail(model, ui.detail, ui.csv && ui.csv[ui.detail] || null, ui.chain && ui.chain[ui.detail] || null, ui.act);
     if(menu === 'home') return out + renderParts(model, ui).kpi + O.view('home', model, '', ui.act);
     if(menu === 'tasks') return out + O.view('tasks', model, renderParts(model, ui, ui.act ? ['①', '⑥', '⑦', '⑧', '⑨', '⑩'] : ['①', '③', '④', '⑤', '⑥', '⑦']).score, ui.act);
     return out + O.view(menu, model);
@@ -533,6 +533,12 @@
       } catch(e){ flash('error', String(e && e.message || e)); }
     },
     buildToggle: function(t){ if(st.busy) return; afterWrite(window.B2BKpiStore.setBuildState(t.getAttribute('data-b'), window.B2BKpiAct.nextBuildState(t.getAttribute('data-s')), ACTOR)); },
+    printKpi: function(){
+      var v = el(), ps = v && v.querySelector('.b2bkpi-printsec'), sec = ps && ps.closest('section'); if(!sec) return;
+      v.classList.add('is-printing'); sec.classList.add('is-print-target');
+      var done = function(){ v.classList.remove('is-printing'); sec.classList.remove('is-print-target'); window.removeEventListener('afterprint', done); };
+      window.addEventListener('afterprint', done); window.print();
+    },
     kpiBack: function(){ st.ui.detail = null; render(); var v = el(); if(v) v.scrollTop = 0; },
     csvClear: function(t){ if(st.ui.csv) delete st.ui.csv[t.getAttribute('data-kpi')]; render(); },
     csvFilter: function(t){ var c = st.ui.csv && st.ui.csv[t.getAttribute('data-kpi')]; if(c){ c.filter = t.getAttribute('data-f'); c.page = 0; } render(); },
