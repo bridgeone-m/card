@@ -11304,6 +11304,53 @@ body:not(.crm-admin-mode) #crmUpdateMenuWrap{ display:none !important; }
   /* 휴대폰: 다가오는 미팅 카드 최대 높이(460px, design-refresh.css)는 메모 탭에서만 푼다 — 메모가 한두 건만 보이던 것 */
   #listView > #crmUpcomingMeetings.is-memo, body #crmUpcomingMeetings.is-memo{ max-height:none; }
 }
+/* §최근 요청 경과일(2026-11) — 최근 요청 옆 D+N. 30일 넘으면 빨간 배지 */
+.request-age{ display:inline-flex; align-items:center; flex:none; margin-left:6px; padding:1px 7px; border-radius:999px;
+  background:#EEF2F8; color:#4A5F7E; font-size:11.5px; font-weight:700; line-height:1.5; white-space:nowrap; vertical-align:middle; }
+.request-age.is-stale{ background:#FDECEC; color:#B3261E; }
+#listView .co-row .request-cell{ display:inline-flex; align-items:center; max-width:100%; min-width:0; }
+#listView .co-row .request-cell .request-gsheet-text{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+/* §매출 칸 — 칸 전체가 매출 탭 열기 */
+#listView .co-row .col-revenue-combo[data-sales-tab-open]{ cursor:pointer; }
+/* §매출 탭 통합(2026-11) — 분기별 매출 표·매출 내역(고객 상세 [매출] 탭). 휴대폰 360px에서도 가로 넘침 없게. */
+#cdashSalesQuarterCard, #cdashSalesDetailCard{ margin-top:10px; min-width:0; }
+.sales-q-year{ margin-left:4px; font-weight:600; color:var(--text-muted); }
+.sales-year-line{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; }
+.sales-year-chip{ display:inline-flex; align-items:baseline; gap:4px; padding:3px 9px; border-radius:999px; background:#F1F5F9; font-size:12px; color:var(--text-muted); white-space:nowrap; }
+.sales-year-chip b{ color:var(--text); font-weight:700; }
+.sales-year-chip i{ font-style:normal; font-size:11px; color:#4A5F7E; }
+.sales-q-table-wrap{ width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+.sales-q-table{ width:100%; border-collapse:collapse; table-layout:fixed; font-size:12.5px; font-variant-numeric:tabular-nums; }
+.sales-q-table th, .sales-q-table td{ padding:6px 4px; border-bottom:1px solid var(--line); text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sales-q-table thead th{ font-size:11.5px; font-weight:700; color:var(--text-muted); background:#F8FAFC; }
+.sales-q-table th:first-child{ text-align:left; width:23%; }
+.sales-q-table tbody th{ font-weight:600; color:var(--text); }
+.sales-q-table td.is-zero{ color:#A0AEC0; }
+.sales-q-table td.is-future{ color:#CBD5E1; }
+.sales-q-table td.is-sum{ font-weight:700; color:var(--text); background:#F8FAFC; }
+.sales-q-table tfoot th, .sales-q-table tfoot td{ font-weight:700; color:var(--navy); border-bottom:0; border-top:1.5px solid #CBD5E1; }
+.sales-q-compare{ margin-top:8px; font-size:12px; color:var(--text); font-weight:600; }
+.sales-q-note{ margin-top:4px; font-size:11.5px; color:var(--text-muted); line-height:1.5; }
+.sales-detail-filters{ display:flex; gap:6px; margin-top:8px; }
+.sales-detail-filters .sales-detail-q{ flex:none; height:36px; padding:0 8px; font-size:13px; font-family:inherit; border:1px solid var(--line); border-radius:6px; background:#fff; }
+.sales-detail-filters .sales-detail-search{ flex:1 1 auto; min-width:0; height:36px; margin-top:0; font-size:13px; }
+.sales-detail-list{ margin-top:6px; max-height:420px; overflow-y:auto; border-top:1px solid var(--line); }
+.sales-detail-row{ display:grid; grid-template-columns:84px 70px minmax(0,1fr) auto; gap:8px; align-items:center; padding:8px 2px; border-bottom:1px solid var(--line); font-size:12.5px; }
+.sales-detail-date{ color:var(--text-muted); font-variant-numeric:tabular-nums; white-space:nowrap; }
+.sales-detail-type{ color:#4A5F7E; font-weight:600; white-space:nowrap; }
+.sales-detail-site{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text); }
+.sales-detail-amt{ font-weight:700; color:var(--text); white-space:nowrap; font-variant-numeric:tabular-nums; text-align:right; }
+.sales-detail-card .revenue-tab{ height:32px; }
+@media (max-width:600px){
+  .sales-q-table{ font-size:11.5px; }
+  .sales-q-table th, .sales-q-table td{ padding:6px 2px; }
+  .sales-q-table th:first-child{ width:21%; }
+  .sales-detail-row{ grid-template-columns:auto minmax(0,1fr) auto; grid-template-areas:"date type amt" "site site site"; row-gap:2px; }
+  .sales-detail-date{ grid-area:date; } .sales-detail-type{ grid-area:type; } .sales-detail-amt{ grid-area:amt; }
+  .sales-detail-site{ grid-area:site; white-space:normal; color:var(--text-muted); }
+  .sales-detail-card .revenue-tab{ height:36px; padding:0 11px; }
+  .sales-detail-list{ max-height:none; overflow:visible; } /* 휴대폰은 창 전체가 스크롤되므로 안쪽 스크롤을 겹치지 않는다 */
+}
 /* §계약서 발송 관리자 전용(2026-11, 사용자 요청) — 계약서 준비·발송·발송 이력은 관리자 로그인에서만 보인다 */
 body:not(.crm-admin-mode) #cesignOpenBtn,
 body:not(.crm-admin-mode) #crmTabContracts,
@@ -11703,7 +11750,7 @@ body.crm-fixed-view .crm-list-col .list-pagination{ display:grid !important; }
         <div class="co-table-head" id="crmCoTableHead">
           <div class="col-name">업체명</div>
           <div class="col-pour">최근 실적</div>
-          <div class="col-revenue-combo col-total-revenue-head" id="totalRevenueSortHeader">총매출 <span class="total-revenue-sort-arrow" id="totalRevenueSortArrow"></span><button type="button" class="col-help-btn" data-col-help="totalRevenue" aria-label="총매출 설명 보기" aria-expanded="false" aria-controls="colHelpPop">i</button></div>
+          <div class="col-revenue-combo col-total-revenue-head" id="totalRevenueSortHeader">매출 <span class="total-revenue-sort-arrow" id="totalRevenueSortArrow"></span><button type="button" class="col-help-btn" data-col-help="totalRevenue" aria-label="총매출 설명 보기" aria-expanded="false" aria-controls="colHelpPop">i</button></div>
           <div class="col-request">최근 요청<button type="button" class="col-help-btn" data-col-help="request" aria-label="최근 요청 설명 보기" aria-expanded="false" aria-controls="colHelpPop">i</button></div>
           <div class="col-trend">최근 흐름<button type="button" class="col-help-btn" data-col-help="trend" aria-label="최근 흐름 설명 보기" aria-expanded="false" aria-controls="colHelpPop">i</button></div>
           <div class="col-contrib">실적-매출<button type="button" class="col-help-btn" data-col-help="contrib" aria-label="실적-매출 설명 보기" aria-expanded="false" aria-controls="colHelpPop">i</button></div>
@@ -24317,13 +24364,15 @@ window.SHIN2_CRM_APP_INIT = function(){
       // 결정 — 건드리지 않음). Google Sheets 요청만 요청하신 대로 "요청 종류 · 요청일 ·
       // 현장명"을 셀에 바로 짧게 보여준다(그 값 자체가 이미 buildRequestListItems가 만든
       // it.text 그대로 — 여기서 새로 조합하지 않음).
+      // §최근 요청 경과일(2026-11, 팀장님 요청) — 마지막 요청 뒤 며칠 지났는지 D+N, 30일이 넘으면 빨간 배지.
+      const reqAgeHtml = latestRequestItem ? requestAgeBadgeHtml(latestRequestItem.ts) : '';
       const nameRequestCellHtml = latestRequestItem
         ? (latestRequestItem.kind === 'gsheet'
           ? `<button type="button" class="request-cell request-cell-gsheet" data-name-request-detail="${esc(co.id)}" title="${esc(latestRequestItem.text)}">
-              <span class="request-gsheet-text">${esc(latestRequestItem.sourceTab || latestRequestItem.text)}</span>
+              <span class="request-gsheet-text">${esc(latestRequestItem.sourceTab || latestRequestItem.text)}</span>${reqAgeHtml}
             </button>`
           : `<button type="button" class="request-cell request-cell-date-only" data-name-request-detail="${esc(co.id)}" title="${esc(latestRequestItem.text)}">
-              <span class="request-date">${esc(fmtDate(latestRequestItem.createdAtIso))}</span>
+              <span class="request-date">${esc(fmtDate(latestRequestItem.createdAtIso))}</span>${reqAgeHtml}
             </button>`)
         : `<button type="button" class="request-cell" data-name-request-detail="${esc(co.id)}"><span class="data-none">—</span></button>`;
       // §고객 성향 컬럼 라운드 §2/§6: 목록에는 co.customerInsight(별도 신규 필드,
@@ -24453,9 +24502,12 @@ window.SHIN2_CRM_APP_INIT = function(){
           : '<div class="col-pour"><span class="risk-none">이상 신호 없음</span></div><div class="col-revenue-combo"></div><div class="col-request"></div>'; })() : `<div class="col-pour">${lastActHtml}</div>`}
         <!-- §P1-1 목록 열 재구성 라운드(신규): "고객 성향" 열(col-insight)은 화면에서만
              뺀다 — insightHtml 변수 계산과 고객카드 쪽 인사이트 표시는 그대로다. -->
-        ${riskView ? '' : `<div class="col-revenue-combo">
-          <div class="revenue-combo-line revenue-combo-total">${totalRevenueHtml}</div>
-          <div class="revenue-combo-line revenue-combo-yr"><span class="revenue-combo-yr-label">2026년</span>${yrRevenueHtml}</div>
+        ${riskView ? '' : `<div class="col-revenue-combo" data-sales-tab-open="${esc(co.id)}" title="누르면 고객 상세의 매출 탭이 열립니다">
+          <!-- §매출 칸 순서(2026-11, 팀장님 요청) — 지금이 중요하므로 올해 매출을 위(크게), 누적 매출을 아래(작게)로.
+               크기·색은 기존 줄 클래스가 정하므로 클래스를 서로 바꿔 단다(revenue-combo-total=큰 줄, revenue-combo-yr=작은 줄).
+               칸 어디를 눌러도 매출 탭. -->
+          <div class="revenue-combo-line revenue-combo-total"><span class="revenue-combo-yr-label">2026년</span>${yrRevenueHtml}</div>
+          <div class="revenue-combo-line revenue-combo-yr"><span class="revenue-combo-yr-label">누적</span>${totalRevenueHtml}</div>
         </div>
         <div class="col-request">${nameRequestCellHtml}</div>`}
         <!-- §고객관리 메인화면 재배치 라운드(신규, §요청 7/12) — "최근 흐름"·"실적-매출"을
@@ -24554,21 +24606,13 @@ window.SHIN2_CRM_APP_INIT = function(){
     });
     // §20: 2026 매출 금액 클릭 -> 상세 매출내역 모달. 행 클릭(고객카드 열기)으로 전파되지
     // 않도록 stopPropagation.
-    listEl.querySelectorAll('[data-revenue-detail]').forEach(btn=>{
-      btn.addEventListener('click', (e)=>{
+    // §매출 클릭 통일(2026-11, 팀장님 요청) — 예전엔 누적 금액=작은 팝오버, "2026년" 글자=고객 상세(기본정보),
+    // 올해 금액=매출 상세 팝업으로 칸마다 달랐다. 매출 칸 어디를 눌러도 고객 상세의 [매출] 탭을 연다
+    // (분기별·구분별 매출과 내역이 그 탭에 모여 있다). openRevenueDetailModal/openTotalRevenuePopover 함수는 그대로 둔다.
+    listEl.querySelectorAll('[data-sales-tab-open]').forEach(cell=>{
+      cell.addEventListener('click', (e)=>{
         e.stopPropagation();
-        const co = D.findCompany(btn.getAttribute('data-revenue-detail'));
-        if(co) openRevenueDetailModal(co);
-      });
-    });
-    // §총 매출 Popover 전환 라운드: "총 매출" 클릭 -> 클릭한 셀 옆에 뜨는 작은 popover
-    // (예전엔 오른쪽 전체높이 Drawer였다, openTotalRevenueDrawer는 더 이상 호출하지 않지만
-    // 함수 자체는 남겨뒀다).
-    listEl.querySelectorAll('[data-total-revenue-detail]').forEach(btn=>{
-      btn.addEventListener('click', (e)=>{
-        e.stopPropagation();
-        const co = D.findCompany(btn.getAttribute('data-total-revenue-detail'));
-        if(co) openTotalRevenuePopover(co, btn);
+        openCustomerDetail(cell.getAttribute('data-sales-tab-open'), 'sales');
       });
     });
     // §3/§7/§시공실적 Drawer 통합 라운드 §10: "최근 실적" 영역 클릭 -> 시공실적 Drawer
@@ -27904,16 +27948,149 @@ window.SHIN2_CRM_APP_INIT = function(){
             <div class="cdash2-card-title" style="margin-bottom:0;">매출 현황 ${revenueInfoIconHtml('cdash')}</div>
           </div>
           <div class="cdash2-revenue-head cdash2-revenue-stats">
-            <div class="cdash2-revenue-kpi"><div class="cdash2-revenue-stat-label">${cinfoIcon('coin')}총 매출</div><div class="cdash2-revenue-stat-value">${esc(totalRevenueText)}</div></div>
+            <!-- §매출 순서(2026-11, 팀장님 요청) — 올해 매출을 먼저, 누적 매출은 그다음. -->
             <div class="cdash2-revenue-kpi"><div class="cdash2-revenue-stat-label">${cinfoIcon('trend')}${esc(currentYear)}년 매출</div><div class="cdash2-revenue-stat-value">${esc(yearRevenueText)}</div></div>
+            <div class="cdash2-revenue-kpi"><div class="cdash2-revenue-stat-label">${cinfoIcon('coin')}누적 매출</div><div class="cdash2-revenue-stat-value">${esc(totalRevenueText)}</div></div>
             <div class="cdash2-revenue-kpi is-peak"><div class="cdash2-revenue-stat-label">${cinfoIcon('calendarCheck')}최고월</div><div class="cdash2-revenue-stat-value">${esc(peakText)}</div></div>
           </div>
           <div class="cdash2-chart-outer"><div class="cdash2-chart-wrap" id="cdashRevenueChartWrap">${chartHtml}</div></div>
         </div>
       </div>
+      <div id="cdashSalesQuarterCard"></div>
+      <div id="cdashSalesDetailCard"></div>
     `;
     if(monthly && monthly.points.length) wireRevenueChartHover(chartPoints);
     bindRevenueInfoIcon('cdash');
+    renderSalesQuarterCard(co, revAll);
+    renderSalesDetailCard(co);
+  }
+
+  /* ==========================================================================
+     §매출 탭 통합(2026-11, 팀장님 요청) — 예전 "2026 매출 상세" 팝업에만 있던 구분별 금액·내역을
+     고객 상세 [매출] 탭으로 모은다(목록의 매출 칸을 누르면 이 탭이 열린다).
+       ① 분기별 매출 표: 행=구분(자재판매·컨설팅·기술자문료·특허료…), 열=1~4분기·합계.
+          날짜별 내역이 있는 건 올해(2026) 자료뿐이라 분기 표는 올해만, 앞 연도는 연간 합계로 함께 보여 준다.
+       ② 매출 내역: 구분 탭 + 분기 선택 + 현장명 검색(예전 팝업과 같은 행·같은 정렬).
+     새 집계 없이 D.getCompany2026Revenue(co)의 rows(date·amount·sourceType·site)를 나누기만 한다.
+     ========================================================================== */
+  // 분기 표처럼 칸이 좁은 곳용 짧은 금액 표기(예: 2.6억, 8,500만, 0)
+  function fmtKrwShort(n){
+    if(!n) return '0';
+    const neg = n < 0, a = Math.abs(n);
+    let s;
+    if(a >= 100000000) s = (Math.round(a / 10000000) / 10).toLocaleString('ko-KR') + '억';
+    else if(a >= 10000) s = Math.round(a / 10000).toLocaleString('ko-KR') + '만';
+    else s = a.toLocaleString('ko-KR') + '원';
+    return (neg ? '-' : '') + s;
+  }
+  function revenueQuarterOf(dateStr){
+    const m = /^(\d{4})-(\d{2})/.exec(String(dateStr || ''));
+    return m ? { year: +m[1], q: Math.ceil(+m[2] / 3) } : null;
+  }
+  const SALES_YEAR = 2026;   // 날짜별 매출 내역이 있는 연도(getCompany2026Revenue)
+  function renderSalesQuarterCard(co, revAll){
+    const wrap = document.getElementById('cdashSalesQuarterCard');
+    if(!wrap) return;
+    const data = D.getCompany2026Revenue(co);
+    const yearsLine = (revAll && Array.isArray(revAll.byYear) && revAll.byYear.length)
+      ? revAll.byYear.map(y=> `<span class="sales-year-chip">${esc(y.year)}년 <b>${esc(fmtKrwCompact(y.total))}</b>${y.inProgress ? ' <i>진행 중</i>' : ''}</span>`).join('')
+      : '';
+    if(!data || data.ambiguous || !Array.isArray(data.rows)){
+      wrap.innerHTML = `<div class="cdash2-card sales-q-card"><div class="cdash2-card-title">분기별 매출</div>
+        ${yearsLine ? `<div class="sales-year-line">${yearsLine}</div>` : ''}
+        <div class="chart-empty">${data && data.ambiguous ? '업체명이 여러 곳과 겹쳐 매출을 자동으로 나누지 않았습니다.' : `${SALES_YEAR}년 매출 내역이 없습니다.`}</div></div>`;
+      return;
+    }
+    const now = new Date();
+    const curQ = now.getFullYear() === SALES_YEAR ? Math.ceil((now.getMonth() + 1) / 3) : (now.getFullYear() > SALES_YEAR ? 4 : 0);
+    const typeKeys = REVENUE_TYPE_ORDER.slice();
+    data.rows.forEach(r=>{ if(r.sourceType && !typeKeys.includes(r.sourceType)) typeKeys.push(r.sourceType); });
+    const grid = {}; typeKeys.forEach(t=> grid[t] = [0,0,0,0]);
+    const qTotal = [0,0,0,0];
+    let undated = 0;
+    data.rows.forEach(r=>{
+      const q = revenueQuarterOf(r.date);
+      const amt = Number(r.amount) || 0;
+      if(!q || q.year !== SALES_YEAR){ undated += amt; return; }
+      if(grid[r.sourceType]) grid[r.sourceType][q.q - 1] += amt;
+      qTotal[q.q - 1] += amt;
+    });
+    const cell = (v, qi)=> qi + 1 > curQ ? '<td class="is-future">—</td>' : `<td${v ? '' : ' class="is-zero"'}>${esc(fmtKrwShort(v))}</td>`;
+    const rowsHtml = typeKeys.filter(t=> grid[t].some(v=> v) || REVENUE_TYPE_ORDER.includes(t)).map(t=>{
+      const sum = grid[t].reduce((a,b)=> a + b, 0);
+      return `<tr><th scope="row">${esc(REVENUE_TYPE_LABEL[t] || t)}</th>${grid[t].map(cell).join('')}<td class="is-sum">${esc(fmtKrwShort(sum))}</td></tr>`;
+    }).join('');
+    const allSum = qTotal.reduce((a,b)=> a + b, 0);
+    // 직전 분기 대비(지난 분기가 있을 때만) — 숫자만 보여 주고 판정은 하지 않는다
+    let compareHtml = '';
+    if(curQ >= 2){
+      const prev = qTotal[curQ - 2], cur = qTotal[curQ - 1];
+      compareHtml = `<div class="sales-q-compare">${curQ}분기(진행 중) ${esc(fmtKrwCompact(cur))} · 직전 ${curQ - 1}분기 ${esc(fmtKrwCompact(prev))}</div>`;
+    }
+    wrap.innerHTML = `
+      <div class="cdash2-card sales-q-card">
+        <div class="cdash2-card-title">분기별 매출 <span class="sales-q-year">${SALES_YEAR}년</span></div>
+        ${yearsLine ? `<div class="sales-year-line">${yearsLine}</div>` : ''}
+        <div class="sales-q-table-wrap">
+          <table class="sales-q-table">
+            <thead><tr><th scope="col">구분</th><th scope="col">1분기</th><th scope="col">2분기</th><th scope="col">3분기</th><th scope="col">4분기</th><th scope="col">합계</th></tr></thead>
+            <tbody>${rowsHtml}</tbody>
+            <tfoot><tr><th scope="row">합계</th>${qTotal.map(cell).join('')}<td class="is-sum">${esc(fmtKrwShort(allSum))}</td></tr></tfoot>
+          </table>
+        </div>
+        ${compareHtml}
+        ${undated ? `<div class="sales-q-note">날짜가 없어 분기를 나눌 수 없는 매출 ${esc(fmtKrwCompact(undated))}은 표에서 빠지고 합계(위 ${SALES_YEAR}년 매출)에는 들어 있습니다.</div>` : ''}
+        <div class="sales-q-note">2024·2025년은 연간 합계만 있어 분기로 나누지 않습니다.</div>
+      </div>`;
+  }
+  let salesDetailState = { coId: null, tab: 'all', q: 'all', query: '' };
+  function renderSalesDetailCard(co){
+    const wrap = document.getElementById('cdashSalesDetailCard');
+    if(!wrap) return;
+    const data = D.getCompany2026Revenue(co);
+    if(!data || data.ambiguous || !Array.isArray(data.rows) || !data.rows.length){ wrap.innerHTML = ''; return; }
+    if(salesDetailState.coId !== co.id) salesDetailState = { coId: co.id, tab: 'all', q: 'all', query: '' };
+    const st = salesDetailState;
+    wrap.innerHTML = `
+      <div class="cdash2-card sales-detail-card">
+        <div class="cdash2-card-title">${SALES_YEAR}년 매출 내역</div>
+        <div class="revenue-tab-row" role="tablist">
+          ${REVENUE_DETAIL_TABS.map(t=> `<button type="button" class="revenue-tab${t.key === st.tab ? ' is-active' : ''}" data-sales-tab="${t.key}">${esc(t.label)}</button>`).join('')}
+        </div>
+        <div class="sales-detail-filters">
+          <select class="sales-detail-q" aria-label="분기 선택">
+            ${[['all','전체 분기'],['1','1분기'],['2','2분기'],['3','3분기'],['4','4분기']].map(([v,l])=> `<option value="${v}"${v === st.q ? ' selected' : ''}>${l}</option>`).join('')}
+          </select>
+          <input type="search" class="revenue-detail-search sales-detail-search" placeholder="현장명 / 구분 검색" value="${esc(st.query)}" />
+        </div>
+        <div class="sales-detail-body"></div>
+      </div>`;
+    const body = wrap.querySelector('.sales-detail-body');
+    const draw = ()=>{
+      const q = String(st.query || '').trim().toLowerCase();
+      let rows = data.rows.filter(r=> st.tab === 'all' || r.sourceType === st.tab);
+      if(st.q !== 'all') rows = rows.filter(r=>{ const x = revenueQuarterOf(r.date); return x && x.year === SALES_YEAR && String(x.q) === st.q; });
+      if(q) rows = rows.filter(r=> (r.site || '').toLowerCase().includes(q) || (REVENUE_TYPE_LABEL[r.sourceType] || r.sourceType || '').toLowerCase().includes(q));
+      rows = rows.slice().sort((a,b)=> String(b.date || '').localeCompare(String(a.date || '')));
+      const sum = rows.reduce((s, r)=> s + (Number(r.amount) || 0), 0);
+      body.innerHTML = `
+        <div class="revenue-detail-subtotal"><span>${rows.length}건</span><span>합계 ${esc(fmtKrwCompact(sum))}</span></div>
+        ${rows.length ? `<div class="sales-detail-list">${rows.map(r=> `
+          <div class="sales-detail-row">
+            <span class="sales-detail-date">${r.date ? esc(fmtDate(r.date)) : '날짜 없음'}</span>
+            <span class="sales-detail-type">${esc(REVENUE_TYPE_LABEL[r.sourceType] || r.sourceType || '')}</span>
+            <span class="sales-detail-site">${r.site ? esc(r.site) : '—'}</span>
+            <span class="sales-detail-amt">${esc(fmtKrwCompact(r.amount))}</span>
+          </div>`).join('')}</div>` : `<div class="chart-empty">조건에 맞는 매출 내역이 없습니다.</div>`}`;
+    };
+    wrap.querySelectorAll('[data-sales-tab]').forEach(b=> b.addEventListener('click', ()=>{
+      st.tab = b.getAttribute('data-sales-tab');
+      wrap.querySelectorAll('[data-sales-tab]').forEach(x=> x.classList.toggle('is-active', x === b));
+      draw();
+    }));
+    wrap.querySelector('.sales-detail-q').addEventListener('change', e=>{ st.q = e.target.value; draw(); });
+    wrap.querySelector('.sales-detail-search').addEventListener('input', e=>{ st.query = e.target.value; draw(); });
+    draw();
   }
 
   /* ==========================================================================
@@ -45695,6 +45872,21 @@ window.SHIN2_CRM_APP_INIT = function(){
   // 안 넘기면(팝업 등 단발성 호출) 기존처럼 D.memosFor/D.activitiesForCompany를 그대로
   // 호출한다 — 결과값·정렬 기준은 완전히 동일, 목록처럼 같은 렌더링에서 여러 번(업체마다)
   // 불리는 곳만 반복 전체훑기를 피하도록 고른 것뿐이다.
+  // §최근 요청 경과일(2026-11, 팀장님 요청) — 마지막 요청일부터 오늘까지 지난 날수. 날짜(달력) 기준,
+  // 30일 넘으면 빨간 배지(충성 고객이 한 달 넘게 요청이 없으면 확인할 신호). 날짜를 알 수 없으면 표시 안 함.
+  const REQUEST_STALE_DAYS = 30;
+  function requestAgeDays(ts){
+    const t = new Date(ts);
+    if(!ts || isNaN(t)) return null;
+    const day0 = d=>{ const x = new Date(d); x.setHours(0,0,0,0); return x.getTime(); };
+    return Math.max(0, Math.round((day0(Date.now()) - day0(t)) / 86400000));
+  }
+  function requestAgeBadgeHtml(ts){
+    const days = requestAgeDays(ts);
+    if(days == null) return '';
+    const stale = days > REQUEST_STALE_DAYS;
+    return `<span class="request-age${stale ? ' is-stale' : ''}" title="${stale ? '마지막 요청 뒤 30일이 넘었습니다' : '마지막 요청 뒤 지난 날수'}">${days === 0 ? '오늘' : 'D+' + days}</span>`;
+  }
   function buildRequestListItems(co, idx){
     const items = [];
     const memos = (idx && idx.memos) ? (idx.memos.get(String(co.id)) || []) : D.memosFor(co.id);
@@ -52628,12 +52820,12 @@ if(!window.__mapxRowDelegated){
   // 버튼을 달지 않았다(사용자 요청: "구조만 열어 둘 것").
   const COLUMN_HELP_TEXTS = {
     totalRevenue: {
-      title: '총매출',
-      body: '해당 업체의 누적 실제 매출입니다.\n계약금액이 아니라 실제 발생한 매출 기준으로 집계됩니다.'
+      title: '매출',
+      body: '위: 올해(2026년) 실제 매출, 아래: 누적 실제 매출입니다.\n계약금액이 아니라 실제 발생한 매출 기준으로 집계됩니다.\n칸을 누르면 고객 상세의 매출 탭(분기별·구분별 매출과 내역)이 열립니다.'
     },
     request: {
       title: '최근 요청',
-      body: '해당 업체가 최근에 가장 많이 요청하거나 가장 최근에 요청한 업무 유형입니다.\n예: 기술자문의, 컨설팅요청_통합, 공법설명회이력'
+      body: '해당 업체가 최근에 가장 많이 요청하거나 가장 최근에 요청한 업무 유형입니다.\n예: 기술자문의, 컨설팅요청_통합, 공법설명회이력\n옆의 D+숫자는 마지막 요청 뒤 지난 날수이고, 30일이 넘으면 빨간색으로 표시됩니다.'
     },
     trend: {
       title: '최근 흐름',
