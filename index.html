@@ -30865,6 +30865,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     const actsWithTs = (acts || [])
       .map(a=> ({ activity: a, ts: new Date(a.createdAt).getTime() }))
       .filter(a=> !isNaN(a.ts)) // §10: Invalid Date는 판정에서 제외(억지 판정 금지)
+      .concat(mgmtNeedSheetRequestActs(co, acts, now))
       .sort((a,b)=> a.ts - b.ts); // 오래된 순
 
     const actsAfterMou = actsWithTs.filter(a=> a.ts > mouDoneTs);
@@ -30887,6 +30888,28 @@ window.SHIN2_CRM_APP_INIT = function(){
     const last = actsWithTs[actsWithTs.length - 1];
     if(daysSince(last.ts) >= 60) return { type:'reuse', anchorTs: last.ts, days: daysSince(last.ts), activity: last.activity, hasPour };
     return { type:'none' };
+  }
+  /* §관리 필요 — 시트 요청 반영(2026-11): 2026-09 이후 새 구글시트 요청은 customerActivities 가 아니라
+     sheetRequests 에만 쌓인다. 활동 기록만 보면 11월에 기술자문 요청이 와도 '최근 활용 후 63일 / 신규 L2 없음'
+     처럼 잘못 뜬다. 그래서 L2·L3·샘플 요청(최근 흐름과 같은 구분, trendGroupOf)의 요청일도 활동으로 함께 본다.
+     - 예전에 활동으로 옮겨 담은 시트 요청(source 'google-sheets-request', _dedupKey)과 같은 건은 이미 활동에
+       있으므로 다시 넣지 않는다(건수 이중 계산 방지).
+     - 미래 날짜(입력 오류)·날짜 없는 요청은 넣지 않는다. 판정 기준(30일·60일)은 그대로다. */
+  function mgmtNeedSheetRequestActs(co, acts, now){
+    const sheetReqs = D.buildSheetRequestsIndex().get(String(co.id)) || [];
+    if(!sheetReqs.length) return [];
+    const legacyKeys = new Set();
+    (acts || []).forEach(a=>{ if(a && a.source === 'google-sheets-request' && a._dedupKey) legacyKeys.add(a._dedupKey); });
+    const out = [];
+    sheetReqs.forEach(sr=>{
+      if(sr.dedupKey && legacyKeys.has(sr.dedupKey)) return;
+      const tab = sr.requestType || sr.sourceSheet || '';
+      if(!trendGroupOf(tab)) return;
+      const ts = new Date(sr.requestDate).getTime();
+      if(isNaN(ts) || ts > now) return;
+      out.push({ ts, activity: { category: tab, activityText: tab, source: 'sheet-request', siteName: sr.siteName || '' } });
+    });
+    return out;
   }
   const MGMT_NEED_REASON_LABEL = { firstActivity:'첫 활동 없음', l2Stall:'L2 정체', reuse:'재사용 필요' };
   const MGMT_NEED_NEXT_ACTION = { firstActivity:'영업 시작 지원', l2Stall:'L3 지원 제안', reuse:'재사용 지원' };
