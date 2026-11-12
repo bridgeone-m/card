@@ -11354,7 +11354,8 @@ body:not(.crm-admin-mode) #crmUpdateMenuWrap{ display:none !important; }
 .sales-q-compare{ margin-top:8px; font-size:12px; color:var(--text); font-weight:600; }
 .sales-q-note{ margin-top:4px; font-size:11.5px; color:var(--text-muted); line-height:1.5; }
 .sales-detail-filters{ display:flex; gap:6px; margin-top:8px; }
-.sales-detail-filters .sales-detail-q{ flex:none; height:36px; padding:0 8px; font-size:13px; font-family:inherit; border:1px solid var(--line); border-radius:6px; background:#fff; }
+.sales-q-tab-row{ margin-top:6px; }
+.sales-q-tab-n{ margin-left:2px; font-size:11.5px; font-weight:700; opacity:.75; }
 .sales-detail-filters .sales-detail-search{ flex:1 1 auto; min-width:0; height:36px; margin-top:0; font-size:13px; }
 .sales-detail-list{ margin-top:6px; max-height:420px; overflow-y:auto; border-top:1px solid var(--line); }
 .sales-detail-row{ display:grid; grid-template-columns:84px 70px minmax(0,1fr) auto; gap:8px; align-items:center; padding:8px 2px; border-bottom:1px solid var(--line); font-size:12.5px; }
@@ -28081,10 +28082,11 @@ window.SHIN2_CRM_APP_INIT = function(){
         <div class="revenue-tab-row" role="tablist">
           ${REVENUE_DETAIL_TABS.map(t=> `<button type="button" class="revenue-tab${t.key === st.tab ? ' is-active' : ''}" data-sales-tab="${t.key}">${esc(t.label)}</button>`).join('')}
         </div>
+        <!-- §분기 탭(2026-11, 사용자 요청) — 분기 선택을 드롭다운 대신 구분 탭과 같은 탭 줄로. 건수는 고른 구분 기준. -->
+        <div class="revenue-tab-row sales-q-tab-row" role="tablist" aria-label="분기 선택">
+          ${[['all','전체 분기'],['1','1분기'],['2','2분기'],['3','3분기'],['4','4분기']].map(([v,l])=> `<button type="button" class="revenue-tab${v === st.q ? ' is-active' : ''}" data-sales-q="${v}">${l} <span class="sales-q-tab-n"></span></button>`).join('')}
+        </div>
         <div class="sales-detail-filters">
-          <select class="sales-detail-q" aria-label="분기 선택">
-            ${[['all','전체 분기'],['1','1분기'],['2','2분기'],['3','3분기'],['4','4분기']].map(([v,l])=> `<option value="${v}"${v === st.q ? ' selected' : ''}>${l}</option>`).join('')}
-          </select>
           <input type="search" class="revenue-detail-search sales-detail-search" placeholder="현장명 / 구분 검색" value="${esc(st.query)}" />
         </div>
         <div class="sales-detail-body"></div>
@@ -28093,7 +28095,12 @@ window.SHIN2_CRM_APP_INIT = function(){
     const draw = ()=>{
       const q = String(st.query || '').trim().toLowerCase();
       let rows = data.rows.filter(r=> st.tab === 'all' || r.sourceType === st.tab);
-      if(st.q !== 'all') rows = rows.filter(r=>{ const x = revenueQuarterOf(r.date); return x && x.year === SALES_YEAR && String(x.q) === st.q; });
+      const inQ = (r, qk)=>{ const x = revenueQuarterOf(r.date); return x && x.year === SALES_YEAR && String(x.q) === qk; };
+      wrap.querySelectorAll('[data-sales-q]').forEach(b=>{
+        const qk = b.getAttribute('data-sales-q');
+        b.querySelector('.sales-q-tab-n').textContent = qk === 'all' ? rows.length : rows.filter(r=> inQ(r, qk)).length;
+      });
+      if(st.q !== 'all') rows = rows.filter(r=> inQ(r, st.q));
       if(q) rows = rows.filter(r=> (r.site || '').toLowerCase().includes(q) || (REVENUE_TYPE_LABEL[r.sourceType] || r.sourceType || '').toLowerCase().includes(q));
       rows = rows.slice().sort((a,b)=> String(b.date || '').localeCompare(String(a.date || '')));
       const sum = rows.reduce((s, r)=> s + (Number(r.amount) || 0), 0);
@@ -28112,7 +28119,11 @@ window.SHIN2_CRM_APP_INIT = function(){
       wrap.querySelectorAll('[data-sales-tab]').forEach(x=> x.classList.toggle('is-active', x === b));
       draw();
     }));
-    wrap.querySelector('.sales-detail-q').addEventListener('change', e=>{ st.q = e.target.value; draw(); });
+    wrap.querySelectorAll('[data-sales-q]').forEach(b=> b.addEventListener('click', ()=>{
+      st.q = b.getAttribute('data-sales-q');
+      wrap.querySelectorAll('[data-sales-q]').forEach(x=> x.classList.toggle('is-active', x === b));
+      draw();
+    }));
     wrap.querySelector('.sales-detail-search').addEventListener('input', e=>{ st.query = e.target.value; draw(); });
     draw();
   }
