@@ -221,8 +221,8 @@
     if(!O){ var all = renderParts(model, ui); return all.kpi + all.score; }
     var menu = ui.menu || 'home', out = O.menuBar(menu);
     if(ui.detail && O.kpiDetail) return out + O.kpiDetail(model, ui.detail, ui.csv && ui.csv[ui.detail] || null, ui.chain && ui.chain[ui.detail] || null);
-    if(menu === 'home') return out + renderParts(model, ui).kpi + O.view('home', model);
-    if(menu === 'tasks') return out + O.view('tasks', model, renderParts(model, ui, ['①', '③', '④', '⑤', '⑥', '⑦']).score);
+    if(menu === 'home') return out + renderParts(model, ui).kpi + O.view('home', model, '', ui.act);
+    if(menu === 'tasks') return out + O.view('tasks', model, renderParts(model, ui, ui.act ? ['①', '⑥', '⑦', '⑧', '⑨', '⑩'] : ['①', '③', '④', '⑤', '⑥', '⑦']).score, ui.act);
     return out + O.view(menu, model);
   }
 
@@ -250,6 +250,7 @@
       model.meeting = meeting; model.meetingError = meetingError;
       st.meeting = meeting;
     }
+    try { st.ui.act = model ? buildActCtx() : null; } catch(e){ st.ui.act = null; }
     if(model && st.ui.detail){ st.ui.chain = st.ui.chain || {}; st.ui.chain[st.ui.detail] = computeChain(st.ui.detail, model); }
     v.innerHTML = renderHtml(model, st.ui);
     fillTasks();
@@ -285,7 +286,9 @@
   }
   /* 화면 안의 파일 입력(label+input)에서 고른 파일 — 브라우저 메모리에서만 읽는다 */
   function onChange(e){
-    var t = e.target, kind = t && t.getAttribute && t.getAttribute('data-kpi-file'); if(!kind) return;
+    var t = e.target, af = t && t.getAttribute && t.getAttribute('data-act-field');
+    if(af){ st.ui.actForm = st.ui.actForm || {}; st.ui.actForm[af] = t.value; st.ui.actFlash = null; return; }
+    var kind = t && t.getAttribute && t.getAttribute('data-kpi-file'); if(!kind) return;
     var f = t.files && t.files[0]; if(!f) return;
     if(kind === 'ledger') readLedgerFile(f); else readCsvFile(f, t.getAttribute('data-kpi'));
     try { t.value = ''; } catch(x){}
@@ -470,6 +473,15 @@
       }).join('') : '<span class="b2bkpi-muted">세부업무가 없습니다</span>';
     });
   }
+  /* 행동 기록: 카드의 고객 기록(b2bActions 덧붙임 항목, 로그인해야 보임) + 구축 체크(업무트래커 kpiBuild, 고객 정보 없음) */
+  function userLabel(){ var u = '1'; try { u = localStorage.getItem('shin2-active-user-id') || '1'; } catch(e){} return '사용자 ' + u; }
+  function buildActCtx(){
+    var A = window.B2BKpiAct, D = window.SHIN2_CRM_DATA, Od = window.B2BKpiOsData; if(!A || !D || !Od) return null;
+    var cos = D.loadCompanies().filter(function(c){ return c && !c.deletedAt; });
+    var build = {}, kb = (st.shape && st.shape.kpiBuild) || {}; Object.keys(kb).forEach(function(k){ if(kb[k] && kb[k].state) build[k] = kb[k].state; });
+    var names = cos.map(function(c){ return { id: c.id, name: c.name || '' }; }).sort(function(a, b){ return a.name.localeCompare(b.name, 'ko'); });
+    return { companies: names, build: build, summary: A.summarize(A.flatten(cos), build, st.ui.month || nowMonth(), Od), form: st.ui.actForm || {}, flash: st.ui.actFlash || null };
+  }
   /* 이어 쌓기: 기준 원장(사용자가 고른 파일, 메모리에서만) + 카드 요청 기록(마감 이후) 으로 마감 시점·오늘 값을 계산 */
   function computeChain(id, model){
     var Ch = window.B2BKpiChain; if(!Ch) return { error: '이어 쌓기 계산 파일(b2b-kpi-chain.js)을 불러오지 못했습니다' };
@@ -507,6 +519,20 @@
   var handlers = {
     kpiDetail: function(t){ st.ui.detail = t.getAttribute('data-kpi'); render(); var v = el(); if(v) v.scrollTop = 0; },
     ledgerClear: function(){ st.ui.ledger = null; st.ui.ledgerError = null; render(); },
+    actSave: function(){
+      var A = window.B2BKpiAct, D = window.SHIN2_CRM_DATA, f = st.ui.actForm || {};
+      var flash = function(kind, text){ st.ui.actFlash = { kind: kind, text: text }; render(); };
+      if(!f.customer) return flash('error', '고객을 골라 주세요');
+      try {
+        var rec = A.newRecord(f, { by: userLabel(), now: new Date().toISOString(), data: window.B2BKpiOsData });
+        var co = D.findCompany(f.customer); if(!co) return flash('error', '고객을 찾지 못했습니다');
+        var r = A.append(co.b2bActions, rec);
+        if(!r.added) return flash('dup', '같은 기록이 이미 있습니다(오늘 같은 행동·결과)');
+        if(!D.updateCompany(co.id, { b2bActions: r.list })) return flash('error', '저장하지 못했습니다');
+        st.ui.actForm = { customer: f.customer }; flash('ok', '저장했습니다');
+      } catch(e){ flash('error', String(e && e.message || e)); }
+    },
+    buildToggle: function(t){ if(st.busy) return; afterWrite(window.B2BKpiStore.setBuildState(t.getAttribute('data-b'), window.B2BKpiAct.nextBuildState(t.getAttribute('data-s')), ACTOR)); },
     kpiBack: function(){ st.ui.detail = null; render(); var v = el(); if(v) v.scrollTop = 0; },
     csvClear: function(t){ if(st.ui.csv) delete st.ui.csv[t.getAttribute('data-kpi')]; render(); },
     csvFilter: function(t){ var c = st.ui.csv && st.ui.csv[t.getAttribute('data-kpi')]; if(c){ c.filter = t.getAttribute('data-f'); c.page = 0; } render(); },

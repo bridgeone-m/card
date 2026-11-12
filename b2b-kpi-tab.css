@@ -191,3 +191,10 @@ body.b2bkpi-on #listView, body.b2bkpi-on #cardView, body.b2bkpi-on #workQueueVie
 
 .b2bkpi-filelab{ position:relative; display:inline-flex; align-items:center; overflow:hidden; cursor:pointer; }
 .b2bkpi-fileinp{ position:absolute; left:0; top:0; width:100%; height:100%; opacity:0; cursor:pointer; font-size:0; }
+
+/* 행동 기록 — 드롭다운 한 줄(휴대폰에서는 세로로 쌓임) */
+.b2bkpi-actform{ display:grid; gap:10px; }
+.b2bkpi-actrow{ display:grid; grid-template-columns:1fr; gap:10px; }
+@media (min-width:640px){ .b2bkpi-actrow{ grid-template-columns:1fr 1fr; } }
+.b2bkpi-actform select, .b2bkpi-actform input[type=date]{ box-sizing:border-box; width:100%; min-height:44px; padding:0 10px; border:1px solid #CBD5E1; border-radius:8px; background:#fff; color:#121A2A; font:inherit; font-size:14px; }
+.b2bkpi-actform .b2bkpi-btn{ min-height:48px; }

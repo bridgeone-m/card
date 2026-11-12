@@ -32,17 +32,19 @@
   }
 
   /* ---- 홈: KPI 카드(맨 위, 탭이 그림) 아래의 5영역 ---- */
-  function actionProgress(model){
+  function actionProgress(model, act){
     var cards = ['MK1', 'MK3', 'MK2'].map(function(id){
       var r = row(model, id), n = tpls(function(t){ return t.kpi === id; }).length;
+      var p = act && act.summary && act.summary.perKpi && act.summary.perKpi[id], used = !!p && (p.records > 0 || p.buildDone > 0 || p.buildDoing > 0);
       var perf = r && r.rate != null ? (r.source === 'official' ? cutoffShort(r.cutoff) + ' 마감 확인분 ' : '') + f1(r.rate) + '%' : '실적 대기';
       return '<div class="b2bkpi-card b2bkpi-act-card"><div class="b2bkpi-kpi-name">' + esc(D.kpiNames[id]) + '</div>' +
-        '<div class="b2bkpi-act-row"><span class="b2bkpi-muted">우리 행동 이행률</span><span>' + pill('wait', '행동 기록 수집 전') + '</span></div>' +
+        (used ? '<div class="b2bkpi-act-row"><span class="b2bkpi-muted">이번 달 행동 기록</span><b>' + n0(p.records) + '건</b></div><div class="b2bkpi-act-row"><span class="b2bkpi-muted">구축 체크</span><b>구축 ' + p.buildDone + '/' + p.buildTotal + '</b></div>'
+          : '<div class="b2bkpi-act-row"><span class="b2bkpi-muted">우리 행동 이행률</span><span>' + pill('wait', '행동 기록 수집 전') + '</span></div>') +
         '<div class="b2bkpi-act-row"><span class="b2bkpi-muted">고객 성과</span><b>' + esc(perf) + '</b></div>' +
         '<div class="b2bkpi-muted">확정 업무 0건 · 행동 템플릿 ' + n + '개(주연결)</div></div>';
     }).join('');
     return sec('②', 'KPI별 행동 진척', '행동과 고객 성과를 나란히 · 섞지 않음',
-      '<div class="b2bkpi-kpis">' + cards + '</div><p class="b2bkpi-muted">실제 고객·담당·기한을 정해 만든 업무만 셉니다. 과거 행동 이력이 없어 완료율을 만들지 않았고(0%도 100%도 아님), 오늘 쌓는 행동이 10/20 마감 숫자를 만든 것으로 해석하지 않습니다. 업무 완료만으로 고객 성과 숫자는 바뀌지 않습니다.</p>');
+      (act ? '<p>' + menuBtn('tasks', '행동 기록하기', 'is-primary') + '</p>' : '') + '<div class="b2bkpi-kpis">' + cards + '</div><p class="b2bkpi-muted">실제 고객·담당·기한을 정해 만든 업무만 셉니다. 과거 행동 이력이 없어 완료율을 만들지 않았고(0%도 100%도 아님), 오늘 쌓는 행동이 10/20 마감 숫자를 만든 것으로 해석하지 않습니다. 업무 완료만으로 고객 성과 숫자는 바뀌지 않습니다.</p>');
   }
   function todayActions(model){
     var miss = missedRows(model);
@@ -85,7 +87,7 @@
     return sec('⑥', '주간 AI 운영 요약', '', '<div class="b2bkpi-card">' + pill('wait', '미연동') + ' <b>주간 리포트 가져오기 전</b>' +
       '<p class="b2bkpi-muted">연결되면 상승·하락의 근거(고객·시점)와 우선 행동 3개를 보여주고 담당 업무로 보냅니다. 수치·기한·중복은 코드로 계산하고 AI 추정을 고객 발언이나 성과로 저장하지 않습니다. 기존 월요일 08:30 예약은 바꾸지 않으며, AI 없이도 규칙 알람과 업무는 동작합니다.</p></div>');
   }
-  function homeBlocks(model){ return actionProgress(model) + todayActions(model) + alerts(model) + customerFlow(model) + aiSummary(); }
+  function homeBlocks(model, act){ return actionProgress(model, act) + todayActions(model) + alerts(model) + customerFlow(model) + aiSummary(); }
 
   /* ---- 신규 협약 ---- */
   function newView(model){
@@ -144,14 +146,48 @@
   }
 
   /* ---- 팀원 업무·알람 ---- */
-  function tasksView(scoreHtml){
+  /* 행동 기록 — 업무트래커처럼 누르고 고르기만. 항목은 모두 팀장님 파일(안내서 운영 12·결과 9·막힘 8)에서 온다 */
+  function mdShort(d){ var m = /^\d{4}-(\d{1,2})-(\d{1,2})$/.exec(d || ''); return m ? (+m[1]) + '/' + (+m[2]) : ''; }
+  function sel(field, first, arr, cur){
+    return '<select class="b2bkpi-sel" data-act-field="' + field + '"><option value="">' + esc(first) + '</option>' + arr.map(function(x){ return '<option value="' + esc(x) + '"' + (cur === x ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join('') + '</select>';
+  }
+  function actPanel(act){
+    var s = act.summary || { total: { records: 0, buildDone: 0, buildTotal: (D.build || []).length }, perKpi: {}, recent: [] }, f = act.form || {}, ops = D.ops || [];
+    var build = ['MK1', 'MK3', 'MK2'].map(function(k){
+      var items = (D.build || []).filter(function(b){ return b.kpi === k; }), p = (s.perKpi || {})[k] || {};
+      return '<div class="b2bkpi-card"><div class="b2bkpi-team-head"><b>' + esc(D.kpiNames[k]) + '</b><span class="b2bkpi-muted">구축 ' + (p.buildDone || 0) + '/' + items.length + '</span></div>' + items.map(function(b){
+        var st = (act.build || {})[b.id] || 'todo';
+        return '<div class="b2bkpi-task is-' + st + '"><button type="button" class="b2bkpi-st" data-kpi-act="buildToggle" data-b="' + b.id + '" data-s="' + st + '" aria-label="' + esc(b.title) + ' 상태 바꾸기">' + { todo: '○', doing: '▶', done: '✓' }[st] + '</button><span>' + esc(b.title) + '</span></div>';
+      }).join('') + '</div>';
+    }).join('');
+    var customer = '<select class="b2bkpi-sel" data-act-field="customer"><option value="">고객 고르기</option>' + (act.companies || []).map(function(c){ return '<option value="' + esc(c.id) + '"' + (f.customer === c.id ? ' selected' : '') + '>' + esc(c.name) + '</option>'; }).join('') + '</select>';
+    var opsSel = '<select class="b2bkpi-sel" data-act-field="opsId"><option value="">행동 고르기</option>' + ['MK1', 'MK3', 'MK2'].map(function(k){
+      return '<optgroup label="' + esc(D.kpiNames[k]) + '">' + ops.filter(function(o){ return o.kpi === k; }).map(function(o){ return '<option value="' + o.id + '"' + (f.opsId === o.id ? ' selected' : '') + '>' + esc(o.title) + '</option>'; }).join('') + '</optgroup>';
+    }).join('') + '</select>';
+    var flash = act.flash ? '<div class="b2bkpi-' + (act.flash.kind === 'ok' ? 'obs' : 'note') + '">' + esc(act.flash.text) + '</div>' : '';
+    var form = '<div class="b2bkpi-card b2bkpi-actform"><label class="b2bkpi-f"><span>고객</span>' + customer + '</label><label class="b2bkpi-f"><span>행동 (팀장님 안내서의 고객별 운영 12가지)</span>' + opsSel + '</label>' +
+      '<div class="b2bkpi-actrow"><label class="b2bkpi-f"><span>결과</span>' + sel('result', '결과 고르기', D.resultButtons || [], f.result) + '</label><label class="b2bkpi-f"><span>막힌 이유 (있을 때만)</span>' + sel('block', '없음', D.blockCodes || [], f.block) + '</label></div>' +
+      '<label class="b2bkpi-f"><span>다음 확인일 (담당·오늘 날짜는 자동)</span><input type="date" class="b2bkpi-in" data-act-field="nextCheck" value="' + esc(f.nextCheck || '') + '"></label>' + flash +
+      '<button type="button" class="b2bkpi-btn is-primary" data-kpi-act="actSave">저장</button></div>';
+    var opsTitle = {}; ops.forEach(function(o){ opsTitle[o.id] = o.title; });
+    var recent = (s.recent || []).slice(0, 30);
+    var list = recent.length ? '<div class="b2bkpi-tlist">' + recent.map(function(r){
+      return '<div class="b2bkpi-trow is-hit"><div class="b2bkpi-trow-h"><b>' + esc(r.companyName || '(이름 없음)') + '</b> ' + pill('ok', r.result) + (r.block ? ' ' + pill('wait', r.block) : '') + '</div>' +
+        '<div class="b2bkpi-trow-b">' + esc(opsTitle[r.opsId] || r.opsId) + '</div><div class="b2bkpi-muted">' + esc(mdShort(r.day) + (r.nextCheck ? ' · 다음 ' + mdShort(r.nextCheck) : '') + ' · ' + (r.by || '')) + '</div></div>';
+    }).join('') + '</div>' : '<p class="b2bkpi-muted">이번 달 기록이 없습니다. 위에서 고객과 행동을 골라 저장하세요.</p>';
+    return sec('①', '구축 — 한 번만 하는 일', '누르면 ○ → ▶ → ✓', '<div class="b2bkpi-flowgrid">' + build + '</div>') +
+      sec('②', '고객별 행동 기록', '이번 달 행동 기록 ' + n0((s.total || {}).records || 0) + '건 · 구축 ' + ((s.total || {}).buildDone || 0) + '/' + ((s.total || {}).buildTotal || 0), form + '<p class="b2bkpi-muted">행동 기록은 우리 행동 진척일 뿐 고객 KPI 숫자를 바꾸지 않습니다. 고객이 실제로 요청해야 KPI가 오릅니다.</p>') +
+      sec('③', '이번 달 기록', '저장하면 바로 위에 쌓임', list);
+  }
+  function tasksView(scoreHtml, act){
     var groups = ['MK1', 'MK3', 'MK2'].map(function(id){
       var list = tpls(function(t){ return t.kpi === id; });
       return '<details class="b2bkpi-flow" open><summary>' + esc(D.kpiNames[id]) + ' · 템플릿 ' + list.length + '개</summary>' + list.map(tplRow).join('') + '</details>';
     }).join('');
     var rules = '<ul class="b2bkpi-alerts">' + (D.alertRules || []).map(function(a){ return '<li class="is-' + a.level + '"><div class="b2bkpi-alert-h"><b>' + esc(a.sign) + '</b></div><div class="b2bkpi-muted">기준 · ' + esc(a.rule) + '</div><div>다음 행동 · ' + esc(a.next) + '</div></li>'; }).join('') + '</ul>';
-    return sec('①', '업무 템플릿', '', '<p class="b2bkpi-muted">' + esc(D.note) + ' 업무마다 주연결 KPI 1개를 정하고 관련 KPI는 참고로만 봅니다. 전사 합계는 업무 하나를 한 번만 셉니다. 완료 체크는 고객 KPI 성과를 바꾸지 않습니다.</p>' + groups) +
-      sec('②', '알람 기준', '초기 기준은 제안 · 파일럿 후 보정', rules) +
+    var n = act ? ['④', '⑤'] : ['①', '②'];
+    return (act ? actPanel(act) : '') + sec(n[0], '업무 템플릿', '', '<p class="b2bkpi-muted">' + esc(D.note) + ' 업무마다 주연결 KPI 1개를 정하고 관련 KPI는 참고로만 봅니다. 전사 합계는 업무 하나를 한 번만 셉니다. 완료 체크는 고객 KPI 성과를 바꾸지 않습니다.</p>' + groups) +
+      sec(n[1], '알람 기준', '초기 기준은 제안 · 파일럿 후 보정', rules) +
       '<div class="b2bkpi-scoreslot">' + (scoreHtml || '') + '</div>';
   }
 
@@ -237,13 +273,13 @@
       sec('⑥', '대상 목록', '고객 · 단지·공종 · 시작·마감 · 관찰 상태 · 성과 판정', targetList(model, id, csv, r));
   }
 
-  function view(id, model, scoreHtml){
+  function view(id, model, scoreHtml, act){
     if(id === 'new') return newView(model);
     if(id === 'existing') return existingView(model);
     if(id === 'consult') return consultView();
     if(id === 'feedback') return feedbackView();
-    if(id === 'tasks') return tasksView(scoreHtml);
-    return homeBlocks(model);
+    if(id === 'tasks') return tasksView(scoreHtml, act);
+    return homeBlocks(model, act);
   }
 
   var api = { kpiDetail: kpiDetail, menuBar: menuBar, homeBlocks: homeBlocks, newView: newView, existingView: existingView, consultView: consultView, feedbackView: feedbackView, tasksView: tasksView, view: view };

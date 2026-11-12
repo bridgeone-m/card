@@ -5,7 +5,7 @@ vm.runInNewContext(fs.readFileSync(__dirname + '/b2b-kpi-store.js', 'utf8'), ctx
 const S = ctx.module.exports;
 const F = require('./b2b-kpi.fixture.cjs');
 const BASE = 'http://mock/shared/b2bOpsTracker';
-const ALLOWED = ['members/', 'leadDefs/', 'lagDefs/', 'perfMonthly/', 'perfHistory/', 'kpiTeamChecks/', 'kpiTabConfig'];
+const ALLOWED = ['members/', 'leadDefs/', 'lagDefs/', 'perfMonthly/', 'perfHistory/', 'kpiTeamChecks/', 'kpiTabConfig', 'kpiBuild/'];
 const allPatches = [];
 function fake(responses){
   const calls = [];
@@ -141,5 +141,18 @@ test('addTabMember_defaults_when_empty', async () => {
 test('addTabMember_skip_when_present', async () => {
   const { calls, store } = fake({ [BASE + '/kpiTabConfig.json']: { members: ['shs', 'm2'] } });
   await store.addTabMember('m2', ['shs', 'm2'], 'x');
+  assert.equal(patches(calls).length, 0);
+});
+
+// ---- 구축 체크(○▶✓) — 고객 정보 없는 팀 공동 체크, kpiBuild/Bxx 만 쓴다 ----
+test('setBuildState_writes_only_kpiBuild_record', async () => {
+  const { calls, store } = fake({});
+  const r = await store.setBuildState('B11', 'doing', '시험');
+  assert.equal(patches(calls).length, 1); const body = patches(calls)[0].body; assert.deepEqual(Object.keys(body), ['kpiBuild/B11']);
+  assert.equal(body['kpiBuild/B11'].state, 'doing'); assert.equal(body['kpiBuild/B11'].by, '시험'); assert.ok(body['kpiBuild/B11'].updatedAt); assert.equal(r.state, 'doing');
+});
+test('setBuildState_rejects_bad_id_or_state', async () => {
+  const { calls, store } = fake({});
+  await assert.rejects(store.setBuildState('B99x', 'done', 'a'), /구축/); await assert.rejects(store.setBuildState('B11', 'finished', 'a'), /상태/);
   assert.equal(patches(calls).length, 0);
 });
