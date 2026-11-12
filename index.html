@@ -11312,6 +11312,28 @@ body:not(.crm-admin-mode) #crmUpdateMenuWrap{ display:none !important; }
 #listView .co-row .request-cell .request-gsheet-text{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 /* §매출 칸 — 칸 전체가 매출 탭 열기 */
 #listView .co-row .col-revenue-combo[data-sales-tab-open]{ cursor:pointer; }
+/* §최근 흐름(전분기 동일 경과기간 + 최근 30일, 2026-11) — 목록 칸 아래 작은 경고 한 줄, 팝오버 보조 줄 */
+.trend-cell .trend-main{ display:inline; }
+.trend-cell .trend-warn{ display:block; margin-top:2px; font-size:11px !important; font-weight:700; line-height:1.3; color:#B3261E; white-space:normal; word-break:keep-all; }
+.trend-pop-by{ padding:0 4px 6px; margin-top:-4px; font-size:11.5px; color:var(--text-muted); border-bottom:1px solid #EDF1F5; }
+.trend-pop-sep{ height:6px; }
+.trend-pop-warn{ color:#B3261E !important; }
+.trend-pop-rules{ margin-top:8px; white-space:pre-line; font-size:11.5px; line-height:1.55; }
+#trendPopover .cat-dist-name{ min-width:0; white-space:normal; padding-right:8px; }
+/* §시공실적 연도·분기 보기(2026-11) — 연도 칩 + 작은 막대그래프(누르면 그 연도), 월 있는 실적만 분기 */
+.constr-period{ margin:-6px 0 14px; }
+.constr-period .constr-filter-row{ margin-bottom:10px; }
+.constr-chart-title{ font-size:11.5px; font-weight:700; color:var(--text-muted); margin:2px 0 4px; }
+.constr-bars{ display:flex; align-items:flex-end; gap:8px; max-width:420px; height:92px; padding:2px 0 0; }
+.constr-bar{ flex:1 1 0; min-width:0; max-width:72px; height:100%; display:flex; flex-direction:column; align-items:center; gap:2px; padding:0; border:0; background:none; cursor:pointer; font-family:inherit; }
+.constr-bar-count{ font-size:11.5px; font-weight:700; color:var(--text); line-height:1.2; }
+.constr-bar-track{ flex:1 1 auto; width:100%; max-width:34px; display:flex; align-items:flex-end; background:#F1F5F9; border-radius:5px 5px 0 0; overflow:hidden; }
+.constr-bar-fill{ display:block; width:100%; background:#9DB6D8; border-radius:5px 5px 0 0; }
+.constr-bar.is-active .constr-bar-fill, .constr-bar:hover .constr-bar-fill{ background:var(--navy); }
+.constr-bar-label{ font-size:11px; color:var(--text-muted); line-height:1.2; white-space:nowrap; }
+.constr-bar.is-active .constr-bar-label{ color:var(--navy); font-weight:700; }
+.constr-period-note{ font-size:11.5px; color:var(--text-muted); line-height:1.5; margin-top:2px; }
+.constr-q-row{ margin-top:10px; }
 /* §매출 탭 통합(2026-11) — 분기별 매출 표·매출 내역(고객 상세 [매출] 탭). 휴대폰 360px에서도 가로 넘침 없게. */
 #cdashSalesQuarterCard, #cdashSalesDetailCard{ margin-top:10px; min-width:0; }
 .sales-q-year{ margin-left:4px; font-weight:600; color:var(--text-muted); }
@@ -21818,7 +21840,8 @@ window.SHIN2_CRM_APP_INIT = function(){
         return ((vb==null?-1:vb) - (va==null?-1:va)) || String(a.co.name||'').localeCompare(String(b.co.name||''), 'ko');
       });
     } else if(sortMode === 'trend'){
-      const order = { up:0, flat:1, down:2, insufficient:3 };
+      // §최근 흐름(전분기 동일 경과기간) — 상승·신규 활동이 위, 하락·판정 보류는 아래. 같은 판정이면 증감률 큰 순.
+      const order = { up:0, new:1, flat:2, down:3, watch:4, counting:5, none:6 };
       rows.sort((a,b)=>{
         const ta = buildRecentTrend(a.co); const tb = buildRecentTrend(b.co);
         const oa = order[ta.state]; const ob = order[tb.state];
@@ -24453,12 +24476,13 @@ window.SHIN2_CRM_APP_INIT = function(){
       // §최근 흐름 재수정 라운드: 첫 화면에서는 퍼센트를 완전히 뺀다(요청사항) — trend.pct는
       // 함수 안에 그대로 남아있고(나중에 필요하면 다시 씀), 화면 렌더링에서만 안 쓴다.
       // 기호도 ↑/↓/→/—(큰 화살표 느낌)에서 ▲/―/▼(작은 기호, 텍스트 위주)로 바꿨다.
-      const trendMark = { up:'▲', flat:'―', down:'▼', insufficient:'―' }[trend.state];
-      // §판정근거 툴팁/Drawer 라운드(신규) — "최근 흐름"이 정확히 무엇의 흐름인지(전년 대비
-      // POUR 실적 건수 증감) 화면만 보고 알 수 있게, 실적↔매출과 똑같이 title 툴팁 +
-      // 클릭 Drawer(openTrendDrawer, 아래 신규 정의)를 붙인다. 계산 로직/임계값은 전혀 안
-      // 바꿈 — buildRecentTrend가 이미 계산해 둔 값을 문장으로 조립해서 보여줄 뿐이다.
-      const trendHtml = `<button type="button" class="contrib-trigger trend-cell tr-${trend.state}" data-trend-detail="${esc(co.id)}" title="${esc(buildTrendReasonText(trend))}">${trendMark} ${esc(trend.label)}</button>`;
+      // §최근 흐름(전분기 동일 경과기간 + 최근 30일, 2026-11) — 판정 7가지를 기존 색 4가지(tr-up/flat/down/insufficient)에
+      // 그대로 얹는다(새 색 없음). 최근 30일 요청이 없고 요청 이력은 있는 업체만 아래에 작은 경고 한 줄(D+).
+      const trendMark = { up:'▲', new:'▲', flat:'―', down:'▼' }[trend.state] || '―';
+      const trendCls = { up:'up', new:'up', flat:'flat', down:'down' }[trend.state] || 'insufficient';
+      const trendWarnHtml = (trend.activityWarn && trend.hasHistory)
+        ? `<span class="trend-warn">30일 요청 없음<br>D+${trend.lastAgeDays}</span>` : '';
+      const trendHtml = `<button type="button" class="contrib-trigger trend-cell tr-${trendCls}" data-trend-detail="${esc(co.id)}" title="${esc(buildTrendReasonText(trend))}"><span class="trend-main">${trendMark} ${esc(trend.label)}</span>${trendWarnHtml}</button>`;
       const rowOverdueClass = (stageInfo && stageInfo.status === 'overdue') ? ' is-overdue' : '';
       // §자회사 UI 제거 라운드(신규) — 목록의 자회사 별표(subsidiaryStarHtml)와 관계
       // 설명 줄(relationRowHtml, "└ ○○ 모회사/자회사/관계사")을 화면에서 뺐다. 데이터는
@@ -38490,46 +38514,148 @@ window.SHIN2_CRM_APP_INIT = function(){
     });
     return result;
   }
-  // §최근 흐름 데이터 소스 통일 라운드 — co.pourTrackRecords(상태값) 의존을 없애고
-  // getTotalPourRecordsForCompany(co)("총 실적" 컬럼과 완전히 같은 소스, 매번 전체 POUR
-  // 스냅샷을 정규화 업체명으로 새로 매칭)로 바꿨다. 판정 기준(작년 vs 재작년, 10% 경계,
-  // 재작년 0건이면 판단불가, 작년 0->상승세)은 전혀 안 바꿨다 — 데이터 소스만 바꿨다.
-  // §최근 흐름 판정근거 노출 라운드(신규) — 계산식/임계값(작년 vs 재작년, ±10%)은 전혀
-  // 안 바꿨다. 반환값에 연도/건수(y1/y1Count/y2/y2Count)만 추가했다 — 툴팁/Drawer가 "무엇을
-  // 비교했는지"를 다시 계산하지 않고 그대로 표시할 수 있게 하기 위함(§성능 원칙, 이미 이
-  // 함수 안에서 구한 값을 밖으로도 노출할 뿐 새 계산 없음).
-  function buildRecentTrend(co){
-    const y = new Date().getFullYear();
-    const y1 = y - 1, y2 = y - 2; // y1=작년(완결), y2=재작년(그 이전 완결된 해)
-    const records = getTotalPourRecordsForCompany(co);
-    if(!records.length) return { state: 'insufficient', label: '판단불가', pct: null, y1, y2, y1Count: 0, y2Count: 0 };
-    const lastYear = records.filter(r=> r.year === y1).length;
-    const twoYearsAgo = records.filter(r=> r.year === y2).length;
-    // 비교 기준(재작년)이 아예 없으면 증감률 자체가 무의미하다 — 추정하지 않고 판단불가.
-    if(lastYear === 0) return { state: 'insufficient', label: '판단불가', pct: null, y1, y2, y1Count: lastYear, y2Count: twoYearsAgo };
-    if(twoYearsAgo === 0) return { state: 'up', label: '상승세', pct: null, y1, y2, y1Count: lastYear, y2Count: twoYearsAgo }; // 0건 -> lastYear건은 실제 값 그대로의 증가(추정 아님)
-    const pct = Math.round(((lastYear - twoYearsAgo) / twoYearsAgo) * 100);
-    const base = { y1, y2, y1Count: lastYear, y2Count: twoYearsAgo, pct };
-    if(pct > 10) return Object.assign({ state: 'up', label: '상승세' }, base);
-    if(pct < -10) return Object.assign({ state: 'down', label: '하락세' }, base);
-    return Object.assign({ state: 'flat', label: '유지' }, base);
+  /* ==========================================================================
+     §최근 흐름 — 전분기 동일 경과기간 비교 + 최근 30일 활동 확인 (2026-11, 팀장님 요청)
+     예전: 작년 vs 재작년 POUR 실적 건수(±10%). 지금: 활동·요청 건수만 본다(매출·공사실적은 섞지 않음).
+       ① 이번 분기 첫날~오늘 요청 건수 vs 직전 분기 첫날부터 같은 날수만큼의 요청 건수
+          (예: 11.12 기준 10.01~11.12 vs 07.01~08.12, 직전 분기 마지막 날을 넘지 않음, 1월이면 전년 4분기)
+       ② 최근 30일 요청 건수·마지막 요청일·D+ — 분기 판정과 따로 계산한다.
+     데이터: 고객목록 "최근 요청"·L2→L3 전환과 같은 mergedGsheetRequestItems(구글시트 요청 실시간 미러
+     sheetRequests + 예전 customerActivities 의 시트 유래 기록, 같은 dedupKey는 한 번만). 새 저장·업로드 없음,
+     읽기만 한다. 집계 종류는 B2B 선행지표와 같은 L2(B2B_L2_TYPES)·L3(B2B_L3_TYPES) + 샘플카달로그요청.
+     기타문의답변현황·직원 메모·통화에서 뽑은 자료요청은 넣지 않는다.
+     날짜는 한국 날짜(KST)로 센다 — 시트 날짜가 한국 자정(UTC 15:00 전날)으로 저장돼 있다.
+     ========================================================================== */
+  // 판정 기준 — 바꿀 때는 여기만 고치면 목록·팝오버·안내문이 함께 바뀐다.
+  const TREND_RULES = {
+    upPct: 20,          // 증감률 +20% 이상 = 상승
+    downPct: -20,       // 증감률 -20% 이하 = 하락 (그 사이 = 유지)
+    minElapsedDays: 14, // 분기 첫날부터 14일이 지나기 전(경과 0~13일) = 집계 중
+    minPrevCount: 5,    // 직전 분기 비교기간 요청이 5건 미만 = 관찰
+    recentDays: 30      // 최근 30일 = 마지막 요청 D+0~D+30. 목록 "최근 요청" 빨간 배지(REQUEST_STALE_DAYS, 30일 초과)와 같은 경계
+  };
+  const TREND_SAMPLE_TYPE = '샘플카달로그요청';
+  function trendGroupOf(type){
+    if(B2B_L2_TYPES.has(type)) return 'L2';
+    if(B2B_L3_TYPES.has(type)) return 'L3';
+    if(type === TREND_SAMPLE_TYPE) return '샘플';
+    return null;
   }
-  // §최근 흐름 판정근거 노출 라운드(신규) — 목록 셀 title(마우스 오버 시 뜨는 브라우저
-  // 기본 툴팁)과 클릭 Drawer 둘 다 이 한 문장 생성 함수를 같이 쓴다(§ 문구 중복 정의 금지).
-  // "재작년 실적이 아예 없어 증감률 자체를 계산할 수 없다"와 "재작년 실적이 있는데 작년이
-  // 0건"을 서로 다른 문장으로 구분한다 — 둘 다 '판단불가'지만 이유가 다르기 때문(§9와 같은
-  // 원칙, 없음/미확인을 섞지 않는다).
+  const TREND_DAY_MS = 86400000;
+  // 시각 → 한국 날짜(그날 0시, 로컬 Date). 브라우저 시간대와 무관하게 같은 날짜가 나온다.
+  function trendKstDay(t){
+    const ms = (t instanceof Date) ? t.getTime() : new Date(t).getTime();
+    if(isNaN(ms)) return null;
+    const k = new Date(ms + 9 * 3600000);
+    return new Date(k.getUTCFullYear(), k.getUTCMonth(), k.getUTCDate());
+  }
+  function trendDaysBetween(a, b){ return Math.round((b - a) / TREND_DAY_MS); } // 날짜(0시)끼리의 날수 차
+  // 기준일(now)로 이번 분기·직전 분기 비교기간을 정한다.
+  function trendQuarterWindows(now){
+    const today = trendKstDay(now);
+    const qm = Math.floor(today.getMonth() / 3) * 3;
+    const curStart = new Date(today.getFullYear(), qm, 1);
+    const elapsed = trendDaysBetween(curStart, today);                 // 0 = 분기 첫날
+    const prevStart = new Date(today.getFullYear(), qm - 3, 1);        // 1월이면 전년 10월(Date가 연도를 넘겨 줌)
+    const prevQuarterEnd = new Date(today.getFullYear(), qm, 0);       // 직전 분기 마지막 날
+    let prevEnd = new Date(prevStart.getFullYear(), prevStart.getMonth(), prevStart.getDate() + elapsed);
+    if(prevEnd > prevQuarterEnd) prevEnd = prevQuarterEnd;
+    return { today, curStart, curEnd: today, prevStart, prevEnd, elapsed, quarter: qm / 3 + 1, prevQuarter: ((qm / 3 + 3) % 4) + 1 };
+  }
+  // 요청 목록(날짜·구분)과 비교기간으로 판정한다 — 화면·저장과 무관한 순수 계산(단위 시험 대상).
+  function computeRecentTrend(reqs, win){
+    const R = TREND_RULES;
+    let cur = 0, prev = 0, recent = 0, last = null;
+    const curBy = { L2: 0, L3: 0, '샘플': 0 }, prevBy = { L2: 0, L3: 0, '샘플': 0 };
+    (reqs || []).forEach(r=>{
+      const d = r.day;
+      if(!d || d > win.today) return;                                  // 날짜 없음·미래 날짜(입력 오류)는 세지 않음
+      if(!last || d > last) last = d;
+      if(d >= win.curStart){ cur++; curBy[r.group]++; }
+      else if(d >= win.prevStart && d <= win.prevEnd){ prev++; prevBy[r.group]++; }
+      if(trendDaysBetween(d, win.today) <= R.recentDays) recent++;
+    });
+    const lastAgeDays = last ? trendDaysBetween(last, win.today) : null;
+    const base = {
+      win, curCount: cur, prevCount: prev, curBy, prevBy,
+      recent30: recent, lastRequestAt: last, lastAgeDays, hasHistory: !!last,
+      // 30일 경고는 분기 판정과 별개: 최근 30일 요청 0건이면 경고(요청 이력이 아예 없는 업체 포함)
+      activityWarn: recent === 0
+    };
+    let state, label, pct = null;
+    if(win.elapsed < R.minElapsedDays){ state = 'counting'; label = '집계 중'; }
+    else if(cur === 0 && prev === 0){ state = 'none'; label = '활동 없음'; }
+    else if(prev === 0){ state = 'new'; label = '신규 활동'; }
+    else if(prev < R.minPrevCount){ state = 'watch'; label = '관찰'; }
+    else {
+      pct = Math.round((cur - prev) / prev * 100);
+      if(pct >= R.upPct){ state = 'up'; label = '상승'; }
+      else if(pct <= R.downPct){ state = 'down'; label = '하락'; }
+      else { state = 'flat'; label = '유지'; }
+    }
+    return Object.assign({ state, label, pct }, base);
+  }
+  // 업체 하나의 집계 대상 요청(한국 날짜·구분). 목록과 같은 업체별 인덱스를 조회만 한다.
+  function collectTrendRequests(co, sheetIdx, actIdx){
+    const items = mergedGsheetRequestItems(co.id, sheetIdx.get(String(co.id)) || [], actIdx.get(String(co.id)) || []);
+    const out = [];
+    items.forEach(it=>{
+      const group = trendGroupOf(it.sourceTab);
+      if(!group) return;
+      const day = trendKstDay(it.ts);
+      if(day) out.push({ day, group, tab: it.sourceTab });
+    });
+    return out;
+  }
+  // 목록 한 번 그릴 때 정렬·필터 건수·행·팝오버가 업체마다 여러 번 부르므로 결과를 담아 둔다.
+  // 요청 데이터(sheetRequests/활동 인덱스가 새 객체로 바뀜)나 날짜가 바뀌면 다시 계산한다 —
+  // 실시간 갱신으로 새 요청이 들어와 목록이 다시 그려지면 그대로 반영된다.
+  let trendCache = null, trendCacheChecked = false;
+  function buildRecentTrend(co){
+    if(!trendCacheChecked || !trendCache){
+      trendCacheChecked = true;
+      setTimeout(()=>{ trendCacheChecked = false; }, 0);              // 같은 작업(한 번의 그리기) 안에서는 다시 확인하지 않음
+      const sheetIdx = D.buildSheetRequestsIndex(), actIdx = D.buildActivitiesIndex();
+      const win = trendQuarterWindows(new Date());
+      if(!trendCache || trendCache.sheetIdx !== sheetIdx || trendCache.actIdx !== actIdx || trendCache.win.today.getTime() !== win.today.getTime()){
+        trendCache = { sheetIdx, actIdx, win, map: new Map() };
+      }
+    }
+    const hit = trendCache.map.get(co.id);
+    if(hit) return hit;
+    const r = computeRecentTrend(collectTrendRequests(co, trendCache.sheetIdx, trendCache.actIdx), trendCache.win);
+    trendCache.map.set(co.id, r);
+    return r;
+  }
+  function trendFmtMD(d){ return String(d.getMonth() + 1).padStart(2, '0') + '.' + String(d.getDate()).padStart(2, '0'); }
+  function trendFmtYMD(d){ return d.getFullYear() + '.' + trendFmtMD(d); }
+  function trendPeriodText(win, which){
+    return which === 'cur'
+      ? `${trendFmtYMD(win.curStart)}~${trendFmtMD(win.curEnd)}`
+      : `${trendFmtYMD(win.prevStart)}~${trendFmtMD(win.prevEnd)}`;
+  }
+  function trendLastRequestText(trend){
+    if(!trend.hasHistory) return '요청 이력 없음';
+    return `${trendFmtYMD(trend.lastRequestAt)} (${trend.lastAgeDays === 0 ? '오늘' : 'D+' + trend.lastAgeDays})`;
+  }
+  function trendPctText(trend){ return trend.pct == null ? '' : (trend.pct > 0 ? '+' : '') + trend.pct + '%'; }
+  // 판정 기준 안내(ⓘ 안내문·팝오버 공용) — TREND_RULES 값을 그대로 읽어 기준을 바꾸면 문구도 함께 바뀐다.
+  function trendCriteriaText(){
+    const R = TREND_RULES;
+    return `판정: 상승 +${R.upPct}% 이상 · 유지 ${R.downPct}% 초과~+${R.upPct}% 미만 · 하락 ${R.downPct}% 이하\n`
+      + `예외: 분기 시작 후 ${R.minElapsedDays}일 미만 '집계 중' · 직전 기간 ${R.minPrevCount}건 미만 '관찰' · 직전 0건·이번 분기 요청 있음 '신규 활동' · 두 기간 모두 0건 '활동 없음'\n`
+      + `최근 ${R.recentDays}일 요청이 없으면 '최근 활동 확인 필요'(분기 판정과 별도)`;
+  }
+  // 목록 칸 title(마우스 오버)·팝오버가 함께 쓰는 한 줄 요약.
   function buildTrendReasonText(trend){
-    if(trend.state === 'insufficient'){
-      return trend.y1Count === 0
-        ? `${trend.y1}년 POUR 실적이 없어 전년 대비 증감을 계산할 수 없습니다.`
-        : `${trend.y2}년(비교 기준) POUR 실적이 없어 증감률을 계산할 수 없습니다.`;
-    }
-    if(trend.pct === null){
-      return `${trend.y2}년 0건 → ${trend.y1}년 ${trend.y1Count}건(비교 기준 0건이라 증감률 대신 실제 증가로 표시)`;
-    }
-    const sign = trend.pct > 0 ? '+' : '';
-    return `${trend.y2}년 ${trend.y2Count}건 → ${trend.y1}년 ${trend.y1Count}건 (${sign}${trend.pct}%, 기준 ±10%)`;
+    const w = trend.win;
+    const head = `이번 분기 ${trendPeriodText(w, 'cur')} ${trend.curCount}건 · 직전 분기 같은 기간 ${trendPeriodText(w, 'prev')} ${trend.prevCount}건`;
+    let judge = trend.label;
+    if(trend.state === 'counting') judge = `집계 중(분기 시작 ${TREND_RULES.minElapsedDays}일 전)`;
+    else if(trend.state === 'watch') judge = `관찰(직전 기간 ${TREND_RULES.minPrevCount}건 미만)`;
+    else if(trend.pct != null) judge = `${trend.label} ${trendPctText(trend)}`;
+    const tail = `최근 30일 ${trend.recent30}건 · ${trend.hasHistory ? '마지막 요청 ' : ''}${trendLastRequestText(trend)}${trend.activityWarn ? ' · 최근 활동 확인 필요' : ''}`;
+    return `${head} → ${judge}\n${tail}`;
   }
   // §실적 상승 업체 라운드 — "최근 30일 vs 직전 30일"(날짜/월/일 필요, 원본에 없음)을
   // 포기하고 "최근 흐름"과 같은 연 단위 비교(2025 vs 2024, getTotalPourRecordsForCompany
@@ -39418,7 +39544,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     const root = document.getElementById('constructionModalRoot');
     if(!root) return;
     const summary = buildConstructionSummary(co);
-    constructionModalState = { co, summary, filter: initialFilter || null };
+    constructionModalState = { co, summary, filter: initialFilter || null, year: null, q: null };
     root.innerHTML = `
       <div class="pi-overlay" id="constructionModalOverlay">
         <div class="pi-panel">
@@ -39430,6 +39556,7 @@ window.SHIN2_CRM_APP_INIT = function(){
             <div class="cat-dist-total">전체 ${esc(summary.total)}건</div>
             ${summary.total ? `
               <div class="constr-filter-row" id="constrModalFilterRow"></div>
+              <div class="constr-period" id="constrModalPeriod"></div>
               <div id="constrModalTableWrap"></div>
             ` : `<div class="pi-note">등록된 시공실적이 없습니다.</div>`}
           </div>
@@ -39456,14 +39583,79 @@ window.SHIN2_CRM_APP_INIT = function(){
   // 필터 칩은 renderConstructionDrawerBody와 같은 chips 구성 로직을 그대로 쓰되, 목록만
   // .receivable-site-card 카드 대신 고객카드 POUR 표와 같은 <table>로 그린다(§3: 연도/공종/
   // 지역·아파트/세대수/특허번호 5열, 새 계산 없이 원본 필드를 그대로 표시).
+  /* §시공실적 연도·분기 보기(2026-11, 사용자 요청) — 공종 칩처럼 연도로도 나누고 작은 막대그래프로 건수를 보여 준다.
+     시공실적 원본(POUR 스냅샷)은 연도만 있어 분기는 나눌 수 없다. 월별 실적 파일 업로드(pourImport)가 날짜 칸에서
+     month 를 읽어 둔 실적이 생기면, 그 연도를 골랐을 때만 분기 칩·분기 그래프가 자동으로 나타난다(월 없는 실적은 '월 미상').
+     표시만 나눌 뿐 건수 계산·데이터는 그대로(buildConstructionSummary 의 records 를 거르기만 함). */
+  function constrValidMonth(r){ return Number.isInteger(r.month) && r.month >= 1 && r.month <= 12; }
+  function constrRecordsByYear(records, year, q){
+    let out = records;
+    if(year === 'none') out = out.filter(r=> typeof r.year !== 'number');
+    else if(year != null) out = out.filter(r=> r.year === year);
+    if(q === 'none') out = out.filter(r=> !constrValidMonth(r));
+    else if(q != null) out = out.filter(r=> constrValidMonth(r) && Math.ceil(r.month / 3) === q);
+    return out;
+  }
+  function constrBarsHtml(bars, activeKey, attr){
+    const max = Math.max(1, ...bars.map(b=> b.count));
+    return `<div class="constr-bars">${bars.map(b=> `
+      <button type="button" class="constr-bar${String(b.key) === String(activeKey) ? ' is-active' : ''}" ${attr}="${esc(b.key)}" title="${esc(b.label)} ${esc(b.count)}건">
+        <span class="constr-bar-count">${esc(b.count)}</span>
+        <span class="constr-bar-track"><span class="constr-bar-fill" style="height:${b.count ? Math.max(6, Math.round(b.count / max * 100)) : 0}%"></span></span>
+        <span class="constr-bar-label">${esc(b.label)}</span>
+      </button>`).join('')}</div>`;
+  }
+  function renderConstructionPeriod(){
+    const st = constructionModalState;
+    const wrap = document.getElementById('constrModalPeriod');
+    if(!wrap || !st.summary) return;
+    const base = filterConstructionRecords(st.summary.records, st.filter, st.summary.otherCatNames); // 고른 공종 기준
+    const years = Array.from(new Set(st.summary.records.map(r=> r.year).filter(y=> typeof y === 'number'))).sort((a,b)=> b - a);
+    const hasUnknownYear = st.summary.records.some(r=> typeof r.year !== 'number');
+    const yearChips = [{ key: '', label: '전체 연도', count: base.length }]
+      .concat(years.map(y=> ({ key: y, label: y + '년', count: base.filter(r=> r.year === y).length })));
+    if(hasUnknownYear) yearChips.push({ key: 'none', label: '연도 미상', count: base.filter(r=> typeof r.year !== 'number').length });
+    const activeYearKey = st.year == null ? '' : st.year;
+    const yearBars = years.slice().reverse().map(y=> ({ key: y, label: String(y), count: base.filter(r=> r.year === y).length }));
+    let quarterHtml = '';
+    if(typeof st.year === 'number'){
+      const inYear = base.filter(r=> r.year === st.year);
+      const dated = inYear.filter(constrValidMonth);
+      if(dated.length){
+        const qCount = n=> dated.filter(r=> Math.ceil(r.month / 3) === n).length;
+        const noMonth = inYear.length - dated.length;
+        const qChips = [{ key: '', label: '전체 분기', count: inYear.length }].concat([1,2,3,4].map(n=> ({ key: n, label: n + '분기', count: qCount(n) })));
+        if(noMonth) qChips.push({ key: 'none', label: '월 미상', count: noMonth });
+        quarterHtml = `
+          <div class="constr-filter-row constr-q-row">${qChips.map(c=> `<button type="button" class="constr-filter-chip${String(st.q == null ? '' : st.q) === String(c.key) ? ' is-active' : ''}" data-constr-q="${esc(c.key)}">${esc(c.label)} ${esc(c.count)}</button>`).join('')}</div>
+          <div class="constr-chart-title">${esc(st.year)}년 분기별 건수</div>
+          ${constrBarsHtml([1,2,3,4].map(n=> ({ key: n, label: n + '분기', count: qCount(n) })), st.q, 'data-constr-qbar')}`;
+      } else {
+        quarterHtml = `<div class="constr-period-note">${esc(st.year)}년 실적에는 월 정보가 없어 분기로 나눌 수 없습니다. 날짜가 들어 있는 월별 실적 파일을 올리면 분기별로 나뉩니다.</div>`;
+      }
+    }
+    wrap.innerHTML = `
+      <div class="constr-filter-row constr-year-row">${yearChips.map(c=> `<button type="button" class="constr-filter-chip${String(activeYearKey) === String(c.key) ? ' is-active' : ''}" data-constr-year="${esc(c.key)}">${esc(c.label)} ${esc(c.count)}</button>`).join('')}</div>
+      ${yearBars.length ? `<div class="constr-chart-title">연도별 건수${st.filter ? ' · ' + esc(st.filter === '__other__' ? '기타 공종' : st.filter) : ''}</div>${constrBarsHtml(yearBars, st.year, 'data-constr-ybar')}` : ''}
+      ${quarterHtml}`;
+    const setYear = raw=>{ st.year = raw === '' ? null : raw === 'none' ? 'none' : Number(raw); st.q = null; renderConstructionModalBody(); };
+    wrap.querySelectorAll('[data-constr-year]').forEach(b=> b.addEventListener('click', ()=> setYear(b.getAttribute('data-constr-year'))));
+    wrap.querySelectorAll('[data-constr-ybar]').forEach(b=> b.addEventListener('click', ()=>{ const y = Number(b.getAttribute('data-constr-ybar')); setYear(st.year === y ? '' : String(y)); }));
+    const setQ = raw=>{ st.q = raw === '' ? null : raw === 'none' ? 'none' : Number(raw); renderConstructionModalBody(); };
+    wrap.querySelectorAll('[data-constr-q]').forEach(b=> b.addEventListener('click', ()=> setQ(b.getAttribute('data-constr-q'))));
+    wrap.querySelectorAll('[data-constr-qbar]').forEach(b=> b.addEventListener('click', ()=>{ const n = Number(b.getAttribute('data-constr-qbar')); setQ(st.q === n ? '' : String(n)); }));
+  }
   function renderConstructionModalBody(){
-    const { co, summary, filter } = constructionModalState;
+    const { co, summary, filter, year, q } = constructionModalState;
     const filterRow = document.getElementById('constrModalFilterRow');
     const tableWrap = document.getElementById('constrModalTableWrap');
     if(!filterRow || !tableWrap) return;
-    const chips = [{ key: null, label: '전체', count: summary.total }]
-      .concat(summary.topCats.map(b=> ({ key: b.category, label: b.category, count: b.count })));
-    if(summary.otherTotal > 0) chips.push({ key: '__other__', label: '기타', count: summary.otherTotal });
+    // §시공실적 연도·분기 보기(2026-11) — 공종 칩과 함께 연도(·분기)로도 나눈다. 공종 칩 건수는 고른 연도 안의 건수.
+    const yearRecords = constrRecordsByYear(summary.records, year, q);
+    const chips = [{ key: null, label: '전체', count: yearRecords.length }]
+      .concat(summary.topCats.map(b=> ({ key: b.category, label: b.category, count: filterConstructionRecords(yearRecords, b.category, summary.otherCatNames).length })));
+    if(summary.otherTotal > 0) chips.push({ key: '__other__', label: '기타', count: filterConstructionRecords(yearRecords, '__other__', summary.otherCatNames).length });
+    renderConstructionPeriod();
     filterRow.innerHTML = chips.map(c=>
       `<button type="button" class="constr-filter-chip${filter===c.key?' is-active':''}" data-constr-modal-filter="${c.key===null?'':esc(c.key)}">${esc(c.label)} ${esc(c.count)}</button>`
     ).join('');
@@ -39474,8 +39666,8 @@ window.SHIN2_CRM_APP_INIT = function(){
         renderConstructionModalBody();
       });
     });
-    const filtered = filterConstructionRecords(summary.records, filter, summary.otherCatNames);
-    tableWrap.innerHTML = `
+    const filtered = filterConstructionRecords(yearRecords, filter, summary.otherCatNames);
+    tableWrap.innerHTML = !filtered.length ? `<div class="pi-note">조건에 맞는 시공실적이 없습니다.</div>` : `
       <table class="cdash-pour-table"><thead><tr><th>년도</th><th>공종</th><th>지역 / 아파트</th><th>세대수</th><th>특허번호</th></tr></thead>
         <tbody>
           ${filtered.map(r=> `<tr>
@@ -42740,23 +42932,33 @@ window.SHIN2_CRM_APP_INIT = function(){
     if(!root) return;
     trendPopoverCompanyId = co.id;
     const trend = buildRecentTrend(co);
-    const bodyHtml = trend.state === 'insufficient' ? `
-      <div class="rev-pop-note">${esc(buildTrendReasonText(trend))}</div>
-    ` : `
-      <div class="cat-dist-row"><span class="cat-dist-name">${esc(trend.y2)}년 POUR 실적</span><span class="cat-dist-count">${esc(trend.y2Count)}건</span></div>
-      <div class="cat-dist-row"><span class="cat-dist-name">${esc(trend.y1)}년 POUR 실적</span><span class="cat-dist-count">${esc(trend.y1Count)}건</span></div>
-      <div class="cat-dist-row"><span class="cat-dist-name">변화율</span><span class="cat-dist-count">${trend.pct === null ? '비교 기준 0건(계산 불가)' : esc((trend.pct > 0 ? '+' : '') + trend.pct + '%')}</span></div>
-      <div class="cat-dist-row"><span class="cat-dist-name">판정</span><span class="cat-dist-count">${esc(trend.label)}</span></div>
-      <div class="rev-pop-note" style="margin-top:8px;">판정 기준: 변화율 +10% 초과 = 상승세 · -10% 미만 = 하락세 · 그 사이 = 유지. 재작년이 0건이면 비교 자체가 불가능해 값이 그대로여도 "상승세"로 표시합니다.</div>
+    // §최근 흐름(전분기 동일 경과기간 + 최근 30일, 2026-11) — buildRecentTrend가 이미 계산한 값만 보여 준다.
+    const w = trend.win;
+    const byText = by=> `L2 ${by.L2} · L3 ${by.L3} · 샘플 ${by['샘플']}`;
+    const judgeText = trend.pct != null ? `${trend.label} ${trendPctText(trend)}`
+      : trend.state === 'counting' ? `집계 중 (분기 시작 ${w.elapsed + 1}일째)`
+      : trend.state === 'watch' ? `관찰 (직전 기간 ${trend.prevCount}건, ${TREND_RULES.minPrevCount}건 미만)`
+      : trend.label;
+    const bodyHtml = `
+      <div class="cat-dist-row"><span class="cat-dist-name">이번 분기 ${esc(trendPeriodText(w, 'cur'))}</span><span class="cat-dist-count">${esc(trend.curCount)}건</span></div>
+      <div class="trend-pop-by">${esc(byText(trend.curBy))}</div>
+      <div class="cat-dist-row"><span class="cat-dist-name">직전 분기 같은 기간 ${esc(trendPeriodText(w, 'prev'))}</span><span class="cat-dist-count">${esc(trend.prevCount)}건</span></div>
+      <div class="trend-pop-by">${esc(byText(trend.prevBy))}</div>
+      <div class="cat-dist-row"><span class="cat-dist-name">최근 흐름</span><span class="cat-dist-count">${esc(judgeText)}</span></div>
+      <div class="trend-pop-sep"></div>
+      <div class="cat-dist-row"><span class="cat-dist-name">최근 ${esc(TREND_RULES.recentDays)}일 요청</span><span class="cat-dist-count">${esc(trend.recent30)}건</span></div>
+      <div class="cat-dist-row"><span class="cat-dist-name">마지막 요청</span><span class="cat-dist-count">${esc(trendLastRequestText(trend))}</span></div>
+      ${trend.activityWarn ? `<div class="cat-dist-row"><span class="cat-dist-name">활동 경고</span><span class="cat-dist-count trend-pop-warn">최근 활동 확인 필요</span></div>` : ''}
+      <div class="rev-pop-note trend-pop-rules">${esc(trendCriteriaText())}</div>
     `;
     root.innerHTML = `
       <div class="rev-popover" id="trendPopover">
         <div class="rev-pop-head">
-          <div class="rev-pop-title">최근 실적 흐름 — ${esc(co.name)}</div>
+          <div class="rev-pop-title">최근 흐름 — ${esc(co.name)}</div>
           <button type="button" class="rev-pop-close" id="trendPopCloseBtn" aria-label="닫기">&times;</button>
         </div>
         <div class="rev-pop-body">
-          <div class="rev-pop-note" style="margin-bottom:8px;">POUR 시공실적 건수의 전년 대비 증감입니다(매출·수주 건수가 아닙니다). 연도만 있는 원본 데이터라 완결된 두 해(작년·재작년)를 비교합니다.</div>
+          <div class="rev-pop-note" style="margin-bottom:8px;"><b>전분기 동일 경과기간 비교 + 최근 30일 활동 확인</b><br>L2·L3·샘플 요청 건수 기준입니다(매출·공사실적이 아닙니다).</div>
           ${bodyHtml}
         </div>
       </div>
@@ -52829,7 +53031,12 @@ if(!window.__mapxRowDelegated){
     },
     trend: {
       title: '최근 흐름',
-      body: '최근 활동 흐름을 보여주는 지표입니다.\n이전 기간과 비교해 상승세 / 유지 / 하락 여부를 표시합니다.'
+      // §최근 흐름(2026-11) — 첫 줄·설명 세 문장은 팀장님 지정 문구 그대로. 판정 기준은 TREND_RULES에서 읽는다.
+      body: '전분기 동일 경과기간 비교 + 최근 30일 활동 확인\n'
+        + '최근 흐름은 이번 분기의 현재까지 요청 건수와 직전 분기의 동일 경과기간 요청 건수를 비교하여 산정합니다.\n'
+        + 'L2·L3·샘플 요청을 기준으로 집계하며, 최근 30일 활동 건수와 마지막 요청 이후 경과일을 함께 확인합니다.\n'
+        + '활동·요청 데이터는 기존 실시간 갱신 데이터와 연동되어 자동 반영됩니다.\n'
+        + trendCriteriaText()
     },
     contrib: {
       title: '실적-매출',
