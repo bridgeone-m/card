@@ -22968,6 +22968,17 @@ window.SHIN2_CRM_APP_INIT = function(){
     fit();
   }
   function setupMapExpandToggle(){
+    // 창이 휴대폰 폭에서 PC 폭으로 넓어지면 미리보기 지도가 좁을 때 잡힌 범위(일본 쪽으로 치우침)에
+    // 머문다 → PC 배치로 바뀐 뒤(relayout 끝난 다음) 전국 보기로 다시 맞춘다. 휴대폰 폭으로 처음 열어
+    // 아래에서 바로 돌아가는 경우에도 붙도록 맨 앞에서 한 번만 건다.
+    if(!window.__crmMapDeskFitBound){
+      window.__crmMapDeskFitBound = true;
+      try{
+        const mqDesk = window.matchMedia('(min-width: 761px)');
+        const onDesk = ()=>{ if(mqDesk.matches) setTimeout(resetMapPreviewView, 800); };
+        if(mqDesk.addEventListener) mqDesk.addEventListener('change', onDesk); else mqDesk.addListener(onDesk);
+      }catch(e){ /* matchMedia 미지원이면 무시 */ }
+    }
     const root = document.getElementById('mapDistributionModalRoot');
     if(!root || !root.classList.contains('crm-mapdock-root')) return;
     if(!root.querySelector('.crm-map-expand-hit')){
