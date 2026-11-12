@@ -30863,7 +30863,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     const daysSince = ts => Math.floor((now - ts) / DAY);
 
     const actsWithTs = (acts || [])
-      .map(a=> ({ activity: a, ts: new Date(a.createdAt).getTime() }))
+      .map(a=> ({ activity: a, ts: mgmtNeedActivityTs(a, now) }))
       .filter(a=> !isNaN(a.ts)) // §10: Invalid Date는 판정에서 제외(억지 판정 금지)
       .concat(mgmtNeedSheetRequestActs(co, acts, now))
       .sort((a,b)=> a.ts - b.ts); // 오래된 순
@@ -30895,6 +30895,25 @@ window.SHIN2_CRM_APP_INIT = function(){
      - 예전에 활동으로 옮겨 담은 시트 요청(source 'google-sheets-request', _dedupKey)과 같은 건은 이미 활동에
        있으므로 다시 넣지 않는다(건수 이중 계산 방지).
      - 미래 날짜(입력 오류)·날짜 없는 요청은 넣지 않는다. 판정 기준(30일·60일)은 그대로다. */
+  /* 활동이 실제로 있었던 날. 한꺼번에 옮겨 담은 기록은 createdAt 이 옮겨 담은 날(시트 요청 2026-09-10,
+     협력사 현황표 2026-08-25)이라 그대로 쓰면 오래된 요청도 '63일'처럼 짧게 보이고, 협약 전 미팅·질문서가
+     '협약 후 활동'으로 세어진다. 원래 날짜가 기록에 남아 있으면 그 날짜를 쓴다.
+     - 시트 요청(source 'google-sheets-request'): occurredAt(시트의 요청일)
+     - 협력사 현황표(source 'partner-dashboard'): sourceRecordId 끝의 날짜(예: pd_업체_m1done_25.04.10) —
+       협약일(mouDoneTs)과 같은 parsePartnerDateLabel 로 읽어 같은 기준으로 비교한다.
+     원래 날짜가 없거나 잘못됐거나 미래면 기존처럼 createdAt 을 쓴다(날짜를 지어내지 않음). */
+  function mgmtNeedActivityTs(a, now){
+    const created = new Date(a && a.createdAt).getTime();
+    if(!a) return created;
+    let real = NaN;
+    if(a.source === 'google-sheets-request' && a.occurredAt) real = new Date(a.occurredAt).getTime();
+    else if(a.source === 'partner-dashboard' && a.sourceRecordId){
+      const m = /_(\d{2,4}\.\d{1,2}\.\d{1,2})$/.exec(String(a.sourceRecordId));
+      const p = m ? parsePartnerDateLabel(m[1]) : null;
+      if(p) real = p.ts;
+    }
+    return (!isNaN(real) && real <= now) ? real : created;
+  }
   function mgmtNeedSheetRequestActs(co, acts, now){
     const sheetReqs = D.buildSheetRequestsIndex().get(String(co.id)) || [];
     if(!sheetReqs.length) return [];
