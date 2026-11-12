@@ -11356,6 +11356,20 @@ body:not(.crm-admin-mode) #crmUpdateMenuWrap{ display:none !important; }
 .sales-detail-filters{ display:flex; gap:6px; margin-top:8px; }
 .sales-q-tab-row{ margin-top:6px; }
 .sales-q-tab-n{ margin-left:2px; font-size:11.5px; font-weight:700; opacity:.75; }
+/* §월별·분기별 매출(2026-11) — 전환 버튼, 누를 수 있는 기간 행, 고른 달 표시, 실적·매출 평가 칸 */
+.sales-mode-row{ display:flex; gap:6px; margin:10px 0 2px; }
+.sales-mode-row .revenue-tab{ height:30px; min-width:64px; }
+.sales-q-table tbody tr.is-click{ cursor:pointer; }
+.sales-q-table tbody tr.is-click:hover th, .sales-q-table tbody tr.is-click:hover td{ background:#F2F6FC; }
+.sales-q-table tbody tr.is-undated th{ color:#B3261E; }
+.sales-period-pick{ display:inline-flex; align-items:center; gap:6px; margin-top:8px; padding:4px 10px; min-height:30px; border:1px solid #CFE0FA; border-radius:999px; background:#EAF2FF; color:var(--navy); font-size:12.5px; font-weight:700; font-family:inherit; cursor:pointer; }
+.cdash2-revenue-stats .is-eval .cdash2-revenue-stat-value.is-muted{ color:var(--text-faint) !important; font-weight:600 !important; }
+.cdash2-chart-wrap .cdash2-chart-hitdot{ cursor:pointer; }
+@media (max-width:600px){
+  .sales-mode-row .revenue-tab{ height:36px; }
+  /* 월별(최대 12개 점)은 좁은 화면에서 금액 글자가 겹치므로 최고 달만 숫자를 남기고 나머지는 눌러서(툴팁) 본다 */
+  .cdash2-chart-wrap.is-month-mode .rvl-val:not(.is-max){ display:none; }
+}
 .sales-detail-filters .sales-detail-search{ flex:1 1 auto; min-width:0; height:36px; margin-top:0; font-size:13px; }
 .sales-detail-list{ margin-top:6px; max-height:420px; overflow-y:auto; border-top:1px solid var(--line); }
 .sales-detail-row{ display:grid; grid-template-columns:84px 70px minmax(0,1fr) auto; gap:8px; align-items:center; padding:8px 2px; border-bottom:1px solid var(--line); font-size:12.5px; }
@@ -27963,9 +27977,13 @@ window.SHIN2_CRM_APP_INIT = function(){
     // latestYear 계산 자체(D.getAllPourRecordsForCompany)는 그대로 두되(§ 다른 곳에서
     // 재사용 가능하도록 계산 로직은 삭제하지 않음), 이 카드에서만 그리지 않는다.
     // §고객 상세 탭 재정리 라운드 — 최고월은 머리 배지 대신 지표 줄의 세 번째 칸으로(같은 값).
-    const peakText = (maxIdx >= 0 && monthly && monthly.points[maxIdx])
-      ? `${monthly.points[maxIdx].month}월 · ${fmtKrwCompact(monthly.points[maxIdx].total)}`
-      : (maxBadgeText || '—');
+    // §실적·매출 평가(2026-11, 팀장님과 임시 적용) — '최고월' 자리에 목록 "실적-매출" 칸과 같은 평가값을 그대로 보여 준다
+    // (buildRevenueContributionIndex 재사용, 새 계산·기준 변경 없음). 추후 '메인자재 활용 현장 수'로 바뀔 수 있어 이 칸만 따로 둔다.
+    const contribEval = buildRevenueContributionIndex().get(co.id);
+    const evalText = (contribEval && contribEval.level && contribEval.level !== 'insufficient') ? contribEval.label : '평가 데이터 없음';
+    const evalTitle = (contribEval && contribEval.perUnit != null)
+      ? `실적 1건당 평균 매출 ${fmtKrwCompact(contribEval.perUnit)} — 전체 업체 대비 상위/하위 30%, 중간 40% 중 '${contribEval.label}' 구간 (목록 실적-매출과 같은 값)`
+      : '총 실적 또는 총 매출 데이터가 없어 평가할 수 없습니다.';
     wrap.innerHTML = `
       <div class="cdash2-summary-row">
         <div class="cdash2-card cdash2-revenue-card">
@@ -27976,7 +27994,11 @@ window.SHIN2_CRM_APP_INIT = function(){
             <!-- §매출 순서(2026-11, 팀장님 요청) — 올해 매출을 먼저, 누적 매출은 그다음. -->
             <div class="cdash2-revenue-kpi"><div class="cdash2-revenue-stat-label">${cinfoIcon('trend')}${esc(currentYear)}년 매출</div><div class="cdash2-revenue-stat-value">${esc(yearRevenueText)}</div></div>
             <div class="cdash2-revenue-kpi"><div class="cdash2-revenue-stat-label">${cinfoIcon('coin')}누적 매출</div><div class="cdash2-revenue-stat-value">${esc(totalRevenueText)}</div></div>
-            <div class="cdash2-revenue-kpi is-peak"><div class="cdash2-revenue-stat-label">${cinfoIcon('calendarCheck')}최고월</div><div class="cdash2-revenue-stat-value">${esc(peakText)}</div></div>
+            <div class="cdash2-revenue-kpi is-peak is-eval" title="${esc(evalTitle)}"><div class="cdash2-revenue-stat-label">${cinfoIcon('badge')}실적·매출 평가</div><div class="cdash2-revenue-stat-value${evalText === '평가 데이터 없음' ? ' is-muted' : ''}">${esc(evalText)}</div></div>
+          </div>
+          <div class="sales-mode-row" role="tablist" aria-label="기간 보기">
+            <button type="button" class="revenue-tab${salesViewMode === 'month' ? ' is-active' : ''}" data-sales-mode="month">월별</button>
+            <button type="button" class="revenue-tab${salesViewMode === 'quarter' ? ' is-active' : ''}" data-sales-mode="quarter">분기별</button>
           </div>
           <div class="cdash2-chart-outer"><div class="cdash2-chart-wrap" id="cdashRevenueChartWrap">${chartHtml}</div></div>
         </div>
@@ -27984,8 +28006,14 @@ window.SHIN2_CRM_APP_INIT = function(){
       <div id="cdashSalesQuarterCard"></div>
       <div id="cdashSalesDetailCard"></div>
     `;
-    if(monthly && monthly.points.length) wireRevenueChartHover(chartPoints);
     bindRevenueInfoIcon('cdash');
+    wrap.querySelectorAll('[data-sales-mode]').forEach(b=> b.addEventListener('click', ()=>{
+      salesViewMode = b.getAttribute('data-sales-mode');
+      wrap.querySelectorAll('[data-sales-mode]').forEach(x=> x.classList.toggle('is-active', x === b));
+      renderSalesChart(co);
+      renderSalesQuarterCard(co, revAll);
+    }));
+    renderSalesChart(co);
     renderSalesQuarterCard(co, revAll);
     renderSalesDetailCard(co);
   }
@@ -28012,70 +28040,129 @@ window.SHIN2_CRM_APP_INIT = function(){
     const m = /^(\d{4})-(\d{2})/.exec(String(dateStr || ''));
     return m ? { year: +m[1], q: Math.ceil(+m[2] / 3) } : null;
   }
-  const SALES_YEAR = 2026;   // 날짜별 매출 내역이 있는 연도(getCompany2026Revenue)
+  const SALES_YEAR = 2026;   // 날짜별 매출 내역이 있는 연도(getCompany2026Revenue — 연도별 매출 함수가 이 해까지 있음)
+  /* §월별·분기별 매출(2026-11, 팀장님 요청) — 매출 탭 안에서 [월별]/[분기별]을 바꿔 그래프·기간별 표·내역을 함께 본다.
+     금액은 D.getCompany2026Revenue(co).rows(이미 중복 제거·확정된 원본 거래)를 날짜의 달로 나누기만 한다 —
+     기간 합계 = 위 2026년 매출과 같다. 날짜가 없거나 2026년이 아닌 행은 어느 달에도 넣지 않고 '날짜 없음'으로 따로 보인다.
+     그래프는 기존 buildRevenueLineChart(인라인 SVG, 새 라이브러리 없음)를 그대로 쓴다. */
+  let salesViewMode = 'month';   // 화면 상태만(저장 안 함)
+  const SALES_TYPE_SHORT = { materialSales:'자재', consulting:'컨설팅', techAdvisory:'기술자문', patent:'특허료' };
+  function salesMonthOf(dateStr){
+    const m = /^(\d{4})-(\d{2})/.exec(String(dateStr || ''));
+    return (m && +m[1] === SALES_YEAR && +m[2] >= 1 && +m[2] <= 12) ? +m[2] : null;
+  }
+  function salesYearData(co){
+    const data = D.getCompany2026Revenue(co);
+    return (data && !data.ambiguous && Array.isArray(data.rows)) ? data : null;
+  }
+  // 기간(월 또는 분기)별 합계·구분별 금액. 올해면 이번 달(분기)까지, 그 뒤 날짜의 거래가 있으면 그 달까지 늘린다.
+  function buildSalesPeriods(data, mode){
+    const now = new Date();
+    let lastMonth = now.getFullYear() === SALES_YEAR ? now.getMonth() + 1 : (now.getFullYear() > SALES_YEAR ? 12 : 0);
+    data.rows.forEach(r=>{ const m = salesMonthOf(r.date); if(m && m > lastMonth) lastMonth = m; });
+    const n = mode === 'quarter' ? Math.ceil(lastMonth / 3) : lastMonth;
+    const periods = Array.from({ length: n }, (_, i)=> ({ key: i + 1, label: mode === 'quarter' ? (i + 1) + '분기' : (i + 1) + '월', total: 0, byType: {}, count: 0 }));
+    const undated = { total: 0, byType: {}, count: 0 };
+    let sum = 0;
+    data.rows.forEach(r=>{
+      const m = salesMonthOf(r.date);
+      const amt = Number(r.amount) || 0;
+      const p = m ? periods[(mode === 'quarter' ? Math.ceil(m / 3) : m) - 1] : null;
+      const t = p || undated;
+      t.total += amt; t.count++;
+      t.byType[r.sourceType] = (t.byType[r.sourceType] || 0) + amt;
+      sum += amt;
+    });
+    return { periods, undated, sum };
+  }
+  function renderSalesChart(co){
+    const wrap = document.getElementById('cdashRevenueChartWrap');
+    if(!wrap) return;
+    const data = salesYearData(co);
+    if(!data || !data.rows.length){ wrap.innerHTML = `<div class="cdash2-chart-empty">${SALES_YEAR}년 기간별 매출 데이터 없음</div>`; return; }
+    const { periods } = buildSalesPeriods(data, salesViewMode);
+    if(!periods.length){ wrap.innerHTML = `<div class="cdash2-chart-empty">${SALES_YEAR}년 기간별 매출 데이터 없음</div>`; return; }
+    const points = periods.map(p=> ({ month: p.key, label: p.label, total: p.total }));
+    const vals = points.map(p=> p.total), max = Math.max.apply(null, vals);
+    const top = max > 0 ? vals.map((v, i)=> v === max ? i : -1).filter(i=> i >= 0) : [];
+    wrap.innerHTML = buildRevenueLineChart(points, top);
+    wrap.classList.toggle('is-month-mode', salesViewMode === 'month');
+    wireRevenueChartHover(points);
+    // 그래프의 점을 누르면 그 기간의 매출 내역으로 이동
+    wrap.querySelectorAll('.cdash2-chart-hitdot').forEach(dot=> dot.addEventListener('click', ()=>{
+      const p = points[parseInt(dot.getAttribute('data-idx'), 10)];
+      if(p) salesDetailSelectPeriod(co, salesViewMode, p.month);
+    }));
+  }
+  // 기간별 매출 표 — 행=기간(월/분기), 열=매출 구분(시스템에 있는 4가지)·합계. 행을 누르면 그 기간 내역으로 이동.
   function renderSalesQuarterCard(co, revAll){
     const wrap = document.getElementById('cdashSalesQuarterCard');
     if(!wrap) return;
-    const data = D.getCompany2026Revenue(co);
+    const raw = D.getCompany2026Revenue(co);
+    const data = salesYearData(co);
+    const modeLabel = salesViewMode === 'quarter' ? '분기별' : '월별';
     const yearsLine = (revAll && Array.isArray(revAll.byYear) && revAll.byYear.length)
       ? revAll.byYear.map(y=> `<span class="sales-year-chip">${esc(y.year)}년 <b>${esc(fmtKrwCompact(y.total))}</b>${y.inProgress ? ' <i>진행 중</i>' : ''}</span>`).join('')
       : '';
-    if(!data || data.ambiguous || !Array.isArray(data.rows)){
-      wrap.innerHTML = `<div class="cdash2-card sales-q-card"><div class="cdash2-card-title">분기별 매출</div>
+    if(!data){
+      wrap.innerHTML = `<div class="cdash2-card sales-q-card"><div class="cdash2-card-title">${modeLabel} 매출</div>
         ${yearsLine ? `<div class="sales-year-line">${yearsLine}</div>` : ''}
-        <div class="chart-empty">${data && data.ambiguous ? '업체명이 여러 곳과 겹쳐 매출을 자동으로 나누지 않았습니다.' : `${SALES_YEAR}년 매출 내역이 없습니다.`}</div></div>`;
+        <div class="chart-empty">${raw && raw.ambiguous ? '업체명이 여러 곳과 겹쳐 매출을 자동으로 나누지 않았습니다.' : `${SALES_YEAR}년 매출 내역이 없습니다.`}</div></div>`;
       return;
     }
-    const now = new Date();
-    const curQ = now.getFullYear() === SALES_YEAR ? Math.ceil((now.getMonth() + 1) / 3) : (now.getFullYear() > SALES_YEAR ? 4 : 0);
     const typeKeys = REVENUE_TYPE_ORDER.slice();
     data.rows.forEach(r=>{ if(r.sourceType && !typeKeys.includes(r.sourceType)) typeKeys.push(r.sourceType); });
-    const grid = {}; typeKeys.forEach(t=> grid[t] = [0,0,0,0]);
-    const qTotal = [0,0,0,0];
-    let undated = 0;
-    data.rows.forEach(r=>{
-      const q = revenueQuarterOf(r.date);
-      const amt = Number(r.amount) || 0;
-      if(!q || q.year !== SALES_YEAR){ undated += amt; return; }
-      if(grid[r.sourceType]) grid[r.sourceType][q.q - 1] += amt;
-      qTotal[q.q - 1] += amt;
-    });
-    const cell = (v, qi)=> qi + 1 > curQ ? '<td class="is-future">—</td>' : `<td${v ? '' : ' class="is-zero"'}>${esc(fmtKrwShort(v))}</td>`;
-    const rowsHtml = typeKeys.filter(t=> grid[t].some(v=> v) || REVENUE_TYPE_ORDER.includes(t)).map(t=>{
-      const sum = grid[t].reduce((a,b)=> a + b, 0);
-      return `<tr><th scope="row">${esc(REVENUE_TYPE_LABEL[t] || t)}</th>${grid[t].map(cell).join('')}<td class="is-sum">${esc(fmtKrwShort(sum))}</td></tr>`;
-    }).join('');
-    const allSum = qTotal.reduce((a,b)=> a + b, 0);
-    // 직전 분기 대비(지난 분기가 있을 때만) — 숫자만 보여 주고 판정은 하지 않는다
+    const { periods, undated, sum } = buildSalesPeriods(data, salesViewMode);
+    const unit = salesViewMode === 'quarter' ? 'q' : 'm';
+    const cells = p=> typeKeys.map(t=>{ const v = p.byType[t] || 0; return `<td${v ? '' : ' class="is-zero"'}>${esc(fmtKrwShort(v))}</td>`; }).join('');
+    const rowsHtml = periods.map(p=> `<tr class="is-click" data-sales-period="${unit}:${p.key}" title="${esc(p.label)} 매출 내역 보기"><th scope="row">${esc(p.label)}</th>${cells(p)}<td class="is-sum">${esc(fmtKrwShort(p.total))}</td></tr>`).join('')
+      + (undated.count ? `<tr class="is-click is-undated" data-sales-period="none" title="날짜 없는 매출 내역 보기"><th scope="row">날짜 없음</th>${cells(undated)}<td class="is-sum">${esc(fmtKrwShort(undated.total))}</td></tr>` : '');
+    const typeTotals = typeKeys.map(t=>{ const v = data.rows.filter(r=> r.sourceType === t).reduce((s, r)=> s + (Number(r.amount) || 0), 0); return `<td${v ? '' : ' class="is-zero"'}>${esc(fmtKrwShort(v))}</td>`; }).join('');
     let compareHtml = '';
-    if(curQ >= 2){
-      const prev = qTotal[curQ - 2], cur = qTotal[curQ - 1];
-      compareHtml = `<div class="sales-q-compare">${curQ}분기(진행 중) ${esc(fmtKrwCompact(cur))} · 직전 ${curQ - 1}분기 ${esc(fmtKrwCompact(prev))}</div>`;
+    if(salesViewMode === 'quarter' && periods.length >= 2){
+      const cur = periods[periods.length - 1], prev = periods[periods.length - 2];
+      compareHtml = `<div class="sales-q-compare">${esc(cur.label)}(진행 중) ${esc(fmtKrwCompact(cur.total))} · 직전 ${esc(prev.label)} ${esc(fmtKrwCompact(prev.total))}</div>`;
     }
     wrap.innerHTML = `
       <div class="cdash2-card sales-q-card">
-        <div class="cdash2-card-title">분기별 매출 <span class="sales-q-year">${SALES_YEAR}년</span></div>
+        <div class="cdash2-card-title">${modeLabel} 매출 <span class="sales-q-year">${SALES_YEAR}년 · 구분별</span></div>
         ${yearsLine ? `<div class="sales-year-line">${yearsLine}</div>` : ''}
         <div class="sales-q-table-wrap">
           <table class="sales-q-table">
-            <thead><tr><th scope="col">구분</th><th scope="col">1분기</th><th scope="col">2분기</th><th scope="col">3분기</th><th scope="col">4분기</th><th scope="col">합계</th></tr></thead>
+            <thead><tr><th scope="col">기간</th>${typeKeys.map(t=> `<th scope="col" title="${esc(REVENUE_TYPE_LABEL[t] || t)}">${esc(SALES_TYPE_SHORT[t] || REVENUE_TYPE_LABEL[t] || t)}</th>`).join('')}<th scope="col">합계</th></tr></thead>
             <tbody>${rowsHtml}</tbody>
-            <tfoot><tr><th scope="row">합계</th>${qTotal.map(cell).join('')}<td class="is-sum">${esc(fmtKrwShort(allSum))}</td></tr></tfoot>
+            <tfoot><tr><th scope="row">합계</th>${typeTotals}<td class="is-sum">${esc(fmtKrwShort(sum))}</td></tr></tfoot>
           </table>
         </div>
         ${compareHtml}
-        ${undated ? `<div class="sales-q-note">날짜가 없어 분기를 나눌 수 없는 매출 ${esc(fmtKrwCompact(undated))}은 표에서 빠지고 합계(위 ${SALES_YEAR}년 매출)에는 들어 있습니다.</div>` : ''}
-        <div class="sales-q-note">2024·2025년은 연간 합계만 있어 분기로 나누지 않습니다.</div>
+        <div class="sales-q-note">행을 누르면 아래 매출 내역이 그 기간으로 바뀝니다. 2024·2025년은 연간 합계만 있어 월·분기로 나누지 않습니다.</div>
       </div>`;
+    wrap.querySelectorAll('[data-sales-period]').forEach(tr=> tr.addEventListener('click', ()=>{
+      const v = tr.getAttribute('data-sales-period');
+      if(v === 'none') salesDetailSelectPeriod(co, 'none', null);
+      else { const [u, k] = v.split(':'); salesDetailSelectPeriod(co, u === 'q' ? 'quarter' : 'month', Number(k)); }
+    }));
   }
-  let salesDetailState = { coId: null, tab: 'all', q: 'all', query: '' };
+  // 표·그래프에서 고른 기간을 매출 내역에 적용하고 그 카드로 스크롤
+  function salesDetailSelectPeriod(co, mode, key){
+    if(salesDetailState.coId !== co.id) salesDetailState = { coId: co.id, tab: 'all', q: 'all', m: null, undated: false, query: '' };
+    salesDetailState.undated = mode === 'none';
+    salesDetailState.m = mode === 'month' ? key : null;
+    salesDetailState.q = mode === 'quarter' ? String(key) : 'all';
+    renderSalesDetailCard(co);
+    const card = document.getElementById('cdashSalesDetailCard');
+    if(card && card.scrollIntoView) card.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  }
+  let salesDetailState = { coId: null, tab: 'all', q: 'all', m: null, undated: false, query: '' };
   function renderSalesDetailCard(co){
     const wrap = document.getElementById('cdashSalesDetailCard');
     if(!wrap) return;
     const data = D.getCompany2026Revenue(co);
     if(!data || data.ambiguous || !Array.isArray(data.rows) || !data.rows.length){ wrap.innerHTML = ''; return; }
-    if(salesDetailState.coId !== co.id) salesDetailState = { coId: co.id, tab: 'all', q: 'all', query: '' };
+    if(salesDetailState.coId !== co.id) salesDetailState = { coId: co.id, tab: 'all', q: 'all', m: null, undated: false, query: '' };
     const st = salesDetailState;
+    // 표·그래프에서 고른 달 또는 '날짜 없음' — 분기 탭 아래 작은 표시로 보이고 누르면 해제
+    const pickHtml = st.m ? `${st.m}월만 보기` : (st.undated ? '날짜 없는 매출만 보기' : '');
     wrap.innerHTML = `
       <div class="cdash2-card sales-detail-card">
         <div class="cdash2-card-title">${SALES_YEAR}년 매출 내역</div>
@@ -28086,6 +28173,7 @@ window.SHIN2_CRM_APP_INIT = function(){
         <div class="revenue-tab-row sales-q-tab-row" role="tablist" aria-label="분기 선택">
           ${[['all','전체 분기'],['1','1분기'],['2','2분기'],['3','3분기'],['4','4분기']].map(([v,l])=> `<button type="button" class="revenue-tab${v === st.q ? ' is-active' : ''}" data-sales-q="${v}">${l} <span class="sales-q-tab-n"></span></button>`).join('')}
         </div>
+        ${pickHtml ? `<button type="button" class="sales-period-pick" data-sales-pick-clear title="기간 선택 해제">${esc(pickHtml)} <span aria-hidden="true">✕</span></button>` : ''}
         <div class="sales-detail-filters">
           <input type="search" class="revenue-detail-search sales-detail-search" placeholder="현장명 / 구분 검색" value="${esc(st.query)}" />
         </div>
@@ -28100,7 +28188,9 @@ window.SHIN2_CRM_APP_INIT = function(){
         const qk = b.getAttribute('data-sales-q');
         b.querySelector('.sales-q-tab-n').textContent = qk === 'all' ? rows.length : rows.filter(r=> inQ(r, qk)).length;
       });
-      if(st.q !== 'all') rows = rows.filter(r=> inQ(r, st.q));
+      if(st.m) rows = rows.filter(r=> salesMonthOf(r.date) === st.m);
+      else if(st.undated) rows = rows.filter(r=> !salesMonthOf(r.date));
+      else if(st.q !== 'all') rows = rows.filter(r=> inQ(r, st.q));
       if(q) rows = rows.filter(r=> (r.site || '').toLowerCase().includes(q) || (REVENUE_TYPE_LABEL[r.sourceType] || r.sourceType || '').toLowerCase().includes(q));
       rows = rows.slice().sort((a,b)=> String(b.date || '').localeCompare(String(a.date || '')));
       const sum = rows.reduce((s, r)=> s + (Number(r.amount) || 0), 0);
@@ -28120,10 +28210,11 @@ window.SHIN2_CRM_APP_INIT = function(){
       draw();
     }));
     wrap.querySelectorAll('[data-sales-q]').forEach(b=> b.addEventListener('click', ()=>{
-      st.q = b.getAttribute('data-sales-q');
-      wrap.querySelectorAll('[data-sales-q]').forEach(x=> x.classList.toggle('is-active', x === b));
-      draw();
+      st.q = b.getAttribute('data-sales-q'); st.m = null; st.undated = false;
+      renderSalesDetailCard(co);
     }));
+    const pickClear = wrap.querySelector('[data-sales-pick-clear]');
+    if(pickClear) pickClear.addEventListener('click', ()=>{ st.m = null; st.undated = false; renderSalesDetailCard(co); });
     wrap.querySelector('.sales-detail-search').addEventListener('input', e=>{ st.query = e.target.value; draw(); });
     draw();
   }
@@ -28358,7 +28449,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       const label = zero ? '0' : Math.round(values[i] / 10000).toLocaleString('ko-KR');
       return `<span class="rvl-dot${isMax ? ' is-max' : ''}${zero ? ' is-zero' : ''}" style="left:${pct(x)};top:${y.toFixed(1)}px;"></span>`
         + `<span class="rvl-val${isMax ? ' is-max' : ''}${zero ? ' is-zero' : ''}" style="left:${pct(x)};top:${(y - 9).toFixed(1)}px;">${isMax ? '<em>TOP</em>' : ''}${esc(label)}</span>`
-        + `<span class="rvl-month" style="left:${pct(x)};top:${(H - 15)}px;">${esc(p.month)}월</span>`;
+        + `<span class="rvl-month" style="left:${pct(x)};top:${(H - 15)}px;">${esc(p.label || p.month + '월')}</span>`; // label: 분기 그래프용(없으면 기존처럼 N월)
     }).join('');
     const slotW = (W - padX*2) / Math.max(1, n - 1);
     const hitAreas = points.map((p,i)=>{
@@ -28389,7 +28480,7 @@ window.SHIN2_CRM_APP_INIT = function(){
         const p = points[idx];
         if(!p) return;
         // §10 툴팁: "5월 · 7,567만원"처럼 정확한 월과 전체 금액(기존 fmtKrwCompact 재사용).
-        tooltip.textContent = p.month + '월 · ' + fmtKrwCompact(p.total);
+        tooltip.textContent = (p.label || p.month + '월') + ' · ' + fmtKrwCompact(p.total);
         const cx = parseFloat(dot.getAttribute('data-cx'));
         const cy = parseFloat(dot.getAttribute('data-cy'));
         const scaleX = wrap.clientWidth / 560;
