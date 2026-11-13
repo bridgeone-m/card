@@ -6,7 +6,7 @@ assert.ok(s>0&&e>s,'보류 블록을 찾지 못함');
 const f0=html.indexOf('  function fmtDate(iso){'), f1=html.indexOf('  function fmtTime(iso){', f0);
 function load(nm){
   const ctx={Date,String,resolveNewMouForCompany:()=>nm||null};
-  vm.runInNewContext(html.slice(f0,f1)+html.slice(s,e)+'\nthis.api={getDealHold,dealHoldSummaryText,isHurdleCompany,dealHoldAfterLabel};',ctx);
+  vm.runInNewContext(html.slice(f0,f1)+html.slice(s,e)+'\nthis.api={getDealHold,dealHoldSummaryText,isHurdleCompany,dealHoldAfterLabel,getDealDeclined,dealDeclinedSummaryText};',ctx);
   return ctx.api;
 }
 const A=load();
@@ -33,4 +33,21 @@ test('협약 진행 탭: 카드 보류 업체는 남기고 동기화 허들만 �
   assert.match(html,/key === 'agreementInProgress'\)\{[\s\S]{0,400}!isSyncHurdleCompany\(co\)/);
   const B=load({hurdle:true});
   assert.equal(B.isHurdleCompany({}),true);
+});
+
+test('미진행: 문구와 판정, 미진행이면 허들·보류에서 빠짐',()=>{
+  const at=new Date(2026,10,13,10).toISOString();
+  assert.equal(A.getDealDeclined({dealDeclined:{active:false}}),null);
+  assert.equal(A.dealDeclinedSummaryText({afterStage:'m1',at,reason:'단가 부담'}),'1차미팅 후 미진행(체결 안 함) · 2026.11.13 · 단가 부담');
+  assert.equal(A.isHurdleCompany({dealHold:{active:true},dealDeclined:{active:true}}),false);
+});
+test('목록 단계 배지·필터·의지박약 연결',()=>{
+  for(const s of [
+    "if(key !== 'mou' && key !== 'terminated'){",
+    "const st = dealStatusBadgeDef(co);",
+    "if(key === 'dealDeclined') return !!getDealDeclined(co)",
+    "if(getDealHold(r.co) || getDealDeclined(r.co)) return;",
+    "!isSyncHurdleCompany(co) && !D.isAgreementTerminated(co) && !getDealDeclined(co)",
+    "none:       { label:'시작 전',",   // 진행 이력 없음 배지는 '미진행'과 다른 단어
+  ]) assert.ok(html.includes(s), s);
 });

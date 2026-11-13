@@ -320,6 +320,7 @@
   .agreement-status-badge{ flex:0 0 auto; display:inline-block; padding:1px 6px; font-size:9.5px; font-weight:700; border-radius:4px; margin-left:5px; }
   .agreement-status-badge.is-terminated{ background:#EEF0F3; color:#5B6472; }
   .agreement-status-badge.is-hold{ background:#FDE4B0; color:#8A5300; }
+  .agreement-status-badge.is-declined{ background:#E6E8EC; color:#3F4652; }
   /* §협약 종료 탭 보완 라운드(신규) — .co-row 형제 엘리먼트(그리드 컬럼 구조 변경 없음). */
   .terminated-info-row{ display:flex; flex-wrap:wrap; align-items:center; gap:6px 14px; padding:6px 14px 10px; margin-top:-2px; background:#FAFBFC; border-bottom:1px solid #e8eef5; font-size:11.5px; color:var(--text-muted); }
   .terminated-info-item b{ font-weight:700; color:#5B6472; margin-right:4px; }
@@ -2469,6 +2470,7 @@
      자리에 나란히 붙는 3번째 태그 — 주황 계열로 "지금 진행 중인 딜이 막혀있다"는 경고
      톤만 준다(§요청 기존 배지 색 규칙과 동일, 새 색상 체계 아님). */
   .cdash2-tag.is-hurdle{ background:#FEF3E2; color:#B45309; }
+  .cdash2-tag.is-declined{ background:#4B5563; color:#fff; }
   .cdash2-header-close{ flex:none; width:26px; height:26px; border-radius:6px; border:none; background:transparent; color:#C9D6EE; font-size:18px; line-height:1; cursor:pointer; }
   .cdash2-header-close:hover{ background:rgba(255,255,255,.12); color:#fff; }
 
@@ -4971,8 +4973,14 @@ table.pdf-doc-table thead{ background:var(--bg); }
 .agr-hold-form[hidden]{ display:none; }
 .agr-hold-input{ flex:1 1 220px; min-width:0; height:32px; padding:4px 9px; border:1px solid var(--line); border-radius:7px; font-size:13px; }
 .cdet-steps-note.is-hold{ color:#8A5300; }
+.agr-hold-btn.is-decline{ border-color:#9AA1AC; color:#3F4652; }
+.agr-hold-btn.is-decline:hover{ background:#F1F3F5; }
+.agr-hold-box.is-declined{ background:#F1F3F5; border-color:#C5CAD2; }
+.agr-hold-box.is-declined .agr-hold-badge{ background:#4B5563; color:#fff; }
+.agr-hold-box.is-declined .agr-hold-text{ color:#2F3540; }
+.cdet-steps-note.is-declined{ color:#3F4652; }
 @media (max-width:600px){
-  .agr-hold-btn, .agr-hold-box .co-text-action{ min-height:38px; }
+  .agr-hold-box .agr-hold-btn, .agr-hold-box .co-text-action{ min-height:40px; height:auto; }
   .agr-hold-input{ flex-basis:100%; height:40px; font-size:16px; }
 }
 .agr-stage-row.is-done{ background:#FAFCFF; }
@@ -7747,6 +7755,9 @@ body{
 }
 /* 주의가 필요한 두 가지만 예외색 — 아주 연하게. */
 .co-stage-badge.is-terminated{ background:#FBF0EF; color:#A4514E; border-color:#F0DCDA; }
+/* §보류·미진행(2026-11) — 단계 배지 자리. 미진행은 '진행 이력 없음'(is-none)과 구분되게 진한 회색 */
+.co-stage-badge.is-hold{ background:#FDE4B0; color:#8A5300; border-color:#F2C46D; }
+.co-stage-badge.is-declined{ background:#4B5563; color:#fff; border-color:#4B5563; }
 .co-stage-badge.is-check{     background:#FBF6EA; color:#8A6A28; border-color:#EFE3C9; }
 /* 해지는 새 단계 뱃지가 이미 말해 주므로, 목록에서만 기존 "협약 종료" 배지를 숨긴다.
    같은 말이 두 번 붙어 업체명이 밀렸다. agreementTerminatedBadgeHtml 함수와 다른
@@ -19617,7 +19628,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     q:          { label:'질문서',   cls:'is-q',          title:'질문서 단계 진행 중' },
     casebycase: { label:'건바이건', cls:'is-case',       title:'건바이건 목록에서 전환된 업체' },
     unsigned:   { label:'미체결',   cls:'is-unsigned',   title:'실적 있음 · MOU 미체결' },
-    none:       { label:'미진행',   cls:'is-none',       title:'진행 이력 없음' },
+    none:       { label:'시작 전',  cls:'is-none',       title:'진행 이력 없음(질문서·미팅 기록 없음)' },   // 2026-11: '미진행'은 1·2차 미팅 후 체결 안 함 전용이라 단어를 나눔
     check:      { label:'확인필요', cls:'is-check',      title:'진행 이력은 있으나 단계를 판정할 수 없음' }
   };
   // caseByCaseIds는 renderList가 한 번만 만들어 넘기는 Set(업체 수만큼 다시 조회하지
@@ -19652,6 +19663,11 @@ window.SHIN2_CRM_APP_INIT = function(){
   }
   function mouBadgeHtml(co, progress, caseByCaseIds){
     const key = deriveMouBadgeState(co, progress, caseByCaseIds);
+    // §보류·미진행(2026-11) — MOU 체결·해지 전인 업체는 단계 배지(질문서/1차/2차) 자리에 '미진행' 또는 '보류'를 보여 준다.
+    if(key !== 'mou' && key !== 'terminated'){
+      const st = dealStatusBadgeDef(co);
+      if(st) return `<span class="co-stage-badge ${st.cls}" title="${esc(st.title)}">${esc(st.label)}</span>`;
+    }
     const def = key && MOU_BADGE_DEFS[key];
     if(!def) return '';
     const html = `<span class="co-stage-badge ${def.cls}" title="${esc(def.title)}">${esc(def.label)}</span>`;
@@ -19676,11 +19692,20 @@ window.SHIN2_CRM_APP_INIT = function(){
     if(!D.isAgreementTerminated(co)) return '';
     return `<span class="agreement-status-badge is-terminated" title="협약 종료됨">협약 종료</span>`;
   }
-  // §협약 보류(2026-11) — 목록 업체명 옆 '보류' 표시(마우스를 올리면 몇 차 미팅 후·날짜·사유)
-  function dealHoldBadgeHtml(co){
+  // §보류·미진행(2026-11) — 미진행이 보류보다 우선(미진행으로 정하면 보류는 함께 풀린다). 마우스를 올리면 몇 차 미팅 후·날짜·사유.
+  function dealStatusBadgeDef(co){
+    if(!co || D.isAgreementTerminated(co)) return null;
+    const d = getDealDeclined(co);
+    if(d) return { label:'미진행', cls:'is-declined', title: dealDeclinedSummaryText(d) };
     const h = getDealHold(co);
-    if(!h || D.isAgreementTerminated(co)) return '';
-    return `<span class="agreement-status-badge is-hold" title="${esc(dealHoldSummaryText(h))}">보류</span>`;
+    if(h) return { label:'보류', cls:'is-hold', title: dealHoldSummaryText(h) };
+    return null;
+  }
+  // MOU 진행상황 표 업체명 옆 표시(그 표에는 단계 배지가 없어서 따로 붙인다)
+  function dealHoldBadgeHtml(co){
+    const st = dealStatusBadgeDef(co);
+    if(!st) return '';
+    return `<span class="agreement-status-badge ${st.cls}" title="${esc(st.title)}">${esc(st.label)}</span>`;
   }
   // §협약 종료 탭 보완 라운드(신규) — 지역/과거 MOU 체결일/협약 종료일/종료 사유/최근
   // 활동/고객카드 보기/종료 취소(§요청 최소 표시 항목). .co-row 자체(고정 grid-template-columns)는
@@ -21509,7 +21534,7 @@ window.SHIN2_CRM_APP_INIT = function(){
   // 판정 조건은 완전히 동일해야 하므로 새 로직을 만들지 않고 matchesFilter 안에서
   // key==='nonPartnerRevenue' 분기를 그대로 재호출(아래)한다.
   const FILTER_DEFS = [
-    ['all','전체'], ['agreementInProgress','협약 진행'], ['mouDone','MOU체결'], ['newMou','신규'], ['newPartner','신규 협약사'], ['agreementTerminated','협약 종료'], ['subsidiary','이전 상호'], ['trendUp','최근흐름 상승세'], ['nonPartnerRevenue','실적있음·MOU미체결'], ['revenueNoMou','실적 있음 · MOU 미체결']
+    ['all','전체'], ['agreementInProgress','협약 진행'], ['dealHold','보류'], ['dealDeclined','미진행'], ['mouDone','MOU체결'], ['newMou','신규'], ['newPartner','신규 협약사'], ['agreementTerminated','협약 종료'], ['subsidiary','이전 상호'], ['trendUp','최근흐름 상승세'], ['nonPartnerRevenue','실적있음·MOU미체결'], ['revenueNoMou','실적 있음 · MOU 미체결']
   ];
   // §업체 삭제(휴지통) 라운드(신규) — "삭제된 업체" 탭은 위 FILTER_DEFS와 별도로 둔다.
   // 이유: filterCounts[key]는 companies(=D.loadActiveCompanies(), 삭제된 업체가 이미
@@ -21549,12 +21574,24 @@ window.SHIN2_CRM_APP_INIT = function(){
     const d = h.at ? fmtDate(h.at) : '';
     return `${dealHoldAfterLabel(h)} 보류${d ? ' · ' + d : ''}${h.reason ? ' · ' + h.reason : ''}`;
   }
+  /* §미진행(2026-11) — 1·2차 미팅 뒤 체결하지 않기로 한 업체. 보류와 같은 모양으로 co.dealDeclined 에 둔다
+     ({ active, afterStage, reason, at, by }, 이력은 같은 co.dealHoldLog). 목록 단계 배지가 '미진행'으로 바뀌고,
+     협약 진행·의지박약 자동 분류·MOU 진행상황 후속 업무에서 빠진다. 되돌리면 active:false. */
+  function getDealDeclined(co){
+    const d = co && co.dealDeclined;
+    return (d && d.active) ? d : null;
+  }
+  function dealDeclinedSummaryText(d){
+    if(!d) return '';
+    const at = d.at ? fmtDate(d.at) : '';
+    return `${dealHoldAfterLabel(d)} 미진행(체결 안 함)${at ? ' · ' + at : ''}${d.reason ? ' · ' + d.reason : ''}`;
+  }
   function isSyncHurdleCompany(co){
     const nm = resolveNewMouForCompany(co);
     return !!(nm && nm.hurdle);
   }
   function isHurdleCompany(co){
-    return isSyncHurdleCompany(co) || !!getDealHold(co);
+    return isSyncHurdleCompany(co) || (!!getDealHold(co) && !getDealDeclined(co));
   }
   // §협력업체 리스트 등재 기준 재정정 라운드 — 사용자 재정정: "날짜가 없어도 체결리스트에
   // 있으면 협력사". 실제 사례로 확인됨: partner-dashboard 내부용 리스트(전체 289개)에는
@@ -21616,8 +21653,11 @@ window.SHIN2_CRM_APP_INIT = function(){
     if(key === 'agreementInProgress'){
       // §협약 보류(2026-11) — 카드에서 보류한 업체는 '협약 진행'에 그대로 두고(업체명 옆 '보류' 표시) 목록에서 사라지지 않게 한다.
       // 예전부터 빠지던 partner-dashboard 동기화 허들(newMou.hurdle)만 지금처럼 뺀다.
-      return progress.hasAny && !isConfirmedPartner(co, progress) && !isSyncHurdleCompany(co) && !D.isAgreementTerminated(co);
+      return progress.hasAny && !isConfirmedPartner(co, progress) && !isSyncHurdleCompany(co) && !D.isAgreementTerminated(co) && !getDealDeclined(co);
     }
+    // §보류·미진행(2026-11) — 상태 드롭다운의 '보류' / '미진행' 항목
+    if(key === 'dealHold') return !!getDealHold(co) && !getDealDeclined(co) && !D.isAgreementTerminated(co);
+    if(key === 'dealDeclined') return !!getDealDeclined(co) && !D.isAgreementTerminated(co);
     if(key === 'hurdle') return progress.hasAny && isHurdleCompany(co);
     // 매출은 발생했지만 아직 확정 협력사가 아닌 시공사. 매출 0원/자료 없음은 제외한다.
     if(key === 'nonPartnerRevenue'){
@@ -21792,6 +21832,8 @@ window.SHIN2_CRM_APP_INIT = function(){
   function computeWillpowerList(enrichedRows){
     const list = [], reminders = [], candidates = [];
     enrichedRows.forEach(r=>{
+      // §보류·미진행(2026-11) — 카드에서 직접 보류·미진행으로 정한 업체는 자동 의지박약·리마인드 대상에서 뺀다.
+      if(getDealHold(r.co) || getDealDeclined(r.co)) return;
       const base = computeWillpowerBase(r.co, r.progress);
       if(!base) return;
       if(base.rule === 2){
@@ -22057,6 +22099,8 @@ window.SHIN2_CRM_APP_INIT = function(){
     // §요청 6 — 파일 안에 이미 있는 두 표기("실적있음·MOU미체결"/"실적 있음 · MOU 미체결")
     // 중 pill처럼 짧은 자리에 맞는 표기를 그대로 가져다 쓴다(새 라벨 창작 아님).
     ['revenueNoMou','실적있음·MOU미체결'],
+    ['dealHold','보류'],
+    ['dealDeclined','미진행'],
     ['willpower','의지박약'],
     ['nonPartnerRevenue','건바이건'],
   ];
@@ -24570,7 +24614,7 @@ window.SHIN2_CRM_APP_INIT = function(){
                  업체명 앞의 협력사 표시(partnerGlyphHtml, co.partnerStatus 기반 ○/×)는
                  이제 같은 사실을 "MOU" 뱃지가 말해 주므로 이 목록에서만 뺐다 —
                  함수와 co.partnerStatus 값은 그대로다. -->
-            <span class="co-name-badges">${mouBadgeHtml(co, r.progress, caseByCaseConvertedIds)}<span class="co-name-text">${esc(co.name)}</span>${agreementTerminatedBadgeHtml(co)}${dealHoldBadgeHtml(co)}</span>
+            <span class="co-name-badges">${mouBadgeHtml(co, r.progress, caseByCaseConvertedIds)}<span class="co-name-text">${esc(co.name)}</span>${agreementTerminatedBadgeHtml(co)}</span>
           </div>
           <!-- §업체명 줄 정리 라운드(신규) — 업체명 아래 B2B 코드(co.code) 줄을 이 목록
                에서만 뺐다. co.code 값·genCompanyCode()·B2B 카운터·엑셀 반영 로직은 전혀
@@ -27271,6 +27315,7 @@ window.SHIN2_CRM_APP_INIT = function(){
           </div>
           ${isCore ? `<span class="cdash2-tag is-core">핵심 고객</span>` : ''}
           ${isHurdle ? `<span class="cdash2-tag is-hurdle" title="${esc(getDealHold(co) ? dealHoldSummaryText(getDealHold(co)) : '진행 중인 신규 협약(MOU) 건이 허들·보류 상태입니다')}">허들·보류</span>` : ''}
+          ${getDealDeclined(co) && !D.isAgreementTerminated(co) ? `<span class="cdash2-tag is-declined" title="${esc(dealDeclinedSummaryText(getDealDeclined(co)))}">미진행</span>` : ''}
         </div>
         <button type="button" class="cdash2-header-close" id="chartCloseBtn" title="닫기" aria-label="닫기">&times;</button>
       </div>
@@ -27943,7 +27988,8 @@ window.SHIN2_CRM_APP_INIT = function(){
         </div>
         ${groups.length ? `<div class="cdet-steps">${stepsHtml}</div>` : '<div class="chart-empty">진행 단계 정보가 없습니다</div>'}
         ${terminated ? `<div class="cdet-steps-note" style="color:#B3261E;">협약 종료 · ${esc(fmtDate(co.agreementEndedAt))}${co.agreementEndReason ? ' · ' + esc(co.agreementEndReason) : ''}</div>` : ''}
-        ${!terminated && getDealHold(co) ? `<div class="cdet-steps-note is-hold">${esc(dealHoldSummaryText(getDealHold(co)))}</div>` : ''}
+        ${!terminated && getDealDeclined(co) ? `<div class="cdet-steps-note is-declined">${esc(dealDeclinedSummaryText(getDealDeclined(co)))}</div>`
+          : (!terminated && getDealHold(co) ? `<div class="cdet-steps-note is-hold">${esc(dealHoldSummaryText(getDealHold(co)))}</div>` : '')}
       </div>
     `;
     const go = document.getElementById('cdashStepsGoBtn');
@@ -31117,6 +31163,12 @@ window.SHIN2_CRM_APP_INIT = function(){
     if(D.isAgreementTerminated(co)) return null;
     // §협약 보류(2026-11) — 보류한 업체는 'MOU 진행 N일 지연' 같은 후속 업무로 띄우지 않고 '보류 중'으로만 보인다
     // (목록에서 빠지지 않게 기존 '현재 업무 없음'(type 'none') 모양을 그대로 쓴다).
+    const dealDeclined = getDealDeclined(co);
+    if(dealDeclined) return {
+      co, type: 'none', category: 'none',
+      currentStateLabel: '미진행', reasonText: dealDeclinedSummaryText(dealDeclined),
+      days: null, actionLabel: '미진행(체결 안 함)', isDelayed: false, noTask: true, dealDeclined: true
+    };
     const dealHold = getDealHold(co);
     if(dealHold) return {
       co, type: 'none', category: 'none',
@@ -37585,33 +37637,59 @@ window.SHIN2_CRM_APP_INIT = function(){
     return null;
   }
   function agrDealHoldHtml(co){
+    const d = getDealDeclined(co);
+    if(d) return `
+      <div class="agr-hold-box is-on is-declined">
+        <span class="agr-hold-badge">미진행</span>
+        <span class="agr-hold-text">${esc(dealHoldAfterLabel(d))} 체결 안 함 · ${esc(d.at ? fmtDate(d.at) : '')} — ${esc(d.reason || '사유 미기재')}</span>
+        <button type="button" class="co-text-action" data-agr-hold="undecline">미진행 취소</button>
+        <span class="cdash-cloud-save-status" data-agr-hold-status></span>
+      </div>`;
     const h = getDealHold(co);
+    const stage = h ? (h.afterStage === 'm2' ? 'm2' : 'm1') : dealHoldEligibleStage(co);
+    if(!stage) return '';
+    const form = `
+        <div class="agr-hold-form" data-agr-hold-form data-after="${stage}" data-mode="hold" hidden>
+          <input type="text" class="agr-hold-input" maxlength="${DEAL_HOLD_REASON_MAX}" placeholder="보류 사유 (예: 예산 확정 대기, 내년 재검토)" aria-label="사유" />
+          <button type="button" class="co-text-action primary" data-agr-hold="save">보류 저장</button>
+          <button type="button" class="co-text-action" data-agr-hold="cancel">취소</button>
+        </div>`;
     if(h) return `
       <div class="agr-hold-box is-on">
         <span class="agr-hold-badge">보류</span>
         <span class="agr-hold-text">${esc(dealHoldAfterLabel(h))} · ${esc(h.at ? fmtDate(h.at) : '')} — ${esc(h.reason || '사유 미기재')}</span>
         <button type="button" class="co-text-action" data-agr-hold="release">보류 해제</button>
+        <button type="button" class="co-text-action" data-agr-hold="open-decline" title="체결하지 않기로 한 경우">미진행으로</button>
+        ${form}
         <span class="cdash-cloud-save-status" data-agr-hold-status></span>
       </div>`;
-    const stage = dealHoldEligibleStage(co);
-    if(!stage) return '';
+    const no = stage === 'm2' ? '2차' : '1차';
     return `
       <div class="agr-hold-box">
-        <button type="button" class="agr-hold-btn" data-agr-hold="open" title="${stage === 'm2' ? '2차' : '1차'} 미팅 뒤 다음 단계가 멈춘 경우">보류</button>
-        <div class="agr-hold-form" data-agr-hold-form data-after="${stage}" hidden>
-          <input type="text" class="agr-hold-input" maxlength="${DEAL_HOLD_REASON_MAX}" placeholder="보류 사유 (예: 예산 확정 대기, 내년 재검토)" aria-label="보류 사유" />
-          <button type="button" class="co-text-action primary" data-agr-hold="save">보류 저장</button>
-          <button type="button" class="co-text-action" data-agr-hold="cancel">취소</button>
-          <span class="cdash-cloud-save-status" data-agr-hold-status></span>
-        </div>
+        <button type="button" class="agr-hold-btn" data-agr-hold="open-hold" title="${no} 미팅 뒤 다음 단계가 멈춘 경우">보류</button>
+        <button type="button" class="agr-hold-btn is-decline" data-agr-hold="open-decline" title="${no} 미팅 뒤 체결하지 않기로 한 경우">미진행</button>
+        ${form}
+        <span class="cdash-cloud-save-status" data-agr-hold-status></span>
       </div>`;
   }
-  async function saveDealHold(co, hold, action){
+  // kind: 'hold' 보류 저장 / 'release' 보류 해제 / 'decline' 미진행 저장(보류 중이면 보류도 함께 해제) / 'undecline' 미진행 취소
+  async function saveDealHold(co, kind, opts){
     const cur = D.findCompany(co.id) || co;
     const log = Array.isArray(cur.dealHoldLog) ? cur.dealHoldLog.slice() : [];
     const at = new Date().toISOString(), by = crmCurrentUserLabel();
-    log.push({ action, afterStage: hold.afterStage || null, reason: hold.reason || '', at, by });
-    const patch = { dealHold: Object.assign({}, hold, action === 'hold' ? { at, by } : { releasedAt: at, releasedBy: by }), dealHoldLog: log };
+    const afterStage = (opts && opts.afterStage) || null, reason = (opts && opts.reason) || '';
+    const patch = {};
+    const curHold = getDealHold(cur), curDecl = getDealDeclined(cur);
+    if(kind === 'hold') patch.dealHold = { active:true, afterStage, reason, at, by };
+    if(kind === 'release' && curHold) patch.dealHold = Object.assign({}, curHold, { active:false, releasedAt:at, releasedBy:by });
+    if(kind === 'decline'){
+      patch.dealDeclined = { active:true, afterStage, reason, at, by };
+      if(curHold) patch.dealHold = Object.assign({}, curHold, { active:false, releasedAt:at, releasedBy:by });
+    }
+    if(kind === 'undecline' && curDecl) patch.dealDeclined = Object.assign({}, curDecl, { active:false, releasedAt:at, releasedBy:by });
+    if(!Object.keys(patch).length) return { ok:true };
+    log.push({ action: kind, afterStage: afterStage || (curHold && curHold.afterStage) || (curDecl && curDecl.afterStage) || null, reason, at, by });
+    patch.dealHoldLog = log;
     const { rec, list } = D.updateCompanyReturningAll(co.id, patch);
     if(!rec) return { ok:false, err:{ message:'업체를 찾지 못했습니다.' } };
     return confirmCloudSave('companies', list);
@@ -37619,38 +37697,49 @@ window.SHIN2_CRM_APP_INIT = function(){
   function bindAgrDealHold(body, co){
     const box = body.querySelector('.agr-hold-box');
     if(!box) return;
+    const form = box.querySelector('[data-agr-hold-form]');
     const status = ()=> box.querySelector('[data-agr-hold-status]');
-    const after = async (r)=>{
+    const done = (r)=>{
       showCloudSaveStatus(status(), r.ok, r.err);
       if(!r.ok) return;
       renderAgreementPopupBody(co.id);
       try{ renderList(); }catch(err){}
       try{ refreshChart(); }catch(err){}
     };
+    const openForm = (mode)=>{
+      if(!form) return;
+      form.hidden = false;
+      form.setAttribute('data-mode', mode);
+      const input = form.querySelector('input');
+      const save = form.querySelector('[data-agr-hold="save"]');
+      input.placeholder = mode === 'decline' ? '미진행 사유 (예: 단가 부담, 자체 공법 사용)' : '보류 사유 (예: 예산 확정 대기, 내년 재검토)';
+      save.textContent = mode === 'decline' ? '미진행 저장' : '보류 저장';
+      save.classList.toggle('danger', mode === 'decline');
+      box.querySelectorAll('[data-agr-hold^="open-"]').forEach(b=> b.hidden = true);
+      input.focus();
+    };
     box.querySelectorAll('[data-agr-hold]').forEach(btn=> btn.addEventListener('click', async ()=>{
       const act = btn.getAttribute('data-agr-hold');
-      const form = box.querySelector('[data-agr-hold-form]');
-      if(act === 'open'){
-        if(!window.crmAdminOk('협약 보류')) return;
-        form.hidden = false; btn.hidden = true;
-        const input = form.querySelector('input'); if(input) input.focus();
+      if(act === 'open-hold' || act === 'open-decline'){
+        if(!window.crmAdminOk(act === 'open-hold' ? '협약 보류' : '미진행 처리')) return;
+        openForm(act === 'open-hold' ? 'hold' : 'decline');
       } else if(act === 'cancel'){
-        form.hidden = true; const openBtn = box.querySelector('[data-agr-hold="open"]'); if(openBtn) openBtn.hidden = false;
+        form.hidden = true;
+        box.querySelectorAll('[data-agr-hold^="open-"]').forEach(b=> b.hidden = false);
       } else if(act === 'save'){
-        if(!window.crmAdminOk('협약 보류')) return;
+        const mode = form.getAttribute('data-mode') === 'decline' ? 'decline' : 'hold';
+        if(!window.crmAdminOk(mode === 'decline' ? '미진행 처리' : '협약 보류')) return;
         const reason = String(form.querySelector('input').value || '').trim().slice(0, DEAL_HOLD_REASON_MAX);
         btn.disabled = true;
-        const r = await saveDealHold(co, { active:true, afterStage: form.getAttribute('data-after') === 'm2' ? 'm2' : 'm1', reason }, 'hold');
+        const r = await saveDealHold(co, mode, { afterStage: form.getAttribute('data-after') === 'm2' ? 'm2' : 'm1', reason });
         btn.disabled = false;
-        after(r);
-      } else if(act === 'release'){
-        if(!window.crmAdminOk('협약 보류 해제')) return;
-        const h = getDealHold(D.findCompany(co.id) || co);
-        if(!h) return;
+        done(r);
+      } else if(act === 'release' || act === 'undecline'){
+        if(!window.crmAdminOk(act === 'release' ? '협약 보류 해제' : '미진행 취소')) return;
         btn.disabled = true;
-        const r = await saveDealHold(co, Object.assign({}, h, { active:false }), 'release');
+        const r = await saveDealHold(co, act);
         btn.disabled = false;
-        after(r);
+        done(r);
       }
     }));
     const input = box.querySelector('.agr-hold-input');

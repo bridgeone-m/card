@@ -6,7 +6,8 @@ const code=slice('  function mouBadgeHtml(','  // 협약 종료 배지');
 function run(state, mou, today){
   const ctx={Date,esc:s=>String(s),MOU_BADGE_DEFS:{mou:{label:'MOU',cls:'is-mou',title:'t'},m1:{label:'1차',cls:'is-m1',title:'t'}},
     deriveMouBadgeState:()=>state,resolveEffectiveMouDate:()=>mou&&{ts:new Date(...mou).getTime()},
-    getSeoulTodayDateOnly:()=>new Date(...today).getTime()};
+    getSeoulTodayDateOnly:()=>new Date(...today).getTime(),
+    dealStatusBadgeDef:()=>null};   // 보류·미진행 아님(그 표시는 deal-hold.test.cjs 에서 따로 시험)
   vm.runInNewContext(code+';this.f=mouBadgeHtml;',ctx);
   return ctx.f({},null,null);
 }
