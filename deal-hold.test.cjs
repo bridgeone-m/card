@@ -51,7 +51,22 @@ test('목록 단계 배지·필터·의지박약 연결',()=>{
     "none:       { label:'시작 전',",   // 진행 이력 없음 배지는 '미진행'과 다른 단어
   ]) assert.ok(html.includes(s), s);
 });
-test('질문서 회신 후 보류(afterStage q) 문구',()=>{
+test('1차 미팅 전 보류(afterStage q) 문구 — 2026-11-17 1차 보류',()=>{
   const at=new Date(2026,10,16,11).toISOString();
-  assert.equal(A.dealHoldSummaryText({afterStage:'q',at,reason:'실적미달 판단'}),'질문서 회신 후 보류 · 2026.11.16 · 실적미달 판단');
+  assert.equal(A.dealHoldSummaryText({afterStage:'q',at,reason:'실적미달 판단'}),'1차 미팅 전 보류 · 2026.11.16 · 실적미달 판단');
+});
+test('1차 보류: 목록 배지 이름·사유 표시, 1차 미팅 안내 메일 뒤 보류 버튼, 저장 단계 q',()=>{
+  for(const t of [
+    "label: h.afterStage === 'q' ? '1차 보류' : '보류'",
+    "reason: h.reason || ''",
+    'class="deal-hold-reason"',
+    "l.mailType === 'firstMeeting'",
+    "if((byKey.q && byKey.q.state === 'done') || m1Mail) return 'q';",
+    "({ m2:'m2', q:'q' })[form.getAttribute('data-after')] || 'm1'",
+  ]) assert.ok(html.includes(t), t);
+  const NL=String.fromCharCode(10), i0=html.indexOf('function dealReasonShort');
+  const r=html.slice(i0, html.indexOf(NL, i0));
+  const ctx={String}; vm.runInNewContext(r+NL+'this.f=dealReasonShort;',ctx);
+  assert.equal(ctx.f('제가 11월,12월 업무일정이 많아서 지금 일정을 말씀드리기가 곤란'),'제가 11월,12월 업무일정이 많…');
+  assert.equal(ctx.f(' 짧은 사유 '),'짧은 사유');
 });
