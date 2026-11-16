@@ -70,3 +70,6 @@ test('1차 보류: 목록 배지 이름·사유 표시, 1차 미팅 안내 메�
   assert.equal(ctx.f('제가 11월,12월 업무일정이 많아서 지금 일정을 말씀드리기가 곤란'),'제가 11월,12월 업무일정이 많…');
   assert.equal(ctx.f(' 짧은 사유 '),'짧은 사유');
 });
+test('MOU 진행상황 보류·미진행 탭 — 기존 표시(dealHold/dealDeclined)로만 거름, 숫자도 같은 기준', ()=>{
+  for(const t of ["['dealHold','보류'], ['dealDeclined','미진행']", "if(workQueueFilter === 'dealHold') return !!it.dealHold;", "if(workQueueFilter === 'dealDeclined') return !!it.dealDeclined;", "key === 'dealHold' || key === 'dealDeclined' ? list.filter(it=> !!it[key]).length"]) assert.ok(html.includes(t), t);
+});

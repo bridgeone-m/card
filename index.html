@@ -31893,7 +31893,10 @@ window.SHIN2_CRM_APP_INIT = function(){
     ['m2NoReply','2차 회신 지연'],
     // §미팅 누락 확인 라운드 — classifyMeetingMiss 판정. 누락(예정일 지남)·등록 지연과,
     // 누락으로 세지 않는 일정 확인(조율 중·지사 진행·날짜 확인)을 따로 본다. 숫자는 업체 수.
-    ['meetingMiss','미팅 누락'], ['meetingCheck','일정 확인']
+    ['meetingMiss','미팅 누락'], ['meetingCheck','일정 확인'],
+    // §보류 탭(2026-11-17 사용자) — 보류(1차 보류 포함)·미진행 업체만 모아 본다. buildWorkQueueItem 이 이미 붙인
+    // dealHold/dealDeclined 표시만 쓰고 새 판정을 만들지 않는다. 사유는 업체명 옆 배지(dealHoldBadgeHtml)에 보인다.
+    ['dealHold','보류'], ['dealDeclined','미진행']
   ];
   let workQueueFilter = 'all';
   // §MOU 진행상황 개편 라운드(신규) — 사용자 확정 지시: "서류현황 탭은 없애줘"에 따라
@@ -32062,6 +32065,8 @@ window.SHIN2_CRM_APP_INIT = function(){
       if(workQueueFilter === 'm2NoReply') return m2NoReplyIds.has(String(it.co.id));
       if(workQueueFilter === 'meetingMiss') return hasMiss(it, true);
       if(workQueueFilter === 'meetingCheck') return hasMiss(it, false);
+      if(workQueueFilter === 'dealHold') return !!it.dealHold;
+      if(workQueueFilter === 'dealDeclined') return !!it.dealDeclined;
       if(workQueueFilter === 'm1') return it.type === 'm1' || it.type === 'm1Scheduled';
       if(workQueueFilter === 'm2') return it.type === 'm2' || it.type === 'm2Scheduled';
       return it.category === workQueueFilter || it.type === workQueueFilter;
@@ -32122,6 +32127,7 @@ window.SHIN2_CRM_APP_INIT = function(){
           const n = key === 'qWaiting' ? qWaitingRows.length : key === 'm2NoReply'
             ? (()=>{ const s = secondMeetingNoReplyIdSet(); return list.filter(it=> s.has(String(it.co.id))).length; })()
             : key === 'meetingMiss' || key === 'meetingCheck' ? list.filter(it=> hasMiss(it, key === 'meetingMiss')).length
+            : key === 'dealHold' || key === 'dealDeclined' ? list.filter(it=> !!it[key]).length
             : (counts[key] || 0);
           return `<button type="button" class="list-filter-chip${workQueueFilter===key?' is-active':''}" data-workq-filter="${esc(key)}">${esc(label)} ${esc(n)}</button>`;
         }).join('')}
