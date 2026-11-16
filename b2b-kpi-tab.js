@@ -235,6 +235,24 @@
     ['buildProgressStages', 'classifyMeetingMiss', 'resolveNewMouForCompany', 'getStageCorrections', 'parsePartnerDateLabel'].forEach(function(k){ if(typeof L[k] !== 'function') throw new Error('카드 함수 없음: ' + k); });
     return Mt.evaluateMeetings(D.loadCompanies(), L, Date.now(), { start: new Date(2026, 7, 21).getTime(), bulkEnd: new Date(2026, 7, 26).getTime() });
   }
+  // §개인 KPI 자동 실측 — 지표 id → 카드 기록 계산(b2b-kpi-personal.js). 업무트래커 정의(2026-11-16 저장)와 같은 기준.
+  var PERSONAL_DEFS = { LI02: ['reContact', '카드 실측(질문서 미회신 재안내 · 카드 도입 뒤 누적)'], LI03: ['firstAction', '카드 실측(신규 등록 3일 안 첫 조치 · 카드 도입 뒤 누적)'], LI04: ['infoComplete', '카드 실측(MOU 체결사 핵심정보 완비 · 지금 상태)'] };
+  function computePersonal(){
+    var P = window.B2BKpiPersonal, D = window.SHIN2_CRM_DATA, L = window.SHIN2_MEETING_LOGIC;
+    if(!P || !D || !L || typeof L.buildProgressStages !== 'function') throw new Error('개인 KPI 계산 파일을 찾지 못함');
+    var cos = D.loadCompanies(), idx = typeof D.buildActivitiesIndex === 'function' ? D.buildActivitiesIndex() : null;
+    var stageOf = function(co, key){ try { var s = L.buildProgressStages(co).stages.filter(function(x){ return x.key === key; })[0]; return s || null; } catch(e){ return null; } };
+    var ctx = { now: Date.now(), bulkEnd: L.CARD_BULK_END,
+      replyTs: function(co){ var s = stageOf(co, 'q'); return s && s.state === 'done' && typeof s.ts === 'number' ? s.ts : null; },
+      mouDone: function(co){ var s = stageOf(co, 'mou'); return !!(s && s.state === 'done'); } };
+    var actsOf = function(id){ return idx ? (idx.get(String(id)) || []) : []; };
+    var out = {};
+    Object.keys(PERSONAL_DEFS).forEach(function(id){
+      var fn = PERSONAL_DEFS[id][0], r = fn === 'infoComplete' ? P.infoComplete(cos, ctx) : P[fn](cos, actsOf, ctx), t = r.total || r;
+      out[id] = { num: t.num, den: t.den, state: t.den > 0 ? 'ok' : 'empty', source: PERSONAL_DEFS[id][1] };
+    });
+    return out;
+  }
   function render(){
     var v = el(); if(!v) return;
     var model = null;
@@ -244,7 +262,11 @@
       if(st.ui.month === nowMonth()){
         try { meeting = computeMeeting(); }
         catch(e){ meetingError = String(e && e.message || e); }
-        if(meeting){ var p = window.B2BKpiMeeting.pooled(meeting.summary.all); shape = Object.assign({}, st.shape); shape.__cardNumeric = {}; shape.__cardNumeric[MEETING_DEF] = { num: p.num, den: p.den, state: p.state, source: '카드 실측(1·2차 미팅)' }; }
+        shape = Object.assign({}, st.shape); shape.__cardNumeric = {};
+        if(meeting){ var p = window.B2BKpiMeeting.pooled(meeting.summary.all); shape.__cardNumeric[MEETING_DEF] = { num: p.num, den: p.den, state: p.state, source: '카드 실측(1·2차 미팅)' }; }
+        // §개인 KPI 자동 실측(2026-11-16) — LI02·LI03·LI04 도 카드 기록으로 바로 계산(카드 도입 뒤 누적, LI04 는 지금 상태)
+        try { var pn = computePersonal(); Object.keys(pn).forEach(function(id){ shape.__cardNumeric[id] = pn[id]; }); }
+        catch(e){ /* 계산 실패 시 업무트래커에 저장된 월별 값으로 보여 준다 */ }
       }
       model = window.B2BKpiCalc.buildModel(shape, st.ui.month);
       model.meeting = meeting; model.meetingError = meetingError;
