@@ -80,6 +80,7 @@ function signatureField(box, size) {
   return { type: 'SIGNATURE', required: true, signatureTypes: ['SIGN', 'STAMP'], position: r.position, size: r.size };
 }
 
+// companySigner 가 없으면(null) 을만 서명자로 넣는다 — 우리 측 도장은 PDF 에 이미 찍혀 있어 을 서명이 끝나면 문서가 완료된다.
 function buildCreateBody({ title, pdfBytes, counterparty, companySigner, map, metadata }) {
   if (pdfBytes.length > MAX_PDF_BYTES) throw new ModusignError('definite', 0, 'PDF_TOO_LARGE');
   return {
@@ -91,11 +92,11 @@ function buildCreateBody({ title, pdfBytes, counterparty, companySigner, map, me
         signingMethod: { type: 'EMAIL', value: counterparty.email },
         fields: [signatureField(map.signature.counterparty, map.pageSize)],
       },
-      {
+      ...(companySigner ? [{
         name: companySigner.name, role: '갑', signingOrder: 2, locale: 'ko',
         signingMethod: { type: 'EMAIL', value: companySigner.email },
         fields: [signatureField(map.signature.company, map.pageSize)],
-      },
+      }] : []),
     ],
     metadatas: Object.entries(metadata).map(([key, value]) => ({ key, value: String(value).slice(0, 80) })),
   };

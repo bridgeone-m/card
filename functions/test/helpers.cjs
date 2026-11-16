@@ -95,7 +95,7 @@ async function makeEnv(opts = {}) {
   const store = opts.wrapStore ? opts.wrapStore(memory) : memory;
   const config = Object.assign({
     sharedUid: SHARED_UID, sendEnabled: true, allowTestAssets: true, realSealApproved: false,
-    modusignConfigured: true, modusignIsReal: false, companySigner: { name: '넷폼담당', email: 'signer@netform.example' }, webhookToken: 'hook-secret',
+    modusignConfigured: true, modusignIsReal: false, companySigner: { name: '넷폼담당', email: 'signer@netform.example' }, companySigns: true, webhookToken: 'hook-secret',
   }, opts.config);
   const modusign = createModusign({ baseUrl: mock.baseUrl, email: 'api@netform.example', apiKey: 'SECRET-API-KEY', fetchImpl: mock.fetchImpl });
   const service = createService({ store, blobs, modusign, config, now, fontBytes });

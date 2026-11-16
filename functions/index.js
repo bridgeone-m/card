@@ -20,6 +20,9 @@ const CONTRACT_SEND_ENABLED = defineString('CONTRACT_SEND_ENABLED', { default: '
 const CONTRACT_REAL_SEAL_APPROVED = defineString('CONTRACT_REAL_SEAL_APPROVED', { default: 'false' });
 const COMPANY_SIGNER_NAME = defineString('COMPANY_SIGNER_NAME', { default: '' });
 const COMPANY_SIGNER_EMAIL = defineString('COMPANY_SIGNER_EMAIL', { default: '' });
+// 우리 측(갑)도 모두사인에서 서명할지. 기본 false = 을만 서명(우리 도장은 PDF 에 미리 찍힘, 2026-11-16 사용자 결정).
+// 다시 갑도 서명하게 하려면 .env 에서 true 로 바꾸고 Functions 재배포.
+const CONTRACT_COMPANY_SIGNS = defineString('CONTRACT_COMPANY_SIGNS', { default: 'false' });
 // 우리 측 시험 발송. 실제 발송 스위치와 별개이며, 수신자는 쉼표로 구분한 우리 측 이메일만 허용한다.
 const CONTRACT_TEST_SEND_ENABLED = defineString('CONTRACT_TEST_SEND_ENABLED', { default: 'false' });
 const CONTRACT_TEST_RECIPIENTS = defineString('CONTRACT_TEST_RECIPIENTS', { default: '' });
@@ -46,6 +49,7 @@ function build() {
     modusignConfigured: !!(apiKey && email),
     modusignIsReal: true,
     companySigner: { name: COMPANY_SIGNER_NAME.value(), email: COMPANY_SIGNER_EMAIL.value() },
+    companySigns: CONTRACT_COMPANY_SIGNS.value() === 'true',
     webhookToken: MODUSIGN_WEBHOOK_TOKEN.value(),
   };
   const service = createService({

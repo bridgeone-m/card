@@ -100,7 +100,7 @@ function createService({ store, blobs, modusign, config, now, fontBytes, serverT
     }
     if (!config.modusignConfigured) out.push({ code: 'MODUSIGN_NOT_CONFIGURED', message: '모두사인 API 설정이 없습니다.' });
     const signer = config.companySigner || {};
-    if (!signer.name || !validEmail(signer.email)) out.push({ code: 'SIGNER_NOT_CONFIGURED', message: '우리 측 서명 담당자가 지정되지 않았습니다.' });
+    if (config.companySigns === true && (!signer.name || !validEmail(signer.email))) out.push({ code: 'SIGNER_NOT_CONFIGURED', message: '우리 측 서명 담당자가 지정되지 않았습니다.' });
     const reg = await templates.registry();
     for (const type of DOC_TYPES) {
       const entry = reg[type];
@@ -202,7 +202,7 @@ function createService({ store, blobs, modusign, config, now, fontBytes, serverT
       docs[type] = {
         type, label: DOC_LABELS[type], title: d.title, sha256: d.sha256, pageCount: d.pageCount, size: d.size,
         templateVersion: d.templateVersion, templateStatus: d.templateStatus,
-        signaturePositions: { counterparty: pos.counterparty || null, company: pos.company || null, pageSize: d.map.pageSize || null },
+        signaturePositions: { counterparty: pos.counterparty || null, company: config.companySigns === true ? (pos.company || null) : null, pageSize: d.map.pageSize || null },
       };
     }
     return { companyId: v.companyId, version: v.version, createdAt: v.createdAt, createdBy: v.createdBy, company: v.company, contractDate: v.contractDate, recipientEmail: v.recipientEmail, sealImage: v.sealImage, test: v.test === true, docs };
@@ -233,6 +233,7 @@ function createService({ store, blobs, modusign, config, now, fontBytes, serverT
     type, delivery: 'pending', sendKey: sha256(`${sendId}:${type}`).slice(0, 40), sha256: ver.docs[type].sha256,
     attempts: [], attemptId: null, modusignDocumentId: null, failure: null, leaseUntil: null, recheckAfter: null,
     modusignStatus: null, counterpartySignedAt: null, companySignedAt: null, allSignedAt: null, abortedAt: null, abortType: null,
+    companySigns: config.companySigns === true,   // 이 문서에 우리 측 서명 칸이 있는지(화면 표시용)
   });
 
   // test 는 시험 경로(/test/send)만 true 로 부른다. 일반 발송 경로로 시험 버전을, 시험 경로로 실제 업체를 보낼 수 없다.
@@ -327,7 +328,7 @@ function createService({ store, blobs, modusign, config, now, fontBytes, serverT
       body = buildCreateBody({
         title: verDoc.title, pdfBytes: bytes,
         counterparty: { name: ver.company.representative, email: ver.recipientEmail },
-        companySigner: config.companySigner, map: verDoc.map,
+        companySigner: config.companySigns === true ? config.companySigner : null, map: verDoc.map,
         metadata: {
           card_send_key: doc.sendKey, card_send_id: sendId, card_company_id: ver.companyId,
           card_doc_type: type, card_pdf_version: ver.version, card_pdf_sha256: doc.sha256,
@@ -537,7 +538,7 @@ function createService({ store, blobs, modusign, config, now, fontBytes, serverT
       counterpartySignedAt: signedAt(counterparty) || d.counterpartySignedAt || null,
       companySignedAt: signedAt(company) || d.companySignedAt || null,
     };
-    if (remote.status === 'COMPLETED') out.allSignedAt = d.allSignedAt || out.companySignedAt || remote.updatedAt || nowIso();
+    if (remote.status === 'COMPLETED') out.allSignedAt = d.allSignedAt || out.companySignedAt || out.counterpartySignedAt || remote.updatedAt || nowIso();
     if (remote.abort) { out.abortedAt = remote.abort.abortedAt || nowIso(); out.abortType = remote.abort.type || null; }
     return out;
   }
@@ -673,7 +674,7 @@ function createService({ store, blobs, modusign, config, now, fontBytes, serverT
       documents[type] = {
         type, label: DOC_LABELS[type], delivery: d.delivery, sha256: d.sha256, modusignDocumentId: d.modusignDocumentId,
         failure: d.failure, attempts: d.attempts, recovered: d.recovered === true, modusignStatus: d.modusignStatus,
-        counterpartySignedAt: d.counterpartySignedAt, companySignedAt: d.companySignedAt, allSignedAt: d.allSignedAt,
+        counterpartySignedAt: d.counterpartySignedAt, companySignedAt: d.companySignedAt, allSignedAt: d.allSignedAt, companySigns: d.companySigns !== false,
         abortedAt: d.abortedAt, abortType: d.abortType, duplicateCandidates: d.duplicateCandidates || [],
         cancellations: d.cancellations || [],
       };

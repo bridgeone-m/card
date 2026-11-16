@@ -120,7 +120,7 @@
       <label class="cesign-field">계약일<input type="date" id="cesignDate" value="${esc(st.form.contractDate)}"></label>
       <label class="cesign-field">수신자 이메일<input type="email" inputmode="email" autocomplete="off" id="cesignEmail" value="${esc(st.form.recipientEmail)}" placeholder="name@example.com"></label>
       ${(st.check.emailCandidates||[]).length>1?`<div class="cesign-chips">${st.check.emailCandidates.map(m=>`<button type="button" class="cesign-chip" data-email="${esc(m)}">${esc(m)}</button>`).join('')}</div>`:''}
-      ${seal.available?`<label class="cesign-check"><input type="checkbox" id="cesignSeal"${st.form.includeSeal?' checked':''}><span>우리 도장 이미지를 지정 위치에 넣기 ${seal.kind==='test'?'<span class="cesign-tag">시험용 이미지</span>':''}<br><small>이미지를 넣는 것일 뿐, 모두사인에서 우리 측 전자서명이 완료되는 것은 아닙니다.</small></span></label>`:'<div class="cesign-note">승인된 우리 도장 이미지가 등록되지 않아 도장 없이 생성합니다.</div>'}
+      ${seal.available?`<label class="cesign-check"><input type="checkbox" id="cesignSeal"${st.form.includeSeal?' checked':''}><span>우리 도장 이미지를 지정 위치에 넣기 ${seal.kind==='test'?'<span class="cesign-tag">시험용 이미지</span>':''}<br><small>이 도장 이미지가 우리 측 날인입니다. 모두사인에서는 상대 업체만 서명합니다.</small></span></label>`:'<div class="cesign-note">승인된 우리 도장 이미지가 등록되지 않아 도장 없이 생성합니다.</div>'}
       ${seal.available&&seal.kind!=='test'?`<div class="cesign-field">담당자 인증 <small style="font-weight:400">(실제 도장 이미지를 넣을 때 필요)</small></div><div id="cesignSender">${senderForm(auth()&&auth().senderEmail())}</div>`:''}`;
     if(q('#cesignSender'))bindSender(renderInfo);
     const see=q('#cesignSeeHistory');if(see)see.onclick=()=>{st.send=active;renderResult();};
@@ -269,8 +269,8 @@
         <dl class="cesign-kv"><dt>수신자 이메일</dt><dd>${esc(v.recipientEmail)}</dd></dl>
         ${TYPES.map(t=>`<dl class="cesign-kv is-wide"><dt>${esc(TYPE_LABEL[t])} · PDF v${v.version}</dt><dd>지문 ${esc(v.docs[t].sha256.slice(0,24))}…</dd></dl>`).join('')}
       </div>
-      <div class="cesign-note"><b>서명 순서(임시 방식)</b><br>상대방 먼저 서명 → 노란 알림 → 우리 담당자가 모두사인에서 직접 날인. 두 계약서는 문서별로 따로 발송되어 상대방은 서명 요청을 2건 받습니다.<br>
-      <b>우리 도장 이미지:</b> ${v.sealImage&&v.sealImage.inserted?`넣음${v.sealImage.kind==='test'?' (시험용)':''}`:'넣지 않음'} · 이미지 삽입은 모두사인 전자서명 완료와 별개입니다.</div>
+      <div class="cesign-note"><b>서명 방식</b><br>우리 도장은 PDF에 미리 찍혀 있고, 모두사인에서는 상대 업체만 서명합니다. 상대방이 서명하면 바로 완료되고 노란 알림이 뜹니다. 두 계약서는 문서별로 따로 발송되어 상대방은 서명 요청을 2건 받습니다.<br>
+      <b>우리 도장 이미지:</b> ${v.sealImage&&v.sealImage.inserted?`넣음${v.sealImage.kind==='test'?' (시험용)':''}`:'넣지 않음'} · 도장을 넣지 않으면 우리 측 날인이 없는 계약서가 됩니다.</div>
       ${testNotice(v)}
       ${blockers.length?`<div class="cesign-note is-warn"><b>지금은 발송할 수 없습니다.</b><ul>${blockers.map(b=>`<li>${esc(b.message)}</li>`).join('')}</ul></div>`:''}
       <div class="cesign-field" style="margin-top:16px">발송 담당자 인증 <small style="font-weight:400">(공용 로그인과 별도인 개인 계정)</small></div>
@@ -364,8 +364,8 @@
         <dt>모두사인 문서 ID</dt><dd>${esc(d.modusignDocumentId||'-')}</dd>
         <dt>시도</dt><dd>${(d.attempts||[]).length}회${last?` · ${esc(fmtDate(last.at))} · ${esc(last.by)}`:''}</dd>
         <dt>상대방 서명</dt><dd>${d.counterpartySignedAt?esc(fmtDate(d.counterpartySignedAt)):'대기'}</dd>
-        <dt>우리 측 전자서명</dt><dd>${d.companySignedAt?esc(fmtDate(d.companySignedAt)):'대기'}</dd>
-        <dt>양측 최종 완료</dt><dd>${d.allSignedAt?esc(fmtDate(d.allSignedAt)):'미완료'}</dd>
+        ${d.companySigns===false?'':`<dt>우리 측 전자서명</dt><dd>${d.companySignedAt?esc(fmtDate(d.companySignedAt)):'대기'}</dd>`}
+        <dt>${d.companySigns===false?'서명 완료':'양측 최종 완료'}</dt><dd>${d.allSignedAt?esc(fmtDate(d.allSignedAt)):'미완료'}</dd>
         ${d.abortedAt?`<dt>중단</dt><dd>${esc(ABORT_LABEL[d.abortType]||d.abortType||'')} · ${esc(fmtDate(d.abortedAt))}</dd>`:''}
       </dl>
       ${d.abortedAt?'<div class="cesign-note is-warn">이 문서는 중단됐습니다. 다시 보내려면 진행 중인 다른 문서도 [서명 요청 취소]로 정리한 뒤 [새로 준비]로 새 버전을 만들어주세요.</div>':''}
