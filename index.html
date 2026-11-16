@@ -21568,7 +21568,8 @@ window.SHIN2_CRM_APP_INIT = function(){
     const h = co && co.dealHold;
     return (h && h.active) ? h : null;
   }
-  function dealHoldAfterLabel(h){ return h && h.afterStage === 'm2' ? '2차미팅 후' : '1차미팅 후'; }
+  // afterStage 'q' = 질문서 회신 후·1차 미팅 전에 보류(2026-11-16 일조방수기업 — 버튼 없이 데이터로 기록)
+  function dealHoldAfterLabel(h){ return h && h.afterStage === 'm2' ? '2차미팅 후' : (h && h.afterStage === 'q' ? '질문서 회신 후' : '1차미팅 후'); }
   function dealHoldSummaryText(h){
     if(!h) return '';
     const d = h.at ? fmtDate(h.at) : '';

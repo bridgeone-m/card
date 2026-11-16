@@ -51,3 +51,7 @@ test('목록 단계 배지·필터·의지박약 연결',()=>{
     "none:       { label:'시작 전',",   // 진행 이력 없음 배지는 '미진행'과 다른 단어
   ]) assert.ok(html.includes(s), s);
 });
+test('질문서 회신 후 보류(afterStage q) 문구',()=>{
+  const at=new Date(2026,10,16,11).toISOString();
+  assert.equal(A.dealHoldSummaryText({afterStage:'q',at,reason:'실적미달 판단'}),'질문서 회신 후 보류 · 2026.11.16 · 실적미달 판단');
+});
