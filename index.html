@@ -22833,6 +22833,25 @@ window.SHIN2_CRM_APP_INIT = function(){
   const MEETING_MISS_GRACE_DAYS = 3;    // 예정일 + 3일이 지나도 완료 기록이 없으면 누락
   const MEETING_REG_LIMIT_DAYS = 14;    // 미팅이 필요해진 날부터 14일 안에 일정이 없으면 등록 지연
   const MEETING_COORD_LIMIT_DAYS = 30;  // "조율 중" 표기가 30일을 넘으면 등록 지연
+  /* §후속관리 기준(2026-11-16 사용자 확정) — 신한솔 개인 KPI '1·2차 미팅 후속관리 누락 방지율'과 같은 기준.
+     · 다음 단계 안내 메일 발송(메일 기록·활동 기록), 일정 조율·등록 자체가 후속조치다 → 누락이 아니다.
+     · 보류·미진행 업체는 따로 탭에서 관리하므로 판정 대상에서 뺀다.
+     · 카드 일괄 등록(8/25) 뒤에 새로 등록한 업체는 앞 단계 날짜를 소급 입력해도 카드 등록일부터 기한을 센다.
+     · 예정일이 지나도 바로 누락이 아니라, 유예 뒤 14일까지는 '결과 기록 필요'(확인 항목)로 둔다. */
+  const MEETING_RESULT_LIMIT_DAYS = 14;
+  const MEETING_CARD_BULK_END = 1787670000000;   // 2026-08-26 00:00(한국) — 카드 일괄 등록 끝
+  // 이 미팅 단계의 후속 연락 흔적(가장 이른 시각, since-1일 이후). 메일 기록·일정 등록(정정 레이어)·활동 기록(있을 때만).
+  function meetingContactTs(co, key, since, acts){
+    const DAY = 86400000, from = (since == null ? 0 : since - DAY), hits = [];
+    const types = key === 'm1' ? ['firstMeeting'] : ['postSecondMeeting','secondMeetingRequest'];
+    (co.m1MailLog || []).forEach(l=>{ if(l && l.status === 'sent' && types.indexOf(l.mailType) >= 0){ const t = Date.parse(l.sentAt); if(!isNaN(t)) hits.push(t); } });
+    const sc = (co.partnerDashboard && co.partnerDashboard.stageCorrections) || {};
+    const sch = sc[key + 'Scheduled']; if(sch && sch.correctedAt){ const t = Date.parse(sch.correctedAt); if(!isNaN(t)) hits.push(t); }
+    const re = key === 'm1' ? /1\s*차\s*미팅/ : /2\s*차\s*미팅/;
+    (acts || []).forEach(a=>{ const tx = String((a && (a.activityText || a.originalText)) || ''); if(re.test(tx) && /메일|조율|일정|연락|안내|예정/.test(tx)){ const t = Date.parse(a.createdAt); if(!isNaN(t)) hits.push(t); } });
+    const ok = hits.filter(t=> t >= from).sort((a,b)=> a - b);
+    return ok.length ? ok[0] : null;
+  }
   function meetingMissTextKind(text){
     const s = String(text || '');
     if(/지사/.test(s)) return 'branch';
@@ -22849,9 +22868,11 @@ window.SHIN2_CRM_APP_INIT = function(){
     if(d.getTime() > now) d = new Date(ref.getFullYear() - 1, parseInt(m[1],10) - 1, parseInt(m[2],10));
     return d.getTime();
   }
-  function classifyMeetingMiss(co, progress, now){
+  function classifyMeetingMiss(co, progress, now, acts){
     const out = [];
     if(!co || D.isAgreementTerminated(co) || !progress || !progress.stages) return out;
+    // 보류·미진행은 따로 관리 — 이미 끝낸 미팅(완료)은 그대로 두고, 아직 안 끝난 단계만 판정에서 뺀다
+    const held = !!((co.dealHold && co.dealHold.active) || (co.dealDeclined && co.dealDeclined.active));
     const DAY = 86400000;
     const nm = resolveNewMouForCompany(co) || {};
     const byKey = {}; progress.stages.forEach(s=> byKey[s.key] = s);
@@ -22863,9 +22884,10 @@ window.SHIN2_CRM_APP_INIT = function(){
         out.push(typeof st.ts === 'number' ? { key, status:'done', due:st.ts } : { key, status:'exempt', due:null });
         return;
       }
+      if(held) return;
       if(st.state === 'scheduled' && typeof st.ts === 'number'){
         const days = Math.floor((now - st.ts) / DAY); // 예정일 다음 날 = 1일
-        out.push({ key, status: days > MEETING_MISS_GRACE_DAYS ? 'missed' : 'scheduled', due:st.ts, days });
+        out.push({ key, status: days <= MEETING_MISS_GRACE_DAYS ? 'scheduled' : (days <= MEETING_MISS_GRACE_DAYS + MEETING_RESULT_LIMIT_DAYS ? 'result' : 'missed'), due:st.ts, days });
         return;
       }
       // 날짜로 읽히지 않는 글(단계 보정이 있으면 원본 글은 보지 않는다)
@@ -22885,8 +22907,16 @@ window.SHIN2_CRM_APP_INIT = function(){
         return;
       }
       if(need && need.type === key){
-        const a = need.anchor && typeof need.anchor.ts === 'number' ? need.anchor.ts : null;
+        let a = need.anchor && typeof need.anchor.ts === 'number' ? need.anchor.ts : null;
         if(a == null){ out.push({ key, status:'format', due:null, text:'기준일 없음' }); return; }
+        const reg = Date.parse(co.createdAt);
+        if(!isNaN(reg) && reg >= MEETING_CARD_BULK_END && reg > a) a = reg;   // 소급 입력 업체는 카드 등록일부터
+        const contact = meetingContactTs(co, key, a, acts);
+        if(contact != null){
+          const cdays = Math.floor((now - contact) / DAY);
+          out.push({ key, status: cdays > MEETING_COORD_LIMIT_DAYS ? 'late' : 'contacted', due: contact + MEETING_COORD_LIMIT_DAYS * DAY, days: cdays, contactTs: contact });
+          return;
+        }
         const days = Math.floor((now - a) / DAY);
         out.push({ key, status: days > MEETING_REG_LIMIT_DAYS ? 'late' : 'waiting', due: a + MEETING_REG_LIMIT_DAYS * DAY, days });
       }
@@ -22902,15 +22932,19 @@ window.SHIN2_CRM_APP_INIT = function(){
     getStageCorrections: typeof getStageCorrections === "function" ? getStageCorrections : null,
     parsePartnerDateLabel: typeof parsePartnerDateLabel === "function" ? parsePartnerDateLabel : null,
     isAgreementTerminated: function(co){ return D.isAgreementTerminated(co); },
-    GRACE: MEETING_MISS_GRACE_DAYS, REG: MEETING_REG_LIMIT_DAYS
+    GRACE: MEETING_MISS_GRACE_DAYS, REG: MEETING_REG_LIMIT_DAYS, RESULT: MEETING_RESULT_LIMIT_DAYS,
+    // §후속관리 기준(2026-11-16) — KPI 실측이 같은 '후속 연락 흔적'·'카드 등록일 기준'을 쓰도록
+    meetingContactTs: meetingContactTs, CARD_BULK_END: MEETING_CARD_BULK_END,
+    activitiesIndex: function(){ return (D && typeof D.buildActivitiesIndex === 'function') ? D.buildActivitiesIndex() : null; }
   });
   const MEETING_LABEL = { m1:'1차 미팅', m2:'2차 미팅' };
-  const MEETING_CHECK_LABEL = { coord:'일정 조율 중', branch:'지사 진행', format:'날짜 확인 필요' };
+  const MEETING_CHECK_LABEL = { coord:'일정 조율 중', branch:'지사 진행', format:'날짜 확인 필요', contacted:'안내 완료 · 일정 대기', result:'결과 기록 필요' };
   function collectMeetingMiss(){
     const now = Date.now(), list = [];
+    const actIdx = (typeof D.buildActivitiesIndex === 'function') ? D.buildActivitiesIndex() : null;
     D.loadActiveCompanies().forEach(co=>{
       let res = [];
-      try{ res = classifyMeetingMiss(co, buildProgressStages(co), now); }catch(err){ res = []; }
+      try{ res = classifyMeetingMiss(co, buildProgressStages(co), now, actIdx ? (actIdx.get(String(co.id)) || []) : null); }catch(err){ res = []; }
       res.forEach(r=> list.push(Object.assign({ co }, r)));
     });
     return list;
@@ -22932,6 +22966,8 @@ window.SHIN2_CRM_APP_INIT = function(){
     return (rows || []).map(r=>{
       const text = r.status === 'missed' ? `${MEETING_LABEL[r.key]} 누락 · 예정 ${fmtAlarmMd(r.due)} · ${r.days}일 지남`
         : r.status === 'late' ? `${MEETING_LABEL[r.key]} 등록 지연 · ${r.text ? r.text + ' · ' : ''}${r.days}일째`
+        : r.status === 'result' ? `${MEETING_LABEL[r.key]} 결과 기록 필요 · 예정 ${fmtAlarmMd(r.due)} · ${r.days}일 지남`
+        : r.status === 'contacted' ? `${MEETING_LABEL[r.key]} 안내 완료 · ${fmtAlarmMd(r.contactTs)} · 일정 대기`
         : `${MEETING_LABEL[r.key]} ${MEETING_CHECK_LABEL[r.status]}${r.text && r.status !== 'branch' ? ' · ' + r.text : ''}`;
       return `<span class="workq-miss-badge${isMeetingMissRow(r) ? ' is-miss' : ''}">${esc(text)}</span>`;
     }).join('');

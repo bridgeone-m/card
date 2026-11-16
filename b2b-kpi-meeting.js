@@ -5,6 +5,10 @@
      ③ 기한 초과 후 처리: 실제 완료일 > 기한 — 지금은 처리 완료지만 기한 내 성공으로 세지 않는다
      ④ 미처리 누락  : 기한 날이 지났는데 완료 기록 없음(기한 당일까지는 '기한 전' — 카드 원본 규칙과 같음)
      ⑤ 판정 불가    : 실제 완료일 기록이 없는 '완료 간주'(협약 체결 등), 지사·조율 메모, 날짜 없음
+   §후속관리 기준(2026-11-16 사용자 확정): 기한 안에 다음 단계 안내 메일 발송(메일·활동 기록)이나 일정 조율·등록이 있으면
+     완료 기록이 없어도 ② 기한 내 후속조치로 본다(L.meetingContactTs — 카드와 같은 판정). 단 예정일 + 유예 + 결과 기록 기한
+     (3+14일)이 지나도 결과·새 예정이 없으면 ④. 카드 일괄 등록 뒤 새로 등록한 업체는 카드 등록일부터 기한을 센다.
+     보류·미진행 업체는 따로 관리하므로 제외한다.
    누락 방지율 = ② ÷ (② + ③ + ④). 기한이 아직 안 온 건은 대상에 넣지 않는다. 등록일로는 대상·완료를 추정하지 않는다
    (등록일은 8/25 일괄 등록과 그 뒤 신규 등록을 나누는 데만 쓴다). */
 (function(){
@@ -16,17 +20,21 @@
 
   function evaluateMeetings(companies, L, now, opts){
     opts = opts || {};
-    var start = opts.start, bulkEnd = opts.bulkEnd, GRACE = L.GRACE, REG = L.REG;
+    var start = opts.start, bulkEnd = opts.bulkEnd, GRACE = L.GRACE, REG = L.REG, RESULT = L.RESULT || 0;
+    var actIdx = opts.activities || (typeof L.activitiesIndex === 'function' ? L.activitiesIndex() : null);
     var P = function(s){ var p = L.parsePartnerDateLabel(s); return p ? p.ts : null; };
     var rows = [], excluded = [];
     (companies || []).forEach(function(co){
       if(!co) return;
       if(co.deletedAt){ excluded.push({ name: co.name, why: '삭제된 업체' }); return; }
       if(L.isAgreementTerminated(co)){ excluded.push({ name: co.name, why: '협약 종료 업체' }); return; }
+      // 보류·미진행 — 이미 끝낸 미팅은 그대로 세고(카드 판정이 완료만 돌려줌), 남은 단계는 빠진다는 것만 기록
+      if((co.dealHold && co.dealHold.active) || (co.dealDeclined && co.dealDeclined.active)) excluded.push({ name: co.name, why: co.dealDeclined && co.dealDeclined.active ? '미진행 업체(남은 단계 제외, 따로 관리)' : '보류 업체(남은 단계 제외, 따로 관리)' });
+      var acts = actIdx && typeof actIdx.get === 'function' ? (actIdx.get(String(co.id)) || []) : null;
       var ca = tsOf(co.createdAt), group = ca != null && bulkEnd != null && ca >= bulkEnd ? 'new' : 'bulk';
       var nm = L.resolveNewMouForCompany(co) || {}, sc = L.getStageCorrections(co) || {}, pr = L.buildProgressStages(co), st = {};
       pr.stages.forEach(function(s){ st[s.key] = s; });
-      var items = L.classifyMeetingMiss(co, pr, now) || [];
+      var items = L.classifyMeetingMiss(co, pr, now, acts) || [];
       ['m1', 'm2'].forEach(function(k){
         var it = items.filter(function(x){ return x.key === k; })[0]; if(!it) return;
         var s = st[k] || {}, prevKey = k === 'm1' ? 'q' : 'm1', prev = st[prevKey];
@@ -35,6 +43,8 @@
         var doneTs = doneCorr ? P(doneCorr.dateText) : (labelDone != null && labelDone <= now ? labelDone : null);
         var schedTs = sched ? P(sched.dateText) : P(nm[k + 'ScheduledLabel']);
         var anchor = prev && prev.state === 'done' && typeof prev.ts === 'number' ? prev.ts : null;
+        if(anchor != null && group === 'new' && ca != null && ca > anchor) anchor = ca;   // 소급 입력 업체는 카드 등록일부터
+        var contactTs = typeof L.meetingContactTs === 'function' ? L.meetingContactTs(co, k, anchor, acts) : null;
         var prevName = prevKey === 'q' ? '질문서 회신 ' : '1차 완료 ';
         var due = null, basis = '';
         if(schedTs != null){ due = schedTs + GRACE * DAY; basis = '예정일 ' + d10(schedTs) + ' + ' + GRACE + '일'; }
@@ -44,8 +54,16 @@
           cls = 'unknown'; why = (it.status === 'branch' ? '지사 진행 메모' : it.status === 'coord' ? '조율 중 메모' : '날짜를 읽을 수 없는 메모') + (it.text ? ' "' + String(it.text).slice(0, 20) + '"' : '');
         } else if(s.state === 'done' && doneTs == null){ cls = 'unknown'; why = '완료로 표시되지만 실제 완료일 기록 없음(협약 체결 등으로 완료 간주)'; }
         else if(due == null){ cls = 'unknown'; why = '기한을 정할 날짜 없음'; }
-        else if(doneTs != null){ cls = doneTs <= due ? 'ontime' : 'late'; why = basis + ' → 완료 ' + d10(doneTs); }
-        else if(now >= due + DAY){ cls = 'missed'; why = basis + ' 지남, 완료 기록 없음'; } // 카드 규칙과 같이 기한 당일까지는 기다린다
+        else if(doneTs != null && doneTs <= due){ cls = 'ontime'; why = basis + ' → 완료 ' + d10(doneTs); }
+        else if(doneTs == null && now < due + DAY){ cls = 'upcoming'; why = basis + '(아직 기한 전)'; }
+        else if(contactTs != null && contactTs < due + DAY && !(doneTs == null && schedTs != null && now >= schedTs + (GRACE + RESULT + 1) * DAY)){
+          cls = 'ontime'; why = basis + ' → 안내·일정 조율 ' + d10(contactTs) + (doneTs != null ? ', 완료 ' + d10(doneTs) : '');
+        }
+        // 예정일이 지났지만 결과 기록 기한(예정일 + 유예 + 14일) 안 — 카드 표의 '결과 기록 필요'와 같게 아직 판정하지 않는다
+        else if(doneTs == null && schedTs != null && now < schedTs + (GRACE + RESULT + 1) * DAY){ cls = 'upcoming'; why = basis + ' · 결과 기록 기다리는 중(예정일 + ' + (GRACE + RESULT) + '일까지)'; }
+        else if(doneTs != null){ cls = 'late'; why = basis + ' → 완료 ' + d10(doneTs); }
+        else if(contactTs != null && contactTs >= due + DAY){ cls = 'late'; why = basis + ' 지남 → 기한 뒤 안내·일정 조율 ' + d10(contactTs); }   // 늦게라도 후속조치는 함(기한 내 성공은 아님)
+        else if(now >= due + DAY){ cls = 'missed'; why = basis + ' 지남, 완료·안내 기록 없음'; } // 카드 규칙과 같이 기한 당일까지는 기다린다
         else { cls = 'upcoming'; why = basis + '(아직 기한 전)'; }
         rows.push({ id: String(co.id), name: co.name || '', code: co.code || '', group: group, regDate: d10(ca), stage: k, stageName: STAGE[k],
           cls: cls, due: due != null ? d10(due) : '', dueTs: due, doneAt: doneTs != null ? d10(doneTs) : '', why: why,

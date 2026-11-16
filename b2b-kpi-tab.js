@@ -97,7 +97,7 @@
   }
   /* §1·2차 미팅 누락 방지 실측(고객관리카드 도입 2026-08-21 이후) — 숫자를 누르면 업체 목록 */
   var MEETING_DEF = 'LI01';
-  var MEET_CLS = { ontime: '기한 내 완료', late: '기한 초과 후 처리(현재 처리 완료)', missed: '미처리 누락', unknown: '판정 불가', upcoming: '기한 전' };
+  var MEET_CLS = { ontime: '기한 내 후속조치', late: '기한 넘겨 처리', missed: '미처리 누락', unknown: '판정 불가', upcoming: '기한 전' };
   function meetingLabel(s){ if(!s || !s.due) return '대상 없음'; if(!s.judged) return '미측정'; return '관리 완료 ' + s.ontime + '/' + s.judged + '곳 · ' + (Math.round(s.rate * 10) / 10) + '%'; }
   function meetingExtra(s){ if(!s) return ''; var a = []; if(s.late) a.push('기한 초과 처리 ' + s.late); a.push('누락 ' + s.missed); if(s.unknown) a.push('판정 불가 ' + s.unknown); if(s.upcoming) a.push('기한 전 ' + s.upcoming); return a.join(' · '); }
   function meetingBtn(meeting, stage, group, title){
@@ -105,7 +105,7 @@
     return '<button type="button" class="b2bkpi-num" data-kpi-act="meetingList" data-stage="' + stage + '" data-group="' + group + '"><b>' + esc(title) + '</b> <span class="b2bkpi-num-val">' + esc(meetingLabel(s)) + '</span>' + (s && s.due ? ' <span class="b2bkpi-muted">' + esc(meetingExtra(s)) + '</span>' : '') + '</button>';
   }
   function meetingBlock(meeting){
-    return '<div class="b2bkpi-nums"><div class="b2bkpi-muted">카드 도입 ' + esc(meeting.rule.start) + ' 이후 기한이 돌아온 건 · 누락 방지율 = 기한 내 완료 ÷ 판정 가능 대상</div>' +
+    return '<div class="b2bkpi-nums"><div class="b2bkpi-muted">카드 도입 ' + esc(meeting.rule.start) + ' 이후 기한이 돌아온 건 · 누락 방지율 = 기한 내 후속조치(완료·안내 메일·일정 조율) ÷ 판정 가능 대상</div>' +
       meetingBtn(meeting, 'm1', 'all', '1차 미팅 관리') + meetingBtn(meeting, 'm2', 'all', '2차 미팅 관리') +
       '<div class="b2bkpi-num-new"><span class="b2bkpi-muted">8/25 이후 신규 등록 업체만</span>' + meetingBtn(meeting, 'm1', 'new', '1차') + meetingBtn(meeting, 'm2', 'new', '2차') + '</div></div>';
   }
@@ -115,7 +115,7 @@
       .sort(function(a, b){ return (ord[a.cls] - ord[b.cls]) || (a.due < b.due ? -1 : a.due > b.due ? 1 : 0); });
     var s = meeting.summary[group][stage];
     return '<h3>' + (stage === 'm1' ? '1차' : '2차') + ' 미팅 관리' + (group === 'new' ? ' · 8/25 이후 신규 등록' : '') + '</h3>' +
-      '<p class="b2bkpi-muted">' + esc(meetingLabel(s)) + (s && s.due ? ' · ' + esc(meetingExtra(s)) : '') + '. 기한 = 예정일 + ' + meeting.rule.grace + '일(예정일 없으면 앞 단계 완료 + ' + meeting.rule.reg + '일). 기준일 ' + esc(meeting.rule.now) + '. 원본 기록은 바꾸지 않습니다.</p>' +
+      '<p class="b2bkpi-muted">' + esc(meetingLabel(s)) + (s && s.due ? ' · ' + esc(meetingExtra(s)) : '') + '. 기한 = 예정일 + ' + meeting.rule.grace + '일(예정일 없으면 앞 단계 완료 + ' + meeting.rule.reg + '일, 8/26 이후 등록 업체는 등록일부터). 기한 안에 미팅 완료·다음 단계 안내 메일·일정 조율·등록 중 하나가 있으면 후속조치로 봅니다. 보류·미진행 업체는 남은 단계를 빼고 셉니다. 기준일 ' + esc(meeting.rule.now) + '. 원본 기록은 바꾸지 않습니다.</p>' +
       (rows.length ? '<div class="b2bkpi-mlist">' + rows.map(function(r){
         return '<div class="b2bkpi-mrow is-' + r.cls + '"><div class="b2bkpi-mrow-h"><b>' + esc(r.name) + '</b>' + (r.code ? ' <span class="b2bkpi-muted">' + esc(r.code) + '</span>' : '') + ' <span class="b2bkpi-pill is-' + (r.cls === 'ontime' ? 'ok' : r.cls === 'missed' ? 'warn' : 'wait') + '">' + esc(MEET_CLS[r.cls]) + '</span></div>' +
           '<div class="b2bkpi-mrow-b">' + esc(r.stageName) + ' · ' + (r.group === 'new' ? '신규 등록 ' + esc(r.regDate) : '8/25 일괄 등록') + ' · 기한 ' + esc(r.due || '—') + ' · 실제 처리일 ' + esc(r.doneAt || '—') + ' · ' + (r.owner ? '담당 ' + esc(r.owner) : '담당 기록 없음') + '</div>' +
