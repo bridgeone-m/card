@@ -13,11 +13,13 @@ test('선급·보증보험만 인정, 해제(빈 값)는 없음으로', () => {
   assert.equal(A.getPayTerms({ payTerms: { type: 'x' } }), null);
   assert.equal(A.getPayTerms({}), null);
 });
-test('협약진행 탭에 체크란 표시·저장 연결, 같은 걸 다시 누르면 해제, 이력 남김', () => {
+test('협약진행 탭에 체크란 표시, 고르기만 하고 [저장]을 눌러야 저장, 같은 걸 다시 누르면 고른 것 해제, 이력 남김', () => {
   for (const t of [
     "${agrPayTermsHtml(co)}\n      ${agrDealHoldHtml(co)}".replace(/\n/g, html.includes('\r\n') ? '\r\n' : '\n'),
     'bindAgrPayTerms(body, co);',
-    "const next = cur && cur.type === k ? '' : k;",
+    "picked = picked === k ? '' : k;",
+    "data-agr-pay-save disabled>저장</button>",
+    "if(picked === saved()) return;",
     "payTerms: { type: type || '', at, by }, payTermsLog: log",
     'aria-pressed=',
   ]) assert.ok(html.includes(t), t);

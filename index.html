@@ -4971,7 +4971,11 @@ table.pdf-doc-table thead{ background:var(--bg); }
 .agr-pay-btn:hover{ background:#EEF3FB; }
 .agr-pay-btn.is-on{ border-color:#1E3A6E; background:#1E3A6E; color:#fff; }
 .agr-pay-check{ display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; border:1.5px solid currentColor; border-radius:4px; font-size:11px; line-height:1; }
+.agr-pay-save{ min-height:34px; padding:4px 16px; border:1px solid #1E3A6E; border-radius:8px; background:#fff; color:#1E3A6E; font-size:13px; font-weight:800; cursor:pointer; }
+.agr-pay-save:disabled{ border-color:#D0D5DD; color:#98A2B3; cursor:default; }
+.agr-pay-save.is-ready{ background:#E8590C; border-color:#E8590C; color:#fff; }
 .agr-pay-note{ flex:1 1 140px; min-width:0; font-size:12px; color:#667085; }
+.agr-pay-note.is-dirty{ color:#B54708; font-weight:700; }
 .agr-hold-box{ display:flex; flex-wrap:wrap; align-items:center; gap:6px 8px; margin:8px 0 2px; }
 .agr-hold-box.is-on{ background:#FFF7E6; border:1px solid #F2C46D; border-radius:8px; padding:7px 10px; }
 .agr-hold-badge{ flex:0 0 auto; font-size:11px; font-weight:700; color:#8A5300; background:#FDE4B0; border-radius:999px; padding:2px 8px; }
@@ -37713,7 +37717,8 @@ window.SHIN2_CRM_APP_INIT = function(){
       <div class="agr-pay-box" role="group" aria-label="거래 방식">
         <span class="agr-pay-label">거래 방식</span>
         ${Object.keys(PAY_TERMS).map(k=> { const on = !!(p && p.type === k); return `<button type="button" class="agr-pay-btn${on ? ' is-on' : ''}" data-agr-pay="${k}" aria-pressed="${on ? 'true' : 'false'}"><span class="agr-pay-check" aria-hidden="true">${on ? '✓' : ''}</span>${PAY_TERMS[k]}</button>`; }).join('')}
-        <span class="agr-pay-note">${p ? esc((p.at ? fmtDate(p.at) : '') + ' 체크' + (p.by ? ' · ' + p.by : '')) : '아직 체크 안 함'}</span>
+        <button type="button" class="agr-pay-save" data-agr-pay-save disabled>저장</button>
+        <span class="agr-pay-note" data-agr-pay-note>${p ? esc((p.at ? fmtDate(p.at) : '') + ' 저장' + (p.by ? ' · ' + p.by : '')) : '아직 저장 안 함'}</span>
         <span class="cdash-cloud-save-status" data-agr-pay-status></span>
       </div>`;
   }
@@ -37728,23 +37733,46 @@ window.SHIN2_CRM_APP_INIT = function(){
     return D.updateCompanyReturningAll(co.id, { payTerms: { type: type || '', at, by }, payTermsLog: log });
   }
   let payTermsSaveSeq = 0;
+  // §거래 방식 [저장] 버튼(2026-11-18 사용자) — 선급·보증보험을 누르면 고르기만 하고(다시 누르면 고른 것 해제),
+  // [저장]을 눌러야 저장한다. 저장한 값과 다르게 골랐을 때만 [저장]이 켜지고 '저장 안 됨'을 알린다.
+  // 저장은 이 기기 저장 뒤 화면 먼저, 서버 저장은 뒤에서 '저장 중… → 저장됨'(앞 라운드 그대로).
   function bindAgrPayTerms(body, co){
     const box = body.querySelector('.agr-pay-box');
     if(!box) return;
-    box.querySelectorAll('[data-agr-pay]').forEach(btn=> btn.addEventListener('click', async ()=>{
-      const k = btn.getAttribute('data-agr-pay'), cur = getPayTerms(D.findCompany(co.id) || co);
-      const next = cur && cur.type === k ? '' : k;   // 같은 걸 다시 누르면 해제
-      const { rec, list } = savePayTermsLocal(co, next);
-      const status = ()=> { const b = document.querySelector('#agreementPopupBody .agr-pay-box [data-agr-pay-status]'); return b; };
+    const saved = ()=> { const p = getPayTerms(D.findCompany(co.id) || co); return p ? p.type : ''; };
+    let picked = saved();
+    const saveBtn = box.querySelector('[data-agr-pay-save]'), note = box.querySelector('[data-agr-pay-note]');
+    const noteSaved = note ? note.textContent : '';
+    const paint = ()=>{
+      box.querySelectorAll('[data-agr-pay]').forEach(b=>{
+        const on = b.getAttribute('data-agr-pay') === picked;
+        b.classList.toggle('is-on', on);
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+        const ck = b.querySelector('.agr-pay-check'); if(ck) ck.textContent = on ? '✓' : '';
+      });
+      const dirty = picked !== saved();
+      if(saveBtn){ saveBtn.disabled = !dirty; saveBtn.classList.toggle('is-ready', dirty); }
+      if(note){ note.textContent = dirty ? '저장 안 됨 — [저장]을 눌러 주세요' : noteSaved; note.classList.toggle('is-dirty', dirty); }
+      const st = box.querySelector('[data-agr-pay-status]'); if(st && dirty) st.textContent = '';
+    };
+    box.querySelectorAll('[data-agr-pay]').forEach(btn=> btn.addEventListener('click', ()=>{
+      const k = btn.getAttribute('data-agr-pay');
+      picked = picked === k ? '' : k;
+      paint();
+    }));
+    if(saveBtn) saveBtn.addEventListener('click', async ()=>{
+      if(picked === saved()) return;
+      const { rec, list } = savePayTermsLocal(co, picked);
+      const status = ()=> document.querySelector('#agreementPopupBody .agr-pay-box [data-agr-pay-status]');
       if(!rec){ showCloudSaveStatus(box.querySelector('[data-agr-pay-status]'), false, { message:'업체를 찾지 못했습니다.' }); return; }
       renderAgreementPopupBody(co.id);   // 화면 먼저
       try{ renderList(); }catch(err){}
       const seq = ++payTermsSaveSeq;
       const st0 = status(); if(st0){ st0.textContent = '저장 중…'; st0.style.color = 'var(--text-faint)'; }
       const r = await confirmCloudSave('companies', list);
-      if(seq !== payTermsSaveSeq) return;   // 그사이 또 눌렀으면 마지막 저장 결과만 보여 준다
+      if(seq !== payTermsSaveSeq) return;   // 그사이 또 저장했으면 마지막 결과만 보여 준다
       showCloudSaveStatus(status(), r.ok, r.err);
-    }));
+    });
   }
   function agrDealHoldHtml(co){
     const d = getDealDeclined(co);
