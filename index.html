@@ -4965,6 +4965,13 @@ table.pdf-doc-table thead{ background:var(--bg); }
 /* §협약 보류(2026-11) — 단계 목록 아래 [보류] 버튼·사유 한 줄·보류 중 표시 */
 .deal-hold-sub{ margin-top:2px; font-size:11.5px; font-weight:600; color:#8A5300; line-height:1.4; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
 .deal-hold-reason{ margin-left:4px; font-size:11.5px; font-weight:600; color:#8A5300; white-space:nowrap; max-width:16em; overflow:hidden; text-overflow:ellipsis; vertical-align:middle; display:inline-block; }
+.agr-pay-box{ display:flex; flex-wrap:wrap; align-items:center; gap:6px 8px; margin:10px 0 2px; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:#F7F9FC; }
+.agr-pay-label{ font-size:12.5px; font-weight:800; color:var(--ink, #1f2937); margin-right:2px; }
+.agr-pay-btn{ display:inline-flex; align-items:center; gap:5px; min-height:34px; padding:4px 14px; border:1px solid #B9C4D6; border-radius:8px; background:#fff; color:#344054; font-size:13px; font-weight:700; cursor:pointer; }
+.agr-pay-btn:hover{ background:#EEF3FB; }
+.agr-pay-btn.is-on{ border-color:#1E3A6E; background:#1E3A6E; color:#fff; }
+.agr-pay-check{ display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; border:1.5px solid currentColor; border-radius:4px; font-size:11px; line-height:1; }
+.agr-pay-note{ flex:1 1 140px; min-width:0; font-size:12px; color:#667085; }
 .agr-hold-box{ display:flex; flex-wrap:wrap; align-items:center; gap:6px 8px; margin:8px 0 2px; }
 .agr-hold-box.is-on{ background:#FFF7E6; border:1px solid #F2C46D; border-radius:8px; padding:7px 10px; }
 .agr-hold-badge{ flex:0 0 auto; font-size:11px; font-weight:700; color:#8A5300; background:#FDE4B0; border-radius:999px; padding:2px 8px; }
@@ -37692,6 +37699,48 @@ window.SHIN2_CRM_APP_INIT = function(){
     if((byKey.q && byKey.q.state === 'done') || m1Mail) return 'q';
     return null;
   }
+  /* §거래 방식(2026-11-17 사용자) — 신규 협약 때 '선급'인지 '보증보험'인지 우리가 체크한다(둘 중 하나, 다시 누르면 해제).
+     co.payTerms = { type:'prepay'|'guarantee', at, by } — 해제하면 type:''. 이력은 co.payTermsLog. 업체 레코드 최상위에 둔다
+     (partner-dashboard 동기화가 다시 써도 지워지지 않게). 잔디 '정보 변경' 알림에 함께 실을 값(다음 단계). */
+  const PAY_TERMS = { prepay:'선급', guarantee:'보증보험' };
+  function getPayTerms(co){ const p = co && co.payTerms; return (p && PAY_TERMS[p.type]) ? p : null; }
+  function payTermsLabel(co){ const p = getPayTerms(co); return p ? PAY_TERMS[p.type] : ''; }
+  function agrPayTermsHtml(co){
+    if(!co || D.isAgreementTerminated(co)) return '';
+    const p = getPayTerms(co);
+    return `
+      <div class="agr-pay-box" role="group" aria-label="거래 방식">
+        <span class="agr-pay-label">거래 방식</span>
+        ${Object.keys(PAY_TERMS).map(k=> { const on = !!(p && p.type === k); return `<button type="button" class="agr-pay-btn${on ? ' is-on' : ''}" data-agr-pay="${k}" aria-pressed="${on ? 'true' : 'false'}"><span class="agr-pay-check" aria-hidden="true">${on ? '✓' : ''}</span>${PAY_TERMS[k]}</button>`; }).join('')}
+        <span class="agr-pay-note">${p ? esc((p.at ? fmtDate(p.at) : '') + ' 체크' + (p.by ? ' · ' + p.by : '')) : '신규 협약 때 체크'}</span>
+        <span class="cdash-cloud-save-status" data-agr-pay-status></span>
+      </div>`;
+  }
+  async function savePayTerms(co, type){
+    const cur = D.findCompany(co.id) || co;
+    const at = new Date().toISOString(), by = crmCurrentUserLabel();
+    const log = Array.isArray(cur.payTermsLog) ? cur.payTermsLog.slice() : [];
+    const prev = getPayTerms(cur);
+    log.push({ from: prev ? prev.type : '', to: type || '', at, by });
+    const { rec, list } = D.updateCompanyReturningAll(co.id, { payTerms: { type: type || '', at, by }, payTermsLog: log });
+    if(!rec) return { ok:false, err:{ message:'업체를 찾지 못했습니다.' } };
+    return confirmCloudSave('companies', list);
+  }
+  function bindAgrPayTerms(body, co){
+    const box = body.querySelector('.agr-pay-box');
+    if(!box) return;
+    box.querySelectorAll('[data-agr-pay]').forEach(btn=> btn.addEventListener('click', async ()=>{
+      const k = btn.getAttribute('data-agr-pay'), cur = getPayTerms(D.findCompany(co.id) || co);
+      const next = cur && cur.type === k ? '' : k;   // 같은 걸 다시 누르면 해제
+      box.querySelectorAll('[data-agr-pay]').forEach(b=> b.disabled = true);
+      const r = await savePayTerms(co, next);
+      showCloudSaveStatus(box.querySelector('[data-agr-pay-status]'), r.ok, r.err);
+      box.querySelectorAll('[data-agr-pay]').forEach(b=> b.disabled = false);
+      if(!r.ok) return;
+      renderAgreementPopupBody(co.id);
+      try{ renderList(); }catch(err){}
+    }));
+  }
   function agrDealHoldHtml(co){
     const d = getDealDeclined(co);
     if(d) return `
@@ -37845,6 +37894,7 @@ window.SHIN2_CRM_APP_INIT = function(){
             </div>
           </div>`).join('')}
       </div>
+      ${agrPayTermsHtml(co)}
       ${agrDealHoldHtml(co)}
       <div class="agr-stage-btn-row">${extraActionsHtml}<button type="button" class="cesign-open-btn" id="cesignOpenBtn">계약서 2종 준비</button></div>
     `;
@@ -37861,6 +37911,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     compactAgreementRowActions(body);
     alignAgreementRowActions(body);
     markAgreementMailSent(body, co);
+    bindAgrPayTerms(body, co);
     bindAgrDealHold(body, co);
     // 질문지 상담 탭 — 질문지 등록/교체 카드(상/중/하 배지·메모 포함). 통합 팝업이 아닌
     // 곳에서 불려도 안전하도록 컨테이너가 없으면 조용히 건너뛴다(이 파일의 기존 관례).
