@@ -37717,29 +37717,33 @@ window.SHIN2_CRM_APP_INIT = function(){
         <span class="cdash-cloud-save-status" data-agr-pay-status></span>
       </div>`;
   }
-  async function savePayTerms(co, type){
+  // §체크 즉시 반영(2026-11-18 사용자 「10초 로딩 후에 바뀜」) — 이 기기 저장(바로 끝남) 뒤 화면을 먼저 바꾸고,
+  // 서버 저장(업체 목록 전체를 보내 몇 초 걸림)은 뒤에서 확인해 '저장 중… → 저장됨 / 저장 실패'로만 알린다.
+  function savePayTermsLocal(co, type){
     const cur = D.findCompany(co.id) || co;
     const at = new Date().toISOString(), by = crmCurrentUserLabel();
     const log = Array.isArray(cur.payTermsLog) ? cur.payTermsLog.slice() : [];
     const prev = getPayTerms(cur);
     log.push({ from: prev ? prev.type : '', to: type || '', at, by });
-    const { rec, list } = D.updateCompanyReturningAll(co.id, { payTerms: { type: type || '', at, by }, payTermsLog: log });
-    if(!rec) return { ok:false, err:{ message:'업체를 찾지 못했습니다.' } };
-    return confirmCloudSave('companies', list);
+    return D.updateCompanyReturningAll(co.id, { payTerms: { type: type || '', at, by }, payTermsLog: log });
   }
+  let payTermsSaveSeq = 0;
   function bindAgrPayTerms(body, co){
     const box = body.querySelector('.agr-pay-box');
     if(!box) return;
     box.querySelectorAll('[data-agr-pay]').forEach(btn=> btn.addEventListener('click', async ()=>{
       const k = btn.getAttribute('data-agr-pay'), cur = getPayTerms(D.findCompany(co.id) || co);
       const next = cur && cur.type === k ? '' : k;   // 같은 걸 다시 누르면 해제
-      box.querySelectorAll('[data-agr-pay]').forEach(b=> b.disabled = true);
-      const r = await savePayTerms(co, next);
-      showCloudSaveStatus(box.querySelector('[data-agr-pay-status]'), r.ok, r.err);
-      box.querySelectorAll('[data-agr-pay]').forEach(b=> b.disabled = false);
-      if(!r.ok) return;
-      renderAgreementPopupBody(co.id);
+      const { rec, list } = savePayTermsLocal(co, next);
+      const status = ()=> { const b = document.querySelector('#agreementPopupBody .agr-pay-box [data-agr-pay-status]'); return b; };
+      if(!rec){ showCloudSaveStatus(box.querySelector('[data-agr-pay-status]'), false, { message:'업체를 찾지 못했습니다.' }); return; }
+      renderAgreementPopupBody(co.id);   // 화면 먼저
       try{ renderList(); }catch(err){}
+      const seq = ++payTermsSaveSeq;
+      const st0 = status(); if(st0){ st0.textContent = '저장 중…'; st0.style.color = 'var(--text-faint)'; }
+      const r = await confirmCloudSave('companies', list);
+      if(seq !== payTermsSaveSeq) return;   // 그사이 또 눌렀으면 마지막 저장 결과만 보여 준다
+      showCloudSaveStatus(status(), r.ok, r.err);
     }));
   }
   function agrDealHoldHtml(co){
