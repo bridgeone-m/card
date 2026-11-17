@@ -37699,20 +37699,21 @@ window.SHIN2_CRM_APP_INIT = function(){
     if((byKey.q && byKey.q.state === 'done') || m1Mail) return 'q';
     return null;
   }
-  /* §거래 방식(2026-11-17 사용자) — 신규 협약 때 '선급'인지 '보증보험'인지 우리가 체크한다(둘 중 하나, 다시 누르면 해제).
+  /* §거래 방식(2026-11-17 사용자) — '선급'인지 '보증보험'인지 우리가 체크한다(둘 중 하나, 다시 누르면 해제).
+     신규·기존 구분 없이 모든 업체에서 체크한다(사용자 「기존도 다 체크할 수 있게」).
      co.payTerms = { type:'prepay'|'guarantee', at, by } — 해제하면 type:''. 이력은 co.payTermsLog. 업체 레코드 최상위에 둔다
      (partner-dashboard 동기화가 다시 써도 지워지지 않게). 잔디 '정보 변경' 알림에 함께 실을 값(다음 단계). */
   const PAY_TERMS = { prepay:'선급', guarantee:'보증보험' };
   function getPayTerms(co){ const p = co && co.payTerms; return (p && PAY_TERMS[p.type]) ? p : null; }
   function payTermsLabel(co){ const p = getPayTerms(co); return p ? PAY_TERMS[p.type] : ''; }
   function agrPayTermsHtml(co){
-    if(!co || D.isAgreementTerminated(co)) return '';
+    if(!co) return '';
     const p = getPayTerms(co);
     return `
       <div class="agr-pay-box" role="group" aria-label="거래 방식">
         <span class="agr-pay-label">거래 방식</span>
         ${Object.keys(PAY_TERMS).map(k=> { const on = !!(p && p.type === k); return `<button type="button" class="agr-pay-btn${on ? ' is-on' : ''}" data-agr-pay="${k}" aria-pressed="${on ? 'true' : 'false'}"><span class="agr-pay-check" aria-hidden="true">${on ? '✓' : ''}</span>${PAY_TERMS[k]}</button>`; }).join('')}
-        <span class="agr-pay-note">${p ? esc((p.at ? fmtDate(p.at) : '') + ' 체크' + (p.by ? ' · ' + p.by : '')) : '신규 협약 때 체크'}</span>
+        <span class="agr-pay-note">${p ? esc((p.at ? fmtDate(p.at) : '') + ' 체크' + (p.by ? ' · ' + p.by : '')) : '아직 체크 안 함'}</span>
         <span class="cdash-cloud-save-status" data-agr-pay-status></span>
       </div>`;
   }
