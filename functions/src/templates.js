@@ -11,6 +11,15 @@ const DOC_LABELS = { supply: '기본물품공급계약서', mou: 'MOU 체결서'
 
 function createTemplates({ store, blobs, config }) {
   const registry = async () => (await store.get(REGISTRY_PATH)) || {};
+  // 속도: 같은 파일(sha256 같음)은 서버 메모리에서 다시 쓴다. 매번 sha256 을 다시 대조하던 검사는 처음 받을 때 한다.
+  const cache = new Map();
+  async function blob(entry) {
+    const hit = cache.get(entry.blobPath);
+    if (hit && hit.sha256 === entry.sha256) return hit.bytes;
+    const bytes = await blobs.get(entry.blobPath);
+    if (sha256(bytes) === entry.sha256) cache.set(entry.blobPath, { sha256: entry.sha256, bytes });
+    return bytes;
+  }
 
   function usable(entry) {
     if (!entry) return false;
@@ -26,9 +35,10 @@ function createTemplates({ store, blobs, config }) {
         `승인된 서명 전 원본 양식이 아직 등록되지 않았습니다: ${missing.map((t) => DOC_LABELS[t]).join(', ')}`, { missing });
     }
     const out = {};
-    for (const type of DOC_TYPES) {
+    const files = await Promise.all(DOC_TYPES.map((t) => blob(reg[t])));
+    for (const [i, type] of DOC_TYPES.entries()) {
       const entry = reg[type];
-      const bytes = await blobs.get(entry.blobPath);
+      const bytes = files[i];
       if (sha256(bytes) !== entry.sha256) throw new AppError(409, 'TEMPLATE_CHANGED', `${DOC_LABELS[type]} 양식 파일이 등록 내용과 다릅니다.`);
       out[type] = { bytes, map: entry.map, version: entry.version, status: entry.status, signaturePositionApproved: entry.signaturePositionApproved === true };
     }
@@ -43,7 +53,7 @@ function createTemplates({ store, blobs, config }) {
     if (entry.kind !== 'test' && !(entry.status === 'approved' && config.realSealApproved === true)) {
       throw new AppError(409, 'SEAL_NOT_ALLOWED', '실제 도장 이미지 사용은 별도 승인 전에는 할 수 없습니다.');
     }
-    const bytes = await blobs.get(entry.blobPath);
+    const bytes = await blob(entry);
     if (sha256(bytes) !== entry.sha256) throw new AppError(409, 'SEAL_CHANGED', '도장 이미지가 등록 내용과 다릅니다.');
     return { bytes, kind: entry.kind, sha256: entry.sha256 };
   }

@@ -54,3 +54,62 @@ test('새 양식 발송: 거래방식 저장 없이도 준비·발송되고(시�
   assert.equal(supply.participants[0].checkboxFieldGroups.length, 1);
   assert.equal(supply.participants[0].fields.filter((f) => f.type === 'CHECKBOX').length, 2);
 });
+
+// §결제조건 자동 반영: 시공사가 모두사인에서 고른 칸 → 카드 거래방식(payTerms)
+const { webhookHeaders } = require('./helpers.cjs');
+async function signedSupply(over = {}) {
+  const env = await makeEnv({ registry: v3Map, companies: [company(over.company)], config: { companySigns: false } });
+  const v = await env.service.prepare(prepareInput());
+  await env.service.send(sendInput(v), env.sender);
+  const doc = [...env.mock.documents.values()].find((d) => d.title.includes('기본물품공급계약서'));
+  for (const [label, val] of Object.entries(over.checks || {})) env.mock.setFieldValue(doc.id, label, val);
+  const hook = env.mock.sign(doc.id, 1, '2026-11-18T08:00:00.000Z');
+  await env.service.handleWebhook(webhookHeaders('d-' + Math.random()), JSON.stringify(hook));
+  const card = (await env.store.get('users/shared-owner/shin2/shin2-companies-staging')).value[0];
+  const sent = (await env.service.listSends({ companyId: 'co-1' }))[0].documents.supply;
+  return { env, card, sent };
+}
+
+test('자동 반영: 시공사가 B(선납)를 고르고 서명하면 카드 거래방식이 선납으로 저장된다', async () => {
+  const { card } = await signedSupply({ checks: { B_선납: true } });
+  assert.equal(card.payTerms.type, 'prepay');
+  assert.equal(card.payTerms.by, '모두사인 회신(자동)');
+  assert.deepEqual(card.payTermsLog.map((l) => [l.from, l.to]), [['', 'prepay']]);
+});
+
+test('자동 반영: 카드에 선납이 있어도 시공사가 A(보증보험)를 고르면 보증보험으로 바뀌고 이력이 남는다', async () => {
+  const { card } = await signedSupply({ company: { payTerms: { type: 'prepay' }, payTermsLog: [{ from: '', to: 'prepay' }] }, checks: { A_보증보험: true } });
+  assert.equal(card.payTerms.type, 'guarantee');
+  assert.deepEqual(card.payTermsLog.map((l) => l.to), ['prepay', 'guarantee']);
+});
+
+test('자동 반영: 같은 값이면 카드를 다시 쓰지 않는다', async () => {
+  const { card } = await signedSupply({ company: { payTerms: { type: 'guarantee', by: '사용자 1' } }, checks: { A_보증보험: true } });
+  assert.equal(card.payTerms.by, '사용자 1');
+  assert.equal(card.payTermsLog, undefined);
+});
+
+test('자동 반영: 체크가 둘이거나 없으면 카드를 바꾸지 않는다', async () => {
+  const both = await signedSupply({ checks: { A_보증보험: true, B_선납: true } });
+  assert.equal(both.card.payTerms, undefined);
+  assert.equal(both.sent.allSignedAt, '2026-11-18T08:00:00.000Z', '서명 상태 반영은 그대로');
+  const none = await signedSupply({});
+  assert.equal(none.card.payTerms, undefined);
+});
+
+test('자동 반영: 체크 값 조회가 실패해도 서명 완료 반영은 막히지 않는다', async () => {
+  const env = await makeEnv({ registry: v3Map, companies: [company()], config: { companySigns: false } });
+  const v = await env.service.prepare(prepareInput());
+  await env.service.send(sendInput(v), env.sender);
+  const doc = [...env.mock.documents.values()].find((d) => d.title.includes('기본물품공급계약서'));
+  env.mock.setFieldValue(doc.id, 'B_선납', true);
+  const hook = env.mock.sign(doc.id, 1, '2026-11-18T08:00:00.000Z');
+  env.mock.state.hook = async (method, u) => { if (/participant-fields/.test(u.pathname)) throw new TypeError('down'); };
+  await env.service.handleWebhook(webhookHeaders('d-fail'), JSON.stringify(hook));
+  const sent = (await env.service.listSends({ companyId: 'co-1' }))[0].documents.supply;
+  assert.equal(sent.allSignedAt, '2026-11-18T08:00:00.000Z');
+  env.mock.state.hook = null;
+  await env.service.refresh({ sendId: (await env.service.listSends({ companyId: 'co-1' }))[0].sendId });
+  const card = (await env.store.get('users/shared-owner/shin2/shin2-companies-staging')).value[0];
+  assert.equal(card.payTerms.type, 'prepay', '다음 조회 때 다시 읽어 반영');
+});

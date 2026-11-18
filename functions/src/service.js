@@ -7,7 +7,7 @@
 //  - 결과가 불명확하면 재발송하지 않고 발송 키로 조회한다. 끝내 없을 때만 사람 확인 후 재시도한다.
 const crypto = require('crypto');
 const { AppError } = require('./errors');
-const { COMPANIES_DOC_KEY, evaluateCompany, blockingIssues, validEmail, clean } = require('./company');
+const { COMPANIES_DOC_KEY, PAY_TERMS, evaluateCompany, blockingIssues, validEmail, clean } = require('./company');
 const { generatePdf, sha256 } = require('./pdf');
 const { buildCreateBody, ModusignError } = require('./modusign');
 const { addMouSignedAlert, mouSignedAlertId } = require('./alerts');
@@ -177,7 +177,8 @@ function createService({ store, blobs, modusign, config, now, fontBytes, serverT
     });
 
     const docs = {};
-    for (const type of DOC_TYPES) {
+    // 속도: 두 문서를 동시에 만들고 저장한다(하나라도 실패하면 전체 실패, 버전 기록은 남기지 않음).
+    await Promise.all(DOC_TYPES.map(async (type) => {
       const title = `${test ? TEST_TITLE_PREFIX : ''}POUR공법 ${DOC_LABELS[type]} - ${co.name}`;
       const pdf = await generatePdf({ templateBytes: tpl[type].bytes, map: tpl[type].map, values, fontBytes, seal, title });
       const blobPath = `contracts/${co.id}/v${n}/${type}.pdf`;
@@ -186,7 +187,7 @@ function createService({ store, blobs, modusign, config, now, fontBytes, serverT
         type, title, blobPath, sha256: pdf.sha256, pageCount: pdf.pageCount, size: pdf.bytes.length,
         templateVersion: tpl[type].version, templateStatus: tpl[type].status, map: tpl[type].map,
       };
-    }
+    }));
     const version = {
       companyId: co.id, version: n, createdAt: nowIso(), createdBy: clean(actorLabel).slice(0, 40),
       company: co, contractDate, recipientEmail: email, docs,
@@ -551,9 +552,51 @@ function createService({ store, blobs, modusign, config, now, fontBytes, serverT
     return out;
   }
 
+  // §결제조건 자동 반영(2026-11-18 사용자 「회신된 것에서 선납·보증보험 체크하면 자동으로 체크해줘」)
+  // 공급계약서가 서명 완료되면 시공사가 모두사인에서 고른 결제조건 칸(A 보증보험·B 선납)을 읽는다.
+  // 정확히 하나만 체크된 경우에만 값으로 인정한다. 읽기 실패는 서명 상태 반영을 막지 않는다(다음 조회 때 다시 읽음).
+  const boxPayTerms = (box) => box.payTerms || (/보증보험/.test(box.label || '') ? 'guarantee' : (/선납/.test(box.label || '') ? 'prepay' : null));
+  async function readPayChoice(sendId, type, remote) {
+    if (type !== 'supply' || remote.status !== 'COMPLETED' || !modusign.getParticipantFields) return null;
+    const s = await store.get(sendPath(sendId));
+    const d = s && s.documents[type];
+    if (!d || d.modusignDocumentId !== remote.id || (d.payTermsChoice && d.payTermsChoice.type)) return null;
+    const ver = await store.get(versionPath(s.companyId, s.version));
+    const boxes = ((ver && ver.docs[type].map.checkboxGroups) || []).flatMap((g) => g.boxes || []);
+    if (!boxes.length) return null;
+    let res;
+    try { res = await modusign.getParticipantFields(remote.id); } catch (e) { log.error('participant-fields 조회 실패', e.code || e.message); return null; }
+    const checked = ((res && res.participantFields) || []).filter((f) => f && f.type === 'CHECKBOX' && f.value === true)
+      .map((f) => boxes.find((b) => b.dataLabel === f.dataLabel)).filter(Boolean);
+    const types = Array.from(new Set(checked.map(boxPayTerms).filter(Boolean)));
+    if (types.length !== 1) return { type: '', unclear: true, checked: checked.map((b) => b.label), readAt: nowIso() };
+    return { type: types[0], label: PAY_TERMS[types[0]], checked: checked.map((b) => b.label), readAt: nowIso() };
+  }
+
+  // 카드 업체의 거래방식(payTerms)에 시공사 선택을 넣는다. 카드 화면 [저장]과 같은 모양(payTerms + payTermsLog).
+  // 카드도 '바뀐 칸만 최신 클라우드 값 위에 얹는' 트랜잭션으로 저장하므로, 여기서는 이 업체의 두 칸만 바꾸고 localRev 를 올린다.
+  async function writeCardPayTerms(tx, s, choice) {
+    const path = `users/${config.sharedUid}/shin2/${COMPANIES_DOC_KEY}`;
+    const data = (await tx.get(path)) || {};
+    const list = Array.isArray(data.value) ? data.value : [];
+    const idx = list.findIndex((c) => c && String(c.id) === String(s.companyId));
+    if (idx < 0) return () => false;
+    const co = list[idx];
+    const prev = (co.payTerms && co.payTerms.type) || '';
+    if (prev === choice.type) return () => false;
+    const at = nowIso(), by = '모두사인 회신(자동)';
+    const log = Array.isArray(co.payTermsLog) ? co.payTermsLog.slice() : [];
+    log.push({ from: prev, to: choice.type, at, by, sendId: s.sendId || null });
+    const next = list.slice();
+    next[idx] = Object.assign({}, co, { payTerms: { type: choice.type, at, by }, payTermsLog: log });
+    // 읽기를 모두 끝낸 뒤 쓰도록 쓰기 함수를 돌려준다(트랜잭션 규칙).
+    return () => { tx.set(path, { value: next, updatedAt: stamp(), localRev: Math.max(now(), (data.localRev || 0) + 1) }, { merge: true }); return true; };
+  }
+
   // 모두사인에서 다시 읽은 상태만 반영한다. MOU 상대방 서명이 실제 확인되면 노란 알림을 한 번 만든다.
   // 현재 연결된 문서가 아니면(중복본 등) 상태를 오염시키지 않고 처리 표시만 남긴다.
   async function applyRemote(sendId, type, remote, deliveryId) {
+    const choice = await readPayChoice(sendId, type, remote);
     return store.transaction(async (tx) => {
       const s = await tx.get(sendPath(sendId));
       if (!s) throw new AppError(404, 'SEND_NOT_FOUND', '발송 기록을 찾을 수 없습니다.');
@@ -563,6 +606,12 @@ function createService({ store, blobs, modusign, config, now, fontBytes, serverT
         return { alertCreated: false, ignored: true };
       }
       Object.assign(d, remoteFields(d, remote));
+      // 시험 발송은 카드 업체 데이터에 쓰지 않고 발송 기록에만 남긴다.
+      let cardWrite = () => false;
+      if (choice && !(d.payTermsChoice && d.payTermsChoice.type)) {
+        d.payTermsChoice = choice;
+        if (choice.type && !s.test) cardWrite = await writeCardPayTerms(tx, Object.assign({ sendId }, s), choice);
+      }
       let alertCreated = false;
       // 시험 발송은 카드 알림(카드 데이터)에 쓰지 않는다.
       if (type === 'mou' && d.counterpartySignedAt && !s.test) {
@@ -575,10 +624,11 @@ function createService({ store, blobs, modusign, config, now, fontBytes, serverT
           },
         });
       }
+      if (cardWrite()) d.payTermsChoice = Object.assign({}, d.payTermsChoice, { cardUpdatedAt: nowIso() });
       const documents = Object.assign({}, s.documents, { [type]: d });
       tx.set(sendPath(sendId), { documents, open: Object.values(documents).some(isOpenDoc), updatedAt: nowIso() }, { merge: true });
       if (deliveryId) tx.set(deliveryPath(deliveryId), { at: nowIso(), documentId: remote.id, sendId, type });
-      return { alertCreated };
+      return { alertCreated, payTermsChoice: d.payTermsChoice || null };
     });
   }
 

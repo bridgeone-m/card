@@ -94,6 +94,15 @@ function createMockModusign({ scenarios, now } = {}) {
       cancels.push({ id: doc.id, message: body.message, accessibleByParticipant: body.accessibleByParticipant });
       return reply(200, publicDoc(doc));
     }
+    if (init.method === 'GET' && /^\/documents\/[^/]+\/participant-fields$/.test(u.pathname)) {
+      const doc = documents.get(decodeURIComponent(u.pathname.split('/')[2]));
+      if (!doc) return reply(404, { code: 'NOT_FOUND' });
+      const values = doc.fieldValues || {};
+      const participantFields = doc.participants.flatMap((p) => (p.fields || []).filter((f) => f.type === 'CHECKBOX').map((f) => ({
+        dataLabel: f.dataLabel, groupDataLabel: f.groupLabel || null, participantId: p.id, type: 'CHECKBOX', value: values[f.dataLabel] === true,
+      })));
+      return reply(200, { participantFields });
+    }
     if (init.method === 'GET' && u.pathname.startsWith('/documents/')) {
       const doc = documents.get(decodeURIComponent(u.pathname.slice(11)));
       return doc ? reply(200, publicDoc(doc)) : reply(404, { code: 'NOT_FOUND' });
@@ -113,7 +122,13 @@ function createMockModusign({ scenarios, now } = {}) {
     return { event: { type: last ? 'document_all_signed' : 'document_signed' }, document: { id: documentId, requester: { email: 'requester@example.test' } } };
   }
 
-  return { baseUrl: BASE_URL, fetchImpl, documents, posts, cancels, plan, state, sign };
+  // 시험에서 서명자가 체크 칸을 고른 것을 흉내 낸다.
+  function setFieldValue(documentId, dataLabel, value) {
+    const doc = documents.get(documentId);
+    doc.fieldValues = Object.assign({}, doc.fieldValues, { [dataLabel]: value });
+  }
+
+  return { baseUrl: BASE_URL, fetchImpl, documents, posts, cancels, plan, state, sign, setFieldValue };
 }
 
 module.exports = { createMockModusign, BASE_URL };
