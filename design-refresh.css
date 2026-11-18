@@ -1570,3 +1570,16 @@ html body #chartBody .agr-stage-row-actions .agr-date-chip.is-empty{ color:#1B3A
 html body #chartBody .agr-stage-row-actions .agr-meeting-btn.agr-slot-main,
 html body #chartBody .agr-stage-row-actions .agr-date-chip.is-filled,
 html body #chartBody .agr-stage-row-actions .agr-date-chip.agr-mou-manual-chip{ color:#1B3A66 !important; }
+
+/* §질문지 언제든 보기 (2026-11 사용자 요청) — 상세 팝업 헤더 [질문지 보기], 질문지 화면 [새 창에서 열기] */
+html body #chartHeader .cdet-head-name-row .cdet-head-q-btn{
+  display:inline-flex; align-items:center; gap:5px; flex:none; height:32px; padding:0 12px; border-radius:6px;
+  background:#fff; border:1px solid #C9DAEE; color:#1B3A66; font-size:13px; font-weight:700; cursor:pointer; white-space:nowrap;
+}
+html body #chartHeader .cdet-head-name-row .cdet-head-q-btn:hover{ background:#F1F6FD; border-color:#AFC6E3; }
+html body #chartHeader .cdet-head-name-row .cdet-head-q-btn svg{ width:14px; height:14px; flex:none; }
+.questionnaire-head-actions .questionnaire-open-new{ display:inline-flex; align-items:center; text-decoration:none; white-space:nowrap; }
+@media (max-width:760px){
+  html body #chartHeader .cdet-head-name-row .cdet-head-q-btn{ height:36px; }
+  .questionnaire-head-actions{ flex-wrap:wrap; justify-content:flex-end; gap:6px; }
+}

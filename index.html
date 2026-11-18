@@ -27345,6 +27345,9 @@ window.SHIN2_CRM_APP_INIT = function(){
     // buildInsightPopoverSummary(co)(§고객 성향 미니 팝업 라운드, "DISPLAY ONLY" 원칙과
     // 같은 함수) 그대로 재사용 — non-null이면 저장된 인사이트가 있다는 뜻이다.
     const hasInsight = !!buildInsightPopoverSummary(co);
+    // §질문지 언제든 보기(2026-11, 사용자 요청 「협약이 이루어지면 질문지를 볼 수가 없다」) — 질문서 파일이 있으면
+    // 단계(협약 완료 포함)·탭과 상관없이 헤더에 [질문지 보기]를 둔다. 여는 화면은 기존 질문지 상담 기록 그대로.
+    const headQDoc = D.documentsForCompany(co.id, 'questionnaire')[0] || null;
     wrap.innerHTML = `
       <div class="cdash2-header">
         <div class="cdash2-header-left">
@@ -27355,6 +27358,7 @@ window.SHIN2_CRM_APP_INIT = function(){
               <div class="cdash2-title" id="chartCoNameTitle" title="${esc(co.name)}">${esc(co.name)}</div>
               <span class="cdash2-tag${isDone ? ' is-done' : ''} is-by-name">${esc(stageText)}</span>
               <div class="cdash2-deal-summary">${esc(dealSummary)}${relationsInline ? ' · ' + esc(relationsInline) : ''}</div>
+              ${headQDoc ? `<button type="button" class="cdet-head-q-btn" id="chartHeadQuestionnaireBtn" data-head-questionnaire="${esc(headQDoc.id)}" title="${esc(headQDoc.fileName || headQDoc.originalFileName || '질문서')}">${agrIcon('doc')}질문지 보기</button>` : ''}
             </div>
             <!-- §통합 고객 상세 팝업 라운드 §1 "업체명 + 담당자/연락처/이메일 등 핵심정보" —
                  예전 협약 진행관리 팝업 상단(.agr-top-info)이 보여주던 바로 그 세 가지를
@@ -27380,6 +27384,8 @@ window.SHIN2_CRM_APP_INIT = function(){
       </div>
     `;
     document.getElementById('chartCloseBtn').addEventListener('click', closeChart);
+    const headQBtn = document.getElementById('chartHeadQuestionnaireBtn');
+    if(headQBtn) headQBtn.addEventListener('click', ()=> openQuestionnaireSession(co.id, headQBtn.getAttribute('data-head-questionnaire')));
     if(showMapBackBtn){
       const backBtn = document.getElementById('chartMapBackBtn');
       if(backBtn) backBtn.addEventListener('click', closeChart);
@@ -37479,6 +37485,11 @@ window.SHIN2_CRM_APP_INIT = function(){
       getDocUrl(doc).then(url=>{
         const viewer = document.getElementById('questionnaireViewer');
         if(!url || !viewer) return;
+        // 휴대폰 브라우저는 화면 안(iframe)에 PDF를 그리지 못해 빈 칸이 된다 → 언제든 새 창으로도 열 수 있게
+        const headActs = document.querySelector('#questionnaireSessionOverlay .questionnaire-head-actions');
+        if(headActs && !headActs.querySelector('.questionnaire-open-new')){
+          headActs.insertAdjacentHTML('afterbegin', `<a class="co-text-action questionnaire-open-new" href="${esc(url)}" target="_blank" rel="noopener">새 창에서 열기</a>`);
+        }
         if(isImage) viewer.innerHTML = `<img src="${esc(url)}" alt="${esc(fileName)}" />`;
         else if(isPdf) viewer.innerHTML = `<iframe src="${esc(String(url).indexOf('#') < 0 ? url + '#view=FitH' : url)}" title="질문지 미리보기"></iframe>`;
         else viewer.innerHTML = `<div class="questionnaire-viewer-fallback">이 파일 형식은 화면에서 바로 볼 수 없습니다.<br/><a href="${esc(url)}" target="_blank" rel="noopener" download="${esc(fileName)}">질문서 열기 또는 다운로드</a></div>`;
