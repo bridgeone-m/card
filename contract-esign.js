@@ -235,6 +235,13 @@
       await page.render({canvasContext:canvas.getContext('2d'),viewport:vp,intent:'print'}).promise;
       if(showSig){
         for(const [key,label,cls] of [['counterparty','상대방 서명',''],['company','우리 측 서명','is-company']]){
+          // 상대방이 모두사인에서 고를 체크 칸(결제조건 A·B, 둘 중 하나)
+          if(key==='counterparty') for(const b of (positions.checkboxes||[])){
+            if(!b||b.page!==n) continue;
+            const s=document.createElement('div');s.className='cesign-sigbox';
+            s.style.cssText=`left:${b.x/base.width*100}%;top:${b.y/base.height*100}%;width:${b.w/base.width*100}%;height:${b.h/base.height*100}%`;
+            s.title=`상대방 선택: ${b.label||''}`;s.innerHTML='<b>선택</b>';wrap.appendChild(s);
+          }
           // 을 서명 칸은 여러 개일 수 있다(계약서 (인) + 결제조건 확인서 서명 칸).
           for(const b of [].concat(positions[key]||[])){
             if(!b||b.page!==n) continue;
