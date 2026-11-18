@@ -1,13 +1,13 @@
-// §거래 방식(2026-11-17) — 협약진행 탭 선급·보증보험 체크(둘 중 하나, 다시 누르면 해제)
+// §거래 방식(2026-11-17, 11-18 선급→선납) — 협약진행 탭 선납·보증보험 체크(둘 중 하나, 다시 누르면 해제)
 const { test } = require('node:test'), assert = require('node:assert/strict'), fs = require('fs'), vm = require('vm');
 const html = fs.readFileSync(__dirname + '/index.html', 'utf8');
-const s = html.indexOf("  const PAY_TERMS = { prepay:'선급', guarantee:'보증보험' };"), e = html.indexOf('  function agrPayTermsHtml(co){', s);
+const s = html.indexOf("  const PAY_TERMS = { prepay:'선납', guarantee:'보증보험' };"), e = html.indexOf('  function agrPayTermsHtml(co){', s);
 assert.ok(s > 0 && e > s, '거래 방식 블록을 찾지 못함');
 const ctx = {}; vm.runInNewContext(html.slice(s, e) + '\nthis.api = { getPayTerms, payTermsLabel };', ctx);
 const A = ctx.api;
 
-test('선급·보증보험만 인정, 해제(빈 값)는 없음으로', () => {
-  assert.equal(A.payTermsLabel({ payTerms: { type: 'prepay' } }), '선급');
+test('선납·보증보험만 인정, 해제(빈 값)는 없음으로', () => {
+  assert.equal(A.payTermsLabel({ payTerms: { type: 'prepay' } }), '선납');
   assert.equal(A.payTermsLabel({ payTerms: { type: 'guarantee' } }), '보증보험');
   assert.equal(A.getPayTerms({ payTerms: { type: '' } }), null);
   assert.equal(A.getPayTerms({ payTerms: { type: 'x' } }), null);

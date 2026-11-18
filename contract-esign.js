@@ -9,7 +9,7 @@
   const TYPES=['supply','mou'];
   const TYPE_LABEL={supply:'기본물품공급계약서',mou:'MOU 체결서'};
   const STEP_LABEL=[['info','정보 확인'],['preview','미리보기'],['confirm','발송 확인'],['result','발송 결과']];
-  const FIELD_LABEL={name:'업체명',code:'B2B 전용번호',bizNo:'사업자등록번호',address:'주소',representative:'대표자',email:'수신자 이메일',company:'업체'};
+  const FIELD_LABEL={name:'업체명',code:'B2B 전용번호',bizNo:'사업자등록번호',address:'주소',representative:'대표자',email:'수신자 이메일',company:'업체',payTerms:'거래방식'};
   const config=()=>window.SHIN2_CONTRACT_CONFIG||{apiBase:''};
   const auth=()=>window.SHIN2_CONTRACT_AUTH;
   let st=null;
@@ -235,11 +235,13 @@
       await page.render({canvasContext:canvas.getContext('2d'),viewport:vp,intent:'print'}).promise;
       if(showSig){
         for(const [key,label,cls] of [['counterparty','상대방 서명',''],['company','우리 측 서명','is-company']]){
-          const b=positions[key];
-          if(!b||b.page!==n) continue;
-          const s=document.createElement('div');s.className='cesign-sigbox '+cls;
-          s.style.cssText=`left:${b.x/base.width*100}%;top:${b.y/base.height*100}%;width:${b.w/base.width*100}%;height:${b.h/base.height*100}%`;
-          s.innerHTML=`<b>${label}</b>`;wrap.appendChild(s);
+          // 을 서명 칸은 여러 개일 수 있다(계약서 (인) + 결제조건 확인서 서명 칸).
+          for(const b of [].concat(positions[key]||[])){
+            if(!b||b.page!==n) continue;
+            const s=document.createElement('div');s.className='cesign-sigbox '+cls;
+            s.style.cssText=`left:${b.x/base.width*100}%;top:${b.y/base.height*100}%;width:${b.w/base.width*100}%;height:${b.h/base.height*100}%`;
+            s.innerHTML=`<b>${label}</b>`;wrap.appendChild(s);
+          }
         }
       }
     }

@@ -37714,11 +37714,13 @@ window.SHIN2_CRM_APP_INIT = function(){
     if((byKey.q && byKey.q.state === 'done') || m1Mail) return 'q';
     return null;
   }
-  /* §거래 방식(2026-11-17 사용자) — '선급'인지 '보증보험'인지 우리가 체크한다(둘 중 하나, 다시 누르면 해제).
+  /* §거래 방식(2026-11-17 사용자) — '선납'인지 '보증보험'인지 우리가 체크한다(둘 중 하나, 다시 누르면 해제).
+     2026-11-18 「선급」→「선납」: 새 기본물품공급계약서(여신 보완본) 제8조의2·별지 「물품대금 결제조건 확인서」와 같은 말로 맞춤.
+     계약서 발송 때 이 값으로 확인서 A(보증보험)·B(선납)를 미리 체크한다.
      신규·기존 구분 없이 모든 업체에서 체크한다(사용자 「기존도 다 체크할 수 있게」).
      co.payTerms = { type:'prepay'|'guarantee', at, by } — 해제하면 type:''. 이력은 co.payTermsLog. 업체 레코드 최상위에 둔다
      (partner-dashboard 동기화가 다시 써도 지워지지 않게). 잔디 '정보 변경' 알림에 함께 실을 값(다음 단계). */
-  const PAY_TERMS = { prepay:'선급', guarantee:'보증보험' };
+  const PAY_TERMS = { prepay:'선납', guarantee:'보증보험' };
   function getPayTerms(co){ const p = co && co.payTerms; return (p && PAY_TERMS[p.type]) ? p : null; }
   function payTermsLabel(co){ const p = getPayTerms(co); return p ? PAY_TERMS[p.type] : ''; }
   function agrPayTermsHtml(co){
@@ -37744,7 +37746,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     return D.updateCompanyReturningAll(co.id, { payTerms: { type: type || '', at, by }, payTermsLog: log });
   }
   let payTermsSaveSeq = 0;
-  // §거래 방식 [저장] 버튼(2026-11-18 사용자) — 선급·보증보험을 누르면 고르기만 하고(다시 누르면 고른 것 해제),
+  // §거래 방식 [저장] 버튼(2026-11-18 사용자) — 선납·보증보험을 누르면 고르기만 하고(다시 누르면 고른 것 해제),
   // [저장]을 눌러야 저장한다. 저장한 값과 다르게 골랐을 때만 [저장]이 켜지고 '저장 안 됨'을 알린다.
   // 저장은 이 기기 저장 뒤 화면 먼저, 서버 저장은 뒤에서 '저장 중… → 저장됨'(앞 라운드 그대로).
   function bindAgrPayTerms(body, co){
