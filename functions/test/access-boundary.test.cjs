@@ -127,7 +127,7 @@ test('company-check 는 요청한 업체의 계약 필드만 돌려준다', asyn
   });
   const res = await env.router(req('POST', '/company-check', { body: { companyId: 'co-1', companyCode: 'B2B901' } }));
   const body = JSON.parse(res.body);
-  assert.deepEqual(Object.keys(body.company).sort(), ['address', 'bizNo', 'code', 'email', 'id', 'name', 'representative']);
+  assert.deepEqual(Object.keys(body.company).sort(), ['address', 'bizNo', 'code', 'email', 'id', 'name', 'payTerms', 'payTermsLabel', 'representative']);
   for (const word of ['010-0000-0000', '내부 메모', '다른업체', 'other@test-co.example']) assert.equal(res.body.includes(word), false, word);
 });
 

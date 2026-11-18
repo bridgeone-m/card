@@ -62,6 +62,15 @@ function drawBox(page, font, box, text, field) {
   return { field, size, lines };
 }
 
+// 체크 표시: 글꼴에 없는 기호 대신 선 두 개로 그린다. values[def.value] 가 def.equals 일 때만 그린다.
+function drawCheck(page, box) {
+  const H = page.getHeight();
+  const p = (fx, fy) => ({ x: box.x + box.w * fx, y: H - (box.y + box.h * fy) });
+  const thickness = Math.max(1.2, Math.min(box.w, box.h) * 0.14);
+  page.drawLine({ start: p(0.12, 0.52), end: p(0.42, 0.85), thickness, color: INK });
+  page.drawLine({ start: p(0.42, 0.85), end: p(0.92, 0.12), thickness, color: INK });
+}
+
 function spacedName(name) {
   return name.length <= 4 && !/\s/.test(name) ? Array.from(name).join('  ') : name;
 }
@@ -93,6 +102,12 @@ async function generatePdf({ templateBytes, map, values, fontBytes, seal, title 
   const layout = [];
 
   for (const def of map.fields) {
+    if (def.type === 'check') {
+      const v = values[def.value];
+      if (v == null || v === '') throw new AppError(422, 'FIELD_MISSING', `${def.label || def.value} 값이 없습니다.`);
+      if (v === def.equals) { drawCheck(pages[def.page - 1], def); layout.push({ field: def.label || def.value, check: true }); }
+      continue;
+    }
     const text = fieldValue(def, values);
     assertGlyphs(font, text, def.label || def.value);
     layout.push(drawBox(pages[def.page - 1], font, def, text, def.label || def.value));

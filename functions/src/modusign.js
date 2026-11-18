@@ -75,10 +75,27 @@ function ratioBox(box, size) {
   };
 }
 
-function signatureField(box, size) {
-  const r = ratioBox(box, size);
+// 양식 쪽마다 크기가 다를 수 있다(새 공급계약서: 1~8쪽 레터, 9~10쪽 A4). 비율은 그 쪽 크기로 계산한다.
+const pageSizeOf = (map, page) => (map.pageSizes && map.pageSizes[page - 1]) || map.pageSize;
+
+function signatureField(box, map) {
+  const r = ratioBox(box, pageSizeOf(map, box.page));
   return { type: 'SIGNATURE', required: true, signatureTypes: ['SIGN', 'STAMP'], position: r.position, size: r.size };
 }
+
+// 상대방(을)이 모두사인에서 직접 고르는 체크 칸. 같은 그룹 안에서 minCheckRequired·maxCheckLimit 로 「둘 중 하나」를 강제한다.
+// 공식 문서(서명 요청 POST /documents): CHECKBOX 의 size 는 width 만, 그룹 멤버는 required 가 무시되고 groupLabel 로 묶는다.
+function checkboxFields(map) {
+  const out = [];
+  for (const g of map.checkboxGroups || []) {
+    for (const box of g.boxes) {
+      const r = ratioBox(box, pageSizeOf(map, box.page));
+      out.push({ type: 'CHECKBOX', groupLabel: g.groupLabel, dataLabel: box.dataLabel, valueDescription: box.label, position: r.position, size: { width: r.size.width } });
+    }
+  }
+  return out;
+}
+const checkboxGroups = (map) => (map.checkboxGroups || []).map((g) => ({ groupLabel: g.groupLabel, minCheckRequired: g.minCheckRequired, maxCheckLimit: g.maxCheckLimit }));
 
 // companySigner 가 없으면(null) 을만 서명자로 넣는다 — 우리 측 도장은 PDF 에 이미 찍혀 있어 을 서명이 끝나면 문서가 완료된다.
 function buildCreateBody({ title, pdfBytes, counterparty, companySigner, map, metadata }) {
@@ -90,12 +107,13 @@ function buildCreateBody({ title, pdfBytes, counterparty, companySigner, map, me
       {
         name: counterparty.name, role: '을', signingOrder: 1, locale: 'ko',
         signingMethod: { type: 'EMAIL', value: counterparty.email },
-        fields: [signatureField(map.signature.counterparty, map.pageSize)],
+        fields: [...[].concat(map.signature.counterparty).map((box) => signatureField(box, map)), ...checkboxFields(map)],
+        ...(map.checkboxGroups && map.checkboxGroups.length ? { checkboxFieldGroups: checkboxGroups(map) } : {}),
       },
       ...(companySigner ? [{
         name: companySigner.name, role: '갑', signingOrder: 2, locale: 'ko',
         signingMethod: { type: 'EMAIL', value: companySigner.email },
-        fields: [signatureField(map.signature.company, map.pageSize)],
+        fields: [signatureField(map.signature.company, map)],
       }] : []),
     ],
     metadatas: Object.entries(metadata).map(([key, value]) => ({ key, value: String(value).slice(0, 80) })),

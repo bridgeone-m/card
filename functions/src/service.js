@@ -54,7 +54,7 @@ function parseContractDate(text) {
   const m = DATE_RE.exec(String(text || ''));
   const d = m && new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
   if (!m || d.getUTCMonth() !== +m[2] - 1 || d.getUTCDate() !== +m[3]) throw new AppError(400, 'BAD_CONTRACT_DATE', '계약일을 YYYY-MM-DD 형식의 올바른 날짜로 입력해주세요.');
-  return { year: m[1], month: m[2], day: m[3], monthPlain: String(+m[2]), dayPlain: String(+m[3]) };
+  return { year: m[1], yearShort: m[1].slice(2), month: m[2], day: m[3], monthPlain: String(+m[2]), dayPlain: String(+m[3]) };
 }
 
 const isOpenDoc = (d) => {
@@ -82,8 +82,15 @@ function createService({ store, blobs, modusign, config, now, fontBytes, serverT
     return (data && Array.isArray(data.value)) ? data.value : [];
   }
 
+  // 등록된 양식 지도가 거래방식(payTerms) 칸을 쓰면 업체에 거래방식이 저장돼 있어야 한다.
+  async function companyOpts() {
+    const reg = await templates.registry();
+    const uses = DOC_TYPES.some((t) => reg[t] && reg[t].map && (reg[t].map.fields || []).some((f) => f.value === 'payTerms' || f.value === 'payTermsLabel'));
+    return { requirePayTerms: uses };
+  }
+
   async function checkCompany({ companyId, companyCode }) {
-    const evaluation = evaluateCompany(await loadCompanies(), companyId, companyCode);
+    const evaluation = evaluateCompany(await loadCompanies(), companyId, companyCode, await companyOpts());
     const seal = await templates.sealAvailable();
     const today = new Date(now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
     return Object.assign(evaluation, { defaultContractDate: today, sealImage: seal, sendBlockers: await sendBlockers() });
@@ -120,10 +127,10 @@ function createService({ store, blobs, modusign, config, now, fontBytes, serverT
   // 미리보기 후 업체가 삭제·종료되거나 계약 당사자 정보가 바뀌면 그 PDF는 보내지 않는다.
   async function assertCompanyUnchanged(ver) {
     if (ver.test) return; // 시험 업체는 카드에 없다. 수신자 허용 여부는 sendBlockers 가 다시 본다.
-    const evaluation = evaluateCompany(await loadCompanies(), ver.companyId, ver.company.code);
+    const evaluation = evaluateCompany(await loadCompanies(), ver.companyId, ver.company.code, await companyOpts());
     const blocking = blockingIssues(evaluation, ver.recipientEmail);
     if (blocking.length) throw new AppError(409, 'COMPANY_CHANGED', '업체 정보에 문제가 생겨 발송할 수 없습니다. 정보를 확인한 뒤 다시 생성해주세요.', { issues: blocking });
-    const changed = ['name', 'bizNo', 'address', 'representative'].filter((f) => evaluation.company[f] !== ver.company[f]);
+    const changed = ['name', 'bizNo', 'address', 'representative', 'payTerms'].filter((f) => (evaluation.company[f] || '') !== (ver.company[f] || ''));
     if (changed.length) throw new AppError(409, 'COMPANY_CHANGED', '미리보기 후 업체 정보가 바뀌었습니다. PDF를 다시 생성해주세요.');
   }
 
@@ -137,7 +144,7 @@ function createService({ store, blobs, modusign, config, now, fontBytes, serverT
     const date = parseContractDate(contractDate);
     const email = clean(recipientEmail);
     if (!validEmail(email)) throw new AppError(400, 'BAD_EMAIL', '수신자 이메일을 올바르게 입력해주세요.');
-    const evaluation = evaluateCompany(await loadCompanies(), companyId, companyCode);
+    const evaluation = evaluateCompany(await loadCompanies(), companyId, companyCode, await companyOpts());
     return createVersion(evaluation, { date, email, contractDate, includeSeal, actorLabel, test: false });
   }
 
@@ -147,8 +154,8 @@ function createService({ store, blobs, modusign, config, now, fontBytes, serverT
     const email = clean(recipientEmail);
     if (!testRecipientAllowed(email)) throw new AppError(403, 'TEST_RECIPIENT_NOT_ALLOWED', '시험 수신자는 서버에 등록된 우리 측 이메일만 쓸 수 있습니다.');
     const c = company || {};
-    const synthetic = { id: TEST_COMPANY_ID, code: TEST_COMPANY_CODE, name: c.name, bizRegNo: c.bizNo, repName: c.representative, address: c.address, email };
-    const evaluation = evaluateCompany([synthetic], TEST_COMPANY_ID, TEST_COMPANY_CODE);
+    const synthetic = { id: TEST_COMPANY_ID, code: TEST_COMPANY_CODE, name: c.name, bizRegNo: c.bizNo, repName: c.representative, address: c.address, email, payTerms: c.payTerms ? { type: c.payTerms } : undefined };
+    const evaluation = evaluateCompany([synthetic], TEST_COMPANY_ID, TEST_COMPANY_CODE, await companyOpts());
     return createVersion(evaluation, { date, email, contractDate, includeSeal: false, actorLabel, test: true });
   }
 
@@ -159,7 +166,7 @@ function createService({ store, blobs, modusign, config, now, fontBytes, serverT
 
     const tpl = await templates.loadAll();
     const seal = includeSeal === true ? await templates.loadSeal() : null;
-    const values = Object.assign({ name: co.name, bizNo: co.bizNo, address: co.address, representative: co.representative }, date);
+    const values = Object.assign({ name: co.name, bizNo: co.bizNo, address: co.address, representative: co.representative, payTerms: co.payTerms || '', payTermsLabel: co.payTermsLabel || '' }, date);
 
     const n = await store.transaction(async (tx) => {
       const prep = (await tx.get(prepPath(co.id))) || {};
@@ -202,7 +209,8 @@ function createService({ store, blobs, modusign, config, now, fontBytes, serverT
       docs[type] = {
         type, label: DOC_LABELS[type], title: d.title, sha256: d.sha256, pageCount: d.pageCount, size: d.size,
         templateVersion: d.templateVersion, templateStatus: d.templateStatus,
-        signaturePositions: { counterparty: pos.counterparty || null, company: config.companySigns === true ? (pos.company || null) : null, pageSize: d.map.pageSize || null },
+        signaturePositions: { counterparty: pos.counterparty || null, company: config.companySigns === true ? (pos.company || null) : null, pageSize: d.map.pageSize || null,
+          checkboxes: (d.map.checkboxGroups || []).flatMap((g) => g.boxes.map((b) => ({ page: b.page, x: b.x, y: b.y, w: b.w, h: b.h, label: b.label }))) },
       };
     }
     return { companyId: v.companyId, version: v.version, createdAt: v.createdAt, createdBy: v.createdBy, company: v.company, contractDate: v.contractDate, recipientEmail: v.recipientEmail, sealImage: v.sealImage, test: v.test === true, docs };

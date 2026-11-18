@@ -24,6 +24,13 @@ function createMockModusign({ scenarios, now } = {}) {
       if (!p.signingMethod || p.signingMethod.type !== 'EMAIL' || !/@/.test(p.signingMethod.value)) return 'participant.signingMethod';
       for (const f of p.fields || []) {
         const v = [f.position.x, f.position.y, f.size.width, f.size.height];
+        if (f.type === 'CHECKBOX') {
+          const g = (p.checkboxFieldGroups || []).find((x) => x.groupLabel === f.groupLabel);
+          const cv = [f.position.x, f.position.y, f.size.width];
+          if (!g || !f.dataLabel || f.size.height !== undefined || cv.some((n) => !(n >= 0 && n <= 1)) || !(f.position.page >= 1)) return 'participant.fields';
+          if ((p.fields || []).filter((o) => o.type === 'CHECKBOX' && o.groupLabel === f.groupLabel && o.dataLabel === f.dataLabel).length > 1) return 'participant.fields';
+          continue;
+        }
         if (f.type !== 'SIGNATURE' || v.some((n) => !(n >= 0 && n <= 1)) || !(f.position.page >= 1)) return 'participant.fields';
       }
     }

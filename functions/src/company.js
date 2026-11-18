@@ -31,7 +31,11 @@ function pick(official, fallback, same) {
   return { value: a || b, conflict: null };
 }
 
-function evaluateCompany(companies, companyId, expectedCode) {
+// 카드 협약진행 탭 거래방식(payTerms.type). 계약서 별지 「물품대금 결제조건 확인서」의 A·B 표시에 쓴다.
+const PAY_TERMS = { prepay: '선납', guarantee: '보증보험' };
+
+// opts.requirePayTerms: 등록된 양식이 거래방식 표시를 쓰면(새 공급계약서) 저장된 거래방식이 있어야 한다.
+function evaluateCompany(companies, companyId, expectedCode, opts = {}) {
   const list = Array.isArray(companies) ? companies : [];
   const co = list.find((c) => c && String(c.id) === String(companyId));
   if (!co) return { company: null, issues: [issue('company', 'missing', '업체를 찾을 수 없습니다. 새로고침 후 다시 확인해주세요.')], emailCandidates: [] };
@@ -81,8 +85,12 @@ function evaluateCompany(companies, companyId, expectedCode) {
   else if (!validCandidates.length) issues.push(issue('email', 'invalid', `이메일 형식이 올바르지 않습니다: ${emailCandidates.join(', ')}`));
   else issues.push(issue('email', 'ambiguous', `이메일이 여러 개입니다. 수신자를 골라주세요: ${emailCandidates.join(', ')}`));
 
+  const payType = co.payTerms && typeof co.payTerms === 'object' ? co.payTerms.type : '';
+  const payTerms = PAY_TERMS[payType] ? payType : '';
+  if (opts.requirePayTerms && !payTerms) issues.push(issue('payTerms', 'missing', '거래방식(선납·보증보험)이 저장되지 않았습니다. 고객 카드 [협약진행] 탭에서 거래방식을 고르고 [저장]을 눌러주세요.'));
+
   return {
-    company: { id: String(co.id), code, name, bizNo, representative, address, email },
+    company: { id: String(co.id), code, name, bizNo, representative, address, email, payTerms, payTermsLabel: PAY_TERMS[payTerms] || '' },
     issues,
     emailCandidates: validCandidates,
   };
@@ -93,4 +101,4 @@ function blockingIssues(evaluation, recipientEmail) {
   return evaluation.issues.filter((i) => !(i.field === 'email' && validEmail(recipientEmail)));
 }
 
-module.exports = { COMPANIES_DOC_KEY, evaluateCompany, blockingIssues, validEmail, validBizNo, clean };
+module.exports = { COMPANIES_DOC_KEY, PAY_TERMS, evaluateCompany, blockingIssues, validEmail, validBizNo, clean };
