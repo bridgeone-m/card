@@ -46,7 +46,7 @@
     el.classList.toggle('is-plain',!!plain);
     return el;
   }
-  function close(){const el=document.getElementById('cesignOverlay');if(el)el.remove();st=null;}
+  function close(){const el=document.getElementById('cesignOverlay');if(el)el.remove();if(st)prepCache.delete(st.companyId);st=null;}
   const q=s=>document.querySelector('#cesignOverlay '+s);
 
   function shell(title,step){
@@ -82,9 +82,12 @@
       foot([{label:'닫기',onClick:close}]);
       return;
     }
-    await reloadInfo();
+    prepCache.delete(st.companyId);
+    await reloadInfo(true);
   }
-  async function reloadInfo(){
+  // fromOpen: 창을 처음 열 때만 true. 아직 보내지 않은 PDF(2차 미팅 완료 때 자동 준비한 것 포함)가 있으면
+  // 다시 만들지 않고 그 미리보기로 바로 연다. [다시 확인]으로 부를 때는 정보 확인 화면 그대로.
+  async function reloadInfo(fromOpen){
     setBusy('업체 정보를 확인하는 중…');
     try{
       // 이 기기에 저장된 담당자 로그인이 복원될 때까지 기다린다(복원 전이면 인증 칸이 잠깐 보이는 것 방지).
@@ -98,6 +101,16 @@
       if(!st.form.recipientEmail&&check.company) st.form.recipientEmail=check.company.email||'';
       st.error=null;
     }catch(e){st.error=e;st.check=st.check||{company:null,issues:[],emailCandidates:[],sealImage:{available:false},sendBlockers:[]};}
+    const p=fromOpen===true&&!st.error&&st.check.prepared;
+    if(p&&!st.version){
+      st.version=p;st.fromPrepared=true;
+      st.form.contractDate=p.contractDate||st.form.contractDate;
+      st.form.recipientEmail=p.recipientEmail||st.form.recipientEmail;
+      st.form.includeSeal=!!(p.sealImage&&p.sealImage.inserted);
+      st.viewed={};st.pdfCache={};st.tab='supply';
+      renderPreview();
+      return;
+    }
     renderInfo();
   }
   function renderInfo(){
@@ -169,6 +182,7 @@
       <p class="cesign-meta" id="cesignMeta"></p>
       <label class="cesign-check" style="margin-top:0"><input type="checkbox" id="cesignShowSig"${st.showSig?' checked':''}><span>서명 위치 표시(화면에만 보이고 PDF에는 들어가지 않습니다)</span></label>
       ${testNotice(v)}
+      ${st.fromPrepared&&st.check&&st.check.prepared===v?preparedNotice(v):''}
       <div class="cesign-pages" id="cesignPages"></div>`;
     document.querySelectorAll('#cesignOverlay [data-tab]').forEach(b=>b.onclick=()=>{st.tab=b.dataset.tab;renderPreview();});
     q('#cesignShowSig').onchange=e=>{st.showSig=e.target.checked;showTab();};
@@ -178,6 +192,12 @@
       {label:'발송 확인으로',primary:true,id:'cesignToConfirm',disabled:!TYPES.every(t=>st.viewed[t]),onClick:renderConfirm},
     ]);
     showTab();
+  }
+  function preparedNotice(v){
+    const today=(st.check&&st.check.defaultContractDate)||'';
+    const changed=(v.sendBlockers||[]).some(b=>b.code==='TEMPLATE_CHANGED');
+    return `<div class="cesign-note">${v.auto?'2차 미팅 완료 때 <b>자동으로 만들어 둔 PDF</b>입니다':'이전에 만들어 둔 PDF입니다'} (v${esc(v.version)} · ${esc(fmtDate(v.createdAt))} · 계약일 ${esc(v.contractDate)} · 수신 ${esc(v.recipientEmail)} · ${v.sealImage&&v.sealImage.inserted?'도장 포함':'도장 없음'}).
+      계약일·수신자·도장을 바꾸려면 [정보 수정·재생성]을 누르세요.${today&&v.contractDate!==today?'<br><b>계약일이 오늘과 다릅니다.</b> 오늘 날짜로 보내려면 다시 만드세요.':''}${changed?'<br><b>양식이 바뀌어 이 PDF로는 보낼 수 없습니다.</b> 다시 만드세요.':''}</div>`;
   }
   function testNotice(v){
     const test=TYPES.filter(t=>v.docs[t].templateStatus==='test');
@@ -655,5 +675,41 @@
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',installHistoryTab); else installHistoryTab();
 
-  window.SHIN2_CONTRACT_ESIGN={open,viewSigned,openHistory};
+  // ---- 자동 준비(2차 미팅 완료를 저장할 때 카드가 부름) ------------------------------------
+  // PDF 2종만 만든다. 발송은 하지 않는다. 이미 준비했거나 발송 기록이 있는 업체는 서버가 거절한다
+  // (사람이 만든 PDF를 덮어쓰지 않음). 실제 도장은 이 기기에 발송 담당자가 로그인돼 있을 때만 넣는다.
+  const prepCache=new Map();
+  async function autoPrepare(co){
+    if(!co||!co.id||!config().apiBase) return {skipped:'NO_SERVER'};
+    const companyId=String(co.id),companyCode=co.code||'';
+    try{
+      if(auth()&&auth().senderReady) await auth().senderReady().catch(()=>{});
+      const check=await api('POST','/company-check',{companyId,companyCode});
+      if(check.prepared){prepCache.set(companyId,{at:Date.now(),prepared:check.prepared});return {skipped:'ALREADY_PREPARED'};}
+      // 업체 정보가 모자라면 만들지 않고, 무엇을 채워야 하는지만 알려 준다(임의로 채우지 않음).
+      const missing=[...new Set((check.issues||[]).map(i=>FIELD_LABEL[i.field]||i.field))];
+      if(!check.company||missing.length){const e=new Error('업체 정보 보완 필요('+(missing.join('·')||'업체')+')');e.code='COMPANY_INFO_INCOMPLETE';return {error:e};}
+      const seal=check.sealImage||{};
+      const senderIn=!!(auth()&&auth().senderEmail&&auth().senderEmail());
+      const includeSeal=!!(seal.available&&seal.kind!=='test'&&senderIn);
+      const v=await api('POST','/prepare',{companyId,companyCode,contractDate:check.defaultContractDate,recipientEmail:(check.company&&check.company.email)||'',includeSeal,auto:true,actorLabel:'자동 준비 · 사용자 '+(localStorage.getItem('shin2-active-user-id')||'1')},{personal:includeSeal});
+      prepCache.set(companyId,{at:Date.now(),prepared:Object.assign({},v,{auto:true})});
+      return {ok:true,version:v,seal:includeSeal};
+    }catch(e){
+      if(e.code==='ALREADY_PREPARED'||e.code==='ALREADY_SENT'||e.code==='ACTIVE_SEND_EXISTS') return {skipped:e.code};
+      return {error:e};
+    }
+  }
+  // 협약진행 탭 표시용: 아직 보내지 않은 준비된 PDF가 있으면 그 정보(없으면 null). 1분 동안 다시 묻지 않는다.
+  async function preparedStatus(co){
+    if(!co||!co.id||!config().apiBase) return null;
+    const companyId=String(co.id),hit=prepCache.get(companyId);
+    if(hit&&Date.now()-hit.at<60000) return hit.prepared;
+    try{
+      const check=await api('POST','/company-check',{companyId,companyCode:co.code||''});
+      prepCache.set(companyId,{at:Date.now(),prepared:check.prepared||null});
+      return check.prepared||null;
+    }catch(e){return null;}
+  }
+  window.SHIN2_CONTRACT_ESIGN={open,viewSigned,openHistory,autoPrepare,preparedStatus};
 })();

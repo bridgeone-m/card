@@ -93,7 +93,22 @@ function createService({ store, blobs, modusign, config, now, fontBytes, serverT
     const evaluation = evaluateCompany(await loadCompanies(), companyId, companyCode, await companyOpts());
     const seal = await templates.sealAvailable();
     const today = new Date(now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
-    return Object.assign(evaluation, { defaultContractDate: today, sealImage: seal, sendBlockers: await sendBlockers() });
+    return Object.assign(evaluation, { defaultContractDate: today, sealImage: seal, sendBlockers: await sendBlockers(), prepared: await preparedView(evaluation.company && evaluation.company.id) });
+  }
+
+  // 아직 발송하지 않은 최신 PDF(자동 준비 포함). 이 버전(또는 더 최신)으로 이미 발송했으면 null —
+  // 계약서 창이 이 PDF로 바로 열려 다시 생성하지 않아도 되게 한다. 발송 전 검사(sendBlockers)도 함께 돌려준다.
+  async function preparedView(id) {
+    if (!id || id === TEST_COMPANY_ID) return null;
+    const prep = await store.get(prepPath(id));
+    if (!prep || !prep.currentVersion) return null;
+    if (prep.activeSendId) {
+      const s = await store.get(sendPath(prep.activeSendId));
+      if (s && Number(s.version) >= prep.currentVersion) return null;
+    }
+    const v = await store.get(versionPath(id, prep.currentVersion));
+    if (!v || v.test === true) return null;
+    return Object.assign(versionView(v), { auto: v.auto === true, sendBlockers: await sendBlockers(v) });
   }
 
   // 실제 발송을 막는 조건. 하나라도 있으면 미리보기까지만 가능하다. version 이 있으면 그 버전이 쓴 양식·도장까지 비교한다.
@@ -139,13 +154,15 @@ function createService({ store, blobs, modusign, config, now, fontBytes, serverT
     return validEmail(email) && list.includes(clean(email).toLowerCase());
   }
 
-  async function prepare({ companyId, companyCode, contractDate, recipientEmail, includeSeal, actorLabel }) {
+  // auto: 카드에서 2차 미팅 완료를 저장할 때 자동으로 부르는 준비. 이미 준비했거나 발송한 적이 있는 업체는
+  //   건드리지 않는다(사람이 만든 PDF를 덮어쓰지 않음). 발송은 여기서 하지 않는다.
+  async function prepare({ companyId, companyCode, contractDate, recipientEmail, includeSeal, actorLabel, auto }) {
     if (companyId === TEST_COMPANY_ID) throw new AppError(400, 'BAD_ID', '업체 ID 값이 올바르지 않습니다.');
     const date = parseContractDate(contractDate);
     const email = clean(recipientEmail);
     if (!validEmail(email)) throw new AppError(400, 'BAD_EMAIL', '수신자 이메일을 올바르게 입력해주세요.');
     const evaluation = evaluateCompany(await loadCompanies(), companyId, companyCode, await companyOpts());
-    return createVersion(evaluation, { date, email, contractDate, includeSeal, actorLabel, test: false });
+    return createVersion(evaluation, { date, email, contractDate, includeSeal, actorLabel, test: false, auto: auto === true });
   }
 
   // 시험 업체 값은 요청으로 받되 카드 업체와 같은 검사(사업자번호 검증·대표자·주소)를 거친다. 도장은 넣지 않는다.
@@ -159,7 +176,7 @@ function createService({ store, blobs, modusign, config, now, fontBytes, serverT
     return createVersion(evaluation, { date, email, contractDate, includeSeal: false, actorLabel, test: true });
   }
 
-  async function createVersion(evaluation, { date, email, contractDate, includeSeal, actorLabel, test }) {
+  async function createVersion(evaluation, { date, email, contractDate, includeSeal, actorLabel, test, auto }) {
     const blocking = blockingIssues(evaluation, email);
     if (blocking.length) throw new AppError(422, 'COMPANY_INFO_INCOMPLETE', '업체 정보를 먼저 보완해주세요.', { issues: blocking });
     const co = evaluation.company;
@@ -170,6 +187,8 @@ function createService({ store, blobs, modusign, config, now, fontBytes, serverT
 
     const n = await store.transaction(async (tx) => {
       const prep = (await tx.get(prepPath(co.id))) || {};
+      if (auto && prep.activeSendId) throw new AppError(409, 'ALREADY_SENT', '이미 발송한 기록이 있어 자동 준비하지 않습니다.');
+      if (auto && prep.currentVersion) throw new AppError(409, 'ALREADY_PREPARED', '이미 준비된 PDF가 있어 자동 준비하지 않습니다.');
       if (prep.activeSendId) assertNoLiveSend(await tx.get(sendPath(prep.activeSendId)), prep.activeSendId);
       const next = (prep.lastVersion || 0) + 1;
       tx.set(prepPath(co.id), { lastVersion: next }, { merge: true });
@@ -192,7 +211,7 @@ function createService({ store, blobs, modusign, config, now, fontBytes, serverT
       companyId: co.id, version: n, createdAt: nowIso(), createdBy: clean(actorLabel).slice(0, 40),
       company: co, contractDate, recipientEmail: email, docs,
       sealImage: seal ? { inserted: true, kind: seal.kind, sha256: seal.sha256 } : { inserted: false },
-      test,
+      test, auto: auto === true,
     };
     await store.transaction(async (tx) => {
       const prep = (await tx.get(prepPath(co.id))) || {};

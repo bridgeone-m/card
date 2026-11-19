@@ -30253,6 +30253,32 @@ window.SHIN2_CRM_APP_INIT = function(){
   // 이번에 함께 새로 작성돼 새 반환 형태를 바로 쓰므로 하위 호환을 깰 기존 호출부가 없다
   // (§조사 결과 — 예전 상태 수정/완료 취소 모달은 이번 라운드에서 삭제됨). list는
   // confirmCloudSave에 그대로 넘겨 §업데이트 직후 localStorage 재파싱 중복을 피하는 데만 쓴다.
+  // §MOU 서류 자동 준비(2026-11, 사용자 요청) — 2차 미팅 완료가 새로 저장되면 계약서 2종(기본물품공급계약서·
+  // MOU 체결서) PDF를 미리 만든다. 발송은 하지 않는다(관리자가 [계약서 2종 준비]에서 확인 후 발송).
+  // 이미 준비했거나 발송 기록이 있는 업체는 서버가 건너뛴다. 계약서 서버는 업체명·사업자번호·주소·대표자·
+  // 이메일·거래방식만 쓰므로 미팅 완료 저장이 서버에 닿기 전에 불러도 같은 PDF가 나온다.
+  function stageStateOf(co, key){
+    try{ const s = co && buildProgressStages(co).stages.find(x=> x.key === key); return s ? s.state : null; }
+    catch(e){ return null; }
+  }
+  function startContractAutoPrepare(companyId){
+    const E = window.SHIN2_CONTRACT_ESIGN;
+    const co = D.findCompany(companyId);
+    if(!E || typeof E.autoPrepare !== 'function' || !co) return;
+    if(stageStateOf(co, 'mou') === 'done') return;   // 이미 체결한 업체는 만들지 않는다
+    E.autoPrepare(co).then(r=>{
+      if(!r || r.skipped) return;
+      const open = String(currentCompanyId) === String(companyId) && document.getElementById('agreementPopupBody');
+      if(open) renderAgreementPopupBody(companyId);
+      if(r.ok){
+        showMiniSaveToast('계약서 2종 자동 준비됨');
+        setAgrSaveStatus('계약서 2종 자동 준비됨 · 발송 대기' + (r.seal ? '' : ' (도장 없음)'), 'ready');
+      } else if(r.error){
+        console.warn('[계약서 자동 준비]', r.error.code || '', r.error.message || r.error);
+        setAgrSaveStatus('계약서 자동 준비 못 함 · ' + (r.error.message || '오류') + ' — [계약서 2종 준비]에서 확인', 'error');
+      }
+    }).catch(e=> console.warn('[계약서 자동 준비]', e));
+  }
   function saveStageCorrection(companyId, stageKey, patch, meta){
     const co = D.findCompany(companyId);
     if(!co) return { ok:false, list:null };
@@ -31420,6 +31446,7 @@ window.SHIN2_CRM_APP_INIT = function(){
   }
   function workqMergeNewMou(co, patch){
     co = (typeof D.findCompany === 'function' && D.findCompany(co.id)) || co;   // §상태 동기화 점검 — 팝업을 연 시점의 옛 co로 partnerDashboard를 되쓰지 않게
+    const m2WasDone = patch && patch.m2Done === true && typeof stageStateOf === 'function' && stageStateOf(co, 'm2') === 'done';
     const current = (co.partnerDashboard && co.partnerDashboard.newMou) || {};
     const merged = Object.assign({}, current, patch);
     const companyPatch = {partnerDashboard:Object.assign({},co.partnerDashboard,{newMou:merged})};
@@ -31451,6 +31478,7 @@ window.SHIN2_CRM_APP_INIT = function(){
         isConfirmedPartner(Object.assign({},co,companyPatch), buildProgressStages(Object.assign({},co,companyPatch)))));
     if(patch.qReplyLabel) Object.assign(companyPatch, window.WebsiteCleanup.eventPatch(co,'qReply',patch.qReplyLabel));
     D.updateCompany(co.id, companyPatch);
+    if(patch.m2Done === true && !m2WasDone && typeof startContractAutoPrepare === 'function') startContractAutoPrepare(co.id);
   }
   function workqLogActivity(companyId, text){ if(text) D.addActivity(companyId, text); }
   function workqLogMemo(companyId, text){ const t = (text||'').trim(); if(t) D.addMemo(companyId, t); }
@@ -35687,6 +35715,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     try{
       await nextPaint();
       const before = D.findCompany(companyId);
+      const m2WasDone = stageKey === 'm2Done' && stageStateOf(before, 'm2') === 'done';
       const result = saveStageCorrection(companyId, stageKey, patch, meta);
       if(!result.ok){
         setSaveBtnBusy(ui.btn, false, '다시 시도');
@@ -35718,6 +35747,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       if(cardView.style.display !== 'block' && document.getElementById('agreementPopupBody')) renderAgreementPopupBody(companyId);
       setAgrSaveStatus('저장됨', 'ok');
       setTimeout(()=>{ const el = document.getElementById('agrSaveStatusPill'); if(el && el.classList.contains('is-ok')) setAgrSaveStatus(''); }, 2200);
+      if(stageKey === 'm2Done' && patch && patch.status === 'done' && !m2WasDone) startContractAutoPrepare(companyId);
       if(stageKey === 'qReply' && patch && patch.status === 'done' && typeof window.SHIN2_OPEN_REPLY_CHECKLIST === 'function'){
         const savedCo = D.findCompany(companyId);
         window.SHIN2_OPEN_REPLY_CHECKLIST(companyId, savedCo ? savedCo.name : '');
@@ -37947,6 +37977,16 @@ window.SHIN2_CRM_APP_INIT = function(){
     // §계약서 버튼 이동(2026-11) — 하단 고정 영역에 있던 [계약서 2종 준비]를 메일 버튼 줄 끝에 둔다(동작은 그대로).
     const cesignBtn = body.querySelector('#cesignOpenBtn');
     if(cesignBtn) cesignBtn.addEventListener('click', ()=>{ if(!window.crmAdminOk('계약서 발송')) return; if(window.SHIN2_CONTRACT_ESIGN) window.SHIN2_CONTRACT_ESIGN.open(co); });
+    // §MOU 서류 자동 준비 — 아직 보내지 않은 계약서 PDF가 있으면 버튼에 「발송 대기」(2차 완료·체결 전 업체만 서버에 묻는다).
+    const m2Row = rows.find(r=> r.key === 'm2Done'), mouRow = rows.find(r=> r.key === 'mouDone');
+    if(cesignBtn && m2Row && m2Row.done && !(mouRow && mouRow.done) && window.SHIN2_CONTRACT_ESIGN && typeof window.SHIN2_CONTRACT_ESIGN.preparedStatus === 'function'){
+      window.SHIN2_CONTRACT_ESIGN.preparedStatus(co).then(p=>{
+        if(!p || !cesignBtn.isConnected) return;
+        cesignBtn.classList.add('is-ready');
+        cesignBtn.textContent = '계약서 2종 · 발송 대기';
+        cesignBtn.title = (p.auto ? '2차 미팅 완료 때 자동 준비' : '준비해 둔 PDF') + ' v' + p.version + ' · 계약일 ' + p.contractDate;
+      });
+    }
     // §상세 팝업 compact 라운드 — [협약무효]는 본문 아래 작은 버튼 줄(#agrInvalidateSlot)에 둔다.
     // 고객 상세가 아닌 곳(슬롯 없음)에서는 예전처럼 본문 끝에 붙인다.
     const invalidateSlot = document.getElementById('agrInvalidateSlot');
