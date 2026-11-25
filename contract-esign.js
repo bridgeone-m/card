@@ -570,6 +570,7 @@
   }
   function closeHistory(restore){
     const el=document.getElementById('cesignHistory');if(el)el.remove();
+    const pa=document.getElementById('cesignPrintAlert');if(pa)pa.remove();
     if(!document.body.classList.contains('cesign-history-on')) return;
     document.body.classList.remove('cesign-history-on');
     document.querySelectorAll('[data-cesign-tab]').forEach(b=>b.classList.remove('is-active'));
@@ -581,6 +582,38 @@
     try{const r=await api('GET','/sends/all');hs.rows=r.sends||[];hs.error=null;hs.loaded=true;}
     catch(e){hs.error=e;}
     hs.loading=false;renderHistory();
+  }
+  // ---- 인쇄 필요 알림 -------------------------------------------------------------------
+  // 상대방(시공사)이 서명해 [인쇄] 버튼이 생긴 문서를 우측 하단 알림창(기존 요청자료 알림과 같은 스킨)으로 알린다.
+  // 이 화면(계약서 발송)이 열려 있을 때만 뜨고, [인쇄]를 누르거나 [확인]을 누르면 그 건이 사라진다(이 기기에 기억).
+  const SEEN_KEY='cesign-print-alert-seen';
+  function seenSet(){try{return new Set(JSON.parse(localStorage.getItem(SEEN_KEY)||'[]'));}catch(_){return new Set();}}
+  function markSeen(key){try{const v=seenSet();v.add(key);localStorage.setItem(SEEN_KEY,JSON.stringify([...v].slice(-500)));}catch(_){}}
+  function renderPrintAlert(){
+    let el=document.getElementById('cesignPrintAlert');
+    const dock=typeof window.crmAlertDock==='function'?window.crmAlertDock():null;
+    const on=document.body.classList.contains('cesign-history-on');
+    const seen=seenSet();
+    const items=(on&&dock)?historyRows().filter(r=>r.d.allSignedAt&&!r.d.abortedAt&&!r.s.test&&!seen.has(r.s.sendId+'|'+r.d.type)):[];
+    if(!items.length){if(el)el.remove();return;}
+    if(!el){el=document.createElement('div');el.id='cesignPrintAlert';el.className='consult-req-alert';dock.appendChild(el);}
+    el.innerHTML=`
+      <button type="button" class="consult-req-alert-main" aria-expanded="true"><span class="alert-brand" aria-hidden="true"><img src="assets/netform-symbol-original.png" alt="" /></span><span class="consult-req-alert-texts"><span class="consult-req-alert-title">인쇄 필요 ${items.length}건</span></span></button>
+      <div class="consult-req-alert-list">
+        ${items.slice(0,8).map(r=>{const k=esc(r.s.sendId)+'|'+esc(r.d.type);return `
+        <div class="consult-req-alert-row">
+          <div class="consult-req-alert-row-main"><span class="consult-req-alert-row-name">${esc(r.s.companyName)}</span><div class="alert-task">${esc(TYPE_LABEL[r.d.type])} 체결 완료 · 인쇄하세요</div></div>
+          <div class="alert-actions"><button type="button" class="meeting-alert-sub" data-palert-ok="${k}">확인</button><button type="button" class="consult-req-alert-done" data-palert-print="${k}">인쇄</button></div>
+        </div>`;}).join('')}
+        ${items.length>8?`<div class="consult-req-alert-more">외 ${items.length-8}건</div>`:''}
+      </div>`;
+    const list=el.querySelector('.consult-req-alert-list');
+    el.querySelector('.consult-req-alert-main').onclick=()=>{list.hidden=!list.hidden;};
+    el.querySelectorAll('[data-palert-ok]').forEach(b=>b.onclick=()=>{markSeen(b.dataset.palertOk);renderPrintAlert();});
+    el.querySelectorAll('[data-palert-print]').forEach(b=>b.onclick=()=>{
+      const key=b.dataset.palertPrint;const [sendId,type]=key.split('|');const s=hs.rows.find(x=>x.sendId===sendId);
+      markSeen(key);renderPrintAlert();viewSigned({sendId,docType:type,companyName:s&&s.companyName,autoPrint:true});
+    });
   }
   function renderHistory(){
     const el=document.getElementById('cesignHistory');if(!el)return;
@@ -606,6 +639,7 @@
         ${rows.map(historyRow).join('')}
       </div>`:''}
     </div>`;
+    renderPrintAlert();
     hq('#cesignHReload').onclick=loadHistory;
     hq('#cesignHClose').onclick=()=>closeHistory(true);
     el.querySelectorAll('[data-hfilter]').forEach(b=>b.onclick=()=>{hs.filter=b.dataset.hfilter;renderHistory();});
@@ -614,7 +648,7 @@
     if(focus){search.focus();search.setSelectionRange(search.value.length,search.value.length);}
     el.querySelectorAll('[data-hrefresh]').forEach(b=>b.onclick=()=>refreshRow(b.dataset.hrefresh));
     el.querySelectorAll('[data-hview]').forEach(b=>b.onclick=()=>{const [sendId,type]=b.dataset.hview.split('|');const s=hs.rows.find(x=>x.sendId===sendId);viewSigned({sendId,docType:type,companyName:s&&s.companyName});});
-    el.querySelectorAll('[data-hprint]').forEach(b=>b.onclick=()=>{const [sendId,type]=b.dataset.hprint.split('|');const s=hs.rows.find(x=>x.sendId===sendId);viewSigned({sendId,docType:type,companyName:s&&s.companyName,autoPrint:true});});
+    el.querySelectorAll('[data-hprint]').forEach(b=>b.onclick=()=>{const [sendId,type]=b.dataset.hprint.split('|');const s=hs.rows.find(x=>x.sendId===sendId);markSeen(b.dataset.hprint);renderPrintAlert();viewSigned({sendId,docType:type,companyName:s&&s.companyName,autoPrint:true});});
     el.querySelectorAll('[data-hcancel]').forEach(b=>b.onclick=()=>{
       const [sendId,type]=b.dataset.hcancel.split('|');const s=hs.rows.find(x=>x.sendId===sendId);
       cancelFlow({sendId,type,companyName:s&&s.companyName,back:close,done:(next)=>{close();replaceRow(next);}});
