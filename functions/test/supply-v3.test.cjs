@@ -113,3 +113,27 @@ test('자동 반영: 체크 값 조회가 실패해도 서명 완료 반영은 �
   const card = (await env.store.get('users/shared-owner/shin2/shin2-companies-staging')).value[0];
   assert.equal(card.payTerms.type, 'prepay', '다음 조회 때 다시 읽어 반영');
 });
+
+// §계약 기한(2026-11-25): 공급계약서 뒷장 계약일 + 제20조(체결일로부터 1년) → 카드 payTerms.until·발송 기록 contractTerm
+test('기한: 선납 회신 시 카드 거래방식 옆에 계약일(2026-11-02)과 기한(2027-11-02)이 함께 저장된다', async () => {
+  const { card, sent } = await signedSupply({ checks: { B_선납: true } });
+  assert.equal(card.payTerms.type, 'prepay');
+  assert.equal(card.payTerms.contractDate, '2026-11-02');
+  assert.equal(card.payTerms.until, '2027-11-02');
+  assert.equal(sent.contractTerm.until, '2027-11-02');
+  assert.match(sent.contractTerm.clause, /제20조/);
+});
+
+test('기한: 거래방식이 이미 같아도 기한이 없으면 기한만 채우고 거래방식·이력은 그대로', async () => {
+  const { card } = await signedSupply({ company: { payTerms: { type: 'guarantee', by: '사용자 1' } }, checks: { A_보증보험: true } });
+  assert.equal(card.payTerms.by, '사용자 1');
+  assert.equal(card.payTerms.until, '2027-11-02');
+  assert.equal(card.payTermsLog, undefined);
+});
+
+test('기한: 체크가 불명확하면 카드에는 쓰지 않고 발송 기록에만 남는다', async () => {
+  const { card, sent } = await signedSupply({});
+  assert.equal(card.payTerms, undefined);
+  assert.equal(sent.contractTerm.until, '2027-11-02');
+});
+

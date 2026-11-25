@@ -37762,6 +37762,7 @@ window.SHIN2_CRM_APP_INIT = function(){
         ${Object.keys(PAY_TERMS).map(k=> { const on = !!(p && p.type === k); return `<button type="button" class="agr-pay-btn${on ? ' is-on' : ''}" data-agr-pay="${k}" aria-pressed="${on ? 'true' : 'false'}"><span class="agr-pay-check" aria-hidden="true">${on ? '✓' : ''}</span>${PAY_TERMS[k]}</button>`; }).join('')}
         <button type="button" class="agr-pay-save" data-agr-pay-save disabled>저장</button>
         <span class="agr-pay-note" data-agr-pay-note>${p ? esc((p.at ? fmtDate(p.at) : '') + ' 저장' + (p.by ? ' · ' + p.by : '')) : '아직 저장 안 함'}</span>
+        ${p && p.until ? `<span class="agr-pay-note agr-pay-term" title="${esc('계약일 ' + String(p.contractDate || '').replace(/-/g, '.') + ' + 제20조 1년(자동 연장)')}">기한 ${esc(String(p.until).replace(/-/g, '.'))}</span>` : ''}
         <span class="cdash-cloud-save-status" data-agr-pay-status></span>
       </div>`;
   }
@@ -37773,7 +37774,9 @@ window.SHIN2_CRM_APP_INIT = function(){
     const log = Array.isArray(cur.payTermsLog) ? cur.payTermsLog.slice() : [];
     const prev = getPayTerms(cur);
     log.push({ from: prev ? prev.type : '', to: type || '', at, by });
-    return D.updateCompanyReturningAll(co.id, { payTerms: { type: type || '', at, by }, payTermsLog: log });
+    // 모두사인 회신으로 들어온 계약일·기한(contractDate·until)은 거래방식을 손으로 바꿔도 지우지 않는다
+    const keep = {}; if(cur.payTerms && cur.payTerms.until){ keep.contractDate = cur.payTerms.contractDate; keep.until = cur.payTerms.until; }
+    return D.updateCompanyReturningAll(co.id, { payTerms: Object.assign({ type: type || '', at, by }, keep), payTermsLog: log });
   }
   let payTermsSaveSeq = 0;
   // §거래 방식 [저장] 버튼(2026-11-18 사용자) — 선납·보증보험을 누르면 고르기만 하고(다시 누르면 고른 것 해제),

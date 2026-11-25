@@ -47,6 +47,7 @@ const deliveryPath = (id) => `contractWebhookDeliveries/${id}`;
 // 실제 발송 스위치와 별개인 시험 스위치 + 우리 측 수신자 허용 목록을 모두 통과해야 보낼 수 있다.
 const TEST_COMPANY_ID = 'test-send';
 const TEST_COMPANY_CODE = 'B2B000';
+const { contractTermOf } = require('./term');
 const TEST_TITLE_PREFIX = '[시험] ';
 
 
@@ -594,7 +595,9 @@ function createService({ store, blobs, modusign, config, now, fontBytes, serverT
 
   // 카드 업체의 거래방식(payTerms)에 시공사 선택을 넣는다. 카드 화면 [저장]과 같은 모양(payTerms + payTermsLog).
   // 카드도 '바뀐 칸만 최신 클라우드 값 위에 얹는' 트랜잭션으로 저장하므로, 여기서는 이 업체의 두 칸만 바꾸고 localRev 를 올린다.
-  async function writeCardPayTerms(tx, s, choice) {
+  // 2026-11-25: 거래방식과 함께 계약 기한(뒷장 계약일 + 제20조 1년)도 같은 payTerms 에 넣는다(contractDate·until).
+  // choice 가 null 이면 이미 저장된 거래방식은 그대로 두고 기한만 채운다(이미 회신된 건 보완).
+  async function writeCardPayTerms(tx, s, choice, term) {
     const path = `users/${config.sharedUid}/shin2/${COMPANIES_DOC_KEY}`;
     const data = (await tx.get(path)) || {};
     const list = Array.isArray(data.value) ? data.value : [];
@@ -602,12 +605,17 @@ function createService({ store, blobs, modusign, config, now, fontBytes, serverT
     if (idx < 0) return () => false;
     const co = list[idx];
     const prev = (co.payTerms && co.payTerms.type) || '';
-    if (prev === choice.type) return () => false;
+    const type = choice ? choice.type : prev;
+    if (!type) return () => false; // 거래방식이 없으면 카드에는 쓰지 않는다(기한만 발송 기록에 남음)
+    const typeChanged = prev !== type;
+    const termChanged = Boolean(term) && !(co.payTerms && co.payTerms.until === term.until && co.payTerms.contractDate === term.from);
+    if (!typeChanged && !termChanged) return () => false;
     const at = nowIso(), by = '모두사인 회신(자동)';
     const log = Array.isArray(co.payTermsLog) ? co.payTermsLog.slice() : [];
-    log.push({ from: prev, to: choice.type, at, by, sendId: s.sendId || null });
+    if (typeChanged) log.push({ from: prev, to: type, at, by, sendId: s.sendId || null });
     const next = list.slice();
-    next[idx] = Object.assign({}, co, { payTerms: { type: choice.type, at, by }, payTermsLog: log });
+    const payTerms = Object.assign({}, co.payTerms, typeChanged ? { type, at, by } : {}, termChanged ? { contractDate: term.from, until: term.until } : {});
+    next[idx] = Object.assign({}, co, { payTerms }, typeChanged ? { payTermsLog: log } : {});
     // 읽기를 모두 끝낸 뒤 쓰도록 쓰기 함수를 돌려준다(트랜잭션 규칙).
     return () => { tx.set(path, { value: next, updatedAt: stamp(), localRev: Math.max(now(), (data.localRev || 0) + 1) }, { merge: true }); return true; };
   }
@@ -627,10 +635,12 @@ function createService({ store, blobs, modusign, config, now, fontBytes, serverT
       Object.assign(d, remoteFields(d, remote));
       // 시험 발송은 카드 업체 데이터에 쓰지 않고 발송 기록에만 남긴다.
       let cardWrite = () => false;
-      if (choice && !(d.payTermsChoice && d.payTermsChoice.type)) {
-        d.payTermsChoice = choice;
-        if (choice.type && !s.test) cardWrite = await writeCardPayTerms(tx, Object.assign({ sendId }, s), choice);
-      }
+      // 계약 기한: 공급계약서 양측 서명이 끝나면 뒷장 계약일(발송 때 넣은 계약일)에서 제20조(체결일로부터 1년)만큼 더한 날
+      const term = type === 'supply' && remote.status === 'COMPLETED' ? (d.contractTerm || contractTermOf(s.contractDate)) : null;
+      if (term && !d.contractTerm) d.contractTerm = term;
+      const newChoice = choice && !(d.payTermsChoice && d.payTermsChoice.type) ? choice : null;
+      if (newChoice) d.payTermsChoice = newChoice;
+      if ((newChoice?.type || term) && !s.test) cardWrite = await writeCardPayTerms(tx, Object.assign({ sendId }, s), newChoice && newChoice.type ? newChoice : null, term);
       let alertCreated = false;
       // 시험 발송은 카드 알림(카드 데이터)에 쓰지 않는다.
       if (type === 'mou' && d.counterpartySignedAt && !s.test) {
@@ -643,7 +653,7 @@ function createService({ store, blobs, modusign, config, now, fontBytes, serverT
           },
         });
       }
-      if (cardWrite()) d.payTermsChoice = Object.assign({}, d.payTermsChoice, { cardUpdatedAt: nowIso() });
+      if (cardWrite()) d.payTermsChoice = Object.assign({}, d.payTermsChoice || {}, { cardUpdatedAt: nowIso() });
       const documents = Object.assign({}, s.documents, { [type]: d });
       tx.set(sendPath(sendId), { documents, open: Object.values(documents).some(isOpenDoc), updatedAt: nowIso() }, { merge: true });
       if (deliveryId) tx.set(deliveryPath(deliveryId), { at: nowIso(), documentId: remote.id, sendId, type });

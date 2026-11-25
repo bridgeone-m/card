@@ -20,7 +20,8 @@ test('협약진행 탭에 체크란 표시, 고르기만 하고 [저장]을 눌�
     "picked = picked === k ? '' : k;",
     "data-agr-pay-save disabled>저장</button>",
     "if(picked === saved()) return;",
-    "payTerms: { type: type || '', at, by }, payTermsLog: log",
+    "payTerms: Object.assign({ type: type || '', at, by }, keep), payTermsLog: log", // 기한(until)은 손으로 바꿔도 유지
+    'agr-pay-term',
     'aria-pressed=',
   ]) assert.ok(html.includes(t), t);
 });
