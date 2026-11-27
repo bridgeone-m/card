@@ -45865,9 +45865,10 @@ window.SHIN2_CRM_APP_INIT = function(){
         </div>
       </div>`;
     };
-    wrap.innerHTML = CO_INFO_LABELS.map(([k,l])=> row(k,l)).join('') +
+    const extraHtml = (Array.isArray(co.extraContacts) ? co.extraContacts : []).map(c=> `<div class="co-field"><div class="co-field-label">추가 담당자</div><div class="co-field-value">${esc([[c.name, c.position].filter(Boolean).join(' '), c.mobile, c.email].filter(Boolean).join(' · '))}</div></div>`).join('');
+    wrap.innerHTML = CO_INFO_LABELS.map(([k,l])=> row(k,l)).join('') + extraHtml +
       (co.memo ? `<div class="co-field"><div class="co-field-label">기본메모</div><div class="co-field-value" style="white-space:pre-wrap;">${esc(co.memo)}</div></div>` : '');
-    if(!CO_INFO_LABELS.some(([k])=> co[k]) && !co.memo){
+    if(!CO_INFO_LABELS.some(([k])=> co[k]) && !co.memo && !extraHtml){
       wrap.innerHTML = '<div class="chart-empty">—</div>';
       return;
     }
@@ -47559,7 +47560,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     const grid = wrap.querySelector(':scope > .co-form-grid2');
     if(grid){
       grid.parentNode.insertBefore(makeSection('building', '업체 정보'), grid);
-      const firstRow3 = grid.querySelector(':scope > .co-form-row3');
+      const firstRow3 = grid.querySelector(':scope > .addco-pair');
       if(firstRow3){ const h = makeSection('user', '대표자 · 연락 정보'); h.classList.add('is-in-grid'); grid.insertBefore(h, firstRow3); }
     }
     // 주요 라벨 앞 아이콘(라벨 글자는 그대로)
@@ -47570,7 +47571,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     });
     // 추가 정보(접힘)
     const more = wrap.querySelector('.co-form-more > summary');
-    if(more) more.innerHTML = icon('plus') + '<span>추가 정보</span><em>FAX · 홈페이지 · 자본금 · 비고</em>';
+    if(more) more.innerHTML = icon('plus') + '<span>추가 정보</span><em>홈페이지 · 자본금 · 비고</em>';
     // 고객 진행단계 — 머리말 + 단계 제목 아이콘
     const deal = wrap.querySelector('.deal-stage-block');
     if(deal){
@@ -47592,6 +47593,34 @@ window.SHIN2_CRM_APP_INIT = function(){
     // 주요 액션 — 등록에만 아이콘
     const save = wrap.querySelector('#crmNewFSave');
     if(save && !save.querySelector('.addco-ico')) save.insertAdjacentHTML('afterbegin', icon('check'));
+  }
+  const ADDCO_POSITIONS = ['대표','이사','전무','경리'];
+  function addCoPositionOptionsHtml(){
+    return '<option value="">선택</option>' + ADDCO_POSITIONS.map(p=> `<option value="${p}">${p}</option>`).join('');
+  }
+  // 명함 인식 직급이 목록에 없으면(예: 부장) 그 값을 선택지에 더해 잃지 않게 한다.
+  function addCoEnsureOption(el, val){
+    if(!el || el.tagName !== 'SELECT' || !val) return;
+    if(!Array.from(el.options).some(o=> o.value === val)) el.add(new Option(val, val));
+  }
+  function addCoExtraRow(){
+    const row = document.createElement('div');
+    row.className = 'addco-extra-row';
+    row.innerHTML = `
+      <div class="co-form-field"><label>이름</label><input type="text" data-extra="name" /></div>
+      <div class="co-form-field"><label>직급</label><select data-extra="position">${addCoPositionOptionsHtml()}</select></div>
+      <div class="co-form-field"><label>휴대전화</label><input type="text" data-extra="mobile" /></div>
+      <div class="co-form-field"><label>Email</label><input type="text" data-extra="email" /></div>
+      <button type="button" class="addco-extra-del">삭제</button>`;
+    row.querySelector('.addco-extra-del').addEventListener('click', ()=> row.remove());
+    return row;
+  }
+  function addCoReadExtraContacts(){
+    return Array.from(document.querySelectorAll('#crmNewFExtraList .addco-extra-row')).map(row=>{
+      const c = {};
+      row.querySelectorAll('[data-extra]').forEach(el=>{ c[el.getAttribute('data-extra')] = el.value.trim(); });
+      return c;
+    }).filter(c=> c.name || c.mobile || c.email);
   }
   function openAddCompanyForm(prefillName){
     if(!window.crmAdminOk('고객 등록')) return;
@@ -47646,25 +47675,30 @@ window.SHIN2_CRM_APP_INIT = function(){
       <div class="co-form-grid2">
         <div class="co-form-field"><label>상호 *</label><input type="text" id="crmNewF_name" /></div>
         <div class="co-form-field"><label>B2B 전용번호(자동 발급)</label><input type="text" id="crmNewF_code" readonly title="B2B 전용번호는 저장할 때 자동으로 발급됩니다." /></div>
-        <div class="co-form-row3">
+        <div class="addco-pair">
           <div class="co-form-field"><label>대표자</label><input type="text" id="crmNewF_repName" /></div>
           <input type="hidden" id="crmNewF_contactName" />
-          <div class="co-form-field"><label>직급</label><input type="text" id="crmNewF_position" /></div>
+          <div class="co-form-field"><label>직급</label><select id="crmNewF_position">${addCoPositionOptionsHtml()}</select></div>
         </div>
-        <div class="co-form-row3">
+        <div class="addco-extra co-form-span2">
+          <div id="crmNewFExtraList"></div>
+          <button type="button" class="addco-extra-add" id="crmNewFExtraAdd">+ 다른 담당자 추가</button>
+        </div>
+        <div class="addco-pair">
           <div class="co-form-field"><label>휴대전화</label><input type="text" id="crmNewF_mobile" /></div>
           <div class="co-form-field"><label>회사전화</label><input type="text" id="crmNewF_phone" /></div>
+        </div>
+        <div class="addco-pair">
           <div class="co-form-field"><label>Email</label><input type="text" id="crmNewF_email" /></div>
+          <div class="co-form-field"><label>FAX</label><input type="text" id="crmNewF_fax" /></div>
         </div>
         <div class="co-form-field co-form-span2"><label>주소</label><input type="text" id="crmNewF_address" /></div>
         <div class="co-form-field co-form-span2"><label>사업자번호</label><input type="text" id="crmNewF_bizRegNo" /></div>
-        <div class="co-form-field co-form-span2"><label>이전 상호(선택)</label><input type="text" id="crmNewF_formerNames" placeholder="상호가 바뀐 업체만 입력 · 여러 개는 쉼표(,)로 구분" /></div>
       </div>
       <details class="co-form-more">
-        <summary>▸ 추가 정보(FAX · 홈페이지 · 자본금 · 비고)</summary>
+        <summary>▸ 추가 정보(홈페이지 · 자본금 · 비고)</summary>
         <div class="co-form-grid2" style="margin-top:10px;">
-          <div class="co-form-field"><label>FAX</label><input type="text" id="crmNewF_fax" /></div>
-          <div class="co-form-field"><label>홈페이지</label><input type="text" id="crmNewF_website" /></div>
+          <div class="co-form-field co-form-span2"><label>홈페이지</label><input type="text" id="crmNewF_website" /></div>
           <div class="co-form-field co-form-span2"><label>자본금</label><input type="text" id="crmNewF_capital" /></div>
           <div class="co-form-field co-form-span2"><label>비고</label><textarea id="crmNewF_note"></textarea></div>
         </div>
@@ -47694,6 +47728,11 @@ window.SHIN2_CRM_APP_INIT = function(){
       </div>
     `;
     decorateAddCompanyForm(wrap);
+    document.getElementById('crmNewFExtraAdd').addEventListener('click', ()=>{
+      const row = addCoExtraRow();
+      document.getElementById('crmNewFExtraList').appendChild(row);
+      row.querySelector('input').focus();
+    });
     document.getElementById('crmNewF_code').value = genCompanyCode();
     if(prefillName) document.getElementById('crmNewF_name').value = prefillName;
     bindDealStageBlock('addco');
@@ -47708,6 +47747,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       if(!val) return false;
       const el = document.getElementById(fieldId);
       if(!el || el.value.trim()) return false;
+      addCoEnsureOption(el, val);
       el.value = val;
       return true;
     }
@@ -47873,6 +47913,7 @@ window.SHIN2_CRM_APP_INIT = function(){
           const val = document.getElementById('ocrConfirm_' + key).value.trim();
           if(!el || !val) return;
           const cur = el.value.trim();
+          addCoEnsureOption(el, val);
           if(!cur){ el.value = val; filled.push(label); return; }
           if(cur === val) return; // 이미 같은 값 — 아무것도 하지 않는다
           const pick = document.querySelector(`input[name="ocrPick_${key}"]:checked`);
@@ -47977,12 +48018,9 @@ window.SHIN2_CRM_APP_INIT = function(){
       patch.code = document.getElementById('crmNewF_code').value.trim();
       patch.note = document.getElementById('crmNewF_note').value.trim();
       patch.region = Array.from(regionSelected);
-      // §이전 상호 선택 입력(신규) — 입력했을 때만 formerNames로 저장한다(비우면 필드 자체를 안 만든다).
-      // 현재 상호와 같은 이름·중복은 빼고, 저장은 기존 addCompany 경로 그대로(normalizeCompanyPatch가 표기 정리).
-      const formerEl = document.getElementById('crmNewF_formerNames');
-      const formerList = formerEl ? formerEl.value.split(/[,，\n]/).map(t=> t.trim()).filter(Boolean) : [];
-      const formerUniq = formerList.filter((n,i)=> formerList.indexOf(n) === i && n !== (document.getElementById('crmNewF_name').value || '').trim());
-      if(formerUniq.length) patch.formerNames = formerUniq;
+      // 대표자 외 담당자 — 입력했을 때만 extraContacts로 저장한다(재시도 때는 지운 것도 반영).
+      const extraContacts = addCoReadExtraContacts();
+      if(extraContacts.length || pendingNewCompanyId) patch.extraContacts = extraContacts;
       // §PDF 대상 선정 재구성 라운드(신규) — 등록 시 patch.distributionLists를 더 이상
       // 쓰지 않는다. 신규 레코드에는 이 필드 자체가 생기지 않고, PDF 대상은 출력 화면에서
       // 정해진다(외부용=MOU 체결 자동, 내부용=사용자 체크).
