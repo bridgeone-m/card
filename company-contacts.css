@@ -1,0 +1,56 @@
+/* 담당자·연락처 공통 폼 + 신규 등록/정보 수정 입력칸 통일.
+   두 화면은 .coform 하나로 같은 모양을 쓴다. 기존 화면 규칙(#addCoOverlay …!important)보다
+   우선해야 해서 html body .coform 으로 범위를 좁혀 지정한다(다른 화면에는 영향 없음). */
+.coform{ container-type:inline-size; }
+.coc{ display:flex; flex-direction:column; gap:12px; min-width:0; }
+.coc-list{ display:flex; flex-direction:column; gap:12px; }
+.coc-list:empty{ display:none; }
+.coc-card{ border:1px solid #E3EAF3; border-radius:12px; background:#fff; padding:14px 16px 16px; min-width:0; }
+.coc-card.is-main{ background:#F6F8FB; }
+.coc-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:28px; margin-bottom:8px; }
+.coc-title{ font-size:14px; font-weight:800; color:var(--navy, #14284B); }
+.coc-badge{ padding:3px 10px; border-radius:999px; background:#E6ECF5; color:var(--navy, #14284B); font-size:12px; font-weight:700; }
+html body .coform .coc-del{ width:28px; height:28px; flex:none; display:grid; place-items:center; padding:0; border:0; border-radius:7px; background:transparent; color:#8492A8; cursor:pointer; }
+html body .coform .coc-del:hover{ background:#FDECEC; color:#B3261E; }
+.coc-grid{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+html body .coform .coc-add{ display:flex; align-items:center; justify-content:center; gap:6px; width:100%; height:42px; border:1px solid #D3DEEC; border-radius:10px; background:#fff; color:var(--navy, #14284B); font-size:13px; font-weight:700; cursor:pointer; }
+html body .coform .coc-add:hover{ background:#F4F7FC; border-color:#B9CBE3; }
+.coform .coc-add:focus-visible, .coform .coc-del:focus-visible{ outline:2px solid #1B4480; outline-offset:2px; }
+
+/* 입력칸 — 높이·간격·글자 크기 하나로 */
+html body :is(#addCoOverlay,#crmBasicInfo) .coform.coform.coform.coform .coc-field,
+html body :is(#addCoOverlay,#crmBasicInfo) .coform.coform.coform.coform .co-form-field{ display:flex; flex-direction:column; gap:6px; min-width:0; max-width:none; margin:0 !important; }
+html body :is(#addCoOverlay,#crmBasicInfo) .coform.coform.coform.coform .coc-field > label,
+html body :is(#addCoOverlay,#crmBasicInfo) .coform.coform.coform.coform .co-form-field > label:not(.addco-sec-head){ font-size:13px !important; font-weight:700 !important; color:var(--text, #172033) !important; margin:0 !important; }
+html body :is(#addCoOverlay,#crmBasicInfo) .coform.coform.coform.coform .coc-field > input,
+html body :is(#addCoOverlay,#crmBasicInfo) .coform.coform.coform.coform .coc-field > select,
+html body :is(#addCoOverlay,#crmBasicInfo) .coform.coform.coform.coform .co-form-field > input[type="text"],
+html body :is(#addCoOverlay,#crmBasicInfo) .coform.coform.coform.coform .co-form-field > textarea{
+  box-sizing:border-box !important; width:100% !important; min-width:0 !important; max-width:none !important;
+  height:42px !important; min-height:42px !important; margin:0 !important; padding:0 12px !important;
+  border:1px solid #D3DEEC !important; border-radius:10px !important; background-color:#fff !important;
+  color:var(--text, #172033) !important; font:inherit !important; font-size:14px !important; line-height:20px !important; box-shadow:none !important;
+}
+html body :is(#addCoOverlay,#crmBasicInfo) .coform.coform.coform.coform .co-form-field > textarea{ height:auto !important; min-height:84px !important; padding:10px 12px !important; resize:vertical; }
+html body :is(#addCoOverlay,#crmBasicInfo) .coform.coform.coform.coform .coc-field > select{
+  appearance:none; -webkit-appearance:none; padding-right:34px !important; cursor:pointer;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2366758A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M6 9l6 6 6-6'/></svg>") !important;
+  background-repeat:no-repeat !important; background-position:right 11px center !important; background-size:16px 16px !important;
+}
+html body :is(#addCoOverlay,#crmBasicInfo) .coform.coform.coform.coform .coc-field > input:focus,
+html body :is(#addCoOverlay,#crmBasicInfo) .coform.coform.coform.coform .coc-field > select:focus,
+html body :is(#addCoOverlay,#crmBasicInfo) .coform.coform.coform.coform .co-form-field > input:focus,
+html body :is(#addCoOverlay,#crmBasicInfo) .coform.coform.coform.coform .co-form-field > textarea:focus{ outline:none !important; border-color:#1B4480 !important; box-shadow:0 0 0 3px rgba(27,68,128,.12) !important; }
+
+/* 정보 수정 화면의 세로 배치 */
+.coform.coedit{ display:flex; flex-direction:column; gap:14px; }
+.coedit-actions{ display:flex; gap:10px; align-items:center; justify-content:flex-end; flex-wrap:wrap; }
+
+@container (max-width:380px){
+  .coc-grid{ grid-template-columns:minmax(0,1fr); }
+  .coc-card{ padding:12px; }
+}
+@media (max-width:520px){
+  #addCoOverlay .pi-head{ padding:20px 16px 6px !important; }
+  #addCoOverlay #crmAddFormWrap.pi-body{ padding:12px 16px 8px !important; }
+}

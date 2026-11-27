@@ -8,6 +8,7 @@ function render(co){
   const wrap={innerHTML:'',querySelectorAll:()=>[{getAttribute:()=>'',addEventListener:(t,f)=>listeners.push(f)}]};
   const ctx={String,Array,
     document:{getElementById:id=>id==='cdashCompanySummaryCard'?wrap:null},
+    window:{CompanyContacts:require('./company-contacts.js')},
     esc:s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'),
     cinfoIcon:n=>`<i data-ico="${n}"></i>`,
     buildTopCategoriesText:()=>'재도장, 우레탄',

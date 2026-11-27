@@ -11536,6 +11536,8 @@ body.crm-fixed-view .crm-list-col .list-pagination{ display:grid !important; }
 <link rel="stylesheet" href="b2b-kpi-tab.css">
 <!-- §디자인 리프레시(2026-11): 모양만 덮어쓰는 스타일. 이 한 줄을 지우면 이전 디자인으로 돌아간다. -->
 <link rel="stylesheet" href="design-refresh.css">
+<link rel="stylesheet" href="company-contacts.css">
+<script src="company-contacts.js"></script>
 <!-- §지도 분포 라운드(신규): 카카오맵 JavaScript 키 설정 — firebaseConfig.js와 완전히
      같은 패턴(파일이 없어도 onerror로 조용히 넘어가고, 지도 분포 팝업만 "설정 필요"
      안내로 대체된다 — 나머지 CRM 기능/Firebase 연동에는 전혀 영향 없음). 이 파일은
@@ -17733,6 +17735,21 @@ window.SHIN2_RECEIVABLES_2024_SNAPSHOT = []; // 2024년 미수금 원본 파일 
       const survivorNow = findCompany(survivorId);
       patch.partnerDashboard = Object.assign({}, (survivorNow && survivorNow.partnerDashboard) || {}, { mouDate: mouField.loserValue });
     }
+    // 담당자 이름을 패자에게서 가져오면 직급·연락처도 그 사람 것을 함께 가져오고,
+    // 생존자의 position 에 있던 대표 직급은 repPosition 으로 옮겨 섞이지 않게 한다.
+    if(patch.contactName && patch.contactName !== (patch.repName || preview.survivor.repName)){
+      const rank = window.CompanyContacts.repRank(preview.survivor);
+      if(rank) patch.repPosition = rank;
+      const same = patch.contactName === preview.loser.contactName;
+      patch.position = (same && window.CompanyContacts.others(preview.loser).length && preview.loser.position) || '';
+      patch.contactMobile = (same && preview.loser.contactMobile) || '';
+      patch.contactEmail = (same && preview.loser.contactEmail) || '';
+    }
+    const contactKey = c=> [c.name, c.mobile, c.email].map(v=> String(v || '').trim()).join('|');
+    const keptContacts = Array.isArray(preview.survivor.extraContacts) ? preview.survivor.extraContacts : [];
+    const seenContacts = new Set(keptContacts.map(contactKey));
+    const addedContacts = (Array.isArray(preview.loser.extraContacts) ? preview.loser.extraContacts : []).filter(c=> !seenContacts.has(contactKey(c)));
+    if(addedContacts.length) patch.extraContacts = keptContacts.concat(addedContacts);
     if(Object.keys(patch).length) updateCompany(survivorId, patch);
     preview.formerNamesToAdd.forEach(n=> addFormerName(survivorId, n));
     // 패자 소프트 삭제 — softDeleteCompany가 내부적으로 addActivity(loserId, ...)를
@@ -27990,7 +28007,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     // 휴대폰(mobile)과 회사 연락처(phone)는 섞지 않는다. 표시만 — 저장값은 건드리지 않는다.
     const pd = co.partnerDashboard || {};
     // §디자인 완성도 라운드 — 업체명은 팝업 헤더 제목에 이미 있어 반복하지 않는다.
-    push('대표', co.repName || pd.ceo);
+    push('대표', [co.repName || pd.ceo, (co.repName || pd.ceo) ? window.CompanyContacts.repRank(co) : ''].filter(Boolean).join(' '));
     push('휴대폰', co.mobile, false, true);
     push('회사전화', co.phone || pd.phone, false, true);
     push('이메일', co.email || pd.email, false, true);          // 2026-11 사용자 요청 — 이메일도 [복사]
@@ -28001,6 +28018,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     push('주소', co.address, true, true);                        // 2026-11 사용자 요청 — 주소도 [복사]
     const formerNames = Array.isArray(co.formerNames) ? co.formerNames.filter(Boolean) : [];
     if(formerNames.length) push('이전 상호', formerNames.join(', '), true);
+    window.CompanyContacts.others(co).forEach(c=> push('담당자', window.CompanyContacts.describe(c), true, true));
     const grade = getCompanyGrade(co);
     const isCore = !!(grade && (grade.raw === 'S' || grade.raw === 'A'));
     wrap.innerHTML = `
@@ -45865,7 +45883,7 @@ window.SHIN2_CRM_APP_INIT = function(){
         </div>
       </div>`;
     };
-    const extraHtml = (Array.isArray(co.extraContacts) ? co.extraContacts : []).map(c=> `<div class="co-field"><div class="co-field-label">추가 담당자</div><div class="co-field-value">${esc([[c.name, c.position].filter(Boolean).join(' '), c.mobile, c.email].filter(Boolean).join(' · '))}</div></div>`).join('');
+    const extraHtml = window.CompanyContacts.others(co).map(c=> `<div class="co-field"><div class="co-field-label">담당자</div><div class="co-field-value">${esc(window.CompanyContacts.describe(c))}</div></div>`).join('');
     wrap.innerHTML = CO_INFO_LABELS.map(([k,l])=> row(k,l)).join('') + extraHtml +
       (co.memo ? `<div class="co-field"><div class="co-field-label">기본메모</div><div class="co-field-value" style="white-space:pre-wrap;">${esc(co.memo)}</div></div>` : '');
     if(!CO_INFO_LABELS.some(([k])=> co[k]) && !co.memo && !extraHtml){
@@ -45894,19 +45912,28 @@ window.SHIN2_CRM_APP_INIT = function(){
   function renderBasicInfoForm(co){
     if(!window.crmAdminOk('고객 정보 수정')){ cardState.chartEditing = false; if(typeof renderBasicInfoView === 'function') renderBasicInfoView(co); return; }
     const wrap = document.getElementById('crmBasicInfo');
-    wrap.innerHTML = CO_FIELD_LABELS.filter(([k])=>k!=='contactName').concat([['memo','기본메모']]).map(([k,l])=> `
-      <div class="co-form-field"><label>${l}</label>
-        ${k==='memo' ? `<textarea id="crmF_${k}">${esc(co[k]||'')}</textarea>` : `<input type="text" id="crmF_${k}" value="${esc(co[k]||'')}" />`}
-      </div>
-    `).join('')
+    const textField = (k, l)=> `<div class="co-form-field"><label for="crmF_${k}">${l}</label>${k==='memo' ? `<textarea id="crmF_${k}">${esc(co[k]||'')}</textarea>` : `<input type="text" id="crmF_${k}" value="${esc(co[k]||'')}" />`}</div>`;
+    // 신규 등록과 같은 순서·같은 담당자 폼. 담당자·연락처 값은 company-contacts.js 가 읽고 쓴다.
+    wrap.innerHTML = '<div class="coform coedit">'
+      + textField('name','상호 *') + '<div id="crmFContacts"></div>'
+      + textField('address','주소') + textField('bizRegNo','사업자번호') + textField('website','홈페이지') + textField('memo','기본메모')
       // §고객 진행단계 3단계 라운드: 등록폼과 완전히 같은 블록을 "수정" 화면에도 그대로
       // 넣는다(idPrefix만 'editco'로 달라 id 충돌 없음) — 값은 이 업체의 실제 저장값으로
       // 미리 채운다(resolveDealStageFormValues, 새 판정 없음).
-      + `<div style="display:flex;gap:10px;margin-top:6px;align-items:center;">
+      + `<div class="coedit-actions">
         <button type="button" class="co-text-action" id="crmFormCancel">취소</button>
         <button type="button" class="co-text-action primary" id="crmFormSave">저장</button>
         <span class="cdash-cloud-save-status" id="crmFormSaveStatus"></span>
-      </div>`;
+        <span id="crmFormError" role="alert" style="color:#B91C1C;font-size:12px;"></span>
+      </div></div>`;
+    const contactsForm = window.CompanyContacts.mount(document.getElementById('crmFContacts'), co, 'crmF_');
+    const EDIT_TEXT_KEYS = ['name','address','bizRegNo','website','memo'];
+    const readEditForm = ()=>{
+      const values = contactsForm.read();
+      EDIT_TEXT_KEYS.forEach(k=>{ values[k] = document.getElementById('crmF_' + k).value.trim(); });
+      return values;
+    };
+    const editInitial = readEditForm();   // 이 값과 달라진 필드만 저장한다
     bindDealStageBlock('editco');
     // §상태 동기화 점검 — 폼을 연 시점의 진행단계 값. 저장 때 이 값과 같으면(진행단계를 안 건드림)
     // applyDealStageValues를 부르지 않는다(전화번호만 고쳐도 진행단계 활동이 쌓이던 문제).
@@ -45915,12 +45942,12 @@ window.SHIN2_CRM_APP_INIT = function(){
     let editDealApplied = false;
     document.getElementById('crmFormCancel').addEventListener('click', ()=>{ cardState.chartEditing = false; refreshChart(); });
     document.getElementById('crmFormSave').addEventListener('click', async (e)=>{
-      const patch = {};
-      CO_FIELD_LABELS.concat([['memo','기본메모']]).forEach(([k])=>{
-        const el = document.getElementById('crmF_' + k);
-        if(el) patch[k] = el.value.trim();
-      });
-      if(!patch.name){ return; }
+      const current = readEditForm();
+      if(!current.name){ return; }
+      const errorEl = document.getElementById('crmFormError');
+      errorEl.textContent = contactsForm.validate();
+      if(errorEl.textContent) return;
+      const patch = window.CompanyContacts.changedFields(editInitial, current);
       // §PDF 대상 선정 재구성 라운드(신규) — patch에서 distributionLists를 뺐다. 폼에서
       // 블록을 없앤 뒤에도 이 줄이 남아 있으면 저장할 때마다 빈 배열로 덮어써서 기존
       // 고객의 값을 지우게 된다(§요청 9 "기존 고객 데이터 수정 금지"). 이제 이 필드는
@@ -47560,8 +47587,8 @@ window.SHIN2_CRM_APP_INIT = function(){
     const grid = wrap.querySelector(':scope > .co-form-grid2');
     if(grid){
       grid.parentNode.insertBefore(makeSection('building', '업체 정보'), grid);
-      const firstRow3 = grid.querySelector(':scope > .addco-pair');
-      if(firstRow3){ const h = makeSection('user', '대표자 · 연락 정보'); h.classList.add('is-in-grid'); grid.insertBefore(h, firstRow3); }
+      const contactsHost = grid.querySelector(':scope > #crmNewFContacts');
+      if(contactsHost){ const h = makeSection('user', '담당자 · 연락 정보'); h.classList.add('is-in-grid', 'co-form-span2'); grid.insertBefore(h, contactsHost); }
     }
     // 주요 라벨 앞 아이콘(라벨 글자는 그대로)
     wrap.querySelectorAll('.co-form-grid2 .co-form-field > label').forEach(lb=>{
@@ -47593,34 +47620,6 @@ window.SHIN2_CRM_APP_INIT = function(){
     // 주요 액션 — 등록에만 아이콘
     const save = wrap.querySelector('#crmNewFSave');
     if(save && !save.querySelector('.addco-ico')) save.insertAdjacentHTML('afterbegin', icon('check'));
-  }
-  const ADDCO_POSITIONS = ['대표','이사','전무','경리'];
-  function addCoPositionOptionsHtml(){
-    return '<option value="">선택</option>' + ADDCO_POSITIONS.map(p=> `<option value="${p}">${p}</option>`).join('');
-  }
-  // 명함 인식 직급이 목록에 없으면(예: 부장) 그 값을 선택지에 더해 잃지 않게 한다.
-  function addCoEnsureOption(el, val){
-    if(!el || el.tagName !== 'SELECT' || !val) return;
-    if(!Array.from(el.options).some(o=> o.value === val)) el.add(new Option(val, val));
-  }
-  function addCoExtraRow(){
-    const row = document.createElement('div');
-    row.className = 'addco-extra-row';
-    row.innerHTML = `
-      <div class="co-form-field"><label>이름</label><input type="text" data-extra="name" /></div>
-      <div class="co-form-field"><label>직급</label><select data-extra="position">${addCoPositionOptionsHtml()}</select></div>
-      <div class="co-form-field"><label>휴대전화</label><input type="text" data-extra="mobile" /></div>
-      <div class="co-form-field"><label>Email</label><input type="text" data-extra="email" /></div>
-      <button type="button" class="addco-extra-del">삭제</button>`;
-    row.querySelector('.addco-extra-del').addEventListener('click', ()=> row.remove());
-    return row;
-  }
-  function addCoReadExtraContacts(){
-    return Array.from(document.querySelectorAll('#crmNewFExtraList .addco-extra-row')).map(row=>{
-      const c = {};
-      row.querySelectorAll('[data-extra]').forEach(el=>{ c[el.getAttribute('data-extra')] = el.value.trim(); });
-      return c;
-    }).filter(c=> c.name || c.mobile || c.email);
   }
   function openAddCompanyForm(prefillName){
     if(!window.crmAdminOk('고객 등록')) return;
@@ -47656,9 +47655,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     // 스키마를 만들지 않고 이미 있는 4개 필드를 여기 폼에도 노출한다(§요청 [8] "기존
     // 필드가 없다면 조사 후 기존 필드에 연결 — 중복 필드 금지").
     const NEW_FIELD_LABELS = [
-      ['name','상호 *'], ['contactName','담당자'], ['position','직급'], ['repName','대표자'],
-      ['mobile','휴대전화'], ['phone','연락처'], ['fax','FAX'], ['email','Email'],
-      ['website','홈페이지'], ['bizRegNo','사업자번호'], ['address','주소'], ['capital','자본금']
+      ['name','상호 *'], ['website','홈페이지'], ['bizRegNo','사업자번호'], ['address','주소'], ['capital','자본금']
     ];
     // §P1-6 신규 고객 등록 폼 2열화 라운드(신규) — 진단 보고서 P1-6: 24개 필드가 1열로
     // 쌓여 세로 스크롤이 약 1488px였다. 입력 필드 id/name과 제출 로직(crmNewFSave)은
@@ -47675,23 +47672,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       <div class="co-form-grid2">
         <div class="co-form-field"><label>상호 *</label><input type="text" id="crmNewF_name" /></div>
         <div class="co-form-field"><label>B2B 전용번호(자동 발급)</label><input type="text" id="crmNewF_code" readonly title="B2B 전용번호는 저장할 때 자동으로 발급됩니다." /></div>
-        <div class="addco-pair">
-          <div class="co-form-field"><label>대표자</label><input type="text" id="crmNewF_repName" /></div>
-          <input type="hidden" id="crmNewF_contactName" />
-          <div class="co-form-field"><label>직급</label><select id="crmNewF_position">${addCoPositionOptionsHtml()}</select></div>
-        </div>
-        <div class="addco-extra co-form-span2">
-          <div id="crmNewFExtraList"></div>
-          <button type="button" class="addco-extra-add" id="crmNewFExtraAdd">+ 다른 담당자 추가</button>
-        </div>
-        <div class="addco-pair">
-          <div class="co-form-field"><label>휴대전화</label><input type="text" id="crmNewF_mobile" /></div>
-          <div class="co-form-field"><label>회사전화</label><input type="text" id="crmNewF_phone" /></div>
-        </div>
-        <div class="addco-pair">
-          <div class="co-form-field"><label>Email</label><input type="text" id="crmNewF_email" /></div>
-          <div class="co-form-field"><label>FAX</label><input type="text" id="crmNewF_fax" /></div>
-        </div>
+        <div class="co-form-span2" id="crmNewFContacts"></div>
         <div class="co-form-field co-form-span2"><label>주소</label><input type="text" id="crmNewF_address" /></div>
         <div class="co-form-field co-form-span2"><label>사업자번호</label><input type="text" id="crmNewF_bizRegNo" /></div>
       </div>
@@ -47728,11 +47709,8 @@ window.SHIN2_CRM_APP_INIT = function(){
       </div>
     `;
     decorateAddCompanyForm(wrap);
-    document.getElementById('crmNewFExtraAdd').addEventListener('click', ()=>{
-      const row = addCoExtraRow();
-      document.getElementById('crmNewFExtraList').appendChild(row);
-      row.querySelector('input').focus();
-    });
+    wrap.classList.add('coform');
+    const contactsForm = window.CompanyContacts.mount(document.getElementById('crmNewFContacts'), {}, 'crmNewF_');
     document.getElementById('crmNewF_code').value = genCompanyCode();
     if(prefillName) document.getElementById('crmNewF_name').value = prefillName;
     bindDealStageBlock('addco');
@@ -47747,7 +47725,6 @@ window.SHIN2_CRM_APP_INIT = function(){
       if(!val) return false;
       const el = document.getElementById(fieldId);
       if(!el || el.value.trim()) return false;
-      addCoEnsureOption(el, val);
       el.value = val;
       return true;
     }
@@ -47774,7 +47751,7 @@ window.SHIN2_CRM_APP_INIT = function(){
     // 이 확인화면 필드 키 -> 실제 등록폼 input id 매핑(§요청 [8], region만 예외 —
     // 텍스트 입력이 아니라 위 지역 칩 선택 상태(regionSelected)에 반영한다).
     const OCR_FIELD_TO_FORM_ID = {
-      name:'crmNewF_name', contactName:'crmNewF_contactName', position:'crmNewF_position',
+      name:'crmNewF_name', contactName:'crmNewF_contactName', position:'crmNewF_repRank',
       address:'crmNewF_address', mobile:'crmNewF_mobile', phone:'crmNewF_phone', fax:'crmNewF_fax',
       email:'crmNewF_email', website:'crmNewF_website', repName:'crmNewF_repName', bizRegNo:'crmNewF_bizRegNo'
     };
@@ -47782,9 +47759,17 @@ window.SHIN2_CRM_APP_INIT = function(){
     // 모듈이 매긴 conf(0~1)를 그대로 쓰고, conf가 없는 옛 결과는 ambiguous로 가늠한다.
     // 확인창에서 "기존 입력값"을 보여주기 위해 지금 등록폼에 들어 있는 값을 읽는다.
     // region은 텍스트 칸이 아니라 칩 선택이라 선택된 지역들을 문자열로 돌려준다.
-    function ocrCurrentFormValue(key){
+    // 명함의 사람이 대표가 아니면(이사 등) 직급·휴대전화·이메일은 담당자 칸으로 간다 — 대표 칸에 넣지 않는다.
+    function ocrFormId(key, forContact){
+      if(forContact){
+        const own = { position:'crmNewF_contactPosition', mobile:'crmNewF_contactMobile', email:'crmNewF_contactEmail' }[key];
+        if(own) return own;
+      }
+      return OCR_FIELD_TO_FORM_ID[key];
+    }
+    function ocrCurrentFormValue(key, forContact){
       if(key === 'region') return Array.from(regionSelected).join(', ');
-      const formId = OCR_FIELD_TO_FORM_ID[key];
+      const formId = ocrFormId(key, forContact);
       const el = formId && document.getElementById(formId);
       return el ? el.value.trim() : '';
     }
@@ -47828,6 +47813,7 @@ window.SHIN2_CRM_APP_INIT = function(){
       }
       const fieldDefs = OCR_FIELD_DEFS[docType] || OCR_FIELD_DEFS.businessCard;
       const similar = findSimilarCompany(extracted.name && extracted.name.value);
+      const contactCard = !!(extracted.contactName && extracted.contactName.value) && !(extracted.repName && extracted.repName.value);
       root.innerHTML = `
         <div class="pi-overlay" id="ocrConfirmOverlay" style="z-index:10002;">
           <div class="pi-panel" style="max-width:520px;" role="dialog" aria-modal="true" aria-label="명함 인식 결과 확인">
@@ -47842,7 +47828,7 @@ window.SHIN2_CRM_APP_INIT = function(){
                 const status = ocrFieldStatus(field);
                 // §요청 13·14 — 이미 사람이 입력해둔 값이 있고 명함 값과 다르면 덮어쓰지
                 // 않고 둘 다 보여준다. 기본 선택은 항상 "기존 값 유지"다.
-                const curVal = ocrCurrentFormValue(key);
+                const curVal = ocrCurrentFormValue(key, contactCard);
                 const conflict = !!(field.value && curVal && curVal !== field.value);
                 return `
                 <div class="co-form-field ocr-confirm-field">
@@ -47897,6 +47883,11 @@ window.SHIN2_CRM_APP_INIT = function(){
         // §요청 14 — 빈 칸이면 채우고, 같으면 그대로 두고, 다르면 위에서 고른 쪽만 쓴다.
         // 아무것도 안 고르면(기본값) 기존 값을 지키고 절대 덮어쓰지 않는다.
         const filled = [], replaced = [], kept = [];
+        const confirmValue = k=>{ const el = document.getElementById('ocrConfirm_' + k); return el ? el.value.trim() : ''; };
+        const toContact = !!confirmValue('contactName') && !confirmValue('repName');
+        if(confirmValue('contactName')) contactsForm.ensurePrimary();
+        // 회사 이메일이 비어 있으면 담당자 이메일을 업체 이메일(메일 발송 주소)에도 넣는다 — 기존 동작 유지.
+        if(toContact && confirmValue('email')) fillIfEmpty('crmNewF_email', confirmValue('email'));
         fieldDefs.forEach(([key,label])=>{
           if(key === 'region'){
             const val = document.getElementById('ocrConfirm_region').value.trim();
@@ -47908,12 +47899,13 @@ window.SHIN2_CRM_APP_INIT = function(){
             }
             return;
           }
-          const formId = OCR_FIELD_TO_FORM_ID[key];
+          const formId = ocrFormId(key, toContact);
           const el = formId && document.getElementById(formId);
           const val = document.getElementById('ocrConfirm_' + key).value.trim();
           if(!el || !val) return;
           const cur = el.value.trim();
-          addCoEnsureOption(el, val);
+          // 목록에 없는 직급(부장 등)은 선택지에 더해 잃지 않는다
+          if(el.tagName === 'SELECT' && !Array.from(el.options).some(o=> o.value === val)) el.add(new Option(val, val));
           if(!cur){ el.value = val; filled.push(label); return; }
           if(cur === val) return; // 이미 같은 값 — 아무것도 하지 않는다
           const pick = document.querySelector(`input[name="ocrPick_${key}"]:checked`);
@@ -48018,9 +48010,10 @@ window.SHIN2_CRM_APP_INIT = function(){
       patch.code = document.getElementById('crmNewF_code').value.trim();
       patch.note = document.getElementById('crmNewF_note').value.trim();
       patch.region = Array.from(regionSelected);
-      // 대표자 외 담당자 — 입력했을 때만 extraContacts로 저장한다(재시도 때는 지운 것도 반영).
-      const extraContacts = addCoReadExtraContacts();
-      if(extraContacts.length || pendingNewCompanyId) patch.extraContacts = extraContacts;
+      // 담당자·연락처 — 정보 수정 화면과 같은 저장 규칙(company-contacts.js)
+      const contactError = contactsForm.validate();
+      if(contactError){ saveErrEl.textContent = contactError; saveErrEl.style.display = 'block'; return; }
+      Object.assign(patch, contactsForm.read());
       // §PDF 대상 선정 재구성 라운드(신규) — 등록 시 patch.distributionLists를 더 이상
       // 쓰지 않는다. 신규 레코드에는 이 필드 자체가 생기지 않고, PDF 대상은 출력 화면에서
       // 정해진다(외부용=MOU 체결 자동, 내부용=사용자 체크).
